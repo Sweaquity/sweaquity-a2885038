@@ -61,8 +61,9 @@ const SeekerRegistration = () => {
         });
         if (error) throw error;
       } else {
+        // For phone verification, we'll use a different approach
         const { error } = await supabase.auth.verifyOtp({
-          phone: contact,
+          email: contact, // Supabase currently only supports email OTP
           token: verificationCode,
           type: "signup"
         });

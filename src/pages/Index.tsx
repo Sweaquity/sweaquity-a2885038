@@ -69,7 +69,7 @@ const Index = () => {
 
       <Button 
         variant="link" 
-        onClick={() => navigate("/login/recruiter")}
+        onClick={() => navigate("/register/recruiter")}
         className="mt-8 text-muted-foreground"
       >
         Recruitment login here
