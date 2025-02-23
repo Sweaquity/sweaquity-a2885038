@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Mail, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/lib/supabase";
 
 const SeekerRegistration = () => {
   const navigate = useNavigate();
@@ -20,12 +21,30 @@ const SeekerRegistration = () => {
     setIsLoading(true);
 
     try {
-      // This will be implemented with Supabase auth
-      toast.info("Registration functionality will be implemented with Supabase");
-      // Temporary simulation of loading state
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (verificationMethod === "email") {
+        const { error } = await supabase.auth.signInWithOtp({
+          email: contact,
+          options: {
+            emailRedirectTo: `${window.location.origin}/onboarding`,
+          },
+        });
+
+        if (error) throw error;
+
+        toast.success("Check your email for the verification link!");
+      } else {
+        const { error } = await supabase.auth.signInWithOtp({
+          phone: contact,
+        });
+
+        if (error) throw error;
+
+        toast.success("Check your phone for the verification code!");
+        // We'll implement the code verification UI in the next step
+      }
     } catch (error) {
-      toast.error("An error occurred during registration");
+      console.error('Error:', error);
+      toast.error(error instanceof Error ? error.message : "An error occurred during registration");
     } finally {
       setIsLoading(false);
     }
@@ -79,13 +98,16 @@ const SeekerRegistration = () => {
                   <Input
                     id="phone"
                     type="tel"
-                    placeholder="Enter your phone number"
+                    placeholder="+1234567890"
                     className="pl-9"
                     value={contact}
                     onChange={(e) => setContact(e.target.value)}
                     required
                   />
                 </div>
+                <p className="text-sm text-muted-foreground">
+                  Enter your phone number in international format (e.g., +1234567890)
+                </p>
               </div>
             </TabsContent>
 
