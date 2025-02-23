@@ -53,13 +53,21 @@ const SeekerRegistration = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.verifyOtp({
-        [verificationMethod === "email" ? "email" : "phone"]: contact,
-        token: verificationCode,
-        type: "signup"
-      });
-
-      if (error) throw error;
+      if (verificationMethod === "email") {
+        const { error } = await supabase.auth.verifyOtp({
+          email: contact,
+          token: verificationCode,
+          type: "signup"
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.verifyOtp({
+          phone: contact,
+          token: verificationCode,
+          type: "signup"
+        });
+        if (error) throw error;
+      }
 
       // Redirect to complete profile page after successful verification
       navigate("/onboarding");
