@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ChevronRight, Building2, User, Users } from "lucide-react";
+import { ChevronRight, Building2, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Index = () => {
@@ -19,12 +19,6 @@ const Index = () => {
       description: "Post jobs and find the perfect candidates",
       icon: Building2,
       type: "business"
-    },
-    {
-      title: "Recruiter",
-      description: "Connect talented professionals with great companies",
-      icon: Users,
-      type: "recruiter"
     }
   ];
 
@@ -37,40 +31,49 @@ const Index = () => {
         <p className="text-lg text-muted-foreground mb-6">
           Choose your role to get started on your professional journey
         </p>
-        <Button 
-          variant="outline" 
-          onClick={() => navigate("/login")}
-          className="mb-8"
-        >
-          Already have an account? Log in
-        </Button>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6 w-full max-w-5xl">
+      <div className="grid md:grid-cols-2 gap-6 w-full max-w-4xl">
         {userTypes.map((type) => (
           <Card
             key={type.type}
-            className="landing-card group cursor-pointer"
-            onClick={() => navigate(`/register/${type.type}`)}
+            className="p-6 landing-card"
           >
-            <div className="flex flex-col items-center text-center">
+            <div className="flex flex-col items-center text-center h-full">
               <div className="mb-4 p-3 rounded-full bg-accent/10 text-accent">
                 <type.icon size={24} />
               </div>
               <h2 className="text-xl font-semibold mb-2">{type.title}</h2>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-muted-foreground mb-6">
                 {type.description}
               </p>
-              <Button
-                variant="ghost"
-                className="group-hover:translate-x-1 transition-transform"
-              >
-                Get Started <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
+              <div className="mt-auto space-y-3 w-full">
+                <Button
+                  className="w-full"
+                  onClick={() => navigate(`/register/${type.type}`)}
+                >
+                  Sign Up <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => navigate(`/login/${type.type}`)}
+                >
+                  Log In
+                </Button>
+              </div>
             </div>
           </Card>
         ))}
       </div>
+
+      <Button 
+        variant="link" 
+        onClick={() => navigate("/login/recruiter")}
+        className="mt-8 text-muted-foreground"
+      >
+        Recruitment login here
+      </Button>
     </div>
   );
 };
