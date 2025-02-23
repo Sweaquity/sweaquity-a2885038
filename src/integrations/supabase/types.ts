@@ -9,7 +9,107 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      marketing_contacts: {
+        Row: {
+          email: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          preferences: Json | null
+          subscribed_at: string | null
+          unsubscribed_at: string | null
+          user_id: string
+        }
+        Insert: {
+          email: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          preferences?: Json | null
+          subscribed_at?: string | null
+          unsubscribed_at?: string | null
+          user_id: string
+        }
+        Update: {
+          email?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          preferences?: Json | null
+          subscribed_at?: string | null
+          unsubscribed_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_contacts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          availability: string | null
+          created_at: string | null
+          email: string | null
+          employment_preference:
+            | Database["public"]["Enums"]["employment_preference"]
+            | null
+          first_name: string | null
+          id: string
+          is_anonymized: boolean | null
+          last_name: string | null
+          location: string | null
+          marketing_consent: boolean | null
+          project_updates_consent: boolean | null
+          skills: Json | null
+          terms_accepted: boolean | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          availability?: string | null
+          created_at?: string | null
+          email?: string | null
+          employment_preference?:
+            | Database["public"]["Enums"]["employment_preference"]
+            | null
+          first_name?: string | null
+          id: string
+          is_anonymized?: boolean | null
+          last_name?: string | null
+          location?: string | null
+          marketing_consent?: boolean | null
+          project_updates_consent?: boolean | null
+          skills?: Json | null
+          terms_accepted?: boolean | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          availability?: string | null
+          created_at?: string | null
+          email?: string | null
+          employment_preference?:
+            | Database["public"]["Enums"]["employment_preference"]
+            | null
+          first_name?: string | null
+          id?: string
+          is_anonymized?: boolean | null
+          last_name?: string | null
+          location?: string | null
+          marketing_consent?: boolean | null
+          project_updates_consent?: boolean | null
+          skills?: Json | null
+          terms_accepted?: boolean | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +118,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      employment_preference: "equity_only" | "salary_only" | "both"
     }
     CompositeTypes: {
       [_ in never]: never

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { ArrowLeft, Mail, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -15,9 +16,27 @@ const SeekerRegistration = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [verificationMethod, setVerificationMethod] = useState<"email" | "phone">("email");
   const [contact, setContact] = useState("");
+  const [consents, setConsents] = useState({
+    terms: false,
+    marketing: false,
+    projectUpdates: false,
+  });
+
+  const handleConsent = (key: keyof typeof consents) => {
+    setConsents(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!consents.terms) {
+      toast.error("You must accept the terms and conditions to continue");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -26,6 +45,11 @@ const SeekerRegistration = () => {
           email: contact,
           options: {
             emailRedirectTo: `${window.location.origin}/onboarding`,
+            data: {
+              terms_accepted: consents.terms,
+              marketing_consent: consents.marketing,
+              project_updates_consent: consents.projectUpdates,
+            }
           },
         });
 
@@ -35,12 +59,18 @@ const SeekerRegistration = () => {
       } else {
         const { error } = await supabase.auth.signInWithOtp({
           phone: contact,
+          options: {
+            data: {
+              terms_accepted: consents.terms,
+              marketing_consent: consents.marketing,
+              project_updates_consent: consents.projectUpdates,
+            }
+          }
         });
 
         if (error) throw error;
 
         toast.success("Check your phone for the verification code!");
-        // We'll implement the code verification UI in the next step
       }
     } catch (error) {
       console.error('Error:', error);
@@ -110,6 +140,42 @@ const SeekerRegistration = () => {
                 </p>
               </div>
             </TabsContent>
+
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="terms" 
+                  checked={consents.terms}
+                  onCheckedChange={() => handleConsent('terms')}
+                  required
+                />
+                <Label htmlFor="terms" className="text-sm">
+                  I accept Sweaquity terms and conditions
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="marketing" 
+                  checked={consents.marketing}
+                  onCheckedChange={() => handleConsent('marketing')}
+                />
+                <Label htmlFor="marketing" className="text-sm">
+                  Opt into marketing communications (can be changed later)
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="projectUpdates" 
+                  checked={consents.projectUpdates}
+                  onCheckedChange={() => handleConsent('projectUpdates')}
+                />
+                <Label htmlFor="projectUpdates" className="text-sm">
+                  Opt into updates about other Sweaquity projects
+                </Label>
+              </div>
+            </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Sending verification..." : "Continue"}
