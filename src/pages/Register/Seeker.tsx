@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { ArrowLeft, Mail, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -16,27 +15,11 @@ const SeekerRegistration = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [verificationMethod, setVerificationMethod] = useState<"email" | "phone">("email");
   const [contact, setContact] = useState("");
-  const [consents, setConsents] = useState({
-    terms: false,
-    marketing: false,
-    projectUpdates: false,
-  });
+  const [verificationCode, setVerificationCode] = useState("");
+  const [showVerification, setShowVerification] = useState(false);
 
-  const handleConsent = (key: keyof typeof consents) => {
-    setConsents(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!consents.terms) {
-      toast.error("You must accept the terms and conditions to continue");
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -44,37 +27,45 @@ const SeekerRegistration = () => {
         const { error } = await supabase.auth.signInWithOtp({
           email: contact,
           options: {
-            emailRedirectTo: `${window.location.origin}/onboarding`,
-            data: {
-              terms_accepted: consents.terms,
-              marketing_consent: consents.marketing,
-              project_updates_consent: consents.projectUpdates,
-            }
-          },
-        });
-
-        if (error) throw error;
-
-        toast.success("Check your email for the verification link!");
-      } else {
-        const { error } = await supabase.auth.signInWithOtp({
-          phone: contact,
-          options: {
-            data: {
-              terms_accepted: consents.terms,
-              marketing_consent: consents.marketing,
-              project_updates_consent: consents.projectUpdates,
-            }
+            shouldCreateUser: true,
           }
         });
-
         if (error) throw error;
-
+        toast.success("Check your email for the verification code!");
+      } else {
+        const { error } = await supabase.auth.signInWithOtp({
+          phone: contact
+        });
+        if (error) throw error;
         toast.success("Check your phone for the verification code!");
       }
+      setShowVerification(true);
     } catch (error) {
       console.error('Error:', error);
-      toast.error(error instanceof Error ? error.message : "An error occurred during registration");
+      toast.error(error instanceof Error ? error.message : "An error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        [verificationMethod === "email" ? "email" : "phone"]: contact,
+        token: verificationCode,
+        type: "signup"
+      });
+
+      if (error) throw error;
+
+      // Redirect to complete profile page after successful verification
+      navigate("/onboarding");
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error(error instanceof Error ? error.message : "Invalid verification code");
     } finally {
       setIsLoading(false);
     }
@@ -101,86 +92,81 @@ const SeekerRegistration = () => {
             <TabsTrigger value="phone">Phone</TabsTrigger>
           </TabsList>
 
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-            <TabsContent value="email">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email address</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    className="pl-9"
-                    value={contact}
-                    onChange={(e) => setContact(e.target.value)}
-                    required
-                  />
+          {!showVerification ? (
+            <form onSubmit={handleSendCode} className="space-y-4 mt-4">
+              <TabsContent value="email">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email address</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email"
+                      className="pl-9"
+                      value={contact}
+                      onChange={(e) => setContact(e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
-            </TabsContent>
+              </TabsContent>
 
-            <TabsContent value="phone">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone number</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+1234567890"
-                    className="pl-9"
-                    value={contact}
-                    onChange={(e) => setContact(e.target.value)}
-                    required
-                  />
+              <TabsContent value="phone">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone number</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+1234567890"
+                      className="pl-9"
+                      value={contact}
+                      onChange={(e) => setContact(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Enter your phone number in international format (e.g., +1234567890)
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Enter your phone number in international format (e.g., +1234567890)
-                </p>
-              </div>
-            </TabsContent>
+              </TabsContent>
 
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="terms" 
-                  checked={consents.terms}
-                  onCheckedChange={() => handleConsent('terms')}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Sending code..." : "Send verification code"}
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyCode} className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label htmlFor="code">Verification code</Label>
+                <Input
+                  id="code"
+                  type="text"
+                  placeholder="Enter 6-digit code"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  maxLength={6}
                   required
                 />
-                <Label htmlFor="terms" className="text-sm">
-                  I accept Sweaquity terms and conditions
-                </Label>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="marketing" 
-                  checked={consents.marketing}
-                  onCheckedChange={() => handleConsent('marketing')}
-                />
-                <Label htmlFor="marketing" className="text-sm">
-                  Opt into marketing communications (can be changed later)
-                </Label>
-              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Verifying..." : "Verify code"}
+              </Button>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="projectUpdates" 
-                  checked={consents.projectUpdates}
-                  onCheckedChange={() => handleConsent('projectUpdates')}
-                />
-                <Label htmlFor="projectUpdates" className="text-sm">
-                  Opt into updates about other Sweaquity projects
-                </Label>
-              </div>
-            </div>
-
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Sending verification..." : "Continue"}
-            </Button>
-          </form>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={handleSendCode}
+                disabled={isLoading}
+              >
+                Resend code
+              </Button>
+            </form>
+          )}
         </Tabs>
 
         <div className="text-center text-sm text-muted-foreground">

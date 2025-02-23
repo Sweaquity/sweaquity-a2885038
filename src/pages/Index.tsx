@@ -30,13 +30,20 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 page-transition">
-      <div className="text-center max-w-3xl mx-auto mb-12">
+      <div className="text-center max-w-3xl mx-auto mb-8">
         <h1 className="text-4xl font-semibold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
           Welcome to Sweaquity
         </h1>
-        <p className="text-lg text-muted-foreground">
+        <p className="text-lg text-muted-foreground mb-6">
           Choose your role to get started on your professional journey
         </p>
+        <Button 
+          variant="outline" 
+          onClick={() => navigate("/login")}
+          className="mb-8"
+        >
+          Already have an account? Log in
+        </Button>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6 w-full max-w-5xl">
