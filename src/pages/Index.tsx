@@ -1,24 +1,26 @@
 
 import { Card } from "@/components/ui/card";
 import { Building2, User } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 const Index = () => {
+  const navigate = useNavigate();
+
   const userTypes = [
     {
       title: "Job Seeker",
       description: "Find your next opportunity and showcase your skills",
       icon: User,
       type: "seeker" as const,
-      path: "/seeker/auth"
+      path: "/auth/seeker"
     },
     {
       title: "Business",
       description: "Post jobs and find the perfect candidates",
       icon: Building2,
       type: "business" as const,
-      path: "/business/auth"
+      path: "/auth/business"
     }
   ];
 
@@ -38,7 +40,7 @@ const Index = () => {
           <Card
             key={type.type}
             className="p-6 landing-card hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => window.location.href = type.path}
+            onClick={() => navigate(type.path)}
           >
             <div className="flex flex-col items-center text-center h-full">
               <div className="mb-4 p-3 rounded-full bg-accent/10 text-accent">
@@ -54,7 +56,7 @@ const Index = () => {
       </div>
       
       <Button asChild variant="link" className="text-muted-foreground">
-        <Link to="/login/recruiter">Recruitment login here</Link>
+        <Link to="/auth/recruiter">Recruitment login here</Link>
       </Button>
     </div>
   );
