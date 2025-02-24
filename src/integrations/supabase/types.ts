@@ -9,6 +9,54 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      businesses: {
+        Row: {
+          business_type: Database["public"]["Enums"]["business_type"]
+          company_name: string
+          company_size: number | null
+          contact_email: string
+          contact_phone: string | null
+          created_at: string | null
+          id: string
+          industry: string | null
+          location: string | null
+          marketing_consent: boolean | null
+          terms_accepted: boolean | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          business_type?: Database["public"]["Enums"]["business_type"]
+          company_name: string
+          company_size?: number | null
+          contact_email: string
+          contact_phone?: string | null
+          created_at?: string | null
+          id: string
+          industry?: string | null
+          location?: string | null
+          marketing_consent?: boolean | null
+          terms_accepted?: boolean | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          business_type?: Database["public"]["Enums"]["business_type"]
+          company_name?: string
+          company_size?: number | null
+          contact_email?: string
+          contact_phone?: string | null
+          created_at?: string | null
+          id?: string
+          industry?: string | null
+          location?: string | null
+          marketing_consent?: boolean | null
+          terms_accepted?: boolean | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
       marketing_contacts: {
         Row: {
           email: string
@@ -118,6 +166,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      business_type: "startup" | "small" | "medium" | "large" | "enterprise"
       employment_preference: "equity_only" | "salary_only" | "both"
     }
     CompositeTypes: {
