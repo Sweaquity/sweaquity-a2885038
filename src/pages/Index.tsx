@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   const [activeCard, setActiveCard] = useState<"seeker" | "business" | null>(null);
@@ -39,14 +40,31 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: verificationMethod === "email" ? contact : undefined,
-        phone: verificationMethod === "phone" ? contact : undefined,
-        options: {
-          shouldCreateUser: true,
-        }
-      });
-      if (error) throw error;
+      if (verificationMethod === "email") {
+        const { error } = await supabase.auth.signInWithOtp({
+          email: contact,
+          options: {
+            shouldCreateUser: true,
+            data: {
+              type: activeCard
+            }
+          }
+        });
+        if (error) throw error;
+      } else {
+        // For phone verification, we'll use signInWithOtp but with phone option
+        const { error } = await supabase.auth.signInWithOtp({
+          phone: contact,
+          options: {
+            shouldCreateUser: true,
+            data: {
+              type: activeCard
+            }
+          }
+        });
+        if (error) throw error;
+      }
+      
       toast.success(`Check your ${verificationMethod} for the verification code!`);
       setShowVerification(true);
     } catch (error) {
@@ -62,13 +80,22 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.verifyOtp({
-        email: verificationMethod === "email" ? contact : undefined,
-        phone: verificationMethod === "phone" ? contact : undefined,
-        token: verificationCode,
-        type: "signup"
-      });
-      if (error) throw error;
+      if (verificationMethod === "email") {
+        const { error } = await supabase.auth.verifyOtp({
+          email: contact,
+          token: verificationCode,
+          type: "signup"
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.verifyOtp({
+          phone: contact,
+          token: verificationCode,
+          type: "signup"
+        });
+        if (error) throw error;
+      }
+      
       setShowPasswordCreation(true);
       setShowVerification(false);
       toast.success("Verification successful! Please set your password.");
@@ -90,7 +117,6 @@ const Index = () => {
       });
       if (error) throw error;
       toast.success("Registration complete! Redirecting to dashboard...");
-      // Redirect to appropriate dashboard based on user type
       window.location.href = `/${activeCard}/dashboard`;
     } catch (error) {
       console.error('Error:', error);
@@ -127,17 +153,23 @@ const Index = () => {
       return (
         <form onSubmit={handleVerifyCode} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="code">Verification Code</Label>
+            <Label htmlFor="code">Enter 6-Digit Verification Code</Label>
             <Input
               id="code"
               type="text"
-              placeholder="Enter verification code"
+              placeholder="000000"
               value={verificationCode}
-              onChange={(e) => setVerificationCode(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+                setVerificationCode(value);
+              }}
+              pattern="[0-9]{6}"
+              inputMode="numeric"
               required
+              maxLength={6}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full" disabled={isLoading || verificationCode.length !== 6}>
             {isLoading ? "Verifying..." : "Verify Code"}
           </Button>
           <Button
@@ -224,24 +256,38 @@ const Index = () => {
             {userTypes.map((type) => (
               <Card
                 key={type.type}
-                className="p-6 landing-card cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => setActiveCard(type.type)}
+                className="p-6 landing-card"
               >
                 <div className="flex flex-col items-center text-center h-full">
                   <div className="mb-4 p-3 rounded-full bg-accent/10 text-accent">
                     <type.icon size={24} />
                   </div>
                   <h2 className="text-xl font-semibold mb-2">{type.title}</h2>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground mb-6">
                     {type.description}
                   </p>
+                  <div className="mt-auto space-y-3 w-full">
+                    <Button
+                      className="w-full"
+                      onClick={() => setActiveCard(type.type)}
+                    >
+                      Sign Up
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      asChild
+                    >
+                      <Link to={`/login/${type.type}`}>Log In</Link>
+                    </Button>
+                  </div>
                 </div>
               </Card>
             ))}
           </div>
           
           <Button asChild variant="link" className="text-muted-foreground mt-8">
-            <a href="/login/recruiter">Recruitment login here</a>
+            <Link to="/login/recruiter">Recruitment login here</Link>
           </Button>
         </>
       ) : (
