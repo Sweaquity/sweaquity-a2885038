@@ -16,73 +16,28 @@ const AuthPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [verificationCode, setVerificationCode] = useState("");
-  const [showVerification, setShowVerification] = useState(false);
-  const [showPasswordCreation, setShowPasswordCreation] = useState(false);
 
-  const handleSendCode = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
+      const { error } = await supabase.auth.signUp({
         email,
+        password,
         options: {
-          shouldCreateUser: true,
           data: {
-            type
+            type: type // store user type in metadata
           }
         }
       });
+      
       if (error) throw error;
       
-      toast.success("Check your email for the verification code!");
-      setShowVerification(true);
+      toast.success("Registration successful! Please check your email to confirm your account.");
     } catch (error) {
       console.error('Error:', error);
-      toast.error(error instanceof Error ? error.message : "An error occurred");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleVerifyCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const { error } = await supabase.auth.verifyOtp({
-        email,
-        token: verificationCode,
-        type: "signup"
-      });
-      if (error) throw error;
-      
-      setShowPasswordCreation(true);
-      setShowVerification(false);
-      toast.success("Email verified! Please set your password.");
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error(error instanceof Error ? error.message : "Invalid verification code");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: password
-      });
-      if (error) throw error;
-      toast.success("Registration complete!");
-      navigate(`/${type}/profile`);
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error(error instanceof Error ? error.message : "Failed to set password");
+      toast.error(error instanceof Error ? error.message : "An error occurred during registration");
     } finally {
       setIsLoading(false);
     }
@@ -97,7 +52,10 @@ const AuthPage = () => {
         email,
         password
       });
+      
       if (error) throw error;
+      
+      toast.success("Login successful!");
       navigate(`/${type}/dashboard`);
     } catch (error) {
       console.error('Error:', error);
@@ -105,14 +63,6 @@ const AuthPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const resetForm = () => {
-    setShowVerification(false);
-    setShowPasswordCreation(false);
-    setEmail("");
-    setPassword("");
-    setVerificationCode("");
   };
 
   const handleResetPassword = async () => {
@@ -133,94 +83,9 @@ const AuthPage = () => {
     }
   };
 
-  const renderRegistrationForm = () => {
-    if (showPasswordCreation) {
-      return (
-        <form onSubmit={handleSetPassword} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="password">Create Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Creating account..." : "Complete Registration"}
-          </Button>
-        </form>
-      );
-    }
-
-    if (showVerification) {
-      return (
-        <form onSubmit={handleVerifyCode} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email address</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              disabled
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="code">Enter 6-Character Verification Code</Label>
-            <Input
-              id="code"
-              type="text"
-              placeholder="ABCD12"
-              value={verificationCode}
-              onChange={(e) => {
-                const value = e.target.value.toUpperCase().slice(0, 6);
-                setVerificationCode(value);
-              }}
-              required
-              maxLength={6}
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={isLoading || verificationCode.length !== 6}>
-            {isLoading ? "Verifying..." : "Verify Code"}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            className="w-full"
-            onClick={handleSendCode}
-            disabled={isLoading}
-          >
-            Resend Code
-          </Button>
-        </form>
-      );
-    }
-
-    return (
-      <form onSubmit={handleSendCode} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="registerEmail">Email address</Label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="registerEmail"
-              type="email"
-              className="pl-9"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-        </div>
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Sending code..." : "Send Verification Code"}
-        </Button>
-      </form>
-    );
+  const resetForm = () => {
+    setEmail("");
+    setPassword("");
   };
 
   return (
@@ -240,58 +105,91 @@ const AuthPage = () => {
           </h1>
         </div>
 
-        {!showVerification && !showPasswordCreation ? (
-          <Tabs defaultValue="register" className="w-full" onValueChange={resetForm}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="register">Register</TabsTrigger>
-              <TabsTrigger value="login">Log in</TabsTrigger>
-            </TabsList>
-            <TabsContent value="register">
-              {renderRegistrationForm()}
-            </TabsContent>
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="loginEmail">Email address</Label>
+        <Tabs defaultValue="login" className="w-full" onValueChange={resetForm}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="login">Log in</TabsTrigger>
+            <TabsTrigger value="register">Register</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="login">
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="loginEmail">Email address</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="loginEmail"
                     type="email"
+                    className="pl-9"
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <Label htmlFor="loginPassword">Password</Label>
-                    <Button
-                      variant="link"
-                      className="px-0"
-                      type="button"
-                      onClick={handleResetPassword}
-                    >
-                      Forgot password?
-                    </Button>
-                  </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="loginPassword">Password</Label>
+                  <Button
+                    variant="link"
+                    className="px-0"
+                    type="button"
+                    onClick={handleResetPassword}
+                  >
+                    Forgot password?
+                  </Button>
+                </div>
+                <Input
+                  id="loginPassword"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Logging in..." : "Log in"}
+              </Button>
+            </form>
+          </TabsContent>
+          
+          <TabsContent value="register">
+            <form onSubmit={handleSignUp} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="registerEmail">Email address</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="loginPassword"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    id="registerEmail"
+                    type="email"
+                    className="pl-9"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Logging in..." : "Log in"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
-        ) : (
-          renderRegistrationForm()
-        )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="registerPassword">Password</Label>
+                <Input
+                  id="registerPassword"
+                  type="password"
+                  placeholder="Create a password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Creating account..." : "Create account"}
+              </Button>
+            </form>
+          </TabsContent>
+        </Tabs>
       </Card>
     </div>
   );
