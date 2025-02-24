@@ -2,11 +2,9 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ChevronRight, Building2, User } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const Index = () => {
-  const navigate = useNavigate();
-
   const userTypes = [
     {
       title: "Job Seeker",
@@ -48,32 +46,27 @@ const Index = () => {
                 {type.description}
               </p>
               <div className="mt-auto space-y-3 w-full">
-                <Button
-                  className="w-full"
-                  onClick={() => navigate(`/register/${type.type}`)}
-                >
-                  Sign Up <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => navigate(`/login/${type.type}`)}
-                >
-                  Log In
-                </Button>
+                <Link to={`/register/${type.type}`} className="block w-full">
+                  <Button className="w-full">
+                    Sign Up <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link to={`/login/${type.type}`} className="block w-full">
+                  <Button variant="outline" className="w-full">
+                    Log In
+                  </Button>
+                </Link>
               </div>
             </div>
           </Card>
         ))}
       </div>
 
-      <Button 
-        variant="link" 
-        onClick={() => navigate("/register/recruiter")}
-        className="mt-8 text-muted-foreground"
-      >
-        Recruitment login here
-      </Button>
+      <Link to="/register/recruiter" className="mt-8">
+        <Button variant="link" className="text-muted-foreground">
+          Recruitment login here
+        </Button>
+      </Link>
     </div>
   );
 };
