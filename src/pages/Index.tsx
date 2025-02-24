@@ -46,14 +46,24 @@ const Index = () => {
                 {type.description}
               </p>
               <div className="mt-auto space-y-3 w-full">
-                <Link to={`/register/${type.type}`} className="block w-full">
-                  <Button className="w-full">
-                    Sign Up <ChevronRight className="ml-2 h-4 w-4" />
+                <Link 
+                  to={`/register/${type.type}`} 
+                  className="block w-full hover:no-underline"
+                >
+                  <Button className="w-full" asChild>
+                    <div className="flex items-center justify-center w-full">
+                      Sign Up <ChevronRight className="ml-2 h-4 w-4" />
+                    </div>
                   </Button>
                 </Link>
-                <Link to={`/login/${type.type}`} className="block w-full">
-                  <Button variant="outline" className="w-full">
-                    Log In
+                <Link 
+                  to={`/login/${type.type}`} 
+                  className="block w-full hover:no-underline"
+                >
+                  <Button variant="outline" className="w-full" asChild>
+                    <div className="flex items-center justify-center w-full">
+                      Log In
+                    </div>
                   </Button>
                 </Link>
               </div>
@@ -62,9 +72,12 @@ const Index = () => {
         ))}
       </div>
 
-      <Link to="/register/recruiter" className="mt-8">
-        <Button variant="link" className="text-muted-foreground">
-          Recruitment login here
+      <Link 
+        to="/login/recruiter" 
+        className="mt-8 hover:no-underline"
+      >
+        <Button variant="link" className="text-muted-foreground" asChild>
+          <div>Recruitment login here</div>
         </Button>
       </Link>
     </div>
