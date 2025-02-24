@@ -2,17 +2,16 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Building2, User, Mail, Phone, ChevronRight, ArrowLeft } from "lucide-react";
+import { Building2, User, Mail, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const Index = () => {
+  const navigate = useNavigate();
   const [activeCard, setActiveCard] = useState<"seeker" | "business" | null>(null);
-  const [verificationMethod, setVerificationMethod] = useState<"email" | "phone">("email");
   const [contact, setContact] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [password, setPassword] = useState("");
@@ -40,32 +39,18 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      if (verificationMethod === "email") {
-        const { error } = await supabase.auth.signInWithOtp({
-          email: contact,
-          options: {
-            shouldCreateUser: true,
-            data: {
-              type: activeCard
-            }
+      const { error } = await supabase.auth.signInWithOtp({
+        email: contact,
+        options: {
+          shouldCreateUser: true,
+          data: {
+            type: activeCard
           }
-        });
-        if (error) throw error;
-      } else {
-        // For phone verification, we'll use signInWithOtp but with phone option
-        const { error } = await supabase.auth.signInWithOtp({
-          phone: contact,
-          options: {
-            shouldCreateUser: true,
-            data: {
-              type: activeCard
-            }
-          }
-        });
-        if (error) throw error;
-      }
+        }
+      });
+      if (error) throw error;
       
-      toast.success(`Check your ${verificationMethod} for the verification code!`);
+      toast.success(`Check your email for the verification code!`);
       setShowVerification(true);
     } catch (error) {
       console.error('Error:', error);
@@ -80,21 +65,12 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      if (verificationMethod === "email") {
-        const { error } = await supabase.auth.verifyOtp({
-          email: contact,
-          token: verificationCode,
-          type: "signup"
-        });
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.auth.verifyOtp({
-          phone: contact,
-          token: verificationCode,
-          type: "signup"
-        });
-        if (error) throw error;
-      }
+      const { error } = await supabase.auth.verifyOtp({
+        email: contact,
+        token: verificationCode,
+        type: "signup"
+      });
+      if (error) throw error;
       
       setShowPasswordCreation(true);
       setShowVerification(false);
@@ -126,6 +102,14 @@ const Index = () => {
     }
   };
 
+  const handleCardClick = (type: "seeker" | "business", isLogin: boolean) => {
+    if (isLogin) {
+      navigate(`/login/${type}`);
+    } else {
+      setActiveCard(type);
+    }
+  };
+
   const renderAuthForm = () => {
     if (showPasswordCreation) {
       return (
@@ -153,18 +137,16 @@ const Index = () => {
       return (
         <form onSubmit={handleVerifyCode} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="code">Enter 6-Digit Verification Code</Label>
+            <Label htmlFor="code">Enter 6-Character Verification Code</Label>
             <Input
               id="code"
               type="text"
-              placeholder="000000"
+              placeholder="ABCD12"
               value={verificationCode}
               onChange={(e) => {
-                const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+                const value = e.target.value.toUpperCase().slice(0, 6);
                 setVerificationCode(value);
               }}
-              pattern="[0-9]{6}"
-              inputMode="numeric"
               required
               maxLength={6}
             />
@@ -186,56 +168,26 @@ const Index = () => {
     }
 
     return (
-      <div className="space-y-4">
-        <Tabs value={verificationMethod} onValueChange={(v: "email" | "phone") => setVerificationMethod(v)}>
-          <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="email">Email</TabsTrigger>
-            <TabsTrigger value="phone">Phone</TabsTrigger>
-          </TabsList>
-
-          <form onSubmit={handleSendCode} className="mt-4 space-y-4">
-            <TabsContent value="email">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    className="pl-9"
-                    placeholder="Enter your email"
-                    value={contact}
-                    onChange={(e) => setContact(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="phone">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="phone"
-                    type="tel"
-                    className="pl-9"
-                    placeholder="+1234567890"
-                    value={contact}
-                    onChange={(e) => setContact(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-            </TabsContent>
-
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Sending code..." : "Send Verification Code"}
-            </Button>
-          </form>
-        </Tabs>
-      </div>
+      <form onSubmit={handleSendCode} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="email">Email Address</Label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="email"
+              type="email"
+              className="pl-9"
+              placeholder="Enter your email"
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+              required
+            />
+          </div>
+        </div>
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          {isLoading ? "Sending code..." : "Send Verification Code"}
+        </Button>
+      </form>
     );
   };
 
@@ -254,35 +206,28 @@ const Index = () => {
         <>
           <div className="grid md:grid-cols-2 gap-6 w-full max-w-4xl">
             {userTypes.map((type) => (
-              <Card
-                key={type.type}
-                className="p-6 landing-card"
-              >
-                <div className="flex flex-col items-center text-center h-full">
-                  <div className="mb-4 p-3 rounded-full bg-accent/10 text-accent">
-                    <type.icon size={24} />
+              <div key={type.type} className="grid grid-rows-[1fr_auto] gap-3">
+                <Card
+                  className="p-6 landing-card hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleCardClick(type.type, false)}
+                >
+                  <div className="flex flex-col items-center text-center h-full">
+                    <div className="mb-4 p-3 rounded-full bg-accent/10 text-accent">
+                      <type.icon size={24} />
+                    </div>
+                    <h2 className="text-xl font-semibold mb-2">{type.title}</h2>
+                    <p className="text-sm text-muted-foreground">
+                      {type.description}
+                    </p>
                   </div>
-                  <h2 className="text-xl font-semibold mb-2">{type.title}</h2>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    {type.description}
-                  </p>
-                  <div className="mt-auto space-y-3 w-full">
-                    <Button
-                      className="w-full"
-                      onClick={() => setActiveCard(type.type)}
-                    >
-                      Sign Up
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      asChild
-                    >
-                      <Link to={`/login/${type.type}`}>Log In</Link>
-                    </Button>
-                  </div>
-                </div>
-              </Card>
+                </Card>
+                <Card
+                  className="p-3 landing-card hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleCardClick(type.type, true)}
+                >
+                  <p className="text-center text-sm">Already have an account? <span className="text-primary">Log In</span></p>
+                </Card>
+              </div>
             ))}
           </div>
           
