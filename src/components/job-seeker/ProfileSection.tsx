@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,12 +39,12 @@ export const ProfileSection = ({
   const [isUploading, setIsUploading] = useState(false);
   const [bulkSkills, setBulkSkills] = useState("");
   const [selectedCVs, setSelectedCVs] = useState<string[]>([]);
+  const [previewError, setPreviewError] = useState(false);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Check file type
     const fileType = file.type;
     const validTypes = [
       'application/pdf',
@@ -58,7 +57,6 @@ export const ProfileSection = ({
       return;
     }
 
-    // Check file size (max 10MB)
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
       toast.error("File size should be less than 10MB");
@@ -105,7 +103,6 @@ export const ProfileSection = ({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      // Extract the file path from the URL
       const filePathMatch = cvUrl?.match(/cvs\/([^?]+)/);
       if (!filePathMatch) {
         toast.error("Invalid CV URL");
@@ -114,14 +111,12 @@ export const ProfileSection = ({
 
       const filePath = filePathMatch[1];
 
-      // Delete the file from storage
       const { error: storageError } = await supabase.storage
         .from('cvs')
         .remove([filePath]);
 
       if (storageError) throw storageError;
 
-      // Clear CV data from cv_parsed_data
       const { error: dbError } = await supabase
         .from('cv_parsed_data')
         .delete()
@@ -183,26 +178,51 @@ export const ProfileSection = ({
                   <DialogContent className="max-w-4xl h-[80vh]">
                     <DialogHeader>
                       <DialogTitle>CV Preview</DialogTitle>
+                      <DialogDescription>
+                        Your uploaded CV document
+                      </DialogDescription>
                     </DialogHeader>
-                    <object 
-                      data={cvUrl} 
-                      type="application/pdf" 
-                      width="100%" 
-                      height="100%"
-                      className="rounded-md"
-                    >
-                      <iframe 
-                        src={`https://docs.google.com/viewer?url=${encodeURIComponent(cvUrl)}&embedded=true`}
-                        width="100%"
+                    {!previewError ? (
+                      <object 
+                        data={cvUrl} 
+                        type="application/pdf" 
+                        width="100%" 
                         height="100%"
-                        title="CV Preview"
-                      />
-                    </object>
+                        className="rounded-md"
+                        onError={() => setPreviewError(true)}
+                      >
+                        <iframe 
+                          src={`https://docs.google.com/viewer?url=${encodeURIComponent(cvUrl)}&embedded=true`}
+                          width="100%"
+                          height="100%"
+                          title="CV Preview"
+                          onError={() => setPreviewError(true)}
+                        />
+                      </object>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full space-y-4">
+                        <p className="text-muted-foreground">Preview not available</p>
+                        <Button 
+                          variant="outline"
+                          onClick={() => window.open(cvUrl, '_blank')}
+                        >
+                          Open CV in new tab
+                        </Button>
+                      </div>
+                    )}
                   </DialogContent>
                 </Dialog>
                 <Button 
                   variant="outline"
-                  onClick={() => window.open(cvUrl, '_blank')}
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = cvUrl;
+                    const fileName = cvUrl.split('/').pop() || 'cv.pdf';
+                    link.download = fileName;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
                 >
                   Download CV
                 </Button>

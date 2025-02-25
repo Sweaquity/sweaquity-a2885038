@@ -64,6 +64,25 @@ const JobSeekerDashboard = () => {
           return;
         }
 
+        // Load CV URL first
+        const { data: cvFiles } = await supabase.storage
+          .from('cvs')
+          .list(session.user.id + '/');
+
+        if (cvFiles && cvFiles.length > 0) {
+          // Get the most recent CV
+          const mostRecentCV = cvFiles.sort((a, b) => 
+            b.created_at.localeCompare(a.created_at)
+          )[0];
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('cvs')
+            .getPublicUrl(`${session.user.id}/${mostRecentCV.name}`);
+
+          setCvUrl(publicUrl);
+        }
+
+        // Load profile data
         const { data: profileData } = await supabase
           .from('profiles')
           .select('skills')
@@ -115,7 +134,7 @@ const JobSeekerDashboard = () => {
           if (cvData.skills) {
             setSkills(prevSkills => {
               const combinedSkills = [...prevSkills, ...cvData.skills];
-              return Array.from(new Set(combinedSkills)); // Remove duplicates
+              return Array.from(new Set(combinedSkills));
             });
           }
         }
