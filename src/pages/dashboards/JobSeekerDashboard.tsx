@@ -1,13 +1,13 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { ProfileSection } from "@/components/job-seeker/ProfileSection";
+import { ApplicationsList } from "@/components/job-seeker/ApplicationsList";
+import { EquityProjectsList } from "@/components/job-seeker/EquityProjectsList";
 
 interface JobApplication {
   id: string;
@@ -224,6 +224,14 @@ const JobSeekerDashboard = () => {
     }
   };
 
+  const handleLogEffortChange = (projectId: string, field: 'hours' | 'description', value: string | number) => {
+    setLogEffort(prev => ({
+      ...prev,
+      projectId,
+      [field]: value
+    }));
+  };
+
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -264,62 +272,12 @@ const JobSeekerDashboard = () => {
                 <h2 className="text-lg font-semibold">Profile & Portfolio</h2>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="font-medium mb-4">CV & Portfolio Management</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="cv-upload">Upload CV</Label>
-                        <Input
-                          id="cv-upload"
-                          type="file"
-                          accept=".pdf,.doc,.docx"
-                          onChange={handleFileUpload}
-                        />
-                        {parsedCvData?.cv_upload_date && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Last uploaded: {new Date(parsedCvData.cv_upload_date).toLocaleDateString()}
-                          </p>
-                        )}
-                      </div>
-                      {cvUrl && (
-                        <div className="space-y-2">
-                          <p className="font-medium">Current CV</p>
-                          <Button asChild variant="outline">
-                            <a href={cvUrl} target="_blank" rel="noopener noreferrer">
-                              View CV
-                            </a>
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-medium mb-2">Skills</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {skills.map((skill, index) => (
-                        <div key={index} className="bg-secondary px-3 py-1 rounded-full text-sm">
-                          {skill}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {parsedCvData?.career_history && (
-                    <div>
-                      <h3 className="font-medium mb-2">Career History</h3>
-                      <div className="space-y-4">
-                        {parsedCvData.career_history.map((position: any, index: number) => (
-                          <div key={index} className="border p-4 rounded-lg">
-                            <h4 className="font-medium">{position.title}</h4>
-                            <p className="text-sm text-muted-foreground">{position.company}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <ProfileSection
+                  cvUrl={cvUrl}
+                  parsedCvData={parsedCvData}
+                  skills={skills}
+                  handleFileUpload={handleFileUpload}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -336,111 +294,16 @@ const JobSeekerDashboard = () => {
           </TabsContent>
 
           <TabsContent value="applications">
-            <Card>
-              <CardHeader>
-                <h2 className="text-lg font-semibold">Current Applications</h2>
-              </CardHeader>
-              <CardContent>
-                {applications.length > 0 ? (
-                  <div className="space-y-4">
-                    {applications.map((application) => (
-                      <div key={application.id} className="border p-4 rounded-lg">
-                        <h3 className="font-medium">{application.business_roles?.title}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Status: {application.status}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Applied: {new Date(application.applied_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">No current applications.</p>
-                )}
-              </CardContent>
-            </Card>
+            <ApplicationsList applications={applications} />
           </TabsContent>
 
           <TabsContent value="equity">
-            <Card>
-              <CardHeader>
-                <h2 className="text-lg font-semibold">Current Equity Projects</h2>
-              </CardHeader>
-              <CardContent>
-                {equityProjects.length > 0 ? (
-                  <div className="space-y-6">
-                    {equityProjects.map((project) => (
-                      <div key={project.id} className="border p-6 rounded-lg space-y-4">
-                        <div>
-                          <h3 className="text-lg font-medium">{project.business_roles?.title}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Equity Amount: {project.equity_amount}%
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Total Hours: {project.total_hours_logged || 0}
-                          </p>
-                        </div>
-
-                        <div className="space-y-4 border-t pt-4">
-                          <h4 className="font-medium">Log Effort</h4>
-                          <div className="grid gap-4">
-                            <div>
-                              <Label htmlFor={`hours-${project.id}`}>Hours</Label>
-                              <Input
-                                id={`hours-${project.id}`}
-                                type="number"
-                                min="0"
-                                step="0.5"
-                                value={project.id === logEffort.projectId ? logEffort.hours : ''}
-                                onChange={(e) => setLogEffort(prev => ({
-                                  ...prev,
-                                  projectId: project.id,
-                                  hours: parseFloat(e.target.value)
-                                }))}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor={`description-${project.id}`}>Description</Label>
-                              <Input
-                                id={`description-${project.id}`}
-                                value={project.id === logEffort.projectId ? logEffort.description : ''}
-                                onChange={(e) => setLogEffort(prev => ({
-                                  ...prev,
-                                  projectId: project.id,
-                                  description: e.target.value
-                                }))}
-                              />
-                            </div>
-                            <Button 
-                              onClick={() => handleLogEffort(project.id)}
-                              disabled={!logEffort.hours || !logEffort.description || logEffort.projectId !== project.id}
-                            >
-                              Log Effort
-                            </Button>
-                          </div>
-
-                          <div className="mt-4">
-                            <h4 className="font-medium mb-2">Effort History</h4>
-                            <div className="space-y-2">
-                              {project.effort_logs?.map((log, index) => (
-                                <div key={index} className="text-sm border p-2 rounded">
-                                  <p className="font-medium">{new Date(log.date).toLocaleDateString()}</p>
-                                  <p>Hours: {log.hours}</p>
-                                  <p className="text-muted-foreground">{log.description}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">No current equity projects.</p>
-                )}
-              </CardContent>
-            </Card>
+            <EquityProjectsList
+              projects={equityProjects}
+              logEffort={logEffort}
+              onLogEffort={handleLogEffort}
+              onLogEffortChange={handleLogEffortChange}
+            />
           </TabsContent>
 
           <TabsContent value="activity">
