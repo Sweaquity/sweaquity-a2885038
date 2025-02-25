@@ -25,10 +25,7 @@ export const LoginForm = ({ type }: LoginFormProps) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
-        password,
-        options: {
-          redirectTo: window.location.origin + `/${type}/dashboard`
-        }
+        password
       });
       
       if (error) {
