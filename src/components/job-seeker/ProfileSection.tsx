@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,7 +59,7 @@ export const ProfileSection = ({
       return;
     }
 
-    const maxSize = 10 * 1024 * 1024;
+    const maxSize = 10 * 1024 * 1024; // 10MB
     if (file.size > maxSize) {
       toast.error("File size should be less than 10MB");
       return;
@@ -76,27 +77,40 @@ export const ProfileSection = ({
     }
   };
 
-  const handleDeleteSkill = (skillToDelete: string) => {
-    const updatedSkills = skills.filter(skill => skill !== skillToDelete);
-    onSkillsUpdate(updatedSkills);
-    toast.success(`Removed skill: ${skillToDelete}`);
-  };
+  const handleDownloadCV = async () => {
+    try {
+      if (!cvUrl) return;
 
-  const handleBulkSkillsSubmit = () => {
-    if (!bulkSkills.trim()) {
-      toast.error("Please enter some skills");
-      return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // Extract the path from the URL
+      const filePathMatch = cvUrl.match(/cvs\/([^?]+)/);
+      if (!filePathMatch) {
+        toast.error("Invalid CV URL");
+        return;
+      }
+
+      const filePath = filePathMatch[1];
+
+      // Get a signed URL that will work for download
+      const { data, error } = await supabase.storage
+        .from('cvs')
+        .createSignedUrl(filePath, 60); // 60 seconds expiry
+
+      if (error) throw error;
+
+      // Create a temporary link and trigger download
+      const link = document.createElement('a');
+      link.href = data.signedUrl;
+      link.download = filePath.split('/').pop() || 'cv.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error("Failed to download CV");
     }
-
-    const newSkills = bulkSkills
-      .split(',')
-      .map(skill => skill.trim())
-      .filter(skill => skill.length > 0);
-
-    const uniqueSkills = Array.from(new Set([...skills, ...newSkills]));
-    onSkillsUpdate(uniqueSkills);
-    setBulkSkills("");
-    toast.success("Skills updated successfully");
   };
 
   const handleDeleteCV = async () => {
@@ -131,6 +145,29 @@ export const ProfileSection = ({
       console.error('Delete error:', error);
       toast.error("Failed to delete CV");
     }
+  };
+
+  const handleDeleteSkill = (skillToDelete: string) => {
+    const updatedSkills = skills.filter(skill => skill !== skillToDelete);
+    onSkillsUpdate(updatedSkills);
+    toast.success(`Removed skill: ${skillToDelete}`);
+  };
+
+  const handleBulkSkillsSubmit = () => {
+    if (!bulkSkills.trim()) {
+      toast.error("Please enter some skills");
+      return;
+    }
+
+    const newSkills = bulkSkills
+      .split(',')
+      .map(skill => skill.trim())
+      .filter(skill => skill.length > 0);
+
+    const uniqueSkills = Array.from(new Set([...skills, ...newSkills]));
+    onSkillsUpdate(uniqueSkills);
+    setBulkSkills("");
+    toast.success("Skills updated successfully");
   };
 
   return (
@@ -184,22 +221,13 @@ export const ProfileSection = ({
                       </DialogDescription>
                     </DialogHeader>
                     {!previewError ? (
-                      <object 
-                        data={cvUrl} 
-                        type="application/pdf" 
-                        width="100%" 
+                      <iframe 
+                        src={`https://docs.google.com/viewer?url=${encodeURIComponent(cvUrl)}&embedded=true`}
+                        width="100%"
                         height="100%"
                         className="rounded-md"
                         onError={() => setPreviewError(true)}
-                      >
-                        <iframe 
-                          src={`https://docs.google.com/viewer?url=${encodeURIComponent(cvUrl)}&embedded=true`}
-                          width="100%"
-                          height="100%"
-                          title="CV Preview"
-                          onError={() => setPreviewError(true)}
-                        />
-                      </object>
+                      />
                     ) : (
                       <div className="flex flex-col items-center justify-center h-full space-y-4">
                         <p className="text-muted-foreground">Preview not available</p>
@@ -215,15 +243,7 @@ export const ProfileSection = ({
                 </Dialog>
                 <Button 
                   variant="outline"
-                  onClick={() => {
-                    const link = document.createElement('a');
-                    link.href = cvUrl;
-                    const fileName = cvUrl.split('/').pop() || 'cv.pdf';
-                    link.download = fileName;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                  }}
+                  onClick={handleDownloadCV}
                 >
                   Download CV
                 </Button>
