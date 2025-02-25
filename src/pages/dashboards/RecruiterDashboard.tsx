@@ -32,19 +32,19 @@ const RecruiterDashboard = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/auth/recruiter');
-        return;
-      }
-
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          navigate('/auth/recruiter');
+          return;
+        }
+
         // Try to fetch organization data if parent account
         const { data: orgData, error: orgError } = await supabase
           .from('recruiter_organizations')
           .select('*')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
 
         if (!orgError && orgData) {
           setOrganizationData(orgData);
@@ -67,9 +67,9 @@ const RecruiterDashboard = () => {
             .from('recruiters')
             .select('*, recruiter_organizations(*)')
             .eq('id', session.user.id)
-            .single();
+            .maybeSingle();
 
-          if (!recruiterError && recruiterData) {
+          if (!recruiterError && recruiterData?.recruiter_organizations) {
             setOrganizationData(recruiterData.recruiter_organizations);
             setFormData({
               company_name: recruiterData.recruiter_organizations.company_name || "",
@@ -84,6 +84,8 @@ const RecruiterDashboard = () => {
                 bank_name: ""
               }
             });
+          } else {
+            toast.error("No organization data found");
           }
         }
       } catch (error) {
@@ -107,6 +109,11 @@ const RecruiterDashboard = () => {
   };
 
   const handleSaveProfile = async () => {
+    if (!organizationData?.id) {
+      toast.error("No organization ID found");
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('recruiter_organizations')
@@ -130,6 +137,11 @@ const RecruiterDashboard = () => {
   };
 
   const handleSaveBanking = async () => {
+    if (!organizationData?.id) {
+      toast.error("No organization ID found");
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('recruiter_organizations')
@@ -165,7 +177,22 @@ const RecruiterDashboard = () => {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (!organizationData) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <p className="text-lg">No organization data found</p>
+          <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -173,7 +200,7 @@ const RecruiterDashboard = () => {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">
-            {organizationData?.company_name ? `${organizationData.company_name} Dashboard` : 'Recruiter Dashboard'}
+            {organizationData.company_name ? `${organizationData.company_name} Dashboard` : 'Recruiter Dashboard'}
           </h1>
           <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
         </div>
