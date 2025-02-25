@@ -64,7 +64,6 @@ const JobSeekerDashboard = () => {
           return;
         }
 
-        // Load job applications
         const { data: applicationsData } = await supabase
           .from('job_applications')
           .select(`
@@ -80,7 +79,6 @@ const JobSeekerDashboard = () => {
           setApplications(applicationsData);
         }
 
-        // Load equity projects
         const { data: equityData } = await supabase
           .from('sweaquity_matched_live_projects')
           .select(`
@@ -96,7 +94,6 @@ const JobSeekerDashboard = () => {
           setEquityProjects(equityData);
         }
 
-        // Load CV parsed data
         const { data: cvData } = await supabase
           .from('cv_parsed_data')
           .select('*')
@@ -130,26 +127,22 @@ const JobSeekerDashboard = () => {
       const fileExt = file.name.split('.').pop();
       const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
 
-      // Upload file to storage
       const { error: uploadError, data: uploadData } = await supabase.storage
         .from('cvs')
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('cvs')
         .getPublicUrl(fileName);
 
       setCvUrl(publicUrl);
 
-      // Create form data for CV parsing
       const formData = new FormData();
       formData.append('file', file);
       formData.append('userId', session.user.id);
 
-      // Call the parse-cv Edge Function
       const { data: parseData, error: parseError } = await supabase.functions
         .invoke('parse-cv', {
           body: formData
@@ -166,7 +159,6 @@ const JobSeekerDashboard = () => {
           cv_upload_date: new Date().toISOString()
         });
 
-        // Call the match-opportunities function
         const { data: matchData, error: matchError } = await supabase.functions
           .invoke('match-opportunities', {
             body: { userId: session.user.id }
@@ -199,7 +191,6 @@ const JobSeekerDashboard = () => {
 
       if (error) throw error;
 
-      // Refresh equity projects data
       const { data: updatedProject } = await supabase
         .from('sweaquity_matched_live_projects')
         .select(`
@@ -230,6 +221,25 @@ const JobSeekerDashboard = () => {
       projectId,
       [field]: value
     }));
+  };
+
+  const handleSkillsUpdate = async (updatedSkills: string[]) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { error } = await supabase
+        .from('cv_parsed_data')
+        .update({ skills: updatedSkills })
+        .eq('user_id', session.user.id);
+
+      if (error) throw error;
+
+      setSkills(updatedSkills);
+    } catch (error) {
+      console.error('Error updating skills:', error);
+      toast.error("Failed to update skills");
+    }
   };
 
   const handleSignOut = async () => {
@@ -277,6 +287,7 @@ const JobSeekerDashboard = () => {
                   parsedCvData={parsedCvData}
                   skills={skills}
                   handleFileUpload={handleFileUpload}
+                  onSkillsUpdate={handleSkillsUpdate}
                 />
               </CardContent>
             </Card>
