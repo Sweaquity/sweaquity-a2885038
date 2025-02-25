@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Card,
   CardContent,
@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle 
 } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 interface ProfileSectionProps {
@@ -18,6 +19,7 @@ interface ProfileSectionProps {
   parsedCvData: any;
   skills: string[];
   handleFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onSkillsUpdate: (skills: string[]) => void;
 }
 
 export const ProfileSection = ({
@@ -25,8 +27,10 @@ export const ProfileSection = ({
   parsedCvData,
   skills,
   handleFileUpload,
+  onSkillsUpdate,
 }: ProfileSectionProps) => {
   const [isUploading, setIsUploading] = useState(false);
+  const [bulkSkills, setBulkSkills] = useState("");
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -46,7 +50,7 @@ export const ProfileSection = ({
     }
 
     // Check file size (max 10MB)
-    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+    const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
       toast.error("File size should be less than 10MB");
       return;
@@ -62,6 +66,23 @@ export const ProfileSection = ({
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleBulkSkillsSubmit = () => {
+    if (!bulkSkills.trim()) {
+      toast.error("Please enter some skills");
+      return;
+    }
+
+    const newSkills = bulkSkills
+      .split(',')
+      .map(skill => skill.trim())
+      .filter(skill => skill.length > 0);
+
+    const uniqueSkills = Array.from(new Set([...skills, ...newSkills]));
+    onSkillsUpdate(uniqueSkills);
+    setBulkSkills("");
+    toast.success("Skills updated successfully");
   };
 
   return (
@@ -93,11 +114,25 @@ export const ProfileSection = ({
           {cvUrl && (
             <div className="space-y-2">
               <p className="font-medium">Current CV</p>
-              <Button asChild variant="outline">
-                <a href={cvUrl} target="_blank" rel="noopener noreferrer">
-                  View CV
-                </a>
-              </Button>
+              <div className="flex space-x-2">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">Preview CV</Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl h-[80vh]">
+                    <iframe 
+                      src={cvUrl} 
+                      className="w-full h-full"
+                      title="CV Preview"
+                    />
+                  </DialogContent>
+                </Dialog>
+                <Button asChild variant="outline">
+                  <a href={cvUrl} target="_blank" rel="noopener noreferrer">
+                    Download CV
+                  </a>
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
@@ -107,10 +142,26 @@ export const ProfileSection = ({
         <CardHeader>
           <CardTitle>Skills</CardTitle>
           <CardDescription>
-            Skills extracted from your CV and additional skills you've added
+            Add your skills manually or they will be automatically extracted from your CV
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="bulk-skills">Add Multiple Skills (comma-separated)</Label>
+            <Textarea
+              id="bulk-skills"
+              placeholder="Enter skills separated by commas (e.g., JavaScript, React, Node.js)"
+              value={bulkSkills}
+              onChange={(e) => setBulkSkills(e.target.value)}
+              className="mt-2"
+            />
+            <Button 
+              onClick={handleBulkSkillsSubmit}
+              className="mt-2"
+            >
+              Add Skills
+            </Button>
+          </div>
           <div className="flex flex-wrap gap-2">
             {skills.map((skill, index) => (
               <div 
