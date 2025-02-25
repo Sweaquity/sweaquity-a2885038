@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -249,22 +250,51 @@ const JobSeekerDashboard = () => {
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="cv">CV & Portfolio</TabsTrigger>
             <TabsTrigger value="opportunities">Opportunities</TabsTrigger>
             <TabsTrigger value="applications">Applications</TabsTrigger>
-            <TabsTrigger value="equity">Current Equity</TabsTrigger>
+            <TabsTrigger value="equity">Current Projects</TabsTrigger>
             <TabsTrigger value="activity">Past Activity</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile">
             <Card>
               <CardHeader>
-                <h2 className="text-lg font-semibold">Profile & Skills</h2>
+                <h2 className="text-lg font-semibold">Profile & Portfolio</h2>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="font-medium mb-4">CV & Portfolio Management</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="cv-upload">Upload CV</Label>
+                        <Input
+                          id="cv-upload"
+                          type="file"
+                          accept=".pdf,.doc,.docx"
+                          onChange={handleFileUpload}
+                        />
+                        {parsedCvData?.cv_upload_date && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Last uploaded: {new Date(parsedCvData.cv_upload_date).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                      {cvUrl && (
+                        <div className="space-y-2">
+                          <p className="font-medium">Current CV</p>
+                          <Button asChild variant="outline">
+                            <a href={cvUrl} target="_blank" rel="noopener noreferrer">
+                              View CV
+                            </a>
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <div>
                     <h3 className="font-medium mb-2">Skills</h3>
                     <div className="flex flex-wrap gap-2">
@@ -275,35 +305,18 @@ const JobSeekerDashboard = () => {
                       ))}
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          <TabsContent value="cv">
-            <Card>
-              <CardHeader>
-                <h2 className="text-lg font-semibold">CV & Portfolio Management</h2>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="cv-upload">Upload CV</Label>
-                    <Input
-                      id="cv-upload"
-                      type="file"
-                      accept=".pdf,.doc,.docx"
-                      onChange={handleFileUpload}
-                    />
-                  </div>
-                  {cvUrl && (
-                    <div className="space-y-2">
-                      <p className="font-medium">Current CV</p>
-                      <Button asChild variant="outline">
-                        <a href={cvUrl} target="_blank" rel="noopener noreferrer">
-                          View CV
-                        </a>
-                      </Button>
+                  {parsedCvData?.career_history && (
+                    <div>
+                      <h3 className="font-medium mb-2">Career History</h3>
+                      <div className="space-y-4">
+                        {parsedCvData.career_history.map((position: any, index: number) => (
+                          <div key={index} className="border p-4 rounded-lg">
+                            <h4 className="font-medium">{position.title}</h4>
+                            <p className="text-sm text-muted-foreground">{position.company}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
