@@ -64,6 +64,16 @@ const JobSeekerDashboard = () => {
           return;
         }
 
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('skills')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profileData?.skills) {
+          setSkills(profileData.skills);
+        }
+
         const { data: applicationsData } = await supabase
           .from('job_applications')
           .select(`
@@ -102,9 +112,13 @@ const JobSeekerDashboard = () => {
 
         if (cvData) {
           setParsedCvData(cvData);
-          setSkills(cvData.skills || []);
+          if (cvData.skills) {
+            setSkills(prevSkills => {
+              const combinedSkills = [...prevSkills, ...cvData.skills];
+              return Array.from(new Set(combinedSkills)); // Remove duplicates
+            });
+          }
         }
-
       } catch (error) {
         console.error('Error loading dashboard data:', error);
         toast.error("Failed to load dashboard data");
@@ -115,6 +129,35 @@ const JobSeekerDashboard = () => {
 
     loadDashboardData();
   }, [navigate]);
+
+  const handleSkillsUpdate = async (updatedSkills: string[]) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ skills: updatedSkills })
+        .eq('id', session.user.id);
+
+      if (profileError) throw profileError;
+
+      const { error: cvDataError } = await supabase
+        .from('cv_parsed_data')
+        .update({ skills: updatedSkills })
+        .eq('user_id', session.user.id);
+
+      if (cvDataError && cvDataError.code !== 'PGRST116') {
+        throw cvDataError;
+      }
+
+      setSkills(updatedSkills);
+      toast.success("Skills updated successfully");
+    } catch (error) {
+      console.error('Error updating skills:', error);
+      toast.error("Failed to update skills");
+    }
+  };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -127,9 +170,12 @@ const JobSeekerDashboard = () => {
       const fileExt = file.name.split('.').pop();
       const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
 
-      const { error: uploadError, data: uploadData } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('cvs')
-        .upload(fileName, file);
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
       if (uploadError) throw uploadError;
 
@@ -151,13 +197,20 @@ const JobSeekerDashboard = () => {
       if (parseError) throw parseError;
 
       if (parseData) {
-        setSkills(parseData.data.skills);
+        const newSkills = parseData.data.skills || [];
+        setSkills(prevSkills => {
+          const combinedSkills = [...prevSkills, ...newSkills];
+          return Array.from(new Set(combinedSkills)); // Remove duplicates
+        });
+
         setParsedCvData({
           ...parsedCvData,
-          skills: parseData.data.skills,
+          skills: newSkills,
           career_history: parseData.data.careerHistory,
           cv_upload_date: new Date().toISOString()
         });
+
+        await handleSkillsUpdate(newSkills);
 
         const { data: matchData, error: matchError } = await supabase.functions
           .invoke('match-opportunities', {
@@ -168,7 +221,6 @@ const JobSeekerDashboard = () => {
 
         toast.success("CV processed and matches found");
       }
-
     } catch (error) {
       console.error('Error uploading file:', error);
       toast.error("Failed to upload CV");
@@ -221,25 +273,6 @@ const JobSeekerDashboard = () => {
       projectId,
       [field]: value
     }));
-  };
-
-  const handleSkillsUpdate = async (updatedSkills: string[]) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const { error } = await supabase
-        .from('cv_parsed_data')
-        .update({ skills: updatedSkills })
-        .eq('user_id', session.user.id);
-
-      if (error) throw error;
-
-      setSkills(updatedSkills);
-    } catch (error) {
-      console.error('Error updating skills:', error);
-      toast.error("Failed to update skills");
-    }
   };
 
   const handleSignOut = async () => {
