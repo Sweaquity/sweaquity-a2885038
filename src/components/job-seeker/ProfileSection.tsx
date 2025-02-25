@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Card,
   CardContent,
@@ -11,7 +12,14 @@ import {
   CardHeader,
   CardTitle 
 } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger 
+} from "@/components/ui/dialog";
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
 interface ProfileSectionProps {
@@ -31,6 +39,7 @@ export const ProfileSection = ({
 }: ProfileSectionProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [bulkSkills, setBulkSkills] = useState("");
+  const [selectedCVs, setSelectedCVs] = useState<string[]>([]);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -85,6 +94,34 @@ export const ProfileSection = ({
     toast.success("Skills updated successfully");
   };
 
+  const handleDeleteCV = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // Delete the file from storage
+      const { error: storageError } = await supabase.storage
+        .from('cvs')
+        .remove([`${session.user.id}/${selectedCVs[0]}`]);
+
+      if (storageError) throw storageError;
+
+      // Clear CV data from cv_parsed_data
+      const { error: dbError } = await supabase
+        .from('cv_parsed_data')
+        .delete()
+        .eq('user_id', session.user.id);
+
+      if (dbError) throw dbError;
+
+      toast.success("CV deleted successfully");
+      window.location.reload(); // Refresh to update the UI
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error("Failed to delete CV");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -113,13 +150,25 @@ export const ProfileSection = ({
           </div>
           {cvUrl && (
             <div className="space-y-2">
-              <p className="font-medium">Current CV</p>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="cv-select"
+                  checked={selectedCVs.includes(cvUrl)}
+                  onCheckedChange={(checked) => {
+                    setSelectedCVs(checked ? [cvUrl] : []);
+                  }}
+                />
+                <Label htmlFor="cv-select">Current CV</Label>
+              </div>
               <div className="flex space-x-2">
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button variant="outline">Preview CV</Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-4xl h-[80vh]">
+                    <DialogHeader>
+                      <DialogTitle>CV Preview</DialogTitle>
+                    </DialogHeader>
                     <iframe 
                       src={cvUrl} 
                       className="w-full h-full"
@@ -132,6 +181,14 @@ export const ProfileSection = ({
                     Download CV
                   </a>
                 </Button>
+                {selectedCVs.length > 0 && (
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleDeleteCV}
+                  >
+                    Delete CV
+                  </Button>
+                )}
               </div>
             </div>
           )}

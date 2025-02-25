@@ -14,14 +14,26 @@ serve(async (req) => {
 
   try {
     const formData = await req.formData()
-    const file = formData.get('file')
-    const userId = formData.get('userId')
+    const file = formData.get('file') as File
+    const userId = formData.get('userId') as string
 
     if (!file || !userId) {
       return new Response(
-        JSON.stringify({ error: 'File and user ID are required' }),
+        JSON.stringify({ error: 'Missing file or userId' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       )
+    }
+
+    // Mock CV parsing (replace with actual CV parsing logic)
+    const mockParsedData = {
+      skills: ['JavaScript', 'React', 'TypeScript', 'Node.js'],
+      careerHistory: [
+        {
+          title: 'Software Engineer',
+          company: 'Tech Corp',
+          duration: '2020-2023'
+        }
+      ]
     }
 
     const supabase = createClient(
@@ -29,78 +41,33 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // For this example, we'll use a simple parsing logic
-    // In a production environment, you'd want to use a proper CV parsing service
-    const text = await file.text()
-    
-    // Simple parsing logic (you'd want to use a more sophisticated approach)
-    const skills = extractSkills(text)
-    const careerHistory = extractCareerHistory(text)
-
-    // Store parsed data
-    const { error: parseError } = await supabase
+    // Save parsed data to cv_parsed_data table
+    const { error: upsertError } = await supabase
       .from('cv_parsed_data')
       .upsert({
         user_id: userId,
-        skills: skills,
-        career_history: careerHistory,
-        last_updated: new Date().toISOString()
+        skills: mockParsedData.skills,
+        career_history: mockParsedData.careerHistory,
+        cv_upload_date: new Date().toISOString()
       })
 
-    if (parseError) {
-      throw parseError
+    if (upsertError) {
+      throw upsertError
     }
 
     return new Response(
       JSON.stringify({ 
-        success: true, 
-        data: { skills, careerHistory } 
+        success: true,
+        data: mockParsedData
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
-    console.error('Error in parse-cv function:', error)
+    console.error('Error:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }
 })
-
-// Simple skill extraction (you'd want to use a more sophisticated approach)
-function extractSkills(text: string): string[] {
-  const commonSkills = [
-    'javascript', 'typescript', 'python', 'java', 'react', 'angular', 'vue',
-    'node', 'express', 'sql', 'nosql', 'mongodb', 'aws', 'azure', 'docker',
-    'kubernetes', 'ci/cd', 'agile', 'scrum'
-  ]
-  
-  return commonSkills.filter(skill => 
-    text.toLowerCase().includes(skill.toLowerCase())
-  )
-}
-
-// Simple career history extraction (you'd want to use a more sophisticated approach)
-function extractCareerHistory(text: string): any[] {
-  const lines = text.split('\n')
-  const history = []
-  let currentPosition = null
-
-  for (const line of lines) {
-    if (line.toLowerCase().includes('experience') || 
-        line.toLowerCase().includes('work history')) {
-      currentPosition = {}
-    } else if (currentPosition && line.trim()) {
-      if (!currentPosition.title) {
-        currentPosition.title = line.trim()
-      } else if (!currentPosition.company) {
-        currentPosition.company = line.trim()
-        history.push(currentPosition)
-        currentPosition = null
-      }
-    }
-  }
-
-  return history
-}
