@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { ProjectsSection } from "@/components/business/ProjectsSection";
 
 const BusinessDashboard = () => {
   const navigate = useNavigate();
@@ -171,7 +172,7 @@ const BusinessDashboard = () => {
             <TabsTrigger value="prior-users">Prior Users</TabsTrigger>
             <TabsTrigger value="roles">Active Roles</TabsTrigger>
             <TabsTrigger value="applications">Applications</TabsTrigger>
-            <TabsTrigger value="equity">Equity Structure</TabsTrigger>
+            <TabsTrigger value="projects">Projects</TabsTrigger>
           </TabsList>
 
           <TabsContent value="account">
@@ -418,15 +419,8 @@ const BusinessDashboard = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="equity">
-            <Card>
-              <CardHeader>
-                <h2 className="text-lg font-semibold">Current Equity Structure</h2>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">No equity structure information available.</p>
-              </CardContent>
-            </Card>
+          <TabsContent value="projects">
+            <ProjectsSection />
           </TabsContent>
         </Tabs>
       </div>

@@ -59,6 +59,47 @@ export type Database = {
           },
         ]
       }
+      business_projects: {
+        Row: {
+          business_id: string
+          created_at: string | null
+          description: string | null
+          equity_allocation: number | null
+          id: string
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string | null
+          description?: string | null
+          equity_allocation?: number | null
+          id?: string
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string | null
+          description?: string | null
+          equity_allocation?: number | null
+          id?: string
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_projects_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_roles: {
         Row: {
           business_id: string | null
@@ -190,6 +231,36 @@ export type Database = {
           },
         ]
       }
+      cv_parsed_data: {
+        Row: {
+          career_history: Json | null
+          created_at: string | null
+          cv_upload_date: string | null
+          id: string
+          skills: string[] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          career_history?: Json | null
+          created_at?: string | null
+          cv_upload_date?: string | null
+          id?: string
+          skills?: string[] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          career_history?: Json | null
+          created_at?: string | null
+          cv_upload_date?: string | null
+          id?: string
+          skills?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       marketing_contacts: {
         Row: {
           contact_type: string | null
@@ -296,6 +367,53 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      project_tasks: {
+        Row: {
+          assigned_to: string | null
+          created_at: string | null
+          description: string | null
+          equity_earned: number | null
+          hours_logged: number | null
+          id: string
+          project_id: string
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string | null
+          description?: string | null
+          equity_earned?: number | null
+          hours_logged?: number | null
+          id?: string
+          project_id: string
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string | null
+          description?: string | null
+          equity_earned?: number | null
+          hours_logged?: number | null
+          id?: string
+          project_id?: string
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       recruiter_organizations: {
         Row: {
