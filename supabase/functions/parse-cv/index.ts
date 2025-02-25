@@ -1,7 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
-import { extractPDFText } from "https://deno.land/x/pdf_extract@v1.1.1/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,19 +24,25 @@ serve(async (req) => {
       )
     }
 
-    // Extract text from PDF
+    console.log('Processing file:', file.name, 'type:', file.type);
+
+    // For now, we'll implement a basic text extraction
     let text = '';
-    if (file.type === 'application/pdf') {
-      const arrayBuffer = await file.arrayBuffer();
-      text = await extractPDFText(new Uint8Array(arrayBuffer));
-    } else {
-      // For other file types, you might want to implement different parsers
+    try {
+      // Convert file to text
       text = await file.text();
+      console.log('Extracted text length:', text.length);
+    } catch (error) {
+      console.error('Text extraction error:', error);
+      text = ''; // Default to empty string if extraction fails
     }
 
-    // Basic parsing logic - you might want to enhance this
+    // Extract skills and career history from text
     const skills = extractSkills(text);
     const careerHistory = extractCareerHistory(text);
+
+    console.log('Extracted skills:', skills);
+    console.log('Extracted career history:', careerHistory);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -79,11 +84,22 @@ serve(async (req) => {
 })
 
 function extractSkills(text: string): string[] {
-  // Basic skill extraction - you might want to enhance this
+  // Improved skill extraction with more comprehensive list
   const commonSkills = [
-    'javascript', 'typescript', 'python', 'java', 'c++', 'react', 'angular', 'vue',
-    'node.js', 'express', 'mongodb', 'sql', 'postgresql', 'mysql', 'aws', 'azure',
-    'docker', 'kubernetes', 'git', 'agile', 'scrum', 'project management'
+    // Programming Languages
+    'javascript', 'typescript', 'python', 'java', 'c++', 'c#', 'ruby', 'php', 'swift', 'kotlin',
+    // Web Technologies
+    'html', 'css', 'react', 'angular', 'vue', 'node.js', 'express', 'next.js', 'gatsby',
+    // Databases
+    'mongodb', 'sql', 'postgresql', 'mysql', 'oracle', 'redis', 'elasticsearch',
+    // Cloud & DevOps
+    'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'jenkins', 'terraform',
+    // Version Control
+    'git', 'github', 'gitlab', 'bitbucket',
+    // Project Management
+    'agile', 'scrum', 'kanban', 'jira', 'trello',
+    // General Skills
+    'project management', 'team leadership', 'communication', 'problem solving'
   ];
 
   const foundSkills = commonSkills.filter(skill => 
@@ -94,24 +110,44 @@ function extractSkills(text: string): string[] {
 }
 
 function extractCareerHistory(text: string): any[] {
-  // Basic career history extraction - you might want to enhance this
   const careerHistory = [];
   const lines = text.split('\n');
   let currentRole: any = {};
-
-  for (const line of lines) {
-    if (line.toLowerCase().includes('experience') || line.toLowerCase().includes('work history')) {
-      continue;
-    }
-
-    // Look for possible job titles and companies
-    if (line.match(/^[A-Z][a-zA-Z\s]{2,}/) && !currentRole.title) {
-      currentRole.title = line.trim();
-    } else if (line.match(/^[A-Z][a-zA-Z\s]{2,}/) && !currentRole.company) {
-      currentRole.company = line.trim();
-    } else if (line.match(/\d{4}/) && !currentRole.duration) {
-      currentRole.duration = line.trim();
-      if (Object.keys(currentRole).length >= 2) {
+  
+  // Common job title keywords
+  const jobTitleKeywords = ['engineer', 'developer', 'manager', 'director', 'lead', 'architect', 'consultant'];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // Skip empty lines
+    if (!line) continue;
+    
+    // Look for lines that might contain job titles
+    const isJobTitle = jobTitleKeywords.some(keyword => 
+      line.toLowerCase().includes(keyword)
+    );
+    
+    if (isJobTitle && !currentRole.title) {
+      currentRole.title = line;
+      
+      // Look for company name in the next line
+      if (i + 1 < lines.length) {
+        currentRole.company = lines[i + 1].trim();
+      }
+      
+      // Look for dates in the surrounding lines
+      for (let j = i - 1; j <= i + 2; j++) {
+        if (j >= 0 && j < lines.length) {
+          const dateLine = lines[j].trim();
+          if (dateLine.match(/\d{4}/)) {
+            currentRole.duration = dateLine;
+            break;
+          }
+        }
+      }
+      
+      if (currentRole.title && (currentRole.company || currentRole.duration)) {
         careerHistory.push({...currentRole});
         currentRole = {};
       }
