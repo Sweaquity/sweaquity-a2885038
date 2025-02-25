@@ -12,7 +12,7 @@ export type Database = {
       businesses: {
         Row: {
           business_type: Database["public"]["Enums"]["business_type"]
-          company_name: string
+          company_name: string | null
           company_size: number | null
           contact_email: string
           contact_phone: string | null
@@ -27,7 +27,7 @@ export type Database = {
         }
         Insert: {
           business_type?: Database["public"]["Enums"]["business_type"]
-          company_name: string
+          company_name?: string | null
           company_size?: number | null
           contact_email: string
           contact_phone?: string | null
@@ -42,7 +42,7 @@ export type Database = {
         }
         Update: {
           business_type?: Database["public"]["Enums"]["business_type"]
-          company_name?: string
+          company_name?: string | null
           company_size?: number | null
           contact_email?: string
           contact_phone?: string | null
