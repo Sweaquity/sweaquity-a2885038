@@ -1,35 +1,65 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ArrowLeft, Mail } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const AuthPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { type } = useParams<{ type: string }>();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    // Handle the email confirmation
+    const handleEmailConfirmation = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      const type = hashParams.get("type");
+
+      if (accessToken && type === "signup") {
+        try {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken!
+          });
+
+          if (error) throw error;
+
+          toast.success("Email confirmed successfully!");
+          navigate(`/${type}/dashboard`);
+        } catch (error) {
+          console.error('Error setting session:', error);
+          toast.error("Failed to confirm email. Please try logging in.");
+        }
+      }
+    };
+
+    handleEmailConfirmation();
+  }, [location, navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Only insert into businesses table if type is 'business'
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            user_type: type // store user type in metadata
+            user_type: type
           },
+          emailRedirectTo: `${window.location.origin}/auth/${type}`
         }
       });
       
