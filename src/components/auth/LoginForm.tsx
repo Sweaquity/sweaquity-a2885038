@@ -76,32 +76,6 @@ export const LoginForm = ({ type }: LoginFormProps) => {
     setIsLoading(true);
 
     try {
-      // First check if email exists and is confirmed
-      const { data: { users }, error: lookupError } = await supabase.auth.admin
-        .listUsers({
-          filters: {
-            email: email
-          }
-        });
-
-      if (lookupError) {
-        console.error('User lookup error:', lookupError);
-        toast.error("An error occurred during login");
-        return;
-      }
-
-      const user = users?.[0];
-      
-      if (!user) {
-        toast.error("No account found with this email. Please sign up first.");
-        return;
-      }
-
-      if (!user.email_confirmed_at) {
-        toast.error("Please confirm your email address before logging in.");
-        return;
-      }
-
       // Attempt login
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -111,7 +85,7 @@ export const LoginForm = ({ type }: LoginFormProps) => {
       if (error) {
         if (error.message === "Invalid login credentials") {
           toast.error("Invalid email or password. Please try again.");
-        } else if (error.message.includes("confirm your email")) {
+        } else if (error.message.includes("Email not confirmed")) {
           toast.error("Please confirm your email address before logging in.");
         } else {
           console.error('Login error:', error);
