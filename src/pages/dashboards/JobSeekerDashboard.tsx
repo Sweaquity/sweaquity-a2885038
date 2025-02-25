@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ProfileSection } from "@/components/job-seeker/ProfileSection";
+import { ProfileCompletionForm } from "@/components/job-seeker/ProfileCompletionForm";
 import { ApplicationsList } from "@/components/job-seeker/ApplicationsList";
 import { EquityProjectsList } from "@/components/job-seeker/EquityProjectsList";
 
@@ -41,9 +42,18 @@ interface EquityProject {
   };
 }
 
+interface Profile {
+  first_name: string | null;
+  last_name: string | null;
+  title: string | null;
+  email: string | null;
+  location: string | null;
+}
+
 const JobSeekerDashboard = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [cvUrl, setCvUrl] = useState<string | null>(null);
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [equityProjects, setEquityProjects] = useState<EquityProject[]>([]);
@@ -64,33 +74,18 @@ const JobSeekerDashboard = () => {
           return;
         }
 
-        // Load CV URL first
-        const { data: cvFiles } = await supabase.storage
-          .from('cvs')
-          .list(session.user.id + '/');
-
-        if (cvFiles && cvFiles.length > 0) {
-          // Get the most recent CV
-          const mostRecentCV = cvFiles.sort((a, b) => 
-            b.created_at.localeCompare(a.created_at)
-          )[0];
-
-          const { data: { publicUrl } } = supabase.storage
-            .from('cvs')
-            .getPublicUrl(`${session.user.id}/${mostRecentCV.name}`);
-
-          setCvUrl(publicUrl);
-        }
-
-        // Load profile data
-        const { data: profileData } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('skills')
+          .select('first_name, last_name, title, email, location, skills')
           .eq('id', session.user.id)
           .single();
 
-        if (profileData?.skills) {
-          setSkills(profileData.skills);
+        if (profileError) throw profileError;
+        setProfile(profileData);
+
+        if (!profileData.first_name || !profileData.last_name || !profileData.title) {
+          setIsLoading(false);
+          return;
         }
 
         const { data: applicationsData } = await supabase
@@ -295,6 +290,10 @@ const JobSeekerDashboard = () => {
         <p>Loading...</p>
       </div>
     );
+  }
+
+  if (!profile?.first_name || !profile?.last_name || !profile?.title) {
+    return <ProfileCompletionForm />;
   }
 
   return (
