@@ -22,18 +22,19 @@ const AuthPage = () => {
     setIsLoading(true);
 
     try {
+      // Only insert into businesses table if type is 'business'
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            type: type // store user type in metadata
-          }
+            user_type: type // store user type in metadata
+          },
         }
       });
       
       if (error) throw error;
-      
+
       toast.success("Registration successful! Please check your email to confirm your account.");
     } catch (error) {
       console.error('Error:', error);
@@ -72,7 +73,9 @@ const AuthPage = () => {
     }
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/${type}/reset-password`,
+      });
       if (error) throw error;
       toast.success("Password reset instructions sent to your email");
     } catch (error) {
