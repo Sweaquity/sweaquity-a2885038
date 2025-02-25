@@ -9,6 +9,56 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      business_members: {
+        Row: {
+          business_id: string | null
+          created_at: string | null
+          email: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          marketing_consent: boolean | null
+          project_updates_consent: boolean | null
+          terms_accepted: boolean | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          business_id?: string | null
+          created_at?: string | null
+          email: string
+          first_name?: string | null
+          id: string
+          last_name?: string | null
+          marketing_consent?: boolean | null
+          project_updates_consent?: boolean | null
+          terms_accepted?: boolean | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          business_id?: string | null
+          created_at?: string | null
+          email?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          marketing_consent?: boolean | null
+          project_updates_consent?: boolean | null
+          terms_accepted?: boolean | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_members_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       businesses: {
         Row: {
           business_type: Database["public"]["Enums"]["business_type"]
@@ -17,11 +67,19 @@ export type Database = {
           contact_email: string
           contact_phone: string | null
           created_at: string | null
+          geographic_scope: Json | null
           id: string
           industry: string | null
+          is_parent: boolean | null
           location: string | null
           marketing_consent: boolean | null
+          organization_type: string | null
+          parent_id: string | null
+          project_stage: Database["public"]["Enums"]["project_stage"] | null
+          project_timeline: Json | null
+          required_skills: Json | null
           terms_accepted: boolean | null
+          time_commitment: Database["public"]["Enums"]["time_commitment"] | null
           updated_at: string | null
           website: string | null
         }
@@ -32,11 +90,21 @@ export type Database = {
           contact_email: string
           contact_phone?: string | null
           created_at?: string | null
+          geographic_scope?: Json | null
           id: string
           industry?: string | null
+          is_parent?: boolean | null
           location?: string | null
           marketing_consent?: boolean | null
+          organization_type?: string | null
+          parent_id?: string | null
+          project_stage?: Database["public"]["Enums"]["project_stage"] | null
+          project_timeline?: Json | null
+          required_skills?: Json | null
           terms_accepted?: boolean | null
+          time_commitment?:
+            | Database["public"]["Enums"]["time_commitment"]
+            | null
           updated_at?: string | null
           website?: string | null
         }
@@ -47,42 +115,66 @@ export type Database = {
           contact_email?: string
           contact_phone?: string | null
           created_at?: string | null
+          geographic_scope?: Json | null
           id?: string
           industry?: string | null
+          is_parent?: boolean | null
           location?: string | null
           marketing_consent?: boolean | null
+          organization_type?: string | null
+          parent_id?: string | null
+          project_stage?: Database["public"]["Enums"]["project_stage"] | null
+          project_timeline?: Json | null
+          required_skills?: Json | null
           terms_accepted?: boolean | null
+          time_commitment?:
+            | Database["public"]["Enums"]["time_commitment"]
+            | null
           updated_at?: string | null
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "businesses_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       marketing_contacts: {
         Row: {
+          contact_type: string | null
           email: string
           first_name: string | null
           id: string
           last_name: string | null
+          organization_id: string | null
           preferences: Json | null
           subscribed_at: string | null
           unsubscribed_at: string | null
           user_id: string
         }
         Insert: {
+          contact_type?: string | null
           email: string
           first_name?: string | null
           id?: string
           last_name?: string | null
+          organization_id?: string | null
           preferences?: Json | null
           subscribed_at?: string | null
           unsubscribed_at?: string | null
           user_id: string
         }
         Update: {
+          contact_type?: string | null
           email?: string
           first_name?: string | null
           id?: string
           last_name?: string | null
+          organization_id?: string | null
           preferences?: Json | null
           subscribed_at?: string | null
           unsubscribed_at?: string | null
@@ -158,6 +250,116 @@ export type Database = {
         }
         Relationships: []
       }
+      recruiter_organizations: {
+        Row: {
+          company_name: string
+          created_at: string | null
+          equity_recruiting:
+            | Database["public"]["Enums"]["equity_preference"]
+            | null
+          geographic_scope: Json | null
+          id: string
+          marketing_consent: boolean | null
+          organization_type: string | null
+          project_updates_consent: boolean | null
+          specializations: Json | null
+          terms_accepted: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_name: string
+          created_at?: string | null
+          equity_recruiting?:
+            | Database["public"]["Enums"]["equity_preference"]
+            | null
+          geographic_scope?: Json | null
+          id: string
+          marketing_consent?: boolean | null
+          organization_type?: string | null
+          project_updates_consent?: boolean | null
+          specializations?: Json | null
+          terms_accepted?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_name?: string
+          created_at?: string | null
+          equity_recruiting?:
+            | Database["public"]["Enums"]["equity_preference"]
+            | null
+          geographic_scope?: Json | null
+          id?: string
+          marketing_consent?: boolean | null
+          organization_type?: string | null
+          project_updates_consent?: boolean | null
+          specializations?: Json | null
+          terms_accepted?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      recruiters: {
+        Row: {
+          created_at: string | null
+          equity_preference:
+            | Database["public"]["Enums"]["equity_preference"]
+            | null
+          first_name: string | null
+          geographic_focus: Json | null
+          id: string
+          last_name: string | null
+          marketing_consent: boolean | null
+          organization_id: string | null
+          project_updates_consent: boolean | null
+          skills_focus: Json | null
+          terms_accepted: boolean | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          equity_preference?:
+            | Database["public"]["Enums"]["equity_preference"]
+            | null
+          first_name?: string | null
+          geographic_focus?: Json | null
+          id: string
+          last_name?: string | null
+          marketing_consent?: boolean | null
+          organization_id?: string | null
+          project_updates_consent?: boolean | null
+          skills_focus?: Json | null
+          terms_accepted?: boolean | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          equity_preference?:
+            | Database["public"]["Enums"]["equity_preference"]
+            | null
+          first_name?: string | null
+          geographic_focus?: Json | null
+          id?: string
+          last_name?: string | null
+          marketing_consent?: boolean | null
+          organization_id?: string | null
+          project_updates_consent?: boolean | null
+          skills_focus?: Json | null
+          terms_accepted?: boolean | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recruiters_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "recruiter_organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -168,6 +370,9 @@ export type Database = {
     Enums: {
       business_type: "startup" | "small" | "medium" | "large" | "enterprise"
       employment_preference: "equity_only" | "salary_only" | "both"
+      equity_preference: "yes" | "no" | "negotiable"
+      project_stage: "idea" | "prototype" | "mvp" | "growth" | "scale"
+      time_commitment: "part_time" | "full_time" | "contract" | "flexible"
     }
     CompositeTypes: {
       [_ in never]: never
