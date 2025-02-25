@@ -59,8 +59,47 @@ export type Database = {
           },
         ]
       }
+      business_roles: {
+        Row: {
+          business_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          open_to_recruiters: boolean | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          business_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          open_to_recruiters?: boolean | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          business_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          open_to_recruiters?: boolean | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_roles_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       businesses: {
         Row: {
+          banking_details: Json | null
           business_type: Database["public"]["Enums"]["business_type"]
           company_name: string | null
           company_size: number | null
@@ -70,9 +109,11 @@ export type Database = {
           geographic_scope: Json | null
           id: string
           industry: string | null
+          is_also_job_seeker: boolean | null
           is_parent: boolean | null
           location: string | null
           marketing_consent: boolean | null
+          open_to_recruiters: boolean | null
           organization_type: string | null
           parent_id: string | null
           project_stage: Database["public"]["Enums"]["project_stage"] | null
@@ -84,6 +125,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          banking_details?: Json | null
           business_type?: Database["public"]["Enums"]["business_type"]
           company_name?: string | null
           company_size?: number | null
@@ -93,9 +135,11 @@ export type Database = {
           geographic_scope?: Json | null
           id: string
           industry?: string | null
+          is_also_job_seeker?: boolean | null
           is_parent?: boolean | null
           location?: string | null
           marketing_consent?: boolean | null
+          open_to_recruiters?: boolean | null
           organization_type?: string | null
           parent_id?: string | null
           project_stage?: Database["public"]["Enums"]["project_stage"] | null
@@ -109,6 +153,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          banking_details?: Json | null
           business_type?: Database["public"]["Enums"]["business_type"]
           company_name?: string | null
           company_size?: number | null
@@ -118,9 +163,11 @@ export type Database = {
           geographic_scope?: Json | null
           id?: string
           industry?: string | null
+          is_also_job_seeker?: boolean | null
           is_parent?: boolean | null
           location?: string | null
           marketing_consent?: boolean | null
+          open_to_recruiters?: boolean | null
           organization_type?: string | null
           parent_id?: string | null
           project_stage?: Database["public"]["Enums"]["project_stage"] | null
@@ -252,6 +299,7 @@ export type Database = {
       }
       recruiter_organizations: {
         Row: {
+          banking_details: Json | null
           company_name: string
           created_at: string | null
           equity_recruiting:
@@ -267,6 +315,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          banking_details?: Json | null
           company_name: string
           created_at?: string | null
           equity_recruiting?:
@@ -282,6 +331,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          banking_details?: Json | null
           company_name?: string
           created_at?: string | null
           equity_recruiting?:
