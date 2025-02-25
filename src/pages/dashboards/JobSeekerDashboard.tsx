@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -29,6 +28,12 @@ interface EquityProject {
   status: string;
   start_date: string;
   end_date?: string;
+  effort_logs: {
+    date: string;
+    hours: number;
+    description: string;
+  }[];
+  total_hours_logged: number;
   business_roles?: {
     title: string;
     description: string;
@@ -43,6 +48,11 @@ const JobSeekerDashboard = () => {
   const [equityProjects, setEquityProjects] = useState<EquityProject[]>([]);
   const [parsedCvData, setParsedCvData] = useState<any>(null);
   const [skills, setSkills] = useState<string[]>([]);
+  const [logEffort, setLogEffort] = useState({
+    projectId: '',
+    hours: 0,
+    description: ''
+  });
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -120,7 +130,7 @@ const JobSeekerDashboard = () => {
       const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
 
       // Upload file to storage
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError, data: uploadData } = await supabase.storage
         .from('cvs')
         .upload(fileName, file);
 
@@ -132,15 +142,84 @@ const JobSeekerDashboard = () => {
         .getPublicUrl(fileName);
 
       setCvUrl(publicUrl);
-      toast.success("CV uploaded successfully");
 
-      // TODO: Integrate with CV parsing service
-      // For now, we'll just update the UI
-      toast.success("CV uploaded successfully. Processing...");
+      // Create form data for CV parsing
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', session.user.id);
+
+      // Call the parse-cv Edge Function
+      const { data: parseData, error: parseError } = await supabase.functions
+        .invoke('parse-cv', {
+          body: formData
+        });
+
+      if (parseError) throw parseError;
+
+      if (parseData) {
+        setSkills(parseData.data.skills);
+        setParsedCvData({
+          ...parsedCvData,
+          skills: parseData.data.skills,
+          career_history: parseData.data.careerHistory,
+          cv_upload_date: new Date().toISOString()
+        });
+
+        // Call the match-opportunities function
+        const { data: matchData, error: matchError } = await supabase.functions
+          .invoke('match-opportunities', {
+            body: { userId: session.user.id }
+          });
+
+        if (matchError) throw matchError;
+
+        toast.success("CV processed and matches found");
+      }
 
     } catch (error) {
       console.error('Error uploading file:', error);
       toast.error("Failed to upload CV");
+    }
+  };
+
+  const handleLogEffort = async (projectId: string) => {
+    try {
+      const { error } = await supabase
+        .from('sweaquity_matched_live_projects')
+        .update({
+          effort_logs: [...(equityProjects.find(p => p.id === projectId)?.effort_logs || []), {
+            date: new Date().toISOString(),
+            hours: logEffort.hours,
+            description: logEffort.description
+          }],
+          total_hours_logged: (equityProjects.find(p => p.id === projectId)?.total_hours_logged || 0) + logEffort.hours
+        })
+        .eq('id', projectId);
+
+      if (error) throw error;
+
+      // Refresh equity projects data
+      const { data: updatedProject } = await supabase
+        .from('sweaquity_matched_live_projects')
+        .select(`
+          *,
+          business_roles (
+            title,
+            description
+          )
+        `)
+        .eq('id', projectId)
+        .single();
+
+      if (updatedProject) {
+        setEquityProjects(prev => prev.map(p => p.id === projectId ? updatedProject : p));
+        setLogEffort({ projectId: '', hours: 0, description: '' });
+        toast.success("Effort logged successfully");
+      }
+
+    } catch (error) {
+      console.error('Error logging effort:', error);
+      toast.error("Failed to log effort");
     }
   };
 
@@ -273,28 +352,79 @@ const JobSeekerDashboard = () => {
           <TabsContent value="equity">
             <Card>
               <CardHeader>
-                <h2 className="text-lg font-semibold">Current Equity Positions</h2>
+                <h2 className="text-lg font-semibold">Current Equity Projects</h2>
               </CardHeader>
               <CardContent>
                 {equityProjects.length > 0 ? (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     {equityProjects.map((project) => (
-                      <div key={project.id} className="border p-4 rounded-lg">
-                        <h3 className="font-medium">{project.business_roles?.title}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Equity Amount: {project.equity_amount}%
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Time Allocated: {project.time_allocated}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Status: {project.status}
-                        </p>
+                      <div key={project.id} className="border p-6 rounded-lg space-y-4">
+                        <div>
+                          <h3 className="text-lg font-medium">{project.business_roles?.title}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Equity Amount: {project.equity_amount}%
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Total Hours: {project.total_hours_logged || 0}
+                          </p>
+                        </div>
+
+                        <div className="space-y-4 border-t pt-4">
+                          <h4 className="font-medium">Log Effort</h4>
+                          <div className="grid gap-4">
+                            <div>
+                              <Label htmlFor={`hours-${project.id}`}>Hours</Label>
+                              <Input
+                                id={`hours-${project.id}`}
+                                type="number"
+                                min="0"
+                                step="0.5"
+                                value={project.id === logEffort.projectId ? logEffort.hours : ''}
+                                onChange={(e) => setLogEffort(prev => ({
+                                  ...prev,
+                                  projectId: project.id,
+                                  hours: parseFloat(e.target.value)
+                                }))}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`description-${project.id}`}>Description</Label>
+                              <Input
+                                id={`description-${project.id}`}
+                                value={project.id === logEffort.projectId ? logEffort.description : ''}
+                                onChange={(e) => setLogEffort(prev => ({
+                                  ...prev,
+                                  projectId: project.id,
+                                  description: e.target.value
+                                }))}
+                              />
+                            </div>
+                            <Button 
+                              onClick={() => handleLogEffort(project.id)}
+                              disabled={!logEffort.hours || !logEffort.description || logEffort.projectId !== project.id}
+                            >
+                              Log Effort
+                            </Button>
+                          </div>
+
+                          <div className="mt-4">
+                            <h4 className="font-medium mb-2">Effort History</h4>
+                            <div className="space-y-2">
+                              {project.effort_logs?.map((log, index) => (
+                                <div key={index} className="text-sm border p-2 rounded">
+                                  <p className="font-medium">{new Date(log.date).toLocaleDateString()}</p>
+                                  <p>Hours: {log.hours}</p>
+                                  <p className="text-muted-foreground">{log.description}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground">No current equity positions.</p>
+                  <p className="text-muted-foreground">No current equity projects.</p>
                 )}
               </CardContent>
             </Card>
