@@ -25,16 +25,26 @@ export const LoginForm = ({ type }: LoginFormProps) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password,
+        options: {
+          redirectTo: window.location.origin + `/${type}/dashboard`
+        }
       });
       
-      if (error) throw error;
+      if (error) {
+        if (error.message === "Invalid login credentials") {
+          toast.error("Invalid email or password. Please try again or reset your password.");
+        } else {
+          toast.error(error.message);
+        }
+        return;
+      }
       
       toast.success("Login successful!");
       navigate(`/${type}/dashboard`);
     } catch (error) {
       console.error('Error:', error);
-      toast.error(error instanceof Error ? error.message : "Invalid credentials");
+      toast.error(error instanceof Error ? error.message : "An error occurred during login");
     } finally {
       setIsLoading(false);
     }

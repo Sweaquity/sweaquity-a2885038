@@ -26,6 +26,18 @@ export const RegisterForm = ({ type }: RegisterFormProps) => {
     setIsLoading(true);
 
     try {
+      // First check if user already exists
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (existingUser) {
+        toast.error("An account with this email already exists. Please try logging in or reset your password.");
+        return;
+      }
+
       const metadata: any = {
         user_type: type,
         is_parent: isParentAccount.toString()
@@ -57,7 +69,14 @@ export const RegisterForm = ({ type }: RegisterFormProps) => {
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes("User already registered")) {
+          toast.error("An account with this email already exists. Please try logging in or reset your password.");
+        } else {
+          throw error;
+        }
+        return;
+      }
 
       toast.success("Registration successful! Please check your email to confirm your account.");
     } catch (error) {
@@ -175,6 +194,7 @@ export const RegisterForm = ({ type }: RegisterFormProps) => {
           required
           minLength={6}
         />
+        <p className="text-sm text-muted-foreground">Password must be at least 6 characters long</p>
       </div>
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? "Creating account..." : "Create account"}

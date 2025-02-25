@@ -16,14 +16,22 @@ const AuthPage = () => {
   const { type } = useParams<{ type: string }>();
 
   useEffect(() => {
-    // Handle the email confirmation
-    const handleEmailConfirmation = async () => {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get("access_token");
-      const refreshToken = hashParams.get("refresh_token");
-      const type = hashParams.get("type");
+    // Check if we're handling a password reset
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
+    const type = hashParams.get("type");
 
-      if (accessToken && type === "signup") {
+    const handleAuth = async () => {
+      if (accessToken) {
+        if (type === "recovery") {
+          // Handle password reset
+          navigate(`/auth/${type}/reset-password`, {
+            state: { access_token: accessToken }
+          });
+          return;
+        }
+
         try {
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -32,16 +40,16 @@ const AuthPage = () => {
 
           if (error) throw error;
 
-          toast.success("Email confirmed successfully!");
+          toast.success("Authentication successful!");
           navigate(`/${type}/dashboard`);
         } catch (error) {
           console.error('Error setting session:', error);
-          toast.error("Failed to confirm email. Please try logging in.");
+          toast.error("Authentication failed. Please try logging in.");
         }
       }
     };
 
-    handleEmailConfirmation();
+    handleAuth();
   }, [location, navigate]);
 
   return (
