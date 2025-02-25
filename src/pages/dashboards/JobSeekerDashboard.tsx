@@ -170,7 +170,7 @@ const JobSeekerDashboard = () => {
       const fileExt = file.name.split('.').pop();
       const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError, data: uploadData } = await supabase.storage
         .from('cvs')
         .upload(fileName, file, {
           cacheControl: '3600',
@@ -197,29 +197,15 @@ const JobSeekerDashboard = () => {
       if (parseError) throw parseError;
 
       if (parseData) {
-        const newSkills = parseData.data.skills || [];
-        setSkills(prevSkills => {
-          const combinedSkills = [...prevSkills, ...newSkills];
-          return Array.from(new Set(combinedSkills)); // Remove duplicates
-        });
-
         setParsedCvData({
           ...parsedCvData,
-          skills: newSkills,
-          career_history: parseData.data.careerHistory,
+          skills: parseData.data.skills || [],
+          career_history: parseData.data.careerHistory || [],
           cv_upload_date: new Date().toISOString()
         });
 
+        const newSkills = parseData.data.skills || [];
         await handleSkillsUpdate(newSkills);
-
-        const { data: matchData, error: matchError } = await supabase.functions
-          .invoke('match-opportunities', {
-            body: { userId: session.user.id }
-          });
-
-        if (matchError) throw matchError;
-
-        toast.success("CV processed and matches found");
       }
     } catch (error) {
       console.error('Error uploading file:', error);

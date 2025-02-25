@@ -77,6 +77,12 @@ export const ProfileSection = ({
     }
   };
 
+  const handleDeleteSkill = (skillToDelete: string) => {
+    const updatedSkills = skills.filter(skill => skill !== skillToDelete);
+    onSkillsUpdate(updatedSkills);
+    toast.success(`Removed skill: ${skillToDelete}`);
+  };
+
   const handleBulkSkillsSubmit = () => {
     if (!bulkSkills.trim()) {
       toast.error("Please enter some skills");
@@ -99,10 +105,19 @@ export const ProfileSection = ({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
+      // Extract the file path from the URL
+      const filePathMatch = cvUrl?.match(/cvs\/([^?]+)/);
+      if (!filePathMatch) {
+        toast.error("Invalid CV URL");
+        return;
+      }
+
+      const filePath = filePathMatch[1];
+
       // Delete the file from storage
       const { error: storageError } = await supabase.storage
         .from('cvs')
-        .remove([`${session.user.id}/${selectedCVs[0]}`]);
+        .remove([filePath]);
 
       if (storageError) throw storageError;
 
@@ -115,7 +130,7 @@ export const ProfileSection = ({
       if (dbError) throw dbError;
 
       toast.success("CV deleted successfully");
-      window.location.reload(); // Refresh to update the UI
+      window.location.reload();
     } catch (error) {
       console.error('Delete error:', error);
       toast.error("Failed to delete CV");
@@ -169,17 +184,27 @@ export const ProfileSection = ({
                     <DialogHeader>
                       <DialogTitle>CV Preview</DialogTitle>
                     </DialogHeader>
-                    <iframe 
-                      src={cvUrl} 
-                      className="w-full h-full"
-                      title="CV Preview"
-                    />
+                    <object 
+                      data={cvUrl} 
+                      type="application/pdf" 
+                      width="100%" 
+                      height="100%"
+                      className="rounded-md"
+                    >
+                      <iframe 
+                        src={`https://docs.google.com/viewer?url=${encodeURIComponent(cvUrl)}&embedded=true`}
+                        width="100%"
+                        height="100%"
+                        title="CV Preview"
+                      />
+                    </object>
                   </DialogContent>
                 </Dialog>
-                <Button asChild variant="outline">
-                  <a href={cvUrl} target="_blank" rel="noopener noreferrer">
-                    Download CV
-                  </a>
+                <Button 
+                  variant="outline"
+                  onClick={() => window.open(cvUrl, '_blank')}
+                >
+                  Download CV
                 </Button>
                 {selectedCVs.length > 0 && (
                   <Button 
@@ -223,16 +248,23 @@ export const ProfileSection = ({
             {skills.map((skill, index) => (
               <div 
                 key={index} 
-                className="bg-secondary px-3 py-1 rounded-full text-sm hover:bg-secondary/80 transition-colors"
+                className="group bg-secondary px-3 py-1 rounded-full text-sm hover:bg-secondary/80 transition-colors flex items-center gap-2"
               >
                 {skill}
+                <button
+                  onClick={() => handleDeleteSkill(skill)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80"
+                  aria-label={`Delete ${skill} skill`}
+                >
+                  ×
+                </button>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
 
-      {parsedCvData?.career_history && (
+      {parsedCvData?.career_history && parsedCvData.career_history.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Career History</CardTitle>
