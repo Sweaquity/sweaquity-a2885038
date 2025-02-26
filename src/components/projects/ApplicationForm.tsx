@@ -8,13 +8,15 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 interface ApplicationFormProps {
-  taskId: string;
+  projectId: string;
+  taskId?: string;  // Made optional since we might apply to project or task
   hasStoredCV: boolean;
   storedCVUrl: string | null;
   onApplicationSubmitted: () => void;
 }
 
 export const ApplicationForm = ({
+  projectId,
   taskId,
   hasStoredCV,
   storedCVUrl,
@@ -73,15 +75,19 @@ export const ApplicationForm = ({
         cvUrl = publicUrl;
       }
 
+      // Create project-level application if no taskId
+      const applicationData = {
+        user_id: session.user.id,
+        project_id: projectId,
+        task_id: taskId || null,
+        message: applicationMessage,
+        cv_url: cvUrl,
+        status: 'pending'
+      };
+
       const { error: applicationError } = await supabase
         .from('job_applications')
-        .insert({
-          user_id: session.user.id,
-          task_id: taskId,
-          message: applicationMessage,
-          cv_url: cvUrl,
-          status: 'pending'
-        });
+        .insert(applicationData);
 
       if (applicationError) throw applicationError;
 

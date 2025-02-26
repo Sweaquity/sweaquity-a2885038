@@ -20,6 +20,16 @@ interface Business {
   location: string;
 }
 
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  equity_allocation: number;
+  skills_required: string[];
+  timeframe: string;
+}
+
 interface ProjectDetails {
   id: string;
   title: string;
@@ -29,7 +39,7 @@ interface ProjectDetails {
   skills_required: string[];
   project_timeframe: string;
   business_id: string;
-  tasks: any[];
+  tasks: Task[];
   business: Business;
 }
 
@@ -40,6 +50,7 @@ export const ProjectDetailsPage = () => {
   const [hasStoredCV, setHasStoredCV] = useState(false);
   const [storedCVUrl, setStoredCVUrl] = useState<string | null>(null);
   const [hasApplied, setHasApplied] = useState(false);
+  const [isJobSeeker, setIsJobSeeker] = useState(false);
 
   useEffect(() => {
     const fetchProjectDetails = async () => {
@@ -49,6 +60,15 @@ export const ProjectDetailsPage = () => {
           toast.error("Please sign in to view project details");
           return;
         }
+
+        // Check if user is a job seeker
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        setIsJobSeeker(!!profileData);
 
         const { data: projectData, error: projectError } = await supabase
           .from('business_projects')
@@ -100,7 +120,7 @@ export const ProjectDetailsPage = () => {
         const { data: applicationData } = await supabase
           .from('job_applications')
           .select('*')
-          .eq('task_id', id)
+          .eq('project_id', id)
           .eq('user_id', session.user.id)
           .maybeSingle();
 
@@ -118,7 +138,7 @@ export const ProjectDetailsPage = () => {
           setStoredCVUrl(cvData.cv_url);
         }
 
-        // Handle the business data, ensuring it's a single object
+        // Handle the business data
         const defaultBusiness: Business = {
           company_name: "Project Owner",
           project_stage: "",
@@ -181,7 +201,7 @@ export const ProjectDetailsPage = () => {
             <TabsList>
               <TabsTrigger value="details">Project Details</TabsTrigger>
               <TabsTrigger value="roles">Available Roles</TabsTrigger>
-              <TabsTrigger value="apply">Apply</TabsTrigger>
+              {isJobSeeker && <TabsTrigger value="apply">Apply</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="details">
@@ -197,22 +217,24 @@ export const ProjectDetailsPage = () => {
               <ActiveRolesTable project={project} />
             </TabsContent>
 
-            <TabsContent value="apply">
-              {hasApplied ? (
-                <div className="bg-green-50 border border-green-200 rounded-md p-4">
-                  <p className="text-green-800">
-                    You have already applied for this opportunity. We'll notify you of any updates.
-                  </p>
-                </div>
-              ) : (
-                <ApplicationForm
-                  taskId={id || ''}
-                  hasStoredCV={hasStoredCV}
-                  storedCVUrl={storedCVUrl}
-                  onApplicationSubmitted={() => setHasApplied(true)}
-                />
-              )}
-            </TabsContent>
+            {isJobSeeker && (
+              <TabsContent value="apply">
+                {hasApplied ? (
+                  <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                    <p className="text-green-800">
+                      You have already applied for this opportunity. We'll notify you of any updates.
+                    </p>
+                  </div>
+                ) : (
+                  <ApplicationForm
+                    projectId={id || ''}
+                    hasStoredCV={hasStoredCV}
+                    storedCVUrl={storedCVUrl}
+                    onApplicationSubmitted={() => setHasApplied(true)}
+                  />
+                )}
+              </TabsContent>
+            )}
           </Tabs>
         </CardContent>
       </Card>
