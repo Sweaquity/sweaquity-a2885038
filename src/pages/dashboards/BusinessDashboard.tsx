@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -43,6 +42,7 @@ const BusinessDashboard = () => {
   const [businessData, setBusinessData] = useState<any>(null);
   const [hasJobSeekerProfile, setHasJobSeekerProfile] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [applications, setApplications] = useState<any[]>([]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -67,6 +67,7 @@ const BusinessDashboard = () => {
         const { data: projectsData, error: projectsError } = await supabase
           .from('business_projects')
           .select('*')
+          .eq('business_id', session.user.id)
           .eq('status', 'active');
 
         if (projectsError) throw projectsError;
@@ -76,6 +77,34 @@ const BusinessDashboard = () => {
           .select('*');
 
         if (tasksError) throw tasksError;
+
+        // Load applications for all projects
+        const { data: applicationsData, error: applicationsError } = await supabase
+          .from('job_applications')
+          .select(`
+            *,
+            profile:profiles (
+              first_name,
+              last_name,
+              title,
+              location,
+              employment_preference,
+              created_at
+            ),
+            business_roles:project_sub_tasks (
+              *,
+              project:business_projects (
+                title,
+                business:businesses (
+                  company_name
+                )
+              )
+            )
+          `)
+          .in('project_id', projectsData.map(p => p.id));
+
+        if (applicationsError) throw applicationsError;
+        setApplications(applicationsData || []);
 
         const projectsWithTasks = projectsData.map((project: any) => ({
           ...project,
@@ -268,7 +297,44 @@ const BusinessDashboard = () => {
                 <h2 className="text-lg font-semibold">Applications</h2>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">No applications found.</p>
+                <div className="space-y-4">
+                  {applications.length > 0 ? (
+                    applications.map((application) => (
+                      <div key={application.id} className="border p-4 rounded-lg space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="font-medium text-sm text-muted-foreground">Applicant</p>
+                            <p className="font-medium">{application.profile.first_name} {application.profile.last_name}</p>
+                            <p className="text-sm text-muted-foreground">{application.profile.title}</p>
+                            <p className="text-sm text-muted-foreground">{application.profile.location}</p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm text-muted-foreground">Role Details</p>
+                            <p className="font-medium">{application.business_roles.title}</p>
+                            <p className="text-sm text-muted-foreground">{application.business_roles.project.title}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm text-muted-foreground">Application Message</p>
+                          <p className="text-sm">{application.message}</p>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <div className="space-x-2">
+                            <Badge>{application.status}</Badge>
+                            <Badge variant="outline">
+                              {application.profile.employment_preference}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Applied {new Date(application.applied_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground">No applications found.</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

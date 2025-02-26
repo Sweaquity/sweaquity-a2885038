@@ -15,13 +15,9 @@ export const useApplications = () => {
         .select(`
           *,
           business_roles:project_sub_tasks (
-            title,
-            description,
-            timeframe,
-            skills_required,
-            equity_allocation,
+            *,
             project:business_projects (
-              title,
+              *,
               business:businesses (
                 company_name
               )
