@@ -3,12 +3,17 @@ import { CVUploadCard } from "./cv/CVUploadCard";
 import { SkillsCard } from "./skills/SkillsCard";
 import { CareerHistoryCard } from "./career/CareerHistoryCard";
 
+interface Skill {
+  name: string;
+  level: 'Beginner' | 'Intermediate' | 'Expert';
+}
+
 interface ProfileSectionProps {
   cvUrl: string | null;
   parsedCvData: any;
-  skills: string[];
+  skills: Skill[];
   handleFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onSkillsUpdate: (skills: string[]) => void;
+  onSkillsUpdate: (skills: Skill[]) => void;
 }
 
 export const ProfileSection = ({

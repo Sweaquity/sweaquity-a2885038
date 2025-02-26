@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -302,72 +301,81 @@ const JobSeekerDashboard = () => {
   return (
     <div className="min-h-screen p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Job Seeker Dashboard</h1>
-          <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-bold">Job Seeker Dashboard</h1>
+              {profile?.first_name && (
+                <p className="text-muted-foreground">
+                  Welcome back {profile.first_name}, here is where you can see your profile and exciting projects on the Sweaquity platform
+                </p>
+              )}
+            </div>
+            <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
+          </div>
+
+          <Tabs defaultValue={activeTabFromState} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="profile">Profile</TabsTrigger>
+              <TabsTrigger value="opportunities">Opportunities</TabsTrigger>
+              <TabsTrigger value="applications">Applications</TabsTrigger>
+              <TabsTrigger value="equity">Current Projects</TabsTrigger>
+              <TabsTrigger value="activity">Past Activity</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="profile">
+              <Card>
+                <CardHeader>
+                  <h2 className="text-lg font-semibold">Profile & Portfolio</h2>
+                </CardHeader>
+                <CardContent>
+                  <ProfileSection
+                    cvUrl={cvUrl}
+                    parsedCvData={parsedCvData}
+                    skills={skills}
+                    handleFileUpload={handleFileUpload}
+                    onSkillsUpdate={handleSkillsUpdate}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="opportunities">
+              <Card>
+                <CardHeader>
+                  <h2 className="text-lg font-semibold">Relevant Opportunities</h2>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">No matching opportunities found.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="applications">
+              <ApplicationsList applications={applications} />
+            </TabsContent>
+
+            <TabsContent value="equity">
+              <EquityProjectsList
+                projects={equityProjects}
+                logEffort={logEffort}
+                onLogEffort={handleLogEffort}
+                onLogEffortChange={handleLogEffortChange}
+              />
+            </TabsContent>
+
+            <TabsContent value="activity">
+              <Card>
+                <CardHeader>
+                  <h2 className="text-lg font-semibold">Past Activity</h2>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">No past activity recorded.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
-
-        <Tabs defaultValue={activeTabFromState} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="opportunities">Opportunities</TabsTrigger>
-            <TabsTrigger value="applications">Applications</TabsTrigger>
-            <TabsTrigger value="equity">Current Projects</TabsTrigger>
-            <TabsTrigger value="activity">Past Activity</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="profile">
-            <Card>
-              <CardHeader>
-                <h2 className="text-lg font-semibold">Profile & Portfolio</h2>
-              </CardHeader>
-              <CardContent>
-                <ProfileSection
-                  cvUrl={cvUrl}
-                  parsedCvData={parsedCvData}
-                  skills={skills}
-                  handleFileUpload={handleFileUpload}
-                  onSkillsUpdate={handleSkillsUpdate}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="opportunities">
-            <Card>
-              <CardHeader>
-                <h2 className="text-lg font-semibold">Relevant Opportunities</h2>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">No matching opportunities found.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="applications">
-            <ApplicationsList applications={applications} />
-          </TabsContent>
-
-          <TabsContent value="equity">
-            <EquityProjectsList
-              projects={equityProjects}
-              logEffort={logEffort}
-              onLogEffort={handleLogEffort}
-              onLogEffortChange={handleLogEffortChange}
-            />
-          </TabsContent>
-
-          <TabsContent value="activity">
-            <Card>
-              <CardHeader>
-                <h2 className="text-lg font-semibold">Past Activity</h2>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">No past activity recorded.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
       </div>
     </div>
   );
