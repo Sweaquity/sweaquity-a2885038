@@ -85,19 +85,8 @@ export const useJobSeekerDashboard = () => {
           applications.filter(app => app.status === 'accepted')
         );
 
-        // Set equity projects (only accepted applications)
+        // Set equity projects to ONLY accepted projects
         setEquityProjects(acceptedProjects);
-
-        // Set available opportunities separately
-        setEquityProjects(prevProjects => {
-          // Filter out any opportunities that are now accepted projects
-          const acceptedProjectIds = acceptedProjects.map(p => p.id);
-          const currentOpportunities = prevProjects
-            .filter(p => !acceptedProjectIds.includes(p.id))
-            .concat(availableOpportunities);
-          
-          return [...acceptedProjects, ...currentOpportunities];
-        });
 
       } catch (error) {
         console.error('Error loading dashboard data:', error);
