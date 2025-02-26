@@ -26,6 +26,14 @@ export const useApplications = () => {
                 company_name
               )
             )
+          ),
+          profile:profiles (
+            first_name,
+            last_name,
+            title,
+            location,
+            employment_preference,
+            created_at
           )
         `)
         .eq('user_id', userId);

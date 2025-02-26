@@ -34,12 +34,24 @@ export const useJobSeekerDashboard = () => {
           loadCVData(session.user.id)
         ]);
 
-        // Fetch open tasks for opportunities
+        // First, get the user's applications to check what they've already applied for
+        const { data: userApplications, error: applicationsError } = await supabase
+          .from('job_applications')
+          .select('task_id')
+          .eq('user_id', session.user.id);
+
+        if (applicationsError) throw applicationsError;
+
+        // Get the IDs of tasks they've already applied for
+        const appliedTaskIds = new Set(userApplications.map(app => app.task_id));
+
+        // Fetch open tasks for opportunities that haven't been applied to
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
           .select(`
             *,
             project:business_projects (
+              id,
               title,
               business:businesses (
                 company_name
@@ -49,14 +61,10 @@ export const useJobSeekerDashboard = () => {
           .eq('status', 'open');
 
         if (tasksError) throw tasksError;
-
-        // Filter out tasks that already have active applications
-        const appliedTaskIds = applications
-          .filter(app => app.status !== 'withdrawn')
-          .map(app => app.task_id);
         
+        // Filter out tasks that have already been applied for
         const opportunities = tasksData
-          .filter(task => !appliedTaskIds.includes(task.id))
+          .filter(task => !appliedTaskIds.has(task.id))
           .map(task => ({
             id: task.id,
             project_id: task.project_id,
@@ -79,7 +87,13 @@ export const useJobSeekerDashboard = () => {
               skills_required: task.skills_required || [],
               task_status: task.task_status,
               completion_percentage: task.completion_percentage
-            }]
+            }],
+            business_roles: {
+              title: task.title,
+              description: task.description,
+              project_title: task.project?.title,
+              company_name: task.project?.business?.company_name
+            }
           }));
 
         setAvailableOpportunities(opportunities);
