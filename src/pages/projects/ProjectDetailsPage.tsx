@@ -66,7 +66,8 @@ export const ProjectDetailsPage = () => {
             equity_allocation,
             skills_required,
             project_timeframe,
-            business:businesses (
+            business_id,
+            business:businesses!business_projects_business_id_fkey (
               id,
               company_name,
               project_stage,
@@ -123,8 +124,8 @@ export const ProjectDetailsPage = () => {
           setStoredCVUrl(cvData.cv_url);
         }
 
-        // Handle the business data
-        const businessData = projectData.business || {
+        // Handle the business data, ensuring it's a single object
+        const defaultBusiness: Business = {
           company_name: "Project Owner",
           project_stage: "",
           contact_email: "",
@@ -132,6 +133,11 @@ export const ProjectDetailsPage = () => {
           website: "",
           location: ""
         };
+
+        // Extract business data, ensuring it's a single object
+        const businessData = Array.isArray(projectData.business) 
+          ? projectData.business[0] || defaultBusiness
+          : projectData.business || defaultBusiness;
 
         setProject({
           id: projectData.id,
@@ -141,7 +147,7 @@ export const ProjectDetailsPage = () => {
           equity_allocation: projectData.equity_allocation,
           skills_required: projectData.skills_required || [],
           project_timeframe: projectData.project_timeframe,
-          business_id: projectData.id,
+          business_id: projectData.business_id,
           tasks: projectData.tasks || [],
           business: businessData
         });
