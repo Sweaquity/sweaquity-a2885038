@@ -14,14 +14,24 @@ export const getSkillLevel = (level: string): number => {
 };
 
 export const hasRequiredSkillLevel = (userSkill: Skill, requiredSkill: SkillRequirement) => {
+  // Normalize skill names for comparison
+  const normalizedUserSkill = userSkill.skill.toLowerCase().trim();
+  const normalizedRequiredSkill = requiredSkill.skill.toLowerCase().trim();
+  
   const userLevel = getSkillLevel(userSkill.level);
   const requiredLevel = getSkillLevel(requiredSkill.level);
   
-  console.log(`Comparing skill: ${userSkill.skill} (${userSkill.level}) with required: ${requiredSkill.skill} (${requiredSkill.level})`);
-  console.log(`Levels converted: User=${userLevel}, Required=${requiredLevel}`);
+  console.log('Skill comparison:', {
+    userSkill: normalizedUserSkill,
+    userLevel: userSkill.level,
+    requiredSkill: normalizedRequiredSkill,
+    requiredLevel: requiredSkill.level,
+    userLevelNum: userLevel,
+    requiredLevelNum: requiredLevel
+  });
   
-  const matches = userSkill.skill.toLowerCase() === requiredSkill.skill.toLowerCase() && userLevel >= requiredLevel;
-  console.log(`Match result: ${matches}`);
+  const matches = normalizedUserSkill === normalizedRequiredSkill && userLevel >= requiredLevel;
+  console.log(`Match result for ${normalizedUserSkill}: ${matches}`);
   
   return matches;
 };
@@ -41,27 +51,46 @@ interface ProjectMatch {
 }
 
 export const getProjectMatches = (projects: EquityProject[], userSkills: Skill[]): ProjectMatch[] => {
-  console.log('Starting project matching process');
-  console.log('User skills:', userSkills);
-  
+  console.log('Starting matching process with data:', {
+    totalProjects: projects.length,
+    userSkills: userSkills,
+    projects: projects.map(p => ({
+      title: p.title || p.business_roles?.title,
+      id: p.project_id,
+      tasks: p.sub_tasks?.map(t => ({
+        title: t.title,
+        requirements: t.skill_requirements
+      }))
+    }))
+  });
+
   const matchedProjects = projects.map(project => {
-    console.log('\nProcessing project:', project.title || project.business_roles?.title);
-    console.log('Project ID:', project.project_id);
+    console.log('\nAnalyzing project:', {
+      title: project.title || project.business_roles?.title,
+      id: project.project_id,
+      subTasks: project.sub_tasks?.length || 0
+    });
     
-    // Get all tasks with their match scores
     const tasksWithMatches = (project.sub_tasks || []).map(task => {
-      console.log('\n  Processing task:', task.title);
-      console.log('  Required skills:', task.skill_requirements);
+      console.log('\nAnalyzing task:', {
+        title: task.title,
+        requirements: task.skill_requirements
+      });
       
       const matchedSkills = (task.skill_requirements || []).filter(required =>
         userSkills.some(userSkill => hasRequiredSkillLevel(userSkill, required))
       );
 
-      const matchScore = task.skill_requirements ? 
-        (matchedSkills.length / task.skill_requirements.length) * 100 : 0;
+      const matchScore = task.skill_requirements?.length 
+        ? (matchedSkills.length / task.skill_requirements.length) * 100 
+        : 0;
       
-      console.log('  Matched skills:', matchedSkills);
-      console.log(`  Task match score: ${matchScore}%`);
+      console.log('Task match results:', {
+        title: task.title,
+        matchedSkills,
+        totalRequired: task.skill_requirements?.length || 0,
+        matchScore
+      });
 
       return {
         ...task,
@@ -72,17 +101,16 @@ export const getProjectMatches = (projects: EquityProject[], userSkills: Skill[]
       };
     });
 
-    // Filter tasks that have at least one skill match
     const matchedTasks = tasksWithMatches.filter(task => task.matchScore > 0);
-    
-    // Calculate overall project match score
     const projectMatchScore = matchedTasks.length > 0 
       ? matchedTasks.reduce((sum, task) => sum + task.matchScore, 0) / matchedTasks.length
       : 0;
 
-    console.log('\nProject summary:');
-    console.log(`Total matched tasks: ${matchedTasks.length}`);
-    console.log(`Overall project match score: ${projectMatchScore}%`);
+    console.log('Project match summary:', {
+      title: project.title || project.business_roles?.title,
+      matchedTasks: matchedTasks.length,
+      score: projectMatchScore
+    });
 
     return {
       projectId: project.project_id,
@@ -92,7 +120,6 @@ export const getProjectMatches = (projects: EquityProject[], userSkills: Skill[]
     };
   });
 
-  // Filter and sort projects by match score
   return matchedProjects
     .filter(project => project.matchedTasks.length > 0)
     .sort((a, b) => b.matchScore - a.matchScore);
