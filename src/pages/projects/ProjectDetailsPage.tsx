@@ -55,9 +55,9 @@ export const ProjectDetailsPage = () => {
           return;
         }
 
-        // First get the task and join with business_projects
-        const { data: taskData, error: taskError } = await supabase
-          .from('project_sub_tasks')
+        // First get the project details
+        const { data: projectData, error: projectError } = await supabase
+          .from('business_projects')
           .select(`
             id,
             title,
@@ -65,37 +65,41 @@ export const ProjectDetailsPage = () => {
             status,
             equity_allocation,
             skills_required,
-            timeframe,
-            project_id,
-            projects:business_projects(
+            project_timeframe,
+            business:businesses (
+              id,
+              company_name,
+              project_stage,
+              contact_email,
+              industry,
+              website,
+              location
+            ),
+            tasks:project_sub_tasks (
               id,
               title,
-              business:businesses(
-                id,
-                company_name,
-                project_stage,
-                contact_email,
-                industry,
-                website,
-                location
-              )
+              description,
+              status,
+              equity_allocation,
+              skills_required,
+              timeframe
             )
           `)
           .eq('id', id)
           .maybeSingle();
 
-        if (taskError) {
-          console.error('Task error:', taskError);
-          throw taskError;
+        if (projectError) {
+          console.error('Project error:', projectError);
+          throw projectError;
         }
         
-        if (!taskData) {
-          console.error('No task data found for ID:', id);
-          toast.error("Project task not found");
+        if (!projectData) {
+          console.error('No project data found for ID:', id);
+          toast.error("Project not found");
           return;
         }
 
-        console.log('Task data:', taskData);
+        console.log('Project data:', projectData);
 
         // Check if user has already applied
         const { data: applicationData } = await supabase
@@ -120,7 +124,7 @@ export const ProjectDetailsPage = () => {
         }
 
         // Handle the business data
-        const businessData = taskData.projects?.[0]?.business || {
+        const businessData = projectData.business || {
           company_name: "Project Owner",
           project_stage: "",
           contact_email: "",
@@ -130,16 +134,16 @@ export const ProjectDetailsPage = () => {
         };
 
         setProject({
-          id: taskData.id,
-          title: taskData.title,
-          description: taskData.description,
-          status: taskData.status,
-          equity_allocation: taskData.equity_allocation,
-          skills_required: taskData.skills_required || [],
-          project_timeframe: taskData.timeframe,
-          business_id: taskData.project_id,
-          tasks: [taskData],
-          business: businessData as Business
+          id: projectData.id,
+          title: projectData.title,
+          description: projectData.description,
+          status: projectData.status,
+          equity_allocation: projectData.equity_allocation,
+          skills_required: projectData.skills_required || [],
+          project_timeframe: projectData.project_timeframe,
+          business_id: projectData.id,
+          tasks: projectData.tasks || [],
+          business: businessData
         });
       } catch (error) {
         console.error('Error fetching project details:', error);
