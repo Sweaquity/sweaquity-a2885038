@@ -1,0 +1,69 @@
+
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Edit, Trash } from "lucide-react";
+import { TaskList } from "./TaskList";
+
+interface Project {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  equity_allocation: number;
+  skills_required: string[];
+  project_timeframe: string;
+  tasks: any[];
+}
+
+interface ProjectCardProps {
+  project: Project;
+  onEdit: (project: Project) => void;
+  onDelete: (projectId: string) => void;
+}
+
+export const ProjectCard = ({ project, onEdit, onDelete }: ProjectCardProps) => {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-lg font-medium">{project.title}</h3>
+            <p className="text-sm text-muted-foreground">{project.description}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => onEdit(project)}>
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => onDelete(project.id)}
+              className="text-destructive hover:text-destructive"
+            >
+              <Trash className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        <div className="mt-2">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium">Total Equity: {project.equity_allocation}%</span>
+            <span className="text-sm text-muted-foreground">Timeframe: {project.project_timeframe}</span>
+          </div>
+          <div className="mt-2">
+            <p className="text-sm font-medium">Required Skills:</p>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {project.skills_required.map(skill => (
+                <span key={skill} className="px-2 py-1 bg-secondary rounded-full text-xs">
+                  {skill}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <TaskList projectId={project.id} tasks={project.tasks} />
+      </CardContent>
+    </Card>
+  );
+};

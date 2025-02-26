@@ -383,17 +383,66 @@ export type Database = {
         }
         Relationships: []
       }
+      project_notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          project_id: string | null
+          status: string | null
+          task_id: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          project_id?: string | null
+          status?: string | null
+          task_id?: string | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          project_id?: string | null
+          status?: string | null
+          task_id?: string | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_notifications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_notifications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "project_sub_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_sub_tasks: {
         Row: {
           completion_percentage: number | null
           created_at: string | null
           created_by: string | null
+          dependencies: string[] | null
           description: string | null
           equity_allocation: number
           id: string
+          last_activity_at: string | null
           project_id: string | null
+          skill_requirements: Json | null
           skills_required: string[] | null
           status: string | null
+          task_status: string | null
           timeframe: string
           title: string
           updated_at: string | null
@@ -402,12 +451,16 @@ export type Database = {
           completion_percentage?: number | null
           created_at?: string | null
           created_by?: string | null
+          dependencies?: string[] | null
           description?: string | null
           equity_allocation: number
           id?: string
+          last_activity_at?: string | null
           project_id?: string | null
+          skill_requirements?: Json | null
           skills_required?: string[] | null
           status?: string | null
+          task_status?: string | null
           timeframe: string
           title: string
           updated_at?: string | null
@@ -416,12 +469,16 @@ export type Database = {
           completion_percentage?: number | null
           created_at?: string | null
           created_by?: string | null
+          dependencies?: string[] | null
           description?: string | null
           equity_allocation?: number
           id?: string
+          last_activity_at?: string | null
           project_id?: string | null
+          skill_requirements?: Json | null
           skills_required?: string[] | null
           status?: string | null
+          task_status?: string | null
           timeframe?: string
           title?: string
           updated_at?: string | null

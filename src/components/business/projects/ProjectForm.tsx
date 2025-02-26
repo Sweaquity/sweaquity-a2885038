@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { SkillsInput } from "./SkillsInput";
 
 interface ProjectFormProps {
   onProjectCreated: (project: any) => void;
@@ -19,23 +20,6 @@ export const ProjectForm = ({ onProjectCreated }: ProjectFormProps) => {
     skills_required: [] as string[],
     project_timeframe: ""
   });
-  const [skillInput, setSkillInput] = useState("");
-
-  const handleAddSkill = () => {
-    if (!skillInput.trim()) return;
-    setNewProject(prev => ({
-      ...prev,
-      skills_required: [...prev.skills_required, skillInput.trim()]
-    }));
-    setSkillInput("");
-  };
-
-  const handleRemoveSkill = (skill: string) => {
-    setNewProject(prev => ({
-      ...prev,
-      skills_required: prev.skills_required.filter(s => s !== skill)
-    }));
-  };
 
   const handleCreateProject = async () => {
     try {
@@ -123,37 +107,11 @@ export const ProjectForm = ({ onProjectCreated }: ProjectFormProps) => {
           onChange={e => setNewProject(prev => ({ ...prev, equity_allocation: parseFloat(e.target.value) }))}
         />
       </div>
-      <div>
-        <Label>Required Skills</Label>
-        <p className="text-xs text-muted-foreground mb-2">
-          These skills will be broken down into specific requirements in sub-tasks after project creation.
-        </p>
-        <div className="flex gap-2 mb-2">
-          <Input
-            value={skillInput}
-            onChange={e => setSkillInput(e.target.value)}
-            placeholder="Add a skill"
-            onKeyPress={e => e.key === 'Enter' && handleAddSkill()}
-          />
-          <Button type="button" onClick={handleAddSkill}>Add</Button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {newProject.skills_required.map(skill => (
-            <span
-              key={skill}
-              className="px-2 py-1 bg-secondary rounded-full text-xs flex items-center gap-1"
-            >
-              {skill}
-              <button
-                onClick={() => handleRemoveSkill(skill)}
-                className="hover:text-destructive"
-              >
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
-      </div>
+      <SkillsInput
+        skills={newProject.skills_required}
+        onChange={skills => setNewProject(prev => ({ ...prev, skills_required: skills }))}
+        helperText="These skills will be broken down into specific requirements in sub-tasks after project creation."
+      />
       <Button onClick={handleCreateProject} className="w-full">Create Project</Button>
     </div>
   );

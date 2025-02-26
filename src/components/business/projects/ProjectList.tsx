@@ -1,6 +1,7 @@
 
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { Clock } from "lucide-react";
+import { ProjectCard } from "./ProjectCard";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 
 interface Task {
   id: string;
@@ -27,69 +28,42 @@ interface Project {
 
 interface ProjectListProps {
   projects: Project[];
+  onProjectUpdated: (project: Project) => void;
+  onProjectDeleted: (projectId: string) => void;
 }
 
-export const ProjectList = ({ projects }: ProjectListProps) => {
+export const ProjectList = ({ projects, onProjectUpdated, onProjectDeleted }: ProjectListProps) => {
+  const handleEditProject = (project: Project) => {
+    // This will be implemented in the next step with the edit form
+    console.log('Edit project:', project);
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    try {
+      const { error } = await supabase
+        .from('business_projects')
+        .delete()
+        .eq('id', projectId);
+
+      if (error) throw error;
+
+      onProjectDeleted(projectId);
+      toast.success("Project deleted successfully");
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      toast.error("Failed to delete project");
+    }
+  };
+
   return (
     <div className="space-y-6">
       {projects.map(project => (
-        <Card key={project.id}>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">{project.title}</h3>
-              <span className="text-sm text-muted-foreground">
-                Total Equity: {project.equity_allocation}%
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground">{project.description}</p>
-            <div className="mt-2">
-              <p className="text-sm font-medium">Required Skills:</p>
-              <p className="text-xs text-muted-foreground mb-2">
-                These skills will be broken down into specific requirements in sub-tasks after project creation.
-              </p>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {project.skills_required.map(skill => (
-                  <span key={skill} className="px-2 py-1 bg-secondary rounded-full text-xs">
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {project.tasks.map(task => (
-                <div key={task.id} className="border p-4 rounded-lg">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-medium">{task.title}</h4>
-                      <p className="text-sm text-muted-foreground">{task.description}</p>
-                      <div className="mt-2">
-                        <p className="text-sm font-medium">Required Skills:</p>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {task.skills_required.map(skill => (
-                            <span key={skill} className="px-2 py-1 bg-secondary rounded-full text-xs">
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-center space-x-2">
-                        <Clock className="h-4 w-4" />
-                        <span>Due: {task.timeframe}</span>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Equity allocated: {task.equity_allocation}%
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <ProjectCard
+          key={project.id}
+          project={project}
+          onEdit={handleEditProject}
+          onDelete={handleDeleteProject}
+        />
       ))}
     </div>
   );
