@@ -2,8 +2,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { 
   Select,
   SelectContent,
@@ -11,9 +9,12 @@ import {
   SelectTrigger,
   SelectValue 
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { PersonalInfoFields } from "./profile/PersonalInfoFields";
+import { AvailabilitySelector } from "./profile/AvailabilitySelector";
+import { ConsentCheckboxes } from "./profile/ConsentCheckboxes";
 
 interface ProfileFormData {
   first_name: string;
@@ -28,15 +29,6 @@ interface ProfileFormData {
   project_updates_consent: boolean;
   source?: string;
 }
-
-const AVAILABILITY_OPTIONS = [
-  'Immediately available',
-  '2 weeks notice',
-  'Part time',
-  'Ad hoc',
-  'Outside of usual business hours',
-  'Curious to which projects require my skills'
-] as const;
 
 export const ProfileCompletionForm = () => {
   const navigate = useNavigate();
@@ -54,7 +46,6 @@ export const ProfileCompletionForm = () => {
     project_updates_consent: false,
   });
 
-  // Load user email on component mount
   useEffect(() => {
     const loadUserEmail = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -69,7 +60,6 @@ export const ProfileCompletionForm = () => {
     loadUserEmail();
   }, []);
 
-  // Attempt to get referral source from cookie
   useEffect(() => {
     const source = document.cookie
       .split('; ')
@@ -83,6 +73,20 @@ export const ProfileCompletionForm = () => {
       }));
     }
   }, []);
+
+  const handleFieldChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleConsentChange = (field: string, value: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,102 +140,26 @@ export const ProfileCompletionForm = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="first_name">First Name *</Label>
-              <Input
-                id="first_name"
-                required
-                value={formData.first_name}
-                onChange={e => setFormData(prev => ({
-                  ...prev,
-                  first_name: e.target.value
-                }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="last_name">Last Name *</Label>
-              <Input
-                id="last_name"
-                required
-                value={formData.last_name}
-                onChange={e => setFormData(prev => ({
-                  ...prev,
-                  last_name: e.target.value
-                }))}
-              />
-            </div>
-          </div>
+          <PersonalInfoFields
+            firstName={formData.first_name}
+            lastName={formData.last_name}
+            title={formData.title}
+            email={formData.email}
+            location={formData.location}
+            onFieldChange={handleFieldChange}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="title">Professional Title *</Label>
-            <Input
-              id="title"
-              required
-              placeholder="e.g., Senior Software Engineer"
-              value={formData.title}
-              onChange={e => setFormData(prev => ({
-                ...prev,
-                title: e.target.value
-              }))}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email *</Label>
-            <Input
-              id="email"
-              type="email"
-              required
-              value={formData.email}
-              disabled
-              className="bg-muted"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="location">Location *</Label>
-            <Input
-              id="location"
-              required
-              placeholder="e.g., London, UK"
-              value={formData.location}
-              onChange={e => setFormData(prev => ({
-                ...prev,
-                location: e.target.value
-              }))}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="availability">Availability *</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {AVAILABILITY_OPTIONS.map((option) => (
-                <Button
-                  key={option}
-                  type="button"
-                  variant={formData.availability === option ? "default" : "outline"}
-                  className="justify-start"
-                  onClick={() => setFormData(prev => ({
-                    ...prev,
-                    availability: option
-                  }))}
-                >
-                  {option}
-                </Button>
-              ))}
-            </div>
-          </div>
+          <AvailabilitySelector
+            selected={formData.availability}
+            onSelect={(value) => handleFieldChange('availability', value)}
+          />
 
           <div className="space-y-2">
             <Label htmlFor="employment_preference">Sweaquity options or Employment too? *</Label>
             <Select
               value={formData.employment_preference}
               onValueChange={(value: 'full_time' | 'equity' | 'both') => 
-                setFormData(prev => ({
-                  ...prev,
-                  employment_preference: value
-                }))
+                handleFieldChange('employment_preference', value)
               }
             >
               <SelectTrigger>
@@ -245,65 +173,18 @@ export const ProfileCompletionForm = () => {
             </Select>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="terms"
-                checked={formData.terms_accepted}
-                onCheckedChange={(checked: boolean) => setFormData(prev => ({
-                  ...prev,
-                  terms_accepted: checked
-                }))}
-              />
-              <Label htmlFor="terms" className="text-sm">
-                I accept the <a 
-                  href="/terms" 
-                  target="_blank" 
-                  className="text-primary hover:underline"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    // Detect user's location and open appropriate terms page
-                    // For now, we'll just open a generic terms page
-                    window.open('/terms', '_blank');
-                  }}
-                >terms and conditions</a>, and agree to having my data collected *
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="marketing"
-                checked={formData.marketing_consent}
-                onCheckedChange={(checked: boolean) => setFormData(prev => ({
-                  ...prev,
-                  marketing_consent: checked
-                }))}
-              />
-              <Label htmlFor="marketing" className="text-sm">
-                I agree to receive marketing communications
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="updates"
-                checked={formData.project_updates_consent}
-                onCheckedChange={(checked: boolean) => setFormData(prev => ({
-                  ...prev,
-                  project_updates_consent: checked
-                }))}
-              />
-              <Label htmlFor="updates" className="text-sm">
-                I want to receive project updates
-              </Label>
-            </div>
-          </div>
+          <ConsentCheckboxes
+            termsAccepted={formData.terms_accepted}
+            marketingConsent={formData.marketing_consent}
+            projectUpdatesConsent={formData.project_updates_consent}
+            onConsentChange={handleConsentChange}
+          />
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Saving..." : "Complete Profile"}
           </Button>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 };
