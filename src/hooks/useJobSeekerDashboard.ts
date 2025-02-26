@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -56,11 +55,16 @@ export const useJobSeekerDashboard = () => {
         const { data: projectsData, error: projectsError } = await supabase
           .from('business_projects')
           .select(`
-            *,
-            business_roles (
-              title,
-              description
-            ),
+            id,
+            project_id,
+            title,
+            description,
+            status,
+            equity_allocation,
+            created_at,
+            updated_at,
+            business_id,
+            role_id,
             sub_tasks:project_sub_tasks (
               id,
               title,
@@ -83,13 +87,7 @@ export const useJobSeekerDashboard = () => {
         // Fetch user's applications
         const { data: applicationsData } = await supabase
           .from('job_applications')
-          .select(`
-            *,
-            business_roles (
-              title,
-              description
-            )
-          `)
+          .select('*')
           .eq('user_id', session.user.id);
 
         if (applicationsData) {
