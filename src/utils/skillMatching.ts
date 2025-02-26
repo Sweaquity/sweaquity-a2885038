@@ -16,7 +16,7 @@ export const getSkillLevel = (level: string): number => {
 export const hasRequiredSkillLevel = (userSkill: Skill, requiredSkill: SkillRequirement) => {
   const userLevel = getSkillLevel(userSkill.level);
   const requiredLevel = getSkillLevel(requiredSkill.level);
-  return userSkill.name.toLowerCase() === requiredSkill.skill.toLowerCase() && userLevel >= requiredLevel;
+  return userSkill.skill.toLowerCase() === requiredSkill.skill.toLowerCase() && userLevel >= requiredLevel;
 };
 
 export const getSkillMatchCount = (taskSkills: SkillRequirement[] | undefined, userSkills: Skill[]) => {

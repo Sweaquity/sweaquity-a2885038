@@ -1,4 +1,3 @@
-
 export interface JobApplication {
   id: string;
   role_id: string;
@@ -60,7 +59,7 @@ export interface Profile {
 }
 
 export interface Skill {
-  name: string;
+  skill: string;
   level: 'Beginner' | 'Intermediate' | 'Expert';
 }
 

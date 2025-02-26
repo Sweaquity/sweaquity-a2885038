@@ -20,7 +20,7 @@ import {
 import { toast } from "sonner";
 
 interface Skill {
-  name: string;
+  skill: string;
   level: 'Beginner' | 'Intermediate' | 'Expert';
 }
 
@@ -34,7 +34,7 @@ export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
   const [newSkillLevel, setNewSkillLevel] = useState<'Beginner' | 'Intermediate' | 'Expert'>('Intermediate');
 
   const handleDeleteSkill = (skillToDelete: string) => {
-    const updatedSkills = skills.filter(skill => skill.name !== skillToDelete);
+    const updatedSkills = skills.filter(skill => skill.skill !== skillToDelete);
     onSkillsUpdate(updatedSkills);
     toast.success(`Removed skill: ${skillToDelete}`);
   };
@@ -47,12 +47,12 @@ export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
 
     const skillName = newSkill.trim();
     
-    if (skills.some(skill => skill.name.toLowerCase() === skillName.toLowerCase())) {
+    if (skills.some(skill => skill.skill.toLowerCase() === skillName.toLowerCase())) {
       toast.error("This skill already exists");
       return;
     }
 
-    const updatedSkills = [...skills, { name: skillName, level: newSkillLevel }];
+    const updatedSkills = [...skills, { skill: skillName, level: newSkillLevel }];
     onSkillsUpdate(updatedSkills);
     setNewSkill("");
     toast.success("Skill added successfully");
@@ -60,7 +60,7 @@ export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
 
   const handleSkillLevelChange = (skillName: string, newLevel: 'Beginner' | 'Intermediate' | 'Expert') => {
     const updatedSkills = skills.map(skill => 
-      skill.name === skillName ? { ...skill, level: newLevel } : skill
+      skill.skill === skillName ? { ...skill, level: newLevel } : skill
     );
     onSkillsUpdate(updatedSkills);
     toast.success(`Updated ${skillName} level to ${newLevel}`);
@@ -113,14 +113,14 @@ export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
         <div className="flex flex-wrap gap-2">
           {skills.map((skill) => (
             <div 
-              key={skill.name} 
+              key={skill.skill} 
               className="group bg-secondary px-3 py-1 rounded-full text-sm hover:bg-secondary/80 transition-colors flex items-center gap-2"
             >
-              <span>{skill.name}</span>
+              <span>{skill.skill}</span>
               <Select
                 value={skill.level}
                 onValueChange={(value: 'Beginner' | 'Intermediate' | 'Expert') => 
-                  handleSkillLevelChange(skill.name, value)
+                  handleSkillLevelChange(skill.skill, value)
                 }
               >
                 <SelectTrigger className="h-6 w-24 text-xs border-none bg-transparent">
@@ -133,9 +133,9 @@ export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
                 </SelectContent>
               </Select>
               <button
-                onClick={() => handleDeleteSkill(skill.name)}
+                onClick={() => handleDeleteSkill(skill.skill)}
                 className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80"
-                aria-label={`Delete ${skill.name} skill`}
+                aria-label={`Delete ${skill.skill} skill`}
               >
                 ×
               </button>
