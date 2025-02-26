@@ -283,6 +283,7 @@ export type Database = {
           cv_url: string | null
           id: string
           message: string | null
+          project_id: string | null
           status: string | null
           task_id: string
           updated_at: string | null
@@ -294,6 +295,7 @@ export type Database = {
           cv_url?: string | null
           id?: string
           message?: string | null
+          project_id?: string | null
           status?: string | null
           task_id: string
           updated_at?: string | null
@@ -305,12 +307,27 @@ export type Database = {
           cv_url?: string | null
           id?: string
           message?: string | null
+          project_id?: string | null
           status?: string | null
           task_id?: string
           updated_at?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_job_applications_project"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_applications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "job_applications_task_id_fkey"
             columns: ["task_id"]

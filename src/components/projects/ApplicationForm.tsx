@@ -87,39 +87,24 @@ export const ApplicationForm = ({
       }
 
       // Create the application record
+      const applicationData = {
+        user_id: session.user.id,
+        project_id: projectId,
+        task_id: taskId,
+        message: applicationMessage,
+        cv_url: cvUrl || storedCVUrl,
+        status: 'pending'
+      };
+
+      console.log('Submitting application:', applicationData);
+
       const { data: application, error: applicationError } = await supabase
         .from('job_applications')
-        .insert({
-          user_id: session.user.id,
-          project_id: projectId,
-          task_id: taskId,
-          message: applicationMessage,
-          cv_url: cvUrl || storedCVUrl,
-          status: 'pending'
-        })
+        .insert(applicationData)
         .select()
         .single();
 
       if (applicationError) throw applicationError;
-
-      // Update task application data if applying to a specific task
-      if (taskId && application) {
-        const { error: taskError } = await supabase
-          .from('project_sub_tasks')
-          .update({
-            application_count: 1,
-            applications: [{
-              application_id: application.id,
-              user_id: session.user.id,
-              message: applicationMessage,
-              cv_url: cvUrl || storedCVUrl,
-              applied_at: new Date().toISOString()
-            }]
-          })
-          .eq('id', taskId);
-
-        if (taskError) throw taskError;
-      }
 
       toast.success("Application submitted successfully");
       onApplicationSubmitted();

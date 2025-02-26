@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -37,6 +36,10 @@ interface SubTask {
   equity_allocation: number;
   timeframe: string;
   skills_required: string[];
+  status: string;
+  skill_requirements: any[];
+  task_status: string;
+  completion_percentage: number;
 }
 
 interface JobSeekerProfile {
@@ -57,6 +60,7 @@ export const ProjectApplicationPage = () => {
   const [hasStoredCV, setHasStoredCV] = useState(false);
   const [storedCVUrl, setStoredCVUrl] = useState<string | null>(null);
   const [jobSeekerProfile, setJobSeekerProfile] = useState<JobSeekerProfile | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -67,7 +71,6 @@ export const ProjectApplicationPage = () => {
           return;
         }
 
-        // Fetch project and business details
         const { data: projectData, error: projectError } = await supabase
           .from('business_projects')
           .select(`
@@ -86,7 +89,6 @@ export const ProjectApplicationPage = () => {
 
         if (projectError) throw projectError;
 
-        // Fetch sub-tasks
         const { data: taskData, error: taskError } = await supabase
           .from('project_sub_tasks')
           .select('*')
@@ -94,7 +96,6 @@ export const ProjectApplicationPage = () => {
 
         if (taskError) throw taskError;
 
-        // Fetch job seeker profile
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -103,7 +104,6 @@ export const ProjectApplicationPage = () => {
 
         if (profileError) throw profileError;
 
-        // Check for stored CV
         const { data: cvData } = await supabase
           .from('cv_parsed_data')
           .select('cv_url')
@@ -140,7 +140,6 @@ export const ProjectApplicationPage = () => {
 
   return (
     <div className="container mx-auto py-8 px-4 space-y-6">
-      {/* Business Details */}
       <Card>
         <CardHeader className="space-y-2">
           <div className="flex items-center justify-between">
@@ -160,7 +159,6 @@ export const ProjectApplicationPage = () => {
         </CardHeader>
       </Card>
 
-      {/* Project Details */}
       <Card>
         <CardContent className="space-y-6 pt-6">
           <div>
@@ -205,32 +203,57 @@ export const ProjectApplicationPage = () => {
           {subTasks.length > 0 && (
             <div>
               <h4 className="font-medium mb-2">Available Tasks</h4>
-              <div className="space-y-4">
-                {subTasks.map((task) => (
-                  <div key={task.id} className="border rounded-lg p-4">
-                    <h5 className="font-medium">{task.title}</h5>
-                    <p className="text-sm text-muted-foreground mb-2">{task.description}</p>
-                    <div className="flex items-center justify-between text-sm">
-                      <div>Equity: {task.equity_allocation}%</div>
-                      <div>Timeframe: {task.timeframe}</div>
-                    </div>
-                    <div className="mt-2">
-                      <div className="text-sm font-medium">Required Skills:</div>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {task.skills_required?.map((skill, index) => (
-                          <Badge key={index} variant="outline">{skill}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="px-4 py-2 text-left">Select</th>
+                      <th className="px-4 py-2 text-left">Title</th>
+                      <th className="px-4 py-2 text-left">Equity</th>
+                      <th className="px-4 py-2 text-left">Timeframe</th>
+                      <th className="px-4 py-2 text-left">Skills Required</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {subTasks.map((task) => (
+                      <tr key={task.id} className="border-b hover:bg-muted/50">
+                        <td className="px-4 py-2">
+                          <input
+                            type="radio"
+                            name="taskSelection"
+                            value={task.id}
+                            checked={selectedTaskId === task.id}
+                            onChange={() => setSelectedTaskId(task.id)}
+                            className="h-4 w-4"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <div>
+                            <div className="font-medium">{task.title}</div>
+                            <div className="text-sm text-muted-foreground">{task.description}</div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2">{task.equity_allocation}%</td>
+                        <td className="px-4 py-2">{task.timeframe}</td>
+                        <td className="px-4 py-2">
+                          <div className="flex flex-wrap gap-1">
+                            {task.skills_required?.map((skill, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {skill}
+                              </Badge>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Application Form */}
       <Card>
         <CardHeader>
           <h3 className="text-xl font-semibold">Submit Application</h3>
@@ -261,11 +284,12 @@ export const ProjectApplicationPage = () => {
           )}
           <ApplicationForm
             projectId={id || ''}
+            taskId={selectedTaskId || undefined}
             hasStoredCV={hasStoredCV}
             storedCVUrl={storedCVUrl}
             onApplicationSubmitted={() => {
               toast.success("Application submitted successfully");
-              // Optionally redirect to applications list
+              navigate("/seeker/dashboard");
             }}
           />
         </CardContent>
