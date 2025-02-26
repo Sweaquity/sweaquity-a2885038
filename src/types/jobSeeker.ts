@@ -1,3 +1,4 @@
+
 export interface JobApplication {
   id: string;
   role_id: string;
@@ -17,6 +18,7 @@ export interface SkillRequirement {
 
 export interface SubTask {
   id: string;
+  project_id: string;  // Added this line to fix the TypeScript error
   title: string;
   description: string;
   skills_required: string[];
