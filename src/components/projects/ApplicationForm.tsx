@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 
 interface ApplicationFormProps {
   projectId: string;
-  taskId?: string;  // Made optional since we might apply to project or task
+  taskId?: string;
   hasStoredCV: boolean;
   storedCVUrl: string | null;
   onApplicationSubmitted: () => void;
@@ -74,7 +74,6 @@ export const ApplicationForm = ({
 
         cvUrl = publicUrl;
 
-        // Update CV URL in cv_parsed_data if it's a new CV
         if (!useStoredCV) {
           await supabase
             .from('cv_parsed_data')
@@ -86,7 +85,7 @@ export const ApplicationForm = ({
         }
       }
 
-      // Start a transaction to update both tables
+      // First, create the application
       const { data: applicationData, error: applicationError } = await supabase
         .from('job_applications')
         .insert({
@@ -102,19 +101,32 @@ export const ApplicationForm = ({
 
       if (applicationError) throw applicationError;
 
-      // Update task application count and details if applying to a specific task
+      // If applying to a specific task, update its application data
       if (taskId) {
+        // First, get current applications array
+        const { data: currentTask } = await supabase
+          .from('project_sub_tasks')
+          .select('applications, application_count')
+          .eq('id', taskId)
+          .single();
+
+        const currentApplications = currentTask?.applications || [];
+        const newApplicationCount = (currentTask?.application_count || 0) + 1;
+
+        // Add new application to array
+        const newApplication = {
+          application_id: applicationData.id,
+          user_id: session.user.id,
+          message: applicationMessage,
+          cv_url: cvUrl,
+          applied_at: new Date().toISOString()
+        };
+
         const { error: taskUpdateError } = await supabase
           .from('project_sub_tasks')
           .update({
-            application_count: supabase.sql`application_count + 1`,
-            applications: supabase.sql`applications || ${JSON.stringify({
-              application_id: applicationData.id,
-              user_id: session.user.id,
-              message: applicationMessage,
-              cv_url: cvUrl,
-              applied_at: new Date().toISOString()
-            })}::jsonb`
+            application_count: newApplicationCount,
+            applications: [...currentApplications, newApplication]
           })
           .eq('id', taskId);
 
