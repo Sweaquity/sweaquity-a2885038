@@ -12,14 +12,22 @@ const AVAILABILITY_OPTIONS = [
 ] as const;
 
 interface AvailabilitySelectorProps {
-  selected: string;
-  onSelect: (value: string) => void;
+  selected: string[];
+  onSelect: (value: string[]) => void;
 }
 
 export const AvailabilitySelector = ({
   selected,
   onSelect
 }: AvailabilitySelectorProps) => {
+  const handleSelect = (option: string) => {
+    if (selected.includes(option)) {
+      onSelect(selected.filter(item => item !== option));
+    } else {
+      onSelect([...selected, option]);
+    }
+  };
+
   return (
     <div className="space-y-2">
       <Label htmlFor="availability">Availability *</Label>
@@ -28,9 +36,9 @@ export const AvailabilitySelector = ({
           <Button
             key={option}
             type="button"
-            variant={selected === option ? "default" : "outline"}
+            variant={selected.includes(option) ? "default" : "outline"}
             className="justify-start"
-            onClick={() => onSelect(option)}
+            onClick={() => handleSelect(option)}
           >
             {option}
           </Button>

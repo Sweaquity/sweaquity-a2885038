@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,7 @@ interface ProfileFormData {
   title: string;
   email: string;
   location: string;
-  availability: string;
+  availability: string[];
   employment_preference: 'full_time' | 'equity' | 'both';
   terms_accepted: boolean;
   marketing_consent: boolean;
@@ -39,7 +38,7 @@ export const ProfileCompletionForm = () => {
     title: '',
     email: '',
     location: '',
-    availability: '',
+    availability: [],
     employment_preference: 'both',
     terms_accepted: false,
     marketing_consent: false,
@@ -74,7 +73,7 @@ export const ProfileCompletionForm = () => {
     }
   }, []);
 
-  const handleFieldChange = (field: string, value: string) => {
+  const handleFieldChange = (field: string, value: string | string[]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -96,8 +95,8 @@ export const ProfileCompletionForm = () => {
       return;
     }
 
-    if (!formData.availability) {
-      toast.error("Please select your availability");
+    if (formData.availability.length === 0) {
+      toast.error("Please select at least one availability option");
       return;
     }
 
@@ -120,7 +119,7 @@ export const ProfileCompletionForm = () => {
       if (error) throw error;
 
       toast.success("Profile updated successfully");
-      navigate("/seeker/dashboard");
+      navigate("/seeker/dashboard", { state: { activeTab: "profile" } });
     } catch (error) {
       console.error('Error updating profile:', error);
       toast.error("Failed to update profile");
