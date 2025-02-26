@@ -102,7 +102,15 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
                     {task.skill_requirements.map((skillReq, index) => (
-                      <Badge key={index} variant="secondary">
+                      <Badge 
+                        key={index} 
+                        variant="secondary"
+                        className={
+                          task.status === 'allocated' 
+                            ? 'bg-green-100 text-green-800 border-green-200'
+                            : 'bg-orange-100 text-orange-800 border-orange-200'
+                        }
+                      >
                         {skillReq.skill} - {skillReq.level}
                       </Badge>
                     ))}
@@ -111,7 +119,16 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
                 <TableCell>{task.equity_allocation}%</TableCell>
                 <TableCell>{task.timeframe}</TableCell>
                 <TableCell>
-                  <Badge variant="outline">{task.status}</Badge>
+                  <Badge 
+                    variant="outline"
+                    className={
+                      task.status === 'allocated'
+                        ? 'bg-green-100 text-green-800 border-green-200'
+                        : 'bg-orange-100 text-orange-800 border-orange-200'
+                    }
+                  >
+                    {task.status}
+                  </Badge>
                 </TableCell>
               </TableRow>
             ))}
