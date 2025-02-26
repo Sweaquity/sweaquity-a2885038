@@ -8,6 +8,7 @@ export interface JobApplication {
   business_roles?: {
     title: string;
     description: string;
+    required_skills?: string[];
   };
 }
 
@@ -28,6 +29,7 @@ export interface EquityProject {
   business_roles?: {
     title: string;
     description: string;
+    required_skills?: string[];
   };
 }
 

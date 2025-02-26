@@ -2,15 +2,16 @@
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { EquityProject } from "@/types/jobSeeker";
+import { EquityProject, Skill } from "@/types/jobSeeker";
 
 interface OpportunitiesTabProps {
   projects: EquityProject[];
-  userSkills: Array<{ name: string; level: string }>;
+  userSkills: Skill[];
 }
 
 export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps) => {
-  const getSkillMatchCount = (projectSkills: string[], userSkills: Array<{ name: string; level: string }>) => {
+  const getSkillMatchCount = (projectSkills: string[] | undefined, userSkills: Skill[]) => {
+    if (!projectSkills) return 0;
     return projectSkills.filter(skill => 
       userSkills.some(userSkill => 
         userSkill.name.toLowerCase() === skill.toLowerCase()
@@ -19,12 +20,13 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
   };
 
   const getMatchPercentage = (matchCount: number, totalRequired: number) => {
+    if (totalRequired === 0) return 0;
     return Math.round((matchCount / totalRequired) * 100);
   };
 
   const sortedProjects = [...projects].sort((a, b) => {
-    const aMatchCount = getSkillMatchCount(a.business_roles?.required_skills || [], userSkills);
-    const bMatchCount = getSkillMatchCount(b.business_roles?.required_skills || [], userSkills);
+    const aMatchCount = getSkillMatchCount(a.business_roles?.required_skills, userSkills);
+    const bMatchCount = getSkillMatchCount(b.business_roles?.required_skills, userSkills);
     return bMatchCount - aMatchCount;
   });
 
@@ -36,14 +38,9 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
       <CardContent>
         <div className="space-y-4">
           {sortedProjects.map(project => {
-            const matchedSkillsCount = getSkillMatchCount(
-              project.business_roles?.required_skills || [],
-              userSkills
-            );
-            const matchPercentage = getMatchPercentage(
-              matchedSkillsCount,
-              (project.business_roles?.required_skills || []).length
-            );
+            const requiredSkills = project.business_roles?.required_skills || [];
+            const matchedSkillsCount = getSkillMatchCount(requiredSkills, userSkills);
+            const matchPercentage = getMatchPercentage(matchedSkillsCount, requiredSkills.length);
 
             // Only show projects with at least one skill match
             if (matchedSkillsCount === 0) return null;
@@ -91,7 +88,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                       <div>
                         <p className="font-medium text-sm">Skills Required</p>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {project.business_roles?.required_skills?.map((skill, index) => (
+                          {requiredSkills.map((skill, index) => (
                             <Badge 
                               key={index}
                               variant="outline"
@@ -115,7 +112,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
             );
           })}
           {sortedProjects.filter(project => 
-            getSkillMatchCount(project.business_roles?.required_skills || [], userSkills) > 0
+            getSkillMatchCount(project.business_roles?.required_skills, userSkills) > 0
           ).length === 0 && (
             <p className="text-muted-foreground">No matching opportunities found.</p>
           )}
