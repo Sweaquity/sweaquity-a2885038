@@ -4,6 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Edit, Trash } from "lucide-react";
 import { TaskList } from "./TaskList";
 
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  hours_logged: number;
+  equity_earned: number;
+  equity_allocation: number;
+  timeframe: string;
+  skills_required: string[];
+}
+
 interface Project {
   id: string;
   title: string;
@@ -12,7 +24,7 @@ interface Project {
   equity_allocation: number;
   skills_required: string[];
   project_timeframe: string;
-  tasks: any[];
+  tasks: Task[];
 }
 
 interface ProjectCardProps {
@@ -22,6 +34,19 @@ interface ProjectCardProps {
 }
 
 export const ProjectCard = ({ project, onEdit, onDelete }: ProjectCardProps) => {
+  const handleTaskDeleted = (taskId: string) => {
+    // This will be handled by the parent's onProjectUpdated
+    const updatedTasks = project.tasks.filter(task => task.id !== taskId);
+    onEdit({ ...project, tasks: updatedTasks });
+  };
+
+  const handleTaskUpdated = (updatedTask: Task) => {
+    const updatedTasks = project.tasks.map(task => 
+      task.id === updatedTask.id ? updatedTask : task
+    );
+    onEdit({ ...project, tasks: updatedTasks });
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -62,7 +87,14 @@ export const ProjectCard = ({ project, onEdit, onDelete }: ProjectCardProps) => 
         </div>
       </CardHeader>
       <CardContent>
-        <TaskList projectId={project.id} tasks={project.tasks} />
+        <TaskList 
+          projectId={project.id} 
+          tasks={project.tasks}
+          onTaskDeleted={handleTaskDeleted}
+          onTaskUpdated={handleTaskUpdated}
+          availableSkills={project.skills_required}
+          totalEquity={project.equity_allocation}
+        />
       </CardContent>
     </Card>
   );

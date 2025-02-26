@@ -19,6 +19,7 @@ interface SubTaskFormProps {
   currentTotalTaskEquity: number;
   onTaskCreated: (task: any) => void;
   onCancel: () => void;
+  initialData?: Task;
 }
 
 export const SubTaskForm = ({ 
@@ -27,15 +28,16 @@ export const SubTaskForm = ({
   totalEquity,
   currentTotalTaskEquity,
   onTaskCreated, 
-  onCancel 
+  onCancel,
+  initialData 
 }: SubTaskFormProps) => {
   const [task, setTask] = useState({
-    title: "",
-    description: "",
-    timeframe: "",
-    equity_allocation: 0,
-    skill_requirements: [] as SkillRequirement[],
-    dependencies: [] as string[]
+    title: initialData?.title || "",
+    description: initialData?.description || "",
+    timeframe: initialData?.timeframe || "",
+    equity_allocation: initialData?.equity_allocation || 0,
+    skill_requirements: initialData?.skill_requirements || [],
+    dependencies: initialData?.dependencies || []
   });
 
   const [selectedSkill, setSelectedSkill] = useState("");
@@ -68,33 +70,46 @@ export const SubTaskForm = ({
         return;
       }
 
-      const remainingEquity = totalEquity - currentTotalTaskEquity;
-      if (task.equity_allocation > remainingEquity) {
-        toast.error(`Equity allocation cannot exceed remaining equity (${remainingEquity}%)`);
+      const availableEquity = initialData 
+        ? totalEquity - currentTotalTaskEquity + initialData.equity_allocation
+        : totalEquity - currentTotalTaskEquity;
+
+      if (task.equity_allocation > availableEquity) {
+        toast.error(`Equity allocation cannot exceed remaining equity (${availableEquity}%)`);
         return;
       }
 
-      const { data, error } = await supabase
-        .from('project_sub_tasks')
-        .insert({
-          project_id: projectId,
-          title: task.title,
-          description: task.description,
-          timeframe: task.timeframe,
-          equity_allocation: task.equity_allocation,
-          skill_requirements: task.skill_requirements,
-          dependencies: task.dependencies
-        })
-        .select()
-        .single();
+      if (initialData) {
+        const { data, error } = await supabase
+          .from('project_sub_tasks')
+          .update({
+            ...task,
+            project_id: projectId
+          })
+          .eq('id', initialData.id)
+          .select()
+          .single();
 
-      if (error) throw error;
+        if (error) throw error;
+        onTaskCreated(data);
+      } else {
+        const { data, error } = await supabase
+          .from('project_sub_tasks')
+          .insert({
+            ...task,
+            project_id: projectId
+          })
+          .select()
+          .single();
 
-      onTaskCreated(data);
-      toast.success("Task created successfully");
+        if (error) throw error;
+        onTaskCreated(data);
+      }
+
+      toast.success(`Task ${initialData ? 'updated' : 'created'} successfully`);
     } catch (error) {
-      console.error('Error creating task:', error);
-      toast.error("Failed to create task");
+      console.error('Error with task:', error);
+      toast.error(`Failed to ${initialData ? 'update' : 'create'} task`);
     }
   };
 
@@ -208,7 +223,7 @@ export const SubTaskForm = ({
           Cancel
         </Button>
         <Button onClick={handleSubmit}>
-          Create Task
+          {initialData ? 'Update Task' : 'Create Task'}
         </Button>
       </div>
     </div>

@@ -84,6 +84,54 @@ export const ProjectEditDialog = ({
     }
   };
 
+  const handleTaskDeleted = async (taskId: string) => {
+    try {
+      const { error } = await supabase
+        .from('project_sub_tasks')
+        .delete()
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      if (currentProject) {
+        const updatedProject = {
+          ...currentProject,
+          tasks: currentProject.tasks.filter(task => task.id !== taskId)
+        };
+        setCurrentProject(updatedProject);
+        onProjectUpdated(updatedProject);
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast.error("Failed to delete task");
+    }
+  };
+
+  const handleTaskUpdated = async (updatedTask: Task) => {
+    if (!currentProject) return;
+
+    try {
+      const { error } = await supabase
+        .from('project_sub_tasks')
+        .update(updatedTask)
+        .eq('id', updatedTask.id);
+
+      if (error) throw error;
+
+      const updatedProject = {
+        ...currentProject,
+        tasks: currentProject.tasks.map(task => 
+          task.id === updatedTask.id ? updatedTask : task
+        )
+      };
+      setCurrentProject(updatedProject);
+      onProjectUpdated(updatedProject);
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast.error("Failed to update task");
+    }
+  };
+
   if (!project) return null;
 
   return (
