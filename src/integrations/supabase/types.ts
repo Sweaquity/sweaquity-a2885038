@@ -276,6 +276,50 @@ export type Database = {
         }
         Relationships: []
       }
+      job_applications: {
+        Row: {
+          applied_at: string | null
+          created_at: string | null
+          cv_url: string | null
+          id: string
+          message: string | null
+          status: string | null
+          task_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string | null
+          created_at?: string | null
+          cv_url?: string | null
+          id?: string
+          message?: string | null
+          status?: string | null
+          task_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          applied_at?: string | null
+          created_at?: string | null
+          cv_url?: string | null
+          id?: string
+          message?: string | null
+          status?: string | null
+          task_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_applications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "project_sub_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketing_contacts: {
         Row: {
           contact_type: string | null
