@@ -17,6 +17,7 @@ const JobSeekerDashboard = () => {
     cvUrl,
     applications,
     equityProjects,
+    availableOpportunities,
     parsedCvData,
     skills,
     logEffort,
@@ -153,6 +154,7 @@ const JobSeekerDashboard = () => {
             skills={skills}
             applications={applications}
             equityProjects={equityProjects}
+            availableOpportunities={availableOpportunities}
             logEffort={logEffort}
             handleFileUpload={handleFileUpload}
             onSkillsUpdate={handleSkillsUpdate}
