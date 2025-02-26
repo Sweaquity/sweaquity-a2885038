@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -28,6 +29,7 @@ export const useJobSeekerDashboard = () => {
           return;
         }
 
+        // Fetch profile and skills
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('first_name, last_name, title, email, location, skills')
@@ -50,6 +52,7 @@ export const useJobSeekerDashboard = () => {
           setSkills(convertedSkills);
         }
 
+        // Fetch all available sub-tasks for matching
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
           .select('*')
@@ -60,6 +63,7 @@ export const useJobSeekerDashboard = () => {
           throw tasksError;
         }
 
+        // Convert tasks to equity projects format
         const convertedProjects: EquityProject[] = tasksData.map(task => ({
           id: task.id,
           project_id: task.project_id,
@@ -72,7 +76,7 @@ export const useJobSeekerDashboard = () => {
           title: task.title,
           sub_tasks: [{
             id: task.id,
-            project_id: task.project_id,
+            project_id: task.project_id,  // Added this line
             title: task.title,
             description: task.description,
             timeframe: task.timeframe,
@@ -88,61 +92,17 @@ export const useJobSeekerDashboard = () => {
         console.log('Fetched and converted tasks:', convertedProjects);
         setEquityProjects(convertedProjects);
 
-        const { data: applicationsData, error: applicationsError } = await supabase
+        // Fetch user's applications
+        const { data: applicationsData } = await supabase
           .from('job_applications')
-          .select(`
-            *,
-            project:business_projects (
-              title,
-              description,
-              business_id
-            ),
-            task:project_sub_tasks (
-              title,
-              description,
-              equity_allocation,
-              timeframe
-            )
-          `)
+          .select('*')
           .eq('user_id', session.user.id);
 
-        if (applicationsError) throw applicationsError;
+        if (applicationsData) {
+          setApplications(applicationsData);
+        }
 
-        const { data: equityProjectsData, error: equityError } = await supabase
-          .from('job_applications')
-          .select(`
-            *,
-            project:business_projects (
-              title,
-              description,
-              business_id
-            ),
-            task:project_sub_tasks (
-              title,
-              description,
-              equity_allocation,
-              timeframe
-            )
-          `)
-          .eq('user_id', session.user.id)
-          .eq('status', 'accepted');
-
-        if (equityError) throw equityError;
-
-        setApplications(applicationsData || []);
-        setEquityProjects(equityProjectsData?.map(app => ({
-          id: app.task.id,
-          project_id: app.project_id,
-          equity_amount: app.task.equity_allocation,
-          time_allocated: app.task.timeframe,
-          status: 'active',
-          start_date: app.applied_at,
-          effort_logs: [],
-          total_hours_logged: 0,
-          title: app.task.title,
-          sub_tasks: [app.task]
-        })) || []);
-
+        // Fetch parsed CV data
         const { data: cvData } = await supabase
           .from('cv_parsed_data')
           .select('*')
