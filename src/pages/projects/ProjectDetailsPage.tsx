@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { ActiveRolesTable } from "@/components/business/roles/ActiveRolesTable";
 
 interface Business {
+  id?: string;
   company_name: string;
   project_stage: string;
   contact_email: string;
@@ -66,7 +67,7 @@ export const ProjectDetailsPage = () => {
             skills_required,
             timeframe,
             project_id,
-            business:project_id (
+            business:business_projects!project_id (
               id,
               company_name,
               project_stage,
@@ -107,6 +108,16 @@ export const ProjectDetailsPage = () => {
           setStoredCVUrl(cvData.cv_url);
         }
 
+        // Handle the business data
+        const businessData = taskData.business || {
+          company_name: "Project Owner",
+          project_stage: "",
+          contact_email: "",
+          industry: "",
+          website: "",
+          location: ""
+        };
+
         setProject({
           id: taskData.id,
           title: taskData.title,
@@ -117,14 +128,7 @@ export const ProjectDetailsPage = () => {
           project_timeframe: taskData.timeframe,
           business_id: taskData.project_id,
           tasks: [taskData],
-          business: taskData.business || {
-            company_name: "Project Owner",
-            project_stage: "",
-            contact_email: "",
-            industry: "",
-            website: "",
-            location: ""
-          }
+          business: businessData as Business
         });
       } catch (error) {
         console.error('Error fetching project details:', error);
