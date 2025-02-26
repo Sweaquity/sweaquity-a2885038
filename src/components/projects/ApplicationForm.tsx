@@ -73,23 +73,53 @@ export const ApplicationForm = ({
           .getPublicUrl(fileName);
 
         cvUrl = publicUrl;
+
+        // Update CV URL in cv_parsed_data if it's a new CV
+        if (!useStoredCV) {
+          await supabase
+            .from('cv_parsed_data')
+            .upsert({
+              user_id: session.user.id,
+              cv_url: cvUrl,
+              cv_upload_date: new Date().toISOString()
+            });
+        }
       }
 
-      // Create project-level application if no taskId
-      const applicationData = {
-        user_id: session.user.id,
-        project_id: projectId,
-        task_id: taskId || null,
-        message: applicationMessage,
-        cv_url: cvUrl,
-        status: 'pending'
-      };
-
-      const { error: applicationError } = await supabase
+      // Start a transaction to update both tables
+      const { data: applicationData, error: applicationError } = await supabase
         .from('job_applications')
-        .insert(applicationData);
+        .insert({
+          user_id: session.user.id,
+          project_id: projectId,
+          task_id: taskId,
+          message: applicationMessage,
+          cv_url: cvUrl,
+          status: 'pending'
+        })
+        .select()
+        .single();
 
       if (applicationError) throw applicationError;
+
+      // Update task application count and details if applying to a specific task
+      if (taskId) {
+        const { error: taskUpdateError } = await supabase
+          .from('project_sub_tasks')
+          .update({
+            application_count: supabase.sql`application_count + 1`,
+            applications: supabase.sql`applications || ${JSON.stringify({
+              application_id: applicationData.id,
+              user_id: session.user.id,
+              message: applicationMessage,
+              cv_url: cvUrl,
+              applied_at: new Date().toISOString()
+            })}::jsonb`
+          })
+          .eq('id', taskId);
+
+        if (taskUpdateError) throw taskUpdateError;
+      }
 
       toast.success("Application submitted successfully");
       onApplicationSubmitted();
