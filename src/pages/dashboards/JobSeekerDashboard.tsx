@@ -1,5 +1,6 @@
+
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -52,6 +53,8 @@ interface Profile {
 
 const JobSeekerDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const activeTabFromState = location.state?.activeTab || "profile";
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [cvUrl, setCvUrl] = useState<string | null>(null);
@@ -304,7 +307,7 @@ const JobSeekerDashboard = () => {
           <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
         </div>
 
-        <Tabs defaultValue="profile" className="space-y-6">
+        <Tabs defaultValue={activeTabFromState} className="space-y-6">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="opportunities">Opportunities</TabsTrigger>
