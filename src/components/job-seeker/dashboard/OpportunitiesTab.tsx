@@ -29,7 +29,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
     (project.sub_tasks || []).map(task => ({
       ...task,
       projectId: project.project_id,
-      projectTitle: project.title,
+      projectTitle: project.business_roles?.title || project.title || 'Untitled Project',
       matchCount: getSkillMatchCount(task.skills_required, userSkills)
     }))
   ).filter(task => task.matchCount > 0)

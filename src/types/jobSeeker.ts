@@ -5,6 +5,10 @@ export interface JobApplication {
   status: string;
   applied_at: string;
   notes: string;
+  business_roles?: {
+    title: string;
+    description: string;
+  };
 }
 
 export interface SubTask {
@@ -34,23 +38,9 @@ export interface EquityProject {
   }[];
   total_hours_logged: number;
   sub_tasks?: SubTask[];
-}
-
-export interface Profile {
-  first_name: string | null;
-  last_name: string | null;
-  title: string | null;
-  email: string | null;
-  location: string | null;
-}
-
-export interface Skill {
-  name: string;
-  level: 'Beginner' | 'Intermediate' | 'Expert';
-}
-
-export interface LogEffort {
-  projectId: string;
-  hours: number;
-  description: string;
+  business_roles?: {
+    title: string;
+    description: string;
+  };
+  title?: string;
 }

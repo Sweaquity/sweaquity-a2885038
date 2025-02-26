@@ -31,7 +31,7 @@ export const EquityTab = ({
               <div className="grid grid-cols-4 gap-4 mb-4">
                 <div>
                   <p className="font-medium">Company/Project</p>
-                  <p>{project.business_roles?.title}</p>
+                  <p>{project.business_roles?.title || project.title || 'Untitled Project'}</p>
                 </div>
                 <div>
                   <p className="font-medium">Total Hours</p>

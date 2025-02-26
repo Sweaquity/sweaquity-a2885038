@@ -20,7 +20,7 @@ export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
                 <div className="grid grid-cols-4 gap-4">
                   <div>
                     <p className="font-medium">Company/Project</p>
-                    <p>{application.business_roles?.title}</p>
+                    <p>{application.business_roles?.title || 'Untitled Project'}</p>
                   </div>
                   <div>
                     <p className="font-medium">Status</p>
