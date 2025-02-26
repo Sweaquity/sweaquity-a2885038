@@ -1,5 +1,5 @@
 
-import { Skill, SkillRequirement, EquityProject } from "@/types/jobSeeker";
+import { Skill, SkillRequirement, EquityProject, SubTask } from "@/types/jobSeeker";
 
 export const getSkillLevel = (level: string): number => {
   const levels = {
@@ -19,7 +19,21 @@ export const hasRequiredSkillLevel = (userSkill: Skill, requiredSkill: SkillRequ
   return userSkill.skill.toLowerCase() === requiredSkill.skill.toLowerCase() && userLevel >= requiredLevel;
 };
 
-export const getProjectMatches = (projects: EquityProject[], userSkills: Skill[]) => {
+interface MatchedTask extends SubTask {
+  matchScore: number;
+  projectId: string;
+  projectTitle: string;
+  matchedSkills: SkillRequirement[];
+}
+
+interface ProjectMatch {
+  projectId: string;
+  projectTitle: string;
+  matchScore: number;
+  matchedTasks: MatchedTask[];
+}
+
+export const getProjectMatches = (projects: EquityProject[], userSkills: Skill[]): ProjectMatch[] => {
   const matchedProjects = projects.map(project => {
     // Get all tasks with their match scores
     const tasksWithMatches = (project.sub_tasks || []).map(task => {
