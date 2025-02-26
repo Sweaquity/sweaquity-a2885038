@@ -44,3 +44,22 @@ export interface EquityProject {
   };
   title?: string;
 }
+
+export interface Profile {
+  first_name: string | null;
+  last_name: string | null;
+  title: string | null;
+  email: string | null;
+  location: string | null;
+}
+
+export interface Skill {
+  name: string;
+  level: 'Beginner' | 'Intermediate' | 'Expert';
+}
+
+export interface LogEffort {
+  projectId: string;
+  hours: number;
+  description: string;
+}
