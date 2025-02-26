@@ -5,11 +5,18 @@ export interface JobApplication {
   status: string;
   applied_at: string;
   notes: string;
-  business_roles?: {
-    title: string;
-    description: string;
-    required_skills?: string[];
-  };
+}
+
+export interface SubTask {
+  id: string;
+  title: string;
+  description: string;
+  skills_required: string[];
+  equity_allocation: number;
+  timeframe: string;
+  status: string;
+  task_status: string;
+  completion_percentage: number;
 }
 
 export interface EquityProject {
@@ -26,11 +33,7 @@ export interface EquityProject {
     description: string;
   }[];
   total_hours_logged: number;
-  business_roles?: {
-    title: string;
-    description: string;
-    required_skills?: string[];
-  };
+  sub_tasks?: SubTask[];
 }
 
 export interface Profile {

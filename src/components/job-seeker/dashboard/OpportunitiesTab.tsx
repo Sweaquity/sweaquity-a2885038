@@ -10,9 +10,9 @@ interface OpportunitiesTabProps {
 }
 
 export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps) => {
-  const getSkillMatchCount = (projectSkills: string[] | undefined, userSkills: Skill[]) => {
-    if (!projectSkills) return 0;
-    return projectSkills.filter(skill => 
+  const getSkillMatchCount = (taskSkills: string[] | undefined, userSkills: Skill[]) => {
+    if (!taskSkills) return 0;
+    return taskSkills.filter(skill => 
       userSkills.some(userSkill => 
         userSkill.name.toLowerCase() === skill.toLowerCase()
       )
@@ -24,31 +24,34 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
     return Math.round((matchCount / totalRequired) * 100);
   };
 
-  const sortedProjects = [...projects].sort((a, b) => {
-    const aMatchCount = getSkillMatchCount(a.business_roles?.required_skills, userSkills);
-    const bMatchCount = getSkillMatchCount(b.business_roles?.required_skills, userSkills);
-    return bMatchCount - aMatchCount;
-  });
+  // Get all tasks from all projects and sort them by skill match
+  const matchedTasks = projects.flatMap(project => 
+    (project.sub_tasks || []).map(task => ({
+      ...task,
+      projectId: project.project_id,
+      projectTitle: project.title,
+      matchCount: getSkillMatchCount(task.skills_required, userSkills)
+    }))
+  ).filter(task => task.matchCount > 0)
+  .sort((a, b) => b.matchCount - a.matchCount);
 
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-lg font-semibold">Matched Skills Projects</h2>
+        <h2 className="text-lg font-semibold">Matched Skills Tasks</h2>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {sortedProjects.map(project => {
-            const requiredSkills = project.business_roles?.required_skills || [];
-            const matchedSkillsCount = getSkillMatchCount(requiredSkills, userSkills);
-            const matchPercentage = getMatchPercentage(matchedSkillsCount, requiredSkills.length);
-
-            // Only show projects with at least one skill match
-            if (matchedSkillsCount === 0) return null;
+          {matchedTasks.map(task => {
+            const matchPercentage = getMatchPercentage(
+              task.matchCount,
+              task.skills_required.length
+            );
 
             return (
               <Link 
-                key={project.id} 
-                to={`/projects/${project.project_id}`}
+                key={task.id} 
+                to={`/projects/${task.projectId}`}
                 className="block"
               >
                 <div className="border p-4 rounded-lg hover:bg-secondary/50 transition-colors">
@@ -56,10 +59,10 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                     <div className="flex justify-between items-start">
                       <div>
                         <h3 className="font-medium text-lg">
-                          {project.business_roles?.title}
+                          {task.title}
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          {project.business_roles?.description}
+                          {task.description}
                         </p>
                       </div>
                       <Badge 
@@ -79,16 +82,16 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                     <div className="grid grid-cols-3 gap-4">
                       <div>
                         <p className="font-medium text-sm">Timeframe</p>
-                        <p className="text-sm">{project.time_allocated}</p>
+                        <p className="text-sm">{task.timeframe}</p>
                       </div>
                       <div>
                         <p className="font-medium text-sm">Equity Available</p>
-                        <p className="text-sm">{project.equity_amount}%</p>
+                        <p className="text-sm">{task.equity_allocation}%</p>
                       </div>
                       <div>
                         <p className="font-medium text-sm">Skills Required</p>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {requiredSkills.map((skill, index) => (
+                          {task.skills_required.map((skill, index) => (
                             <Badge 
                               key={index}
                               variant="outline"
@@ -111,10 +114,8 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
               </Link>
             );
           })}
-          {sortedProjects.filter(project => 
-            getSkillMatchCount(project.business_roles?.required_skills, userSkills) > 0
-          ).length === 0 && (
-            <p className="text-muted-foreground">No matching opportunities found.</p>
+          {matchedTasks.length === 0 && (
+            <p className="text-muted-foreground">No matching tasks found.</p>
           )}
         </div>
       </CardContent>
