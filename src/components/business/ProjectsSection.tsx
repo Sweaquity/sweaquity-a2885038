@@ -71,6 +71,16 @@ export const ProjectsSection = () => {
     setShowProjectForm(false);
   };
 
+  const handleProjectUpdated = (updatedProject: Project) => {
+    setProjects(projects.map(project => 
+      project.id === updatedProject.id ? updatedProject : project
+    ));
+  };
+
+  const handleProjectDeleted = (projectId: string) => {
+    setProjects(projects.filter(project => project.id !== projectId));
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -99,7 +109,11 @@ export const ProjectsSection = () => {
                 <ProjectForm onProjectCreated={handleProjectCreated} />
               </div>
             ) : (
-              <ProjectList projects={projects} />
+              <ProjectList 
+                projects={projects}
+                onProjectUpdated={handleProjectUpdated}
+                onProjectDeleted={handleProjectDeleted}
+              />
             )}
           </TabsContent>
 
