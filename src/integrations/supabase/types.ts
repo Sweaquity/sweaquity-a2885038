@@ -62,30 +62,45 @@ export type Database = {
       business_projects: {
         Row: {
           business_id: string
+          completion_percentage: number | null
           created_at: string | null
+          created_by: string | null
           description: string | null
+          equity_allocated: number | null
           equity_allocation: number | null
           id: string
+          project_timeframe: string | null
+          skills_required: string[] | null
           status: string | null
           title: string
           updated_at: string | null
         }
         Insert: {
           business_id: string
+          completion_percentage?: number | null
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
+          equity_allocated?: number | null
           equity_allocation?: number | null
           id?: string
+          project_timeframe?: string | null
+          skills_required?: string[] | null
           status?: string | null
           title: string
           updated_at?: string | null
         }
         Update: {
           business_id?: string
+          completion_percentage?: number | null
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
+          equity_allocated?: number | null
           equity_allocation?: number | null
           id?: string
+          project_timeframe?: string | null
+          skills_required?: string[] | null
           status?: string | null
           title?: string
           updated_at?: string | null
@@ -367,6 +382,59 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      project_sub_tasks: {
+        Row: {
+          completion_percentage: number | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          equity_allocation: number
+          id: string
+          project_id: string | null
+          skills_required: string[] | null
+          status: string | null
+          timeframe: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          completion_percentage?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          equity_allocation: number
+          id?: string
+          project_id?: string | null
+          skills_required?: string[] | null
+          status?: string | null
+          timeframe: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          completion_percentage?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          equity_allocation?: number
+          id?: string
+          project_id?: string | null
+          skills_required?: string[] | null
+          status?: string | null
+          timeframe?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_sub_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_tasks: {
         Row: {
