@@ -32,6 +32,8 @@ interface Project {
   description: string;
   status: string;
   tasks: SubTask[];
+  equity_allocation: number;
+  skills_required: string[];
 }
 
 const BusinessDashboard = () => {
@@ -249,7 +251,7 @@ const BusinessDashboard = () => {
                         {project.tasks.length === 0 ? (
                           <p className="text-sm text-muted-foreground p-4">No tasks available for this project.</p>
                         ) : (
-                          <ActiveRolesTable tasks={project.tasks} />
+                          <ActiveRolesTable project={project} />
                         )}
                       </CollapsibleContent>
                     </Collapsible>
