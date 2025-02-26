@@ -1,8 +1,10 @@
+
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { ProjectForm } from "./ProjectForm";
 import { Button } from "@/components/ui/button";
@@ -12,6 +14,11 @@ import { TaskList } from "./TaskList";
 import { PlusCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+
+interface SkillRequirement {
+  skill: string;
+  level: string;
+}
 
 interface Task {
   id: string;
@@ -23,6 +30,8 @@ interface Task {
   equity_allocation: number;
   timeframe: string;
   skills_required: string[];
+  skill_requirements: SkillRequirement[];
+  dependencies: string[];
 }
 
 interface Project {
@@ -33,7 +42,7 @@ interface Project {
   equity_allocation: number;
   skills_required: string[];
   project_timeframe: string;
-  tasks: any[];
+  tasks: Task[];
 }
 
 interface ProjectEditDialogProps {
@@ -51,40 +60,83 @@ export const ProjectEditDialog = ({
 }: ProjectEditDialogProps) => {
   const [showSubTaskForm, setShowSubTaskForm] = useState(false);
   const [currentProject, setCurrentProject] = useState<Project | null>(project);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubTaskCreated = (newTask: any) => {
+  const handleSubTaskCreated = async (newTask: Task) => {
     if (!currentProject) return;
     
-    const updatedProject = {
-      ...currentProject,
-      tasks: [...currentProject.tasks, newTask]
-    };
-    setCurrentProject(updatedProject);
-    onProjectUpdated(updatedProject);
-    setShowSubTaskForm(false);
-    toast.success("Task added successfully");
-  };
-
-  const handleProjectUpdate = async (updatedData: any) => {
     try {
       const { data, error } = await supabase
-        .from('business_projects')
-        .update(updatedData)
-        .eq('id', project?.id)
+        .from('project_sub_tasks')
+        .insert({
+          ...newTask,
+          project_id: currentProject.id
+        })
         .select()
         .single();
 
       if (error) throw error;
 
-      onProjectUpdated(data);
+      // Also create a corresponding business role
+      await supabase
+        .from('business_roles')
+        .insert({
+          title: newTask.title,
+          description: newTask.description,
+          business_id: currentProject.id,
+          open_to_recruiters: true,
+        });
+
+      const updatedProject = {
+        ...currentProject,
+        tasks: [...currentProject.tasks, data]
+      };
+      setCurrentProject(updatedProject);
+      onProjectUpdated(updatedProject);
+      setShowSubTaskForm(false);
+      toast.success("Task added successfully");
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast.error("Failed to create task");
+    }
+  };
+
+  const handleProjectUpdate = async (updatedData: Partial<Project>) => {
+    if (!project?.id) return;
+    
+    setIsSubmitting(true);
+    try {
+      const { data, error } = await supabase
+        .from('business_projects')
+        .update({
+          title: updatedData.title,
+          description: updatedData.description,
+          status: updatedData.status,
+          equity_allocation: updatedData.equity_allocation,
+          skills_required: updatedData.skills_required,
+          project_timeframe: updatedData.project_timeframe
+        })
+        .eq('id', project.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const updatedProject = { ...project, ...data };
+      onProjectUpdated(updatedProject);
       toast.success("Project updated successfully");
+      onClose();
     } catch (error) {
       console.error('Error updating project:', error);
       toast.error("Failed to update project");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleTaskDeleted = async (taskId: string) => {
+    if (!currentProject) return;
+
     try {
       const { error } = await supabase
         .from('project_sub_tasks')
@@ -93,14 +145,20 @@ export const ProjectEditDialog = ({
 
       if (error) throw error;
 
-      if (currentProject) {
-        const updatedProject = {
-          ...currentProject,
-          tasks: currentProject.tasks.filter(task => task.id !== taskId)
-        };
-        setCurrentProject(updatedProject);
-        onProjectUpdated(updatedProject);
-      }
+      // Also delete corresponding business role
+      await supabase
+        .from('business_roles')
+        .delete()
+        .eq('business_id', currentProject.id)
+        .eq('title', currentProject.tasks.find(t => t.id === taskId)?.title);
+
+      const updatedProject = {
+        ...currentProject,
+        tasks: currentProject.tasks.filter(task => task.id !== taskId)
+      };
+      setCurrentProject(updatedProject);
+      onProjectUpdated(updatedProject);
+      toast.success("Task deleted successfully");
     } catch (error) {
       console.error('Error deleting task:', error);
       toast.error("Failed to delete task");
@@ -118,6 +176,16 @@ export const ProjectEditDialog = ({
 
       if (error) throw error;
 
+      // Update corresponding business role
+      await supabase
+        .from('business_roles')
+        .update({
+          title: updatedTask.title,
+          description: updatedTask.description
+        })
+        .eq('business_id', currentProject.id)
+        .eq('title', currentProject.tasks.find(t => t.id === updatedTask.id)?.title);
+
       const updatedProject = {
         ...currentProject,
         tasks: currentProject.tasks.map(task => 
@@ -126,6 +194,7 @@ export const ProjectEditDialog = ({
       };
       setCurrentProject(updatedProject);
       onProjectUpdated(updatedProject);
+      toast.success("Task updated successfully");
     } catch (error) {
       console.error('Error updating task:', error);
       toast.error("Failed to update task");
@@ -178,6 +247,12 @@ export const ProjectEditDialog = ({
             )}
           </div>
         </div>
+
+        <DialogFooter className="mt-6">
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
