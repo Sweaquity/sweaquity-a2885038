@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -15,6 +14,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { ActiveRolesTable } from "@/components/business/roles/ActiveRolesTable";
 
 interface SubTask {
   id: string;
@@ -232,52 +232,24 @@ const BusinessDashboard = () => {
               <CardHeader>
                 <h2 className="text-lg font-semibold">Active Project Roles</h2>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent>
                 {projects.length === 0 ? (
                   <p className="text-muted-foreground">No active projects found.</p>
                 ) : (
                   projects.map((project) => (
-                    <Collapsible key={project.id} className="border rounded-lg p-4">
-                      <CollapsibleTrigger className="flex justify-between items-center w-full">
+                    <Collapsible key={project.id} className="mb-4">
+                      <CollapsibleTrigger className="flex justify-between items-center w-full p-4 rounded-lg bg-secondary">
                         <div>
                           <h3 className="text-lg font-medium">{project.title}</h3>
                           <p className="text-sm text-muted-foreground">{project.description}</p>
                         </div>
                         <ChevronDown className="h-5 w-5" />
                       </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-4 space-y-3">
+                      <CollapsibleContent className="mt-2">
                         {project.tasks.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">No tasks available for this project.</p>
+                          <p className="text-sm text-muted-foreground p-4">No tasks available for this project.</p>
                         ) : (
-                          project.tasks.map((task) => (
-                            <div key={task.id} className="border rounded p-3">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h4 className="font-medium">{task.title}</h4>
-                                  <p className="text-sm text-muted-foreground">{task.description}</p>
-                                  <div className="mt-2">
-                                    <p className="text-sm">Equity Allocation: {task.equity_allocation}%</p>
-                                    <p className="text-sm">Timeframe: {task.timeframe}</p>
-                                  </div>
-                                  {task.skill_requirements && task.skill_requirements.length > 0 && (
-                                    <div className="mt-2">
-                                      <p className="text-sm font-medium">Required Skills:</p>
-                                      <div className="flex flex-wrap gap-2 mt-1">
-                                        {task.skill_requirements.map((skillReq, index) => (
-                                          <span key={index} className="px-2 py-1 bg-secondary rounded-full text-xs">
-                                            {skillReq.skill} - {skillReq.level}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                                <span className="px-2 py-1 text-xs rounded-full bg-secondary">
-                                  {task.status}
-                                </span>
-                              </div>
-                            </div>
-                          ))
+                          <ActiveRolesTable tasks={project.tasks} />
                         )}
                       </CollapsibleContent>
                     </Collapsible>
