@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -50,6 +51,11 @@ interface Profile {
   location: string | null;
 }
 
+interface Skill {
+  name: string;
+  level: 'Beginner' | 'Intermediate' | 'Expert';
+}
+
 const JobSeekerDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -60,7 +66,7 @@ const JobSeekerDashboard = () => {
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [equityProjects, setEquityProjects] = useState<EquityProject[]>([]);
   const [parsedCvData, setParsedCvData] = useState<any>(null);
-  const [skills, setSkills] = useState<string[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
   const [logEffort, setLogEffort] = useState({
     projectId: '',
     hours: 0,
@@ -84,6 +90,17 @@ const JobSeekerDashboard = () => {
 
         if (profileError) throw profileError;
         setProfile(profileData);
+
+        // Convert string[] skills to Skill[] if needed
+        if (profileData.skills && Array.isArray(profileData.skills)) {
+          const convertedSkills: Skill[] = profileData.skills.map((skill: string | Skill) => {
+            if (typeof skill === 'string') {
+              return { name: skill, level: 'Intermediate' };
+            }
+            return skill as Skill;
+          });
+          setSkills(convertedSkills);
+        }
 
         if (!profileData.first_name || !profileData.last_name || !profileData.title) {
           setIsLoading(false);
@@ -128,12 +145,6 @@ const JobSeekerDashboard = () => {
 
         if (cvData) {
           setParsedCvData(cvData);
-          if (cvData.skills) {
-            setSkills(prevSkills => {
-              const combinedSkills = [...prevSkills, ...cvData.skills];
-              return Array.from(new Set(combinedSkills));
-            });
-          }
         }
       } catch (error) {
         console.error('Error loading dashboard data:', error);
@@ -146,7 +157,7 @@ const JobSeekerDashboard = () => {
     loadDashboardData();
   }, [navigate]);
 
-  const handleSkillsUpdate = async (updatedSkills: string[]) => {
+  const handleSkillsUpdate = async (updatedSkills: Skill[]) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
