@@ -29,6 +29,7 @@ export const useJobSeekerDashboard = () => {
           return;
         }
 
+        // Fetch profile and skills
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('first_name, last_name, title, email, location, skills')
@@ -39,26 +40,47 @@ export const useJobSeekerDashboard = () => {
         setProfile(profileData);
 
         if (profileData.skills && Array.isArray(profileData.skills)) {
-          // Convert old format skills to new format if necessary
           const convertedSkills: Skill[] = profileData.skills.map((skill: any) => {
             if (typeof skill === 'string') {
               return { skill: skill, level: 'Intermediate' };
             }
-            // If it has 'name', convert it to 'skill'
             if ('name' in skill) {
               return { skill: skill.name, level: skill.level };
             }
-            // Already in correct format
             return skill as Skill;
           });
           setSkills(convertedSkills);
         }
 
-        if (!profileData.first_name || !profileData.last_name || !profileData.title) {
-          setIsLoading(false);
-          return;
+        // Fetch all available projects with their sub-tasks for matching
+        const { data: projectsData, error: projectsError } = await supabase
+          .from('business_projects')
+          .select(`
+            *,
+            business_roles (
+              title,
+              description
+            ),
+            sub_tasks:project_sub_tasks (
+              id,
+              title,
+              description,
+              timeframe,
+              status,
+              equity_allocation,
+              skill_requirements
+            )
+          `);
+
+        if (projectsError) {
+          console.error('Error fetching projects:', projectsError);
+          throw projectsError;
         }
 
+        console.log('Fetched projects:', projectsData);
+        setEquityProjects(projectsData || []);
+
+        // Fetch user's applications
         const { data: applicationsData } = await supabase
           .from('job_applications')
           .select(`
@@ -74,21 +96,7 @@ export const useJobSeekerDashboard = () => {
           setApplications(applicationsData);
         }
 
-        const { data: equityData } = await supabase
-          .from('sweaquity_matched_live_projects')
-          .select(`
-            *,
-            business_roles (
-              title,
-              description
-            )
-          `)
-          .eq('user_id', session.user.id);
-
-        if (equityData) {
-          setEquityProjects(equityData);
-        }
-
+        // Fetch parsed CV data
         const { data: cvData } = await supabase
           .from('cv_parsed_data')
           .select('*')
