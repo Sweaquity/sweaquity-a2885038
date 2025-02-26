@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +46,11 @@ export const ProjectForm = ({
     try {
       if (!project.title || !project.description || !project.project_timeframe) {
         toast.error("Please fill in all required fields");
+        return;
+      }
+
+      if (project.skills_required.length === 0) {
+        toast.error("At least one required skill must be specified");
         return;
       }
 

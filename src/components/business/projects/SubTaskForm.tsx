@@ -15,11 +15,20 @@ interface SkillRequirement {
 interface SubTaskFormProps {
   projectId: string;
   availableSkills: string[];
+  totalEquity: number;
+  currentTotalTaskEquity: number;
   onTaskCreated: (task: any) => void;
   onCancel: () => void;
 }
 
-export const SubTaskForm = ({ projectId, availableSkills, onTaskCreated, onCancel }: SubTaskFormProps) => {
+export const SubTaskForm = ({ 
+  projectId, 
+  availableSkills, 
+  totalEquity,
+  currentTotalTaskEquity,
+  onTaskCreated, 
+  onCancel 
+}: SubTaskFormProps) => {
   const [task, setTask] = useState({
     title: "",
     description: "",
@@ -30,7 +39,7 @@ export const SubTaskForm = ({ projectId, availableSkills, onTaskCreated, onCance
   });
 
   const [selectedSkill, setSelectedSkill] = useState("");
-  const [skillLevel, setSkillLevel] = useState("junior");
+  const [skillLevel, setSkillLevel] = useState("beginner");
 
   const handleAddSkill = () => {
     if (!selectedSkill) return;
@@ -44,20 +53,24 @@ export const SubTaskForm = ({ projectId, availableSkills, onTaskCreated, onCance
     }));
     
     setSelectedSkill("");
-    setSkillLevel("junior");
-  };
-
-  const handleRemoveSkill = (index: number) => {
-    setTask(prev => ({
-      ...prev,
-      skill_requirements: prev.skill_requirements.filter((_, i) => i !== index)
-    }));
+    setSkillLevel("beginner");
   };
 
   const handleSubmit = async () => {
     try {
       if (!task.title || !task.timeframe || task.equity_allocation <= 0) {
         toast.error("Please fill in all required fields");
+        return;
+      }
+
+      if (task.skill_requirements.length === 0) {
+        toast.error("At least one required skill must be specified");
+        return;
+      }
+
+      const remainingEquity = totalEquity - currentTotalTaskEquity;
+      if (task.equity_allocation > remainingEquity) {
+        toast.error(`Equity allocation cannot exceed remaining equity (${remainingEquity}%)`);
         return;
       }
 
@@ -83,6 +96,13 @@ export const SubTaskForm = ({ projectId, availableSkills, onTaskCreated, onCance
       console.error('Error creating task:', error);
       toast.error("Failed to create task");
     }
+  };
+
+  const handleRemoveSkill = (index: number) => {
+    setTask(prev => ({
+      ...prev,
+      skill_requirements: prev.skill_requirements.filter((_, i) => i !== index)
+    }));
   };
 
   return (
@@ -119,19 +139,24 @@ export const SubTaskForm = ({ projectId, availableSkills, onTaskCreated, onCance
 
       <div>
         <Label htmlFor="equity-allocation">Equity Allocation (%) *</Label>
-        <Input
-          id="equity-allocation"
-          type="number"
-          min="0"
-          max="100"
-          required
-          value={task.equity_allocation}
-          onChange={e => setTask(prev => ({ ...prev, equity_allocation: parseFloat(e.target.value) }))}
-        />
+        <div className="space-y-1">
+          <Input
+            id="equity-allocation"
+            type="number"
+            min="0"
+            max={totalEquity - currentTotalTaskEquity}
+            required
+            value={task.equity_allocation}
+            onChange={e => setTask(prev => ({ ...prev, equity_allocation: parseFloat(e.target.value) }))}
+          />
+          <p className="text-xs text-muted-foreground">
+            Remaining available equity: {totalEquity - currentTotalTaskEquity}%
+          </p>
+        </div>
       </div>
 
       <div className="space-y-2">
-        <Label>Required Skills</Label>
+        <Label>Required Skills *</Label>
         <div className="flex gap-2">
           <Select value={selectedSkill} onValueChange={setSelectedSkill}>
             <SelectTrigger className="w-[200px]">
@@ -151,9 +176,8 @@ export const SubTaskForm = ({ projectId, availableSkills, onTaskCreated, onCance
               <SelectValue placeholder="Select level" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="junior">Junior</SelectItem>
-              <SelectItem value="mid">Mid-level</SelectItem>
-              <SelectItem value="senior">Senior</SelectItem>
+              <SelectItem value="beginner">Beginner</SelectItem>
+              <SelectItem value="intermediate">Intermediate</SelectItem>
               <SelectItem value="expert">Expert</SelectItem>
             </SelectContent>
           </Select>

@@ -1,4 +1,3 @@
-
 import {
   Dialog,
   DialogContent,
@@ -13,6 +12,18 @@ import { TaskList } from "./TaskList";
 import { PlusCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  hours_logged: number;
+  equity_earned: number;
+  equity_allocation: number;
+  timeframe: string;
+  skills_required: string[];
+}
 
 interface Project {
   id: string;
@@ -77,7 +88,7 @@ export const ProjectEditDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Project</DialogTitle>
         </DialogHeader>
@@ -102,6 +113,8 @@ export const ProjectEditDialog = ({
               <SubTaskForm
                 projectId={project.id}
                 availableSkills={project.skills_required}
+                totalEquity={project.equity_allocation}
+                currentTotalTaskEquity={project.tasks.reduce((sum, task) => sum + (task.equity_allocation || 0), 0)}
                 onTaskCreated={handleSubTaskCreated}
                 onCancel={() => setShowSubTaskForm(false)}
               />
@@ -109,6 +122,10 @@ export const ProjectEditDialog = ({
               <TaskList
                 projectId={project.id}
                 tasks={currentProject?.tasks || []}
+                onTaskDeleted={handleTaskDeleted}
+                onTaskUpdated={handleTaskUpdated}
+                availableSkills={project.skills_required}
+                totalEquity={project.equity_allocation}
               />
             )}
           </div>
