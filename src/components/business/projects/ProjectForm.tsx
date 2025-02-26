@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,40 +8,63 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { SkillsInput } from "./SkillsInput";
 
-interface ProjectFormProps {
-  onProjectCreated: (project: any) => void;
+interface Project {
+  title: string;
+  description: string;
+  equity_allocation: number;
+  skills_required: string[];
+  project_timeframe: string;
 }
 
-export const ProjectForm = ({ onProjectCreated }: ProjectFormProps) => {
-  const [newProject, setNewProject] = useState({
+interface ProjectFormProps {
+  initialData?: Project;
+  onSubmit?: (data: Project) => void;
+  onProjectCreated?: (project: any) => void;
+  submitLabel?: string;
+}
+
+export const ProjectForm = ({ 
+  initialData,
+  onSubmit,
+  onProjectCreated,
+  submitLabel = "Create Project"
+}: ProjectFormProps) => {
+  const [project, setProject] = useState<Project>({
     title: "",
     description: "",
     equity_allocation: 0,
-    skills_required: [] as string[],
+    skills_required: [],
     project_timeframe: ""
   });
 
-  const handleCreateProject = async () => {
+  useEffect(() => {
+    if (initialData) {
+      setProject(initialData);
+    }
+  }, [initialData]);
+
+  const handleSubmit = async () => {
     try {
+      if (!project.title || !project.description || !project.project_timeframe) {
+        toast.error("Please fill in all required fields");
+        return;
+      }
+
+      if (onSubmit) {
+        onSubmit(project);
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast.error("No active session found");
         return;
       }
 
-      if (!newProject.title || !newProject.description || !newProject.project_timeframe) {
-        toast.error("Please fill in all required fields");
-        return;
-      }
-
       const { data, error } = await supabase
         .from('business_projects')
         .insert({
-          title: newProject.title,
-          description: newProject.description,
-          equity_allocation: newProject.equity_allocation,
-          skills_required: newProject.skills_required,
-          project_timeframe: newProject.project_timeframe,
+          ...project,
           created_by: session.user.id,
           business_id: session.user.id
         })
@@ -50,18 +73,22 @@ export const ProjectForm = ({ onProjectCreated }: ProjectFormProps) => {
 
       if (error) throw error;
 
-      onProjectCreated(data);
-      setNewProject({
+      if (onProjectCreated) {
+        onProjectCreated(data);
+      }
+      
+      setProject({
         title: "",
         description: "",
         equity_allocation: 0,
         skills_required: [],
         project_timeframe: ""
       });
+      
       toast.success("Project created successfully");
     } catch (error) {
-      console.error('Error creating project:', error);
-      toast.error("Failed to create project");
+      console.error('Error with project:', error);
+      toast.error("Failed to handle project");
     }
   };
 
@@ -72,8 +99,8 @@ export const ProjectForm = ({ onProjectCreated }: ProjectFormProps) => {
         <Input
           id="project-title"
           required
-          value={newProject.title}
-          onChange={e => setNewProject(prev => ({ ...prev, title: e.target.value }))}
+          value={project.title}
+          onChange={e => setProject(prev => ({ ...prev, title: e.target.value }))}
         />
       </div>
       <div>
@@ -81,8 +108,8 @@ export const ProjectForm = ({ onProjectCreated }: ProjectFormProps) => {
         <Textarea
           id="project-description"
           required
-          value={newProject.description}
-          onChange={e => setNewProject(prev => ({ ...prev, description: e.target.value }))}
+          value={project.description}
+          onChange={e => setProject(prev => ({ ...prev, description: e.target.value }))}
         />
       </div>
       <div>
@@ -90,8 +117,8 @@ export const ProjectForm = ({ onProjectCreated }: ProjectFormProps) => {
         <Input
           id="project-timeframe"
           required
-          value={newProject.project_timeframe}
-          onChange={e => setNewProject(prev => ({ ...prev, project_timeframe: e.target.value }))}
+          value={project.project_timeframe}
+          onChange={e => setProject(prev => ({ ...prev, project_timeframe: e.target.value }))}
           placeholder="e.g., 3 months, Q4 2024"
         />
       </div>
@@ -103,16 +130,16 @@ export const ProjectForm = ({ onProjectCreated }: ProjectFormProps) => {
           min="0"
           max="100"
           required
-          value={newProject.equity_allocation}
-          onChange={e => setNewProject(prev => ({ ...prev, equity_allocation: parseFloat(e.target.value) }))}
+          value={project.equity_allocation}
+          onChange={e => setProject(prev => ({ ...prev, equity_allocation: parseFloat(e.target.value) }))}
         />
       </div>
       <SkillsInput
-        skills={newProject.skills_required}
-        onChange={skills => setNewProject(prev => ({ ...prev, skills_required: skills }))}
+        skills={project.skills_required}
+        onChange={skills => setProject(prev => ({ ...prev, skills_required: skills }))}
         helperText="These skills will be broken down into specific requirements in sub-tasks after project creation."
       />
-      <Button onClick={handleCreateProject} className="w-full">Create Project</Button>
+      <Button onClick={handleSubmit} className="w-full">{submitLabel}</Button>
     </div>
   );
 };

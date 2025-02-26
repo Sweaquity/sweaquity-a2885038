@@ -1,5 +1,7 @@
 
+import { useState } from "react";
 import { ProjectCard } from "./ProjectCard";
+import { ProjectEditDialog } from "./ProjectEditDialog";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
@@ -33,10 +35,7 @@ interface ProjectListProps {
 }
 
 export const ProjectList = ({ projects, onProjectUpdated, onProjectDeleted }: ProjectListProps) => {
-  const handleEditProject = (project: Project) => {
-    // This will be implemented in the next step with the edit form
-    console.log('Edit project:', project);
-  };
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
 
   const handleDeleteProject = async (projectId: string) => {
     try {
@@ -56,15 +55,27 @@ export const ProjectList = ({ projects, onProjectUpdated, onProjectDeleted }: Pr
   };
 
   return (
-    <div className="space-y-6">
-      {projects.map(project => (
-        <ProjectCard
-          key={project.id}
-          project={project}
-          onEdit={handleEditProject}
-          onDelete={handleDeleteProject}
-        />
-      ))}
-    </div>
+    <>
+      <div className="space-y-6">
+        {projects.map(project => (
+          <ProjectCard
+            key={project.id}
+            project={project}
+            onEdit={setEditingProject}
+            onDelete={handleDeleteProject}
+          />
+        ))}
+      </div>
+
+      <ProjectEditDialog
+        project={editingProject}
+        isOpen={!!editingProject}
+        onClose={() => setEditingProject(null)}
+        onProjectUpdated={(updatedProject) => {
+          onProjectUpdated(updatedProject);
+          setEditingProject(null);
+        }}
+      />
+    </>
   );
 };
