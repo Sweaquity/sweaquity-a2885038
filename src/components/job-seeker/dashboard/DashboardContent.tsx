@@ -66,7 +66,10 @@ export const DashboardContent = ({
       </TabsContent>
 
       <TabsContent value="opportunities">
-        <OpportunitiesTab projects={equityProjects} />
+        <OpportunitiesTab 
+          projects={equityProjects} 
+          userSkills={skills}
+        />
       </TabsContent>
 
       <TabsContent value="applications">
