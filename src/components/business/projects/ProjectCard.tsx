@@ -3,6 +3,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Edit, Trash } from "lucide-react";
 import { TaskList } from "./TaskList";
+import { Link } from "react-router-dom";
 
 interface Task {
   id: string;
@@ -54,7 +55,14 @@ export const ProjectCard = ({ project, onEdit, onDelete }: ProjectCardProps) => 
       <CardHeader>
         <div className="flex justify-between items-start">
           <div>
-            <h3 className="text-lg font-medium">{project.title}</h3>
+            <h3 className="text-lg font-medium">
+              <Link 
+                to={`/projects/${project.id}`}
+                className="text-blue-600 hover:underline hover:text-blue-800"
+              >
+                {project.title}
+              </Link>
+            </h3>
             <p className="text-sm text-muted-foreground">{project.description}</p>
           </div>
           <div className="flex gap-2">
