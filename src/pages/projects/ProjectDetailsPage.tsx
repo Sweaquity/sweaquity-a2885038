@@ -7,6 +7,8 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ActiveRolesTable } from "@/components/business/roles/ActiveRolesTable";
 
@@ -37,49 +39,70 @@ export const ProjectDetailsPage = () => {
   const [project, setProject] = useState<ProjectDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [applicationMessage, setApplicationMessage] = useState("");
-  const [hasUploadedCV, setHasUploadedCV] = useState(false);
+  const [hasStoredCV, setHasStoredCV] = useState(false);
+  const [storedCVUrl, setStoredCVUrl] = useState<string | null>(null);
+  const [newCV, setNewCV] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasApplied, setHasApplied] = useState(false);
 
   useEffect(() => {
     const fetchProjectDetails = async () => {
       try {
-        const { data: projectData, error: projectError } = await supabase
-          .from('business_projects')
-          .select(`
-            *,
-            business:business_id (
-              company_name,
-              project_stage,
-              contact_email,
-              industry,
-              website,
-              location
-            )
-          `)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user?.id) {
+          toast.error("Please sign in to view project details");
+          return;
+        }
+
+        const { data: taskData, error: taskError } = await supabase
+          .from('project_sub_tasks')
+          .select('*')
           .eq('id', id)
           .single();
 
-        if (projectError) throw projectError;
+        if (taskError) throw taskError;
 
-        const { data: tasksData, error: tasksError } = await supabase
-          .from('project_sub_tasks')
+        // Check if user has already applied
+        const { data: applicationData } = await supabase
+          .from('job_applications')
           .select('*')
-          .eq('project_id', id);
+          .eq('task_id', id)
+          .eq('user_id', session.user.id)
+          .single();
 
-        if (tasksError) throw tasksError;
+        setHasApplied(!!applicationData);
 
-        // Check if user has uploaded CV
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user?.id) {
-          const { data: cvData } = await supabase
-            .from('cv_parsed_data')
-            .select('id')
-            .eq('user_id', session.user.id)
-            .single();
-          
-          setHasUploadedCV(!!cvData);
+        // Check for stored CV
+        const { data: cvData } = await supabase
+          .from('cv_parsed_data')
+          .select('cv_url')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (cvData?.cv_url) {
+          setHasStoredCV(true);
+          setStoredCVUrl(cvData.cv_url);
         }
 
-        setProject({ ...projectData, tasks: tasksData });
+        setProject({
+          id: taskData.id,
+          title: taskData.title,
+          description: taskData.description,
+          status: taskData.status,
+          equity_allocation: taskData.equity_allocation,
+          skills_required: taskData.skills_required || [],
+          project_timeframe: taskData.timeframe,
+          business_id: taskData.project_id,
+          tasks: [taskData],
+          business: {
+            company_name: "Project Owner",
+            project_stage: "",
+            contact_email: "",
+            industry: "",
+            website: "",
+            location: ""
+          }
+        });
       } catch (error) {
         console.error('Error fetching project details:', error);
         toast.error("Failed to load project details");
@@ -93,14 +116,76 @@ export const ProjectDetailsPage = () => {
     }
   }, [id]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        toast.error("File size should be less than 10MB");
+        return;
+      }
+      setNewCV(file);
+    }
+  };
+
   const handleApply = async () => {
-    if (!hasUploadedCV) {
-      toast.error("Please upload your CV before applying");
+    if (!applicationMessage.trim()) {
+      toast.error("Please provide an application message");
       return;
     }
 
-    // TODO: Implement application submission logic
-    toast.success("Application submitted successfully");
+    if (!hasStoredCV && !newCV) {
+      toast.error("Please attach a CV");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        toast.error("Please sign in to apply");
+        return;
+      }
+
+      let cvUrl = storedCVUrl;
+
+      // If a new CV is being uploaded
+      if (newCV) {
+        const fileName = `${session.user.id}/${Date.now()}-${newCV.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('cvs')
+          .upload(fileName, newCV);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('cvs')
+          .getPublicUrl(fileName);
+
+        cvUrl = publicUrl;
+      }
+
+      // Create the application
+      const { error: applicationError } = await supabase
+        .from('job_applications')
+        .insert({
+          user_id: session.user.id,
+          task_id: id,
+          message: applicationMessage,
+          cv_url: cvUrl,
+          status: 'pending'
+        });
+
+      if (applicationError) throw applicationError;
+
+      toast.success("Application submitted successfully");
+      setHasApplied(true);
+    } catch (error) {
+      console.error('Error submitting application:', error);
+      toast.error("Failed to submit application");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isLoading) {
@@ -135,32 +220,6 @@ export const ProjectDetailsPage = () => {
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <h3 className="font-semibold mb-2">Business Information</h3>
-                    <dl className="space-y-2">
-                      <div>
-                        <dt className="text-sm text-muted-foreground">Industry</dt>
-                        <dd>{project.business.industry}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm text-muted-foreground">Project Stage</dt>
-                        <dd>{project.business.project_stage}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm text-muted-foreground">Location</dt>
-                        <dd>{project.business.location}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm text-muted-foreground">Website</dt>
-                        <dd>
-                          <a href={project.business.website} target="_blank" rel="noopener noreferrer" 
-                             className="text-blue-600 hover:underline">
-                            {project.business.website}
-                          </a>
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-                  <div>
                     <h3 className="font-semibold mb-2">Project Information</h3>
                     <dl className="space-y-2">
                       <div>
@@ -172,7 +231,7 @@ export const ProjectDetailsPage = () => {
                         <dd>{project.project_timeframe}</dd>
                       </div>
                       <div>
-                        <dt className="text-sm text-muted-foreground">Total Equity Available</dt>
+                        <dt className="text-sm text-muted-foreground">Equity Available</dt>
                         <dd>{project.equity_allocation}%</dd>
                       </div>
                       <div>
@@ -195,25 +254,68 @@ export const ProjectDetailsPage = () => {
 
             <TabsContent value="apply">
               <div className="space-y-4">
-                {!hasUploadedCV && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
-                    <p className="text-yellow-800">
-                      Please upload your CV before applying. Your CV helps us match you with the right opportunities.
+                {hasApplied ? (
+                  <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                    <p className="text-green-800">
+                      You have already applied for this opportunity. We'll notify you of any updates.
                     </p>
                   </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label>CV Upload</Label>
+                      <div className="space-y-4">
+                        {hasStoredCV && (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              id="stored-cv"
+                              name="cv-choice"
+                              defaultChecked
+                              onChange={() => setNewCV(null)}
+                            />
+                            <Label htmlFor="stored-cv">Use stored CV</Label>
+                          </div>
+                        )}
+                        <div className="flex items-start gap-2">
+                          <input
+                            type="radio"
+                            id="new-cv"
+                            name="cv-choice"
+                            onChange={() => setStoredCVUrl(null)}
+                          />
+                          <div className="space-y-2">
+                            <Label htmlFor="new-cv">Upload new CV</Label>
+                            <Input
+                              type="file"
+                              accept=".pdf,.doc,.docx"
+                              onChange={handleFileChange}
+                              disabled={isSubmitting}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Application Message</Label>
+                      <Textarea
+                        placeholder="Tell us why you're interested in this opportunity and how your skills match the requirements..."
+                        value={applicationMessage}
+                        onChange={(e) => setApplicationMessage(e.target.value)}
+                        className="min-h-[200px]"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+
+                    <Button 
+                      onClick={handleApply}
+                      disabled={isSubmitting || (!hasStoredCV && !newCV) || !applicationMessage.trim()}
+                    >
+                      {isSubmitting ? "Submitting..." : "Submit Application"}
+                    </Button>
+                  </>
                 )}
-                <div className="space-y-2">
-                  <label className="font-medium">Application Message</label>
-                  <Textarea
-                    placeholder="Tell us about your relevant skills and experience..."
-                    value={applicationMessage}
-                    onChange={(e) => setApplicationMessage(e.target.value)}
-                    className="min-h-[200px]"
-                  />
-                </div>
-                <Button onClick={handleApply} disabled={!hasUploadedCV}>
-                  Submit Application
-                </Button>
               </div>
             </TabsContent>
           </Tabs>
