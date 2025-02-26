@@ -29,7 +29,7 @@ export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
                   <p className="font-medium">Status</p>
                   <Badge 
                     variant={application.status === 'pending' ? 'secondary' : 
-                            application.status === 'accepted' ? 'success' : 'destructive'}
+                            application.status === 'accepted' ? 'default' : 'destructive'}
                   >
                     {application.status}
                   </Badge>
