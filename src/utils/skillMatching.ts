@@ -1,5 +1,5 @@
 
-import { Skill, SkillRequirement } from "@/types/jobSeeker";
+import { Skill, SkillRequirement, EquityProject } from "@/types/jobSeeker";
 
 export const getSkillLevel = (level: string): number => {
   const levels = {
@@ -19,14 +19,44 @@ export const hasRequiredSkillLevel = (userSkill: Skill, requiredSkill: SkillRequ
   return userSkill.skill.toLowerCase() === requiredSkill.skill.toLowerCase() && userLevel >= requiredLevel;
 };
 
-export const getSkillMatchCount = (taskSkills: SkillRequirement[] | undefined, userSkills: Skill[]) => {
-  if (!taskSkills) return 0;
-  return taskSkills.filter(requiredSkill => 
-    userSkills.some(userSkill => hasRequiredSkillLevel(userSkill, requiredSkill))
-  ).length;
-};
+export const getProjectMatches = (projects: EquityProject[], userSkills: Skill[]) => {
+  const matchedProjects = projects.map(project => {
+    // Get all tasks with their match scores
+    const tasksWithMatches = (project.sub_tasks || []).map(task => {
+      const matchedSkills = (task.skill_requirements || []).filter(required =>
+        userSkills.some(userSkill => hasRequiredSkillLevel(userSkill, required))
+      );
 
-export const getMatchPercentage = (matchCount: number, totalRequired: number) => {
-  if (totalRequired === 0) return 0;
-  return Math.round((matchCount / totalRequired) * 100);
+      const matchScore = task.skill_requirements ? 
+        (matchedSkills.length / task.skill_requirements.length) * 100 : 0;
+
+      return {
+        ...task,
+        matchedSkills,
+        matchScore,
+        projectTitle: project.business_roles?.title || project.title || 'Untitled Project',
+        projectId: project.project_id
+      };
+    });
+
+    // Filter tasks that have at least one skill match
+    const matchedTasks = tasksWithMatches.filter(task => task.matchScore > 0);
+
+    // Calculate overall project match score
+    const projectMatchScore = matchedTasks.length > 0 
+      ? matchedTasks.reduce((sum, task) => sum + task.matchScore, 0) / matchedTasks.length
+      : 0;
+
+    return {
+      projectId: project.project_id,
+      projectTitle: project.business_roles?.title || project.title || 'Untitled Project',
+      matchScore: projectMatchScore,
+      matchedTasks
+    };
+  });
+
+  // Filter and sort projects by match score
+  return matchedProjects
+    .filter(project => project.matchedTasks.length > 0)
+    .sort((a, b) => b.matchScore - a.matchScore);
 };
