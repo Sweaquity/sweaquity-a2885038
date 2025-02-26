@@ -11,11 +11,17 @@ export interface JobApplication {
   };
 }
 
+export interface SkillRequirement {
+  skill: string;
+  level: 'Beginner' | 'Intermediate' | 'Expert';
+}
+
 export interface SubTask {
   id: string;
   title: string;
   description: string;
   skills_required: string[];
+  skill_requirements: SkillRequirement[];
   equity_allocation: number;
   timeframe: string;
   status: string;

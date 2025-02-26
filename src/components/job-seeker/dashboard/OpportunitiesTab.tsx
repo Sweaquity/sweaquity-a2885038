@@ -10,12 +10,28 @@ interface OpportunitiesTabProps {
 }
 
 export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps) => {
-  const getSkillMatchCount = (taskSkills: string[] | undefined, userSkills: Skill[]) => {
+  const getSkillLevel = (level: string): number => {
+    const levels = {
+      'Beginner': 1,
+      'beginner': 1,
+      'Intermediate': 2,
+      'intermediate': 2,
+      'Expert': 3,
+      'expert': 3
+    };
+    return levels[level as keyof typeof levels] || 0;
+  };
+
+  const hasRequiredSkillLevel = (userSkill: Skill, requiredSkill: { skill: string; level: string }) => {
+    const userLevel = getSkillLevel(userSkill.level);
+    const requiredLevel = getSkillLevel(requiredSkill.level);
+    return userSkill.name.toLowerCase() === requiredSkill.skill.toLowerCase() && userLevel >= requiredLevel;
+  };
+
+  const getSkillMatchCount = (taskSkills: { skill: string; level: string }[] | undefined, userSkills: Skill[]) => {
     if (!taskSkills) return 0;
-    return taskSkills.filter(skill => 
-      userSkills.some(userSkill => 
-        userSkill.name.toLowerCase() === skill.toLowerCase()
-      )
+    return taskSkills.filter(requiredSkill => 
+      userSkills.some(userSkill => hasRequiredSkillLevel(userSkill, requiredSkill))
     ).length;
   };
 
@@ -30,7 +46,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
       ...task,
       projectId: project.project_id,
       projectTitle: project.business_roles?.title || project.title || 'Untitled Project',
-      matchCount: getSkillMatchCount(task.skills_required, userSkills)
+      matchCount: getSkillMatchCount(task.skill_requirements, userSkills)
     }))
   ).filter(task => task.matchCount > 0)
   .sort((a, b) => b.matchCount - a.matchCount);
@@ -45,7 +61,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
           {matchedTasks.map(task => {
             const matchPercentage = getMatchPercentage(
               task.matchCount,
-              task.skills_required.length
+              task.skill_requirements.length
             );
 
             return (
@@ -91,21 +107,25 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                       <div>
                         <p className="font-medium text-sm">Skills Required</p>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {task.skills_required.map((skill, index) => (
-                            <Badge 
-                              key={index}
-                              variant="outline"
-                              className={
-                                userSkills.some(
-                                  userSkill => userSkill.name.toLowerCase() === skill.toLowerCase()
-                                )
-                                  ? 'bg-green-100 text-green-800 border-green-200'
-                                  : 'bg-gray-100 text-gray-800 border-gray-200'
-                              }
-                            >
-                              {skill}
-                            </Badge>
-                          ))}
+                          {task.skill_requirements.map((skillReq, index) => {
+                            const userHasSkill = userSkills.some(
+                              userSkill => hasRequiredSkillLevel(userSkill, skillReq)
+                            );
+                            
+                            return (
+                              <Badge 
+                                key={index}
+                                variant="outline"
+                                className={
+                                  userHasSkill
+                                    ? 'bg-green-100 text-green-800 border-green-200'
+                                    : 'bg-gray-100 text-gray-800 border-gray-200'
+                                }
+                              >
+                                {skillReq.skill} ({skillReq.level})
+                              </Badge>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
