@@ -9,6 +9,7 @@ import { ActiveRolesTable } from "@/components/business/roles/ActiveRolesTable";
 import { ProjectHeader } from "@/components/projects/ProjectHeader";
 import { ProjectDetails } from "@/components/projects/ProjectDetails";
 import { ApplicationForm } from "@/components/projects/ApplicationForm";
+import { SubTask } from "@/types/jobSeeker";
 
 interface Business {
   id?: string;
@@ -20,16 +21,6 @@ interface Business {
   location: string;
 }
 
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  equity_allocation: number;
-  skills_required: string[];
-  timeframe: string;
-}
-
 interface ProjectDetails {
   id: string;
   title: string;
@@ -39,7 +30,7 @@ interface ProjectDetails {
   skills_required: string[];
   project_timeframe: string;
   business_id: string;
-  tasks: Task[];
+  tasks: SubTask[];
   business: Business;
 }
 
@@ -97,7 +88,10 @@ export const ProjectDetailsPage = () => {
               status,
               equity_allocation,
               skills_required,
-              timeframe
+              timeframe,
+              skill_requirements,
+              task_status,
+              completion_percentage
             )
           `)
           .eq('id', id)
@@ -153,6 +147,20 @@ export const ProjectDetailsPage = () => {
           ? projectData.business[0] || defaultBusiness
           : projectData.business || defaultBusiness;
 
+        // Map task data to match SubTask interface
+        const mappedTasks: SubTask[] = (projectData.tasks || []).map(task => ({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          status: task.status,
+          equity_allocation: task.equity_allocation,
+          skills_required: task.skills_required || [],
+          timeframe: task.timeframe,
+          skill_requirements: task.skill_requirements || [],
+          task_status: task.task_status || 'pending',
+          completion_percentage: task.completion_percentage || 0
+        }));
+
         setProject({
           id: projectData.id,
           title: projectData.title,
@@ -162,7 +170,7 @@ export const ProjectDetailsPage = () => {
           skills_required: projectData.skills_required || [],
           project_timeframe: projectData.project_timeframe,
           business_id: projectData.business_id,
-          tasks: projectData.tasks || [],
+          tasks: mappedTasks,
           business: businessData
         });
       } catch (error) {
