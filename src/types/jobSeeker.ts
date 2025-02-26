@@ -4,6 +4,8 @@ export interface JobApplication {
   role_id: string;
   status: string;
   applied_at: string;
+  task_id: string;
+  project_id: string;
   notes: string;
   business_roles?: {
     title: string;
@@ -12,6 +14,7 @@ export interface JobApplication {
     project_title?: string;
     timeframe?: string;
     skills_required?: string[];
+    equity_allocation?: number;
   };
 }
 
@@ -22,7 +25,7 @@ export interface SkillRequirement {
 
 export interface SubTask {
   id: string;
-  project_id: string;  // Added this line to fix the TypeScript error
+  project_id: string;
   title: string;
   description: string;
   skills_required: string[];
