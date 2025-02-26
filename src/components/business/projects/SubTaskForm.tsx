@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,20 @@ import { supabase } from "@/lib/supabase";
 interface SkillRequirement {
   skill: string;
   level: string;
+}
+
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  hours_logged: number;
+  equity_earned: number;
+  equity_allocation: number;
+  timeframe: string;
+  skills_required: string[];
+  skill_requirements: SkillRequirement[];
+  dependencies: string[];
 }
 
 interface SubTaskFormProps {
