@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
   Collapsible,
   CollapsibleContent,
@@ -63,7 +64,14 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
         </TableHeader>
         <TableBody>
           <TableRow>
-            <TableCell className="font-medium">{project.title}</TableCell>
+            <TableCell className="font-medium">
+              <Link 
+                to={`/projects/${project.id}`}
+                className="text-blue-600 hover:underline hover:text-blue-800"
+              >
+                {project.title}
+              </Link>
+            </TableCell>
             <TableCell>{project.tasks.length}</TableCell>
             <TableCell>
               <div className="flex flex-wrap gap-1">
