@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useNavigate } from "react-router-dom";
 
 interface ApplicationFormProps {
   projectId: string;
@@ -26,6 +27,7 @@ export const ApplicationForm = ({
   const [newCV, setNewCV] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [useStoredCV, setUseStoredCV] = useState(hasStoredCV);
+  const navigate = useNavigate();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -44,7 +46,7 @@ export const ApplicationForm = ({
       return;
     }
 
-    if (!useStoredCV && !newCV) {
+    if (!useStoredCV && !newCV && !storedCVUrl) {
       toast.error("Please attach a CV");
       return;
     }
@@ -60,6 +62,7 @@ export const ApplicationForm = ({
 
       let cvUrl = useStoredCV ? storedCVUrl : null;
 
+      // Handle CV upload if there's a new CV
       if (newCV) {
         const fileName = `${session.user.id}/${Date.now()}-${newCV.name}`;
         const { error: uploadError } = await supabase.storage
@@ -74,26 +77,24 @@ export const ApplicationForm = ({
 
         cvUrl = publicUrl;
 
-        if (!useStoredCV) {
-          await supabase
-            .from('cv_parsed_data')
-            .upsert({
-              user_id: session.user.id,
-              cv_url: cvUrl,
-              cv_upload_date: new Date().toISOString()
-            });
-        }
+        // Update cv_parsed_data with new CV URL
+        await supabase
+          .from('cv_parsed_data')
+          .upsert({
+            user_id: session.user.id,
+            cv_url: cvUrl
+          });
       }
 
-      // First, create the application
-      const { data: applicationData, error: applicationError } = await supabase
+      // Create the application record
+      const { data: application, error: applicationError } = await supabase
         .from('job_applications')
         .insert({
           user_id: session.user.id,
           project_id: projectId,
           task_id: taskId,
           message: applicationMessage,
-          cv_url: cvUrl,
+          cv_url: cvUrl || storedCVUrl,
           status: 'pending'
         })
         .select()
@@ -101,40 +102,28 @@ export const ApplicationForm = ({
 
       if (applicationError) throw applicationError;
 
-      // If applying to a specific task, update its application data
-      if (taskId) {
-        // First, get current applications array
-        const { data: currentTask } = await supabase
-          .from('project_sub_tasks')
-          .select('applications, application_count')
-          .eq('id', taskId)
-          .single();
-
-        const currentApplications = currentTask?.applications || [];
-        const newApplicationCount = (currentTask?.application_count || 0) + 1;
-
-        // Add new application to array
-        const newApplication = {
-          application_id: applicationData.id,
-          user_id: session.user.id,
-          message: applicationMessage,
-          cv_url: cvUrl,
-          applied_at: new Date().toISOString()
-        };
-
-        const { error: taskUpdateError } = await supabase
+      // Update task application data if applying to a specific task
+      if (taskId && application) {
+        const { error: taskError } = await supabase
           .from('project_sub_tasks')
           .update({
-            application_count: newApplicationCount,
-            applications: [...currentApplications, newApplication]
+            application_count: 1,
+            applications: [{
+              application_id: application.id,
+              user_id: session.user.id,
+              message: applicationMessage,
+              cv_url: cvUrl || storedCVUrl,
+              applied_at: new Date().toISOString()
+            }]
           })
           .eq('id', taskId);
 
-        if (taskUpdateError) throw taskUpdateError;
+        if (taskError) throw taskError;
       }
 
       toast.success("Application submitted successfully");
       onApplicationSubmitted();
+      navigate("/seeker/dashboard");
     } catch (error) {
       console.error('Error submitting application:', error);
       toast.error("Failed to submit application");
@@ -197,7 +186,7 @@ export const ApplicationForm = ({
 
       <Button 
         onClick={handleApply}
-        disabled={isSubmitting || (!useStoredCV && !newCV) || !applicationMessage.trim()}
+        disabled={isSubmitting || (!useStoredCV && !newCV && !storedCVUrl) || !applicationMessage.trim()}
       >
         {isSubmitting ? "Submitting..." : "Submit Application"}
       </Button>
