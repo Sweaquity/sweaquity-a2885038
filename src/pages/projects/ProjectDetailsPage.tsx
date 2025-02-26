@@ -54,13 +54,36 @@ export const ProjectDetailsPage = () => {
           return;
         }
 
+        // First get the task details
         const { data: taskData, error: taskError } = await supabase
           .from('project_sub_tasks')
-          .select('*')
+          .select(`
+            id,
+            title,
+            description,
+            status,
+            equity_allocation,
+            skills_required,
+            timeframe,
+            project_id,
+            business:project_id (
+              id,
+              company_name,
+              project_stage,
+              contact_email,
+              industry,
+              website,
+              location
+            )
+          `)
           .eq('id', id)
-          .single();
+          .maybeSingle();
 
         if (taskError) throw taskError;
+        if (!taskData) {
+          toast.error("Project task not found");
+          return;
+        }
 
         // Check if user has already applied
         const { data: applicationData } = await supabase
@@ -68,7 +91,7 @@ export const ProjectDetailsPage = () => {
           .select('*')
           .eq('task_id', id)
           .eq('user_id', session.user.id)
-          .single();
+          .maybeSingle();
 
         setHasApplied(!!applicationData);
 
@@ -77,7 +100,7 @@ export const ProjectDetailsPage = () => {
           .from('cv_parsed_data')
           .select('cv_url')
           .eq('user_id', session.user.id)
-          .single();
+          .maybeSingle();
 
         if (cvData?.cv_url) {
           setHasStoredCV(true);
@@ -94,7 +117,7 @@ export const ProjectDetailsPage = () => {
           project_timeframe: taskData.timeframe,
           business_id: taskData.project_id,
           tasks: [taskData],
-          business: {
+          business: taskData.business || {
             company_name: "Project Owner",
             project_stage: "",
             contact_email: "",
