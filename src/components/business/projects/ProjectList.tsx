@@ -5,6 +5,11 @@ import { ProjectEditDialog } from "./ProjectEditDialog";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
+interface SkillRequirement {
+  skill: string;
+  level: string;
+}
+
 interface Task {
   id: string;
   title: string;
@@ -15,6 +20,8 @@ interface Task {
   equity_allocation: number;
   timeframe: string;
   skills_required: string[];
+  skill_requirements: SkillRequirement[];
+  dependencies: string[];
 }
 
 interface Project {
