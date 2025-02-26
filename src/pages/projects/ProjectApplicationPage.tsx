@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -53,6 +53,7 @@ interface JobSeekerProfile {
 
 export const ProjectApplicationPage = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [businessDetails, setBusinessDetails] = useState<BusinessDetails | null>(null);
   const [projectDetails, setProjectDetails] = useState<ProjectDetails | null>(null);
