@@ -1,189 +1,77 @@
-
-import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
 import { ProfileSection } from "@/components/job-seeker/ProfileSection";
 import { ProfileCompletionForm } from "@/components/job-seeker/ProfileCompletionForm";
 import { ApplicationsList } from "@/components/job-seeker/ApplicationsList";
 import { EquityProjectsList } from "@/components/job-seeker/EquityProjectsList";
-
-interface JobApplication {
-  id: string;
-  role_id: string;
-  status: string;
-  applied_at: string;
-  notes: string;
-  business_roles?: {
-    title: string;
-    description: string;
-  };
-}
-
-interface EquityProject {
-  id: string;
-  project_id: string;
-  equity_amount: number;
-  time_allocated: string;
-  status: string;
-  start_date: string;
-  end_date?: string;
-  effort_logs: {
-    date: string;
-    hours: number;
-    description: string;
-  }[];
-  total_hours_logged: number;
-  business_roles?: {
-    title: string;
-    description: string;
-  };
-}
-
-interface Profile {
-  first_name: string | null;
-  last_name: string | null;
-  title: string | null;
-  email: string | null;
-  location: string | null;
-}
-
-interface Skill {
-  name: string;
-  level: 'Beginner' | 'Intermediate' | 'Expert';
-}
+import { DashboardHeader } from "@/components/job-seeker/dashboard/DashboardHeader";
+import { useJobSeekerDashboard } from "@/hooks/useJobSeekerDashboard";
 
 const JobSeekerDashboard = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const activeTabFromState = location.state?.activeTab || "profile";
-  const [isLoading, setIsLoading] = useState(true);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [cvUrl, setCvUrl] = useState<string | null>(null);
-  const [applications, setApplications] = useState<JobApplication[]>([]);
-  const [equityProjects, setEquityProjects] = useState<EquityProject[]>([]);
-  const [parsedCvData, setParsedCvData] = useState<any>(null);
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [logEffort, setLogEffort] = useState({
-    projectId: '',
-    hours: 0,
-    description: ''
-  });
+  
+  const {
+    isLoading,
+    profile,
+    cvUrl,
+    applications,
+    equityProjects,
+    parsedCvData,
+    skills,
+    logEffort,
+    setLogEffort,
+    handleSignOut,
+    handleSkillsUpdate
+  } = useJobSeekerDashboard();
 
-  useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          navigate('/auth/seeker');
-          return;
-        }
-
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('first_name, last_name, title, email, location, skills')
-          .eq('id', session.user.id)
-          .single();
-
-        if (profileError) throw profileError;
-        setProfile(profileData);
-
-        // Convert string[] skills to Skill[] if needed
-        if (profileData.skills && Array.isArray(profileData.skills)) {
-          const convertedSkills: Skill[] = profileData.skills.map((skill: string | Skill) => {
-            if (typeof skill === 'string') {
-              return { name: skill, level: 'Intermediate' };
-            }
-            return skill as Skill;
-          });
-          setSkills(convertedSkills);
-        }
-
-        if (!profileData.first_name || !profileData.last_name || !profileData.title) {
-          setIsLoading(false);
-          return;
-        }
-
-        const { data: applicationsData } = await supabase
-          .from('job_applications')
-          .select(`
-            *,
-            business_roles (
-              title,
-              description
-            )
-          `)
-          .eq('user_id', session.user.id);
-
-        if (applicationsData) {
-          setApplications(applicationsData);
-        }
-
-        const { data: equityData } = await supabase
-          .from('sweaquity_matched_live_projects')
-          .select(`
-            *,
-            business_roles (
-              title,
-              description
-            )
-          `)
-          .eq('user_id', session.user.id);
-
-        if (equityData) {
-          setEquityProjects(equityData);
-        }
-
-        const { data: cvData } = await supabase
-          .from('cv_parsed_data')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-
-        if (cvData) {
-          setParsedCvData(cvData);
-        }
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
-        toast.error("Failed to load dashboard data");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadDashboardData();
-  }, [navigate]);
-
-  const handleSkillsUpdate = async (updatedSkills: Skill[]) => {
+  const handleLogEffort = async (projectId: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const { error } = await supabase
+        .from('sweaquity_matched_live_projects')
+        .update({
+          effort_logs: [...(equityProjects.find(p => p.id === projectId)?.effort_logs || []), {
+            date: new Date().toISOString(),
+            hours: logEffort.hours,
+            description: logEffort.description
+          }],
+          total_hours_logged: (equityProjects.find(p => p.id === projectId)?.total_hours_logged || 0) + logEffort.hours
+        })
+        .eq('id', projectId);
 
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ skills: updatedSkills })
-        .eq('id', session.user.id);
+      if (error) throw error;
 
-      if (profileError) throw profileError;
+      const { data: updatedProject } = await supabase
+        .from('sweaquity_matched_live_projects')
+        .select(`
+          *,
+          business_roles (
+            title,
+            description
+          )
+        `)
+        .eq('id', projectId)
+        .single();
 
-      const { error: cvDataError } = await supabase
-        .from('cv_parsed_data')
-        .update({ skills: updatedSkills })
-        .eq('user_id', session.user.id);
-
-      if (cvDataError && cvDataError.code !== 'PGRST116') {
-        throw cvDataError;
+      if (updatedProject) {
+        setEquityProjects(prev => prev.map(p => p.id === projectId ? updatedProject : p));
+        setLogEffort({ projectId: '', hours: 0, description: '' });
+        toast.success("Effort logged successfully");
       }
 
-      setSkills(updatedSkills);
-      toast.success("Skills updated successfully");
     } catch (error) {
-      console.error('Error updating skills:', error);
-      toast.error("Failed to update skills");
+      console.error('Error logging effort:', error);
+      toast.error("Failed to log effort");
     }
+  };
+
+  const handleLogEffortChange = (projectId: string, field: 'hours' | 'description', value: string | number) => {
+    setLogEffort(prev => ({
+      ...prev,
+      projectId,
+      [field]: value
+    }));
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -240,63 +128,6 @@ const JobSeekerDashboard = () => {
     }
   };
 
-  const handleLogEffort = async (projectId: string) => {
-    try {
-      const { error } = await supabase
-        .from('sweaquity_matched_live_projects')
-        .update({
-          effort_logs: [...(equityProjects.find(p => p.id === projectId)?.effort_logs || []), {
-            date: new Date().toISOString(),
-            hours: logEffort.hours,
-            description: logEffort.description
-          }],
-          total_hours_logged: (equityProjects.find(p => p.id === projectId)?.total_hours_logged || 0) + logEffort.hours
-        })
-        .eq('id', projectId);
-
-      if (error) throw error;
-
-      const { data: updatedProject } = await supabase
-        .from('sweaquity_matched_live_projects')
-        .select(`
-          *,
-          business_roles (
-            title,
-            description
-          )
-        `)
-        .eq('id', projectId)
-        .single();
-
-      if (updatedProject) {
-        setEquityProjects(prev => prev.map(p => p.id === projectId ? updatedProject : p));
-        setLogEffort({ projectId: '', hours: 0, description: '' });
-        toast.success("Effort logged successfully");
-      }
-
-    } catch (error) {
-      console.error('Error logging effort:', error);
-      toast.error("Failed to log effort");
-    }
-  };
-
-  const handleLogEffortChange = (projectId: string, field: 'hours' | 'description', value: string | number) => {
-    setLogEffort(prev => ({
-      ...prev,
-      projectId,
-      [field]: value
-    }));
-  };
-
-  const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast.error("Failed to sign out");
-    } else {
-      navigate('/auth/seeker');
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -313,17 +144,7 @@ const JobSeekerDashboard = () => {
     <div className="min-h-screen p-6">
       <div className="max-w-7xl mx-auto">
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <div className="space-y-1">
-              <h1 className="text-2xl font-bold">Job Seeker Dashboard</h1>
-              {profile?.first_name && (
-                <p className="text-muted-foreground">
-                  Welcome back {profile.first_name}, here is where you can see your profile and exciting projects on the Sweaquity platform
-                </p>
-              )}
-            </div>
-            <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
-          </div>
+          <DashboardHeader profile={profile} onSignOut={handleSignOut} />
 
           <Tabs defaultValue={activeTabFromState} className="space-y-6">
             <TabsList className="grid w-full grid-cols-5">

@@ -1,0 +1,51 @@
+
+export interface JobApplication {
+  id: string;
+  role_id: string;
+  status: string;
+  applied_at: string;
+  notes: string;
+  business_roles?: {
+    title: string;
+    description: string;
+  };
+}
+
+export interface EquityProject {
+  id: string;
+  project_id: string;
+  equity_amount: number;
+  time_allocated: string;
+  status: string;
+  start_date: string;
+  end_date?: string;
+  effort_logs: {
+    date: string;
+    hours: number;
+    description: string;
+  }[];
+  total_hours_logged: number;
+  business_roles?: {
+    title: string;
+    description: string;
+  };
+}
+
+export interface Profile {
+  first_name: string | null;
+  last_name: string | null;
+  title: string | null;
+  email: string | null;
+  location: string | null;
+}
+
+export interface Skill {
+  name: string;
+  level: 'Beginner' | 'Intermediate' | 'Expert';
+}
+
+export interface LogEffort {
+  projectId: string;
+  hours: number;
+  description: string;
+}
