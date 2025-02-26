@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -8,13 +9,37 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ProjectsSection } from "@/components/business/ProjectsSection";
 import { BusinessProfileCompletion } from "@/components/business/BusinessProfileCompletion";
-import { UserCircle2 } from "lucide-react";
+import { UserCircle2, ChevronDown } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+
+interface SubTask {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  equity_allocation: number;
+  timeframe: string;
+  skill_requirements: Array<{ skill: string; level: string }>;
+}
+
+interface Project {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  tasks: SubTask[];
+}
 
 const BusinessDashboard = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [businessData, setBusinessData] = useState<any>(null);
   const [hasJobSeekerProfile, setHasJobSeekerProfile] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -34,6 +59,27 @@ const BusinessDashboard = () => {
 
         if (businessError) throw businessError;
         setBusinessData(businessData);
+
+        // Load projects and their tasks
+        const { data: projectsData, error: projectsError } = await supabase
+          .from('business_projects')
+          .select('*')
+          .eq('status', 'active');
+
+        if (projectsError) throw projectsError;
+
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('project_sub_tasks')
+          .select('*');
+
+        if (tasksError) throw tasksError;
+
+        const projectsWithTasks = projectsData.map((project: any) => ({
+          ...project,
+          tasks: tasksData.filter((task: any) => task.project_id === project.id) || []
+        }));
+
+        setProjects(projectsWithTasks);
 
         // Check if user has a job seeker profile
         const { data: profileData } = await supabase
@@ -71,7 +117,6 @@ const BusinessDashboard = () => {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
-  // Show profile completion form if required fields are missing
   if (!businessData?.company_name || !businessData?.industry || !businessData?.terms_accepted) {
     return <BusinessProfileCompletion />;
   }
@@ -185,10 +230,59 @@ const BusinessDashboard = () => {
           <TabsContent value="roles">
             <Card>
               <CardHeader>
-                <h2 className="text-lg font-semibold">Active Roles</h2>
+                <h2 className="text-lg font-semibold">Active Project Roles</h2>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">No active roles found.</p>
+              <CardContent className="space-y-4">
+                {projects.length === 0 ? (
+                  <p className="text-muted-foreground">No active projects found.</p>
+                ) : (
+                  projects.map((project) => (
+                    <Collapsible key={project.id} className="border rounded-lg p-4">
+                      <CollapsibleTrigger className="flex justify-between items-center w-full">
+                        <div>
+                          <h3 className="text-lg font-medium">{project.title}</h3>
+                          <p className="text-sm text-muted-foreground">{project.description}</p>
+                        </div>
+                        <ChevronDown className="h-5 w-5" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-4 space-y-3">
+                        {project.tasks.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No tasks available for this project.</p>
+                        ) : (
+                          project.tasks.map((task) => (
+                            <div key={task.id} className="border rounded p-3">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h4 className="font-medium">{task.title}</h4>
+                                  <p className="text-sm text-muted-foreground">{task.description}</p>
+                                  <div className="mt-2">
+                                    <p className="text-sm">Equity Allocation: {task.equity_allocation}%</p>
+                                    <p className="text-sm">Timeframe: {task.timeframe}</p>
+                                  </div>
+                                  {task.skill_requirements && task.skill_requirements.length > 0 && (
+                                    <div className="mt-2">
+                                      <p className="text-sm font-medium">Required Skills:</p>
+                                      <div className="flex flex-wrap gap-2 mt-1">
+                                        {task.skill_requirements.map((skillReq, index) => (
+                                          <span key={index} className="px-2 py-1 bg-secondary rounded-full text-xs">
+                                            {skillReq.skill} - {skillReq.level}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                                <span className="px-2 py-1 text-xs rounded-full bg-secondary">
+                                  {task.status}
+                                </span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))
+                )}
               </CardContent>
             </Card>
           </TabsContent>
