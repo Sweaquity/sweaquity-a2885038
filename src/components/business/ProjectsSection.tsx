@@ -9,6 +9,11 @@ import { toast } from "sonner";
 import { ProjectList } from "./projects/ProjectList";
 import { ProjectForm } from "./projects/ProjectForm";
 
+interface SkillRequirement {
+  skill: string;
+  level: string;
+}
+
 interface Task {
   id: string;
   title: string;
@@ -19,6 +24,8 @@ interface Task {
   equity_allocation: number;
   timeframe: string;
   skills_required: string[];
+  skill_requirements: SkillRequirement[];
+  dependencies: string[];
 }
 
 interface Project {
