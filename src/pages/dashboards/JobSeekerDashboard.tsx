@@ -7,6 +7,8 @@ import { ApplicationsList } from "@/components/job-seeker/ApplicationsList";
 import { EquityProjectsList } from "@/components/job-seeker/EquityProjectsList";
 import { DashboardHeader } from "@/components/job-seeker/dashboard/DashboardHeader";
 import { useJobSeekerDashboard } from "@/hooks/useJobSeekerDashboard";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 const JobSeekerDashboard = () => {
   const location = useLocation();
@@ -23,7 +25,10 @@ const JobSeekerDashboard = () => {
     logEffort,
     setLogEffort,
     handleSignOut,
-    handleSkillsUpdate
+    handleSkillsUpdate,
+    setCvUrl,
+    setParsedCvData,
+    setEquityProjects
   } = useJobSeekerDashboard();
 
   const handleLogEffort = async (projectId: string) => {
@@ -175,25 +180,131 @@ const JobSeekerDashboard = () => {
             <TabsContent value="opportunities">
               <Card>
                 <CardHeader>
-                  <h2 className="text-lg font-semibold">Relevant Opportunities</h2>
+                  <h2 className="text-lg font-semibold">Matched Skills Projects</h2>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">No matching opportunities found.</p>
+                  <div className="space-y-4">
+                    {equityProjects.map(project => (
+                      <div key={project.id} className="border p-4 rounded-lg hover:bg-secondary/50 transition-colors">
+                        <a href={`/projects/${project.id}`} className="block">
+                          <div className="grid grid-cols-4 gap-4">
+                            <div>
+                              <p className="font-medium">Company/Project</p>
+                              <p>{project.business_roles?.title}</p>
+                            </div>
+                            <div>
+                              <p className="font-medium">Timeframe</p>
+                              <p>{project.time_allocated}</p>
+                            </div>
+                            <div>
+                              <p className="font-medium">Equity Available</p>
+                              <p>{project.equity_amount}%</p>
+                            </div>
+                            <div>
+                              <p className="font-medium">Project Value</p>
+                              <p>TBD</p>
+                            </div>
+                          </div>
+                        </a>
+                      </div>
+                    ))}
+                    {equityProjects.length === 0 && (
+                      <p className="text-muted-foreground">No matching opportunities found.</p>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
 
             <TabsContent value="applications">
-              <ApplicationsList applications={applications} />
+              <Card>
+                <CardHeader>
+                  <h2 className="text-lg font-semibold">Projects that you've applied for</h2>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {applications.map(application => (
+                      <div key={application.id} className="border p-4 rounded-lg hover:bg-secondary/50 transition-colors">
+                        <a href={`/projects/${application.role_id}`} className="block">
+                          <div className="grid grid-cols-4 gap-4">
+                            <div>
+                              <p className="font-medium">Company/Project</p>
+                              <p>{application.business_roles?.title}</p>
+                            </div>
+                            <div>
+                              <p className="font-medium">Status</p>
+                              <p className="capitalize">{application.status}</p>
+                            </div>
+                            <div>
+                              <p className="font-medium">Applied Date</p>
+                              <p>{new Date(application.applied_at).toLocaleDateString()}</p>
+                            </div>
+                            <div>
+                              <p className="font-medium">Project Value</p>
+                              <p>TBD</p>
+                            </div>
+                          </div>
+                        </a>
+                      </div>
+                    ))}
+                    {applications.length === 0 && (
+                      <p className="text-muted-foreground">No applications found.</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="equity">
-              <EquityProjectsList
-                projects={equityProjects}
-                logEffort={logEffort}
-                onLogEffort={handleLogEffort}
-                onLogEffortChange={handleLogEffortChange}
-              />
+              <Card>
+                <CardHeader>
+                  <h2 className="text-lg font-semibold">Projects that you're eligible for equity in</h2>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {equityProjects.map(project => (
+                      <div key={project.id} className="border p-4 rounded-lg">
+                        <div className="grid grid-cols-4 gap-4 mb-4">
+                          <div>
+                            <p className="font-medium">Company/Project</p>
+                            <p>{project.business_roles?.title}</p>
+                          </div>
+                          <div>
+                            <p className="font-medium">Total Hours</p>
+                            <p>{project.total_hours_logged || 0}</p>
+                          </div>
+                          <div>
+                            <p className="font-medium">Equity Earned</p>
+                            <p>{project.equity_amount}%</p>
+                          </div>
+                          <div>
+                            <p className="font-medium">Project Value</p>
+                            <p>TBD</p>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <button onClick={() => handleLogEffort(project.id)}>Log Effort</button>
+                          <input
+                            type="number"
+                            value={logEffort.hours}
+                            onChange={(e) => handleLogEffortChange(project.id, 'hours', e.target.value)}
+                            placeholder="Hours"
+                          />
+                          <input
+                            type="text"
+                            value={logEffort.description}
+                            onChange={(e) => handleLogEffortChange(project.id, 'description', e.target.value)}
+                            placeholder="Description"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    {equityProjects.length === 0 && (
+                      <p className="text-muted-foreground">No active equity projects found.</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="activity">

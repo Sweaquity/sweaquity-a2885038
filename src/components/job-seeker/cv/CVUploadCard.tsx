@@ -143,7 +143,7 @@ export const CVUploadCard = ({
       <CardHeader>
         <CardTitle>CV Management</CardTitle>
         <CardDescription>
-          Upload your CV to automatically extract your skills and experience
+          Upload your CV and if possible this will automatically extract your skills and experience
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

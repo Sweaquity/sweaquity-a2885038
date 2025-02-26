@@ -116,7 +116,7 @@ export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
               key={skill.name} 
               className="group bg-secondary px-3 py-1 rounded-full text-sm hover:bg-secondary/80 transition-colors flex items-center gap-2"
             >
-              <span>{skill.name} - {skill.level}</span>
+              <span>{skill.name}</span>
               <Select
                 value={skill.level}
                 onValueChange={(value: 'Beginner' | 'Intermediate' | 'Expert') => 
