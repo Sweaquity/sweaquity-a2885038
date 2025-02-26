@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -60,6 +61,7 @@ export const ProjectDetailsPage = () => {
 
         setIsJobSeeker(!!profileData);
 
+        // Fetch project details including project_id for tasks
         const { data: projectData, error: projectError } = await supabase
           .from('business_projects')
           .select(`
@@ -82,6 +84,7 @@ export const ProjectDetailsPage = () => {
             ),
             tasks:project_sub_tasks (
               id,
+              project_id,
               title,
               description,
               status,
@@ -131,7 +134,6 @@ export const ProjectDetailsPage = () => {
           setStoredCVUrl(cvData.cv_url);
         }
 
-        // Handle the business data
         const defaultBusiness: Business = {
           company_name: "Project Owner",
           project_stage: "",
@@ -149,7 +151,7 @@ export const ProjectDetailsPage = () => {
         // Map task data to match SubTask interface
         const mappedTasks: SubTask[] = (projectData.tasks || []).map(task => ({
           id: task.id,
-          project_id: task.project_id || projectData.id,
+          project_id: projectData.id, // Using the parent project's ID
           title: task.title,
           description: task.description,
           status: task.status,
