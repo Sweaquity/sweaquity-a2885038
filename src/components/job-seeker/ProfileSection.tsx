@@ -2,11 +2,7 @@
 import { CVUploadCard } from "./cv/CVUploadCard";
 import { SkillsCard } from "./skills/SkillsCard";
 import { CareerHistoryCard } from "./career/CareerHistoryCard";
-
-interface Skill {
-  name: string;
-  level: 'Beginner' | 'Intermediate' | 'Expert';
-}
+import { Skill } from "@/types/jobSeeker";
 
 interface ProfileSectionProps {
   cvUrl: string | null;

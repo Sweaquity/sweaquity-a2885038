@@ -39,10 +39,16 @@ export const useJobSeekerDashboard = () => {
         setProfile(profileData);
 
         if (profileData.skills && Array.isArray(profileData.skills)) {
-          const convertedSkills: Skill[] = profileData.skills.map((skill: string | Skill) => {
+          // Convert old format skills to new format if necessary
+          const convertedSkills: Skill[] = profileData.skills.map((skill: any) => {
             if (typeof skill === 'string') {
-              return { name: skill, level: 'Intermediate' };
+              return { skill: skill, level: 'Intermediate' };
             }
+            // If it has 'name', convert it to 'skill'
+            if ('name' in skill) {
+              return { skill: skill.name, level: skill.level };
+            }
+            // Already in correct format
             return skill as Skill;
           });
           setSkills(convertedSkills);
