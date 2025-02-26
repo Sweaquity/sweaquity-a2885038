@@ -41,6 +41,11 @@ export const ApplicationForm = ({
   };
 
   const handleApply = async () => {
+    if (!taskId) {
+      toast.error("Please select a task to apply for");
+      return;
+    }
+
     if (!applicationMessage.trim()) {
       toast.error("Please provide an application message");
       return;
@@ -90,7 +95,7 @@ export const ApplicationForm = ({
       const applicationData = {
         user_id: session.user.id,
         project_id: projectId,
-        task_id: taskId,
+        task_id: taskId,  // Now required
         message: applicationMessage,
         cv_url: cvUrl || storedCVUrl,
         status: 'pending'
@@ -108,7 +113,6 @@ export const ApplicationForm = ({
 
       toast.success("Application submitted successfully");
       onApplicationSubmitted();
-      navigate("/seeker/dashboard");
     } catch (error) {
       console.error('Error submitting application:', error);
       toast.error("Failed to submit application");
