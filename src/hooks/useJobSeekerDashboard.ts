@@ -151,6 +151,9 @@ export const useJobSeekerDashboard = () => {
     skills,
     logEffort,
     setLogEffort,
+    setCvUrl,
+    setParsedCvData,
+    setEquityProjects,
     handleSignOut,
     handleSkillsUpdate
   };
