@@ -11,6 +11,7 @@ export const useJobSeekerDashboard = () => {
   const [cvUrl, setCvUrl] = useState<string | null>(null);
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [equityProjects, setEquityProjects] = useState<EquityProject[]>([]);
+  const [pastApplications, setPastApplications] = useState<JobApplication[]>([]);
   const [parsedCvData, setParsedCvData] = useState<any>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [logEffort, setLogEffort] = useState({
@@ -55,12 +56,57 @@ export const useJobSeekerDashboard = () => {
           .select('*')
           .eq('status', 'open');
 
-        if (tasksError) {
-          console.error('Error fetching tasks:', tasksError);
-          throw tasksError;
-        }
+        if (tasksError) throw tasksError;
 
-        const convertedProjects: EquityProject[] = tasksData.map(task => ({
+        const { data: applicationsData, error: applicationsError } = await supabase
+          .from('job_applications')
+          .select(`
+            *,
+            business_roles:project_sub_tasks (
+              title,
+              description,
+              timeframe,
+              skills_required,
+              project:business_projects (
+                title,
+                business:businesses (
+                  company_name
+                )
+              )
+            )
+          `)
+          .eq('user_id', session.user.id);
+
+        if (applicationsError) throw applicationsError;
+
+        const currentApps = applicationsData?.filter(app => app.status !== 'withdrawn') || [];
+        const pastApps = applicationsData?.filter(app => app.status === 'withdrawn') || [];
+
+        const transformedApplications = currentApps.map(app => ({
+          ...app,
+          business_roles: {
+            ...app.business_roles,
+            company_name: app.business_roles?.project?.business?.company_name,
+            project_title: app.business_roles?.project?.title,
+          }
+        }));
+
+        const transformedPastApplications = pastApps.map(app => ({
+          ...app,
+          business_roles: {
+            ...app.business_roles,
+            company_name: app.business_roles?.project?.business?.company_name,
+            project_title: app.business_roles?.project?.title,
+          }
+        }));
+
+        setApplications(transformedApplications);
+        setPastApplications(transformedPastApplications);
+
+        const appliedTaskIds = currentApps.map(app => app.task_id);
+        const availableTasks = tasksData.filter(task => !appliedTaskIds.includes(task.id));
+
+        const convertedProjects: EquityProject[] = availableTasks.map(task => ({
           id: task.id,
           project_id: task.project_id,
           equity_amount: task.equity_allocation,
@@ -85,59 +131,7 @@ export const useJobSeekerDashboard = () => {
           }]
         }));
 
-        console.log('Fetched and converted tasks:', convertedProjects);
         setEquityProjects(convertedProjects);
-
-        const { data: applicationsData, error: applicationsError } = await supabase
-          .from('job_applications')
-          .select(`
-            *,
-            business_roles:project_sub_tasks (
-              title,
-              description,
-              timeframe,
-              skills_required,
-              project:business_projects (
-                title,
-                business:businesses (
-                  company_name
-                )
-              )
-            )
-          `)
-          .eq('user_id', session.user.id);
-
-        if (applicationsError) throw applicationsError;
-
-        const transformedApplications = applicationsData?.map(app => ({
-          ...app,
-          business_roles: {
-            ...app.business_roles,
-            company_name: app.business_roles?.project?.business?.company_name,
-            project_title: app.business_roles?.project?.title,
-          }
-        })) || [];
-
-        setApplications(transformedApplications);
-
-        const acceptedApplications = transformedApplications.filter(
-          app => app.status === 'accepted'
-        );
-
-        const transformedEquityProjects = acceptedApplications.map(app => ({
-          id: app.role_id,
-          project_id: app.project_id,
-          equity_amount: app.business_roles?.equity_allocation || 0,
-          time_allocated: app.business_roles?.timeframe || '',
-          status: 'active',
-          start_date: app.applied_at,
-          effort_logs: [],
-          total_hours_logged: 0,
-          title: app.business_roles?.title || '',
-          sub_tasks: [app.business_roles]
-        }));
-
-        setEquityProjects(transformedEquityProjects);
 
         const { data: cvData } = await supabase
           .from('cv_parsed_data')
@@ -203,6 +197,7 @@ export const useJobSeekerDashboard = () => {
     cvUrl,
     applications,
     equityProjects,
+    pastApplications,
     parsedCvData,
     skills,
     logEffort,

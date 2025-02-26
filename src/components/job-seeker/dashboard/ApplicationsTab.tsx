@@ -14,12 +14,13 @@ interface ApplicationsTabProps {
 export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
   const handleWithdraw = async (applicationId: string) => {
     try {
-      const { error } = await supabase
+      // Update the application status to 'withdrawn'
+      const { error: updateError } = await supabase
         .from('job_applications')
-        .delete()
+        .update({ status: 'withdrawn' })
         .eq('id', applicationId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
       
       toast.success("Application withdrawn successfully");
       // Reload the page to refresh the applications list
