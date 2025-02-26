@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -29,7 +28,6 @@ export const useJobSeekerDashboard = () => {
           return;
         }
 
-        // Fetch profile and skills
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('first_name, last_name, title, email, location, skills')
@@ -52,7 +50,6 @@ export const useJobSeekerDashboard = () => {
           setSkills(convertedSkills);
         }
 
-        // Fetch all available sub-tasks for matching
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
           .select('*')
@@ -63,7 +60,6 @@ export const useJobSeekerDashboard = () => {
           throw tasksError;
         }
 
-        // Convert tasks to equity projects format
         const convertedProjects: EquityProject[] = tasksData.map(task => ({
           id: task.id,
           project_id: task.project_id,
@@ -76,7 +72,7 @@ export const useJobSeekerDashboard = () => {
           title: task.title,
           sub_tasks: [{
             id: task.id,
-            project_id: task.project_id,  // Added this line
+            project_id: task.project_id,
             title: task.title,
             description: task.description,
             timeframe: task.timeframe,
@@ -92,17 +88,57 @@ export const useJobSeekerDashboard = () => {
         console.log('Fetched and converted tasks:', convertedProjects);
         setEquityProjects(convertedProjects);
 
-        // Fetch user's applications
-        const { data: applicationsData } = await supabase
+        const { data: applicationsData, error: applicationsError } = await supabase
           .from('job_applications')
-          .select('*')
+          .select(`
+            *,
+            business_roles:project_sub_tasks (
+              title,
+              description,
+              timeframe,
+              skills_required,
+              project:business_projects (
+                title,
+                business:businesses (
+                  company_name
+                )
+              )
+            )
+          `)
           .eq('user_id', session.user.id);
 
-        if (applicationsData) {
-          setApplications(applicationsData);
-        }
+        if (applicationsError) throw applicationsError;
 
-        // Fetch parsed CV data
+        const transformedApplications = applicationsData?.map(app => ({
+          ...app,
+          business_roles: {
+            ...app.business_roles,
+            company_name: app.business_roles?.project?.business?.company_name,
+            project_title: app.business_roles?.project?.title,
+          }
+        })) || [];
+
+        setApplications(transformedApplications);
+
+        const acceptedApplications = transformedApplications.filter(
+          app => app.status === 'accepted'
+        );
+
+        const transformedEquityProjects = acceptedApplications.map(app => ({
+          id: app.role_id,
+          project_id: app.project_id,
+          equity_amount: app.business_roles?.equity_allocation || 0,
+          time_allocated: app.business_roles?.timeframe || '',
+          status: 'active',
+          start_date: app.applied_at,
+          effort_logs: [],
+          total_hours_logged: 0,
+          title: app.business_roles?.title || '',
+          sub_tasks: [app.business_roles]
+        }));
+
+        setEquityProjects(transformedEquityProjects);
+
         const { data: cvData } = await supabase
           .from('cv_parsed_data')
           .select('*')

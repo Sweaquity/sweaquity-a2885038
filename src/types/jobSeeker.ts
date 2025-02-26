@@ -8,6 +8,10 @@ export interface JobApplication {
   business_roles?: {
     title: string;
     description: string;
+    company_name?: string;
+    project_title?: string;
+    timeframe?: string;
+    skills_required?: string[];
   };
 }
 
