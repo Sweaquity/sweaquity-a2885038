@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -51,38 +52,44 @@ export const useJobSeekerDashboard = () => {
           setSkills(convertedSkills);
         }
 
-        // Fetch all available projects with their sub-tasks for matching
-        const { data: projectsData, error: projectsError } = await supabase
-          .from('business_projects')
-          .select(`
-            id,
-            project_id,
-            title,
-            description,
-            status,
-            equity_allocation,
-            created_at,
-            updated_at,
-            business_id,
-            role_id,
-            sub_tasks:project_sub_tasks (
-              id,
-              title,
-              description,
-              timeframe,
-              status,
-              equity_allocation,
-              skill_requirements
-            )
-          `);
+        // Fetch all available sub-tasks for matching
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('project_sub_tasks')
+          .select('*')
+          .eq('status', 'open');
 
-        if (projectsError) {
-          console.error('Error fetching projects:', projectsError);
-          throw projectsError;
+        if (tasksError) {
+          console.error('Error fetching tasks:', tasksError);
+          throw tasksError;
         }
 
-        console.log('Fetched projects:', projectsData);
-        setEquityProjects(projectsData || []);
+        // Convert tasks to equity projects format
+        const convertedProjects: EquityProject[] = tasksData.map(task => ({
+          id: task.id,
+          project_id: task.project_id,
+          equity_amount: task.equity_allocation,
+          time_allocated: task.timeframe,
+          status: task.status,
+          start_date: task.created_at,
+          effort_logs: [],
+          total_hours_logged: 0,
+          title: task.title,
+          sub_tasks: [{
+            id: task.id,
+            title: task.title,
+            description: task.description,
+            timeframe: task.timeframe,
+            status: task.status,
+            equity_allocation: task.equity_allocation,
+            skill_requirements: task.skill_requirements || [],
+            skills_required: task.skills_required || [],
+            task_status: task.task_status,
+            completion_percentage: task.completion_percentage
+          }]
+        }));
+
+        console.log('Fetched and converted tasks:', convertedProjects);
+        setEquityProjects(convertedProjects);
 
         // Fetch user's applications
         const { data: applicationsData } = await supabase
