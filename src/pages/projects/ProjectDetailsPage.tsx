@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -150,6 +149,7 @@ export const ProjectDetailsPage = () => {
         // Map task data to match SubTask interface
         const mappedTasks: SubTask[] = (projectData.tasks || []).map(task => ({
           id: task.id,
+          project_id: task.project_id || projectData.id,
           title: task.title,
           description: task.description,
           status: task.status,

@@ -76,6 +76,7 @@ export const useJobSeekerDashboard = () => {
           title: task.title,
           sub_tasks: [{
             id: task.id,
+            project_id: task.project_id,  // Added this line
             title: task.title,
             description: task.description,
             timeframe: task.timeframe,
