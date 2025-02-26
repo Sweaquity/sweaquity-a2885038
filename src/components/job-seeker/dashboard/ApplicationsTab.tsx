@@ -1,13 +1,35 @@
 
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 import { JobApplication } from "@/types/jobSeeker";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 interface ApplicationsTabProps {
   applications: JobApplication[];
 }
 
 export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
+  const handleWithdraw = async (applicationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('job_applications')
+        .delete()
+        .eq('id', applicationId);
+
+      if (error) throw error;
+      
+      toast.success("Application withdrawn successfully");
+      // Reload the page to refresh the applications list
+      window.location.reload();
+    } catch (error) {
+      console.error('Error withdrawing application:', error);
+      toast.error("Failed to withdraw application");
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -17,35 +39,37 @@ export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
         <div className="space-y-4">
           {applications.map(application => (
             <div key={application.id} className="border p-4 rounded-lg hover:bg-secondary/50 transition-colors">
-              <div className="grid grid-cols-1 gap-4">
-                <div className="grid grid-cols-3 gap-4 mb-2">
-                  <div>
-                    <p className="font-medium mb-1">Company</p>
-                    <p className="text-sm">{application.business_roles?.company_name || 'Company name not available'}</p>
+              <div className="flex items-center justify-between gap-4">
+                <div className="grid grid-cols-6 flex-1 gap-6">
+                  <div className="col-span-1">
+                    <p className="text-sm font-medium text-muted-foreground">Company</p>
+                    <p className="truncate">{application.business_roles?.company_name || 'N/A'}</p>
                   </div>
-                  <div>
-                    <p className="font-medium mb-1">Project</p>
-                    <p className="text-sm">{application.business_roles?.project_title || 'Project title not available'}</p>
+                  <div className="col-span-1">
+                    <p className="text-sm font-medium text-muted-foreground">Project</p>
+                    <p className="truncate">{application.business_roles?.project_title || 'N/A'}</p>
                   </div>
-                  <div>
-                    <p className="font-medium mb-1">Task Title</p>
-                    <p className="text-sm">{application.business_roles?.title || 'Task title not available'}</p>
+                  <div className="col-span-1">
+                    <p className="text-sm font-medium text-muted-foreground">Task</p>
+                    <p className="truncate">{application.business_roles?.title || 'N/A'}</p>
                   </div>
-                </div>
-                
-                <div className="grid grid-cols-4 gap-4">
-                  <div>
-                    <p className="font-medium mb-1">Skills Required</p>
+                  <div className="col-span-1">
+                    <p className="text-sm font-medium text-muted-foreground">Skills</p>
                     <div className="flex flex-wrap gap-1">
-                      {application.business_roles?.skills_required?.map((skill, index) => (
+                      {application.business_roles?.skills_required?.slice(0, 2).map((skill, index) => (
                         <Badge key={index} variant="secondary" className="text-xs">
                           {skill}
                         </Badge>
-                      )) || 'No skills listed'}
+                      ))}
+                      {(application.business_roles?.skills_required?.length || 0) > 2 && (
+                        <span className="text-xs text-muted-foreground">
+                          +{(application.business_roles?.skills_required?.length || 0) - 2}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <div>
-                    <p className="font-medium mb-1">Status</p>
+                  <div className="col-span-1">
+                    <p className="text-sm font-medium text-muted-foreground">Status</p>
                     <Badge 
                       variant={application.status === 'pending' ? 'secondary' : 
                               application.status === 'accepted' ? 'default' : 'destructive'}
@@ -53,14 +77,22 @@ export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
                       {application.status}
                     </Badge>
                   </div>
-                  <div>
-                    <p className="font-medium mb-1">Timeframe</p>
-                    <p className="text-sm">{application.business_roles?.timeframe || 'Not specified'}</p>
-                  </div>
-                  <div>
-                    <p className="font-medium mb-1">Applied Date</p>
+                  <div className="col-span-1">
+                    <p className="text-sm font-medium text-muted-foreground">Applied</p>
                     <p className="text-sm">{new Date(application.applied_at).toLocaleDateString()}</p>
                   </div>
+                </div>
+                <div className="flex items-center">
+                  {application.status === 'pending' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => handleWithdraw(application.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
