@@ -9,17 +9,6 @@ export interface JobApplication {
     title: string;
     description: string;
   };
-  task?: {
-    title: string;
-    description: string;
-    equity_allocation: number;
-    timeframe: string;
-  };
-  project?: {
-    title: string;
-    description: string;
-    business_id: string;
-  };
 }
 
 export interface SkillRequirement {
