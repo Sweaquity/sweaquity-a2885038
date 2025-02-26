@@ -14,6 +14,7 @@ interface DashboardContentProps {
   skills: Skill[];
   applications: JobApplication[];
   equityProjects: EquityProject[];
+  availableOpportunities: EquityProject[];
   logEffort: {
     projectId: string;
     hours: number;
@@ -32,6 +33,7 @@ export const DashboardContent = ({
   skills,
   applications,
   equityProjects,
+  availableOpportunities,
   logEffort,
   handleFileUpload,
   onSkillsUpdate,
@@ -67,7 +69,7 @@ export const DashboardContent = ({
 
       <TabsContent value="opportunities">
         <OpportunitiesTab 
-          projects={equityProjects} 
+          projects={availableOpportunities} 
           userSkills={skills}
         />
       </TabsContent>

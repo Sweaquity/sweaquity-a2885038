@@ -7,10 +7,12 @@ import { useProfile } from "./job-seeker/useProfile";
 import { useApplications } from "./job-seeker/useApplications";
 import { useEquityProjects } from "./job-seeker/useEquityProjects";
 import { useCVData } from "./job-seeker/useCVData";
+import { EquityProject } from "@/types/jobSeeker";
 
 export const useJobSeekerDashboard = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
+  const [availableOpportunities, setAvailableOpportunities] = useState<EquityProject[]>([]);
   
   const { profile, skills, loadProfile, handleSkillsUpdate } = useProfile();
   const { applications, pastApplications, loadApplications } = useApplications();
@@ -53,7 +55,7 @@ export const useJobSeekerDashboard = () => {
           .filter(app => app.status !== 'withdrawn')
           .map(app => app.task_id);
         
-        const availableOpportunities = tasksData
+        const opportunities = tasksData
           .filter(task => !appliedTaskIds.includes(task.id))
           .map(task => ({
             id: task.id,
@@ -79,6 +81,8 @@ export const useJobSeekerDashboard = () => {
               completion_percentage: task.completion_percentage
             }]
           }));
+
+        setAvailableOpportunities(opportunities);
 
         // Transform accepted applications to equity projects
         const acceptedProjects = transformToEquityProjects(
@@ -114,6 +118,7 @@ export const useJobSeekerDashboard = () => {
     cvUrl,
     applications,
     equityProjects,
+    availableOpportunities,
     pastApplications,
     parsedCvData,
     skills,
