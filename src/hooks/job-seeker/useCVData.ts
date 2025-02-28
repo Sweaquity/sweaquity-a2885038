@@ -32,52 +32,65 @@ export const useCVData = () => {
         console.log("CV storage bucket doesn't exist, this is expected since it should be created by an admin");
       }
       
-      // Get user's profile data to check for CV URL
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('cv_url')
-        .eq('id', userId)
-        .maybeSingle(); // Use maybeSingle instead of single
-        
-      if (profileError) {
-        if (profileError.code !== 'PGRST116') {  // Ignore "no rows returned" error
-          console.error("Error fetching profile CV URL:", profileError);
+      // Get user's profile data to check for CV URL - use maybeSingle to prevent errors
+      try {
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('cv_url')
+          .eq('id', userId)
+          .maybeSingle();
+          
+        if (error) {
+          if (error.code !== 'PGRST116' && error.code !== '42703') {
+            // Only log errors that aren't "no rows returned" or "column does not exist"
+            console.error("Error fetching profile CV URL:", error);
+          }
+        } else if (profileData?.cv_url) {
+          setCvUrl(profileData.cv_url);
         }
-      } else if (profileData?.cv_url) {
-        setCvUrl(profileData.cv_url);
+      } catch (error) {
+        console.log("Error fetching profile, this might be expected if cv_url column doesn't exist yet:", error);
       }
 
-      // Get parsed CV data if available
-      const { data: cvData, error: cvError } = await supabase
-        .from('cv_parsed_data')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
+      // Get parsed CV data if available - use maybeSingle to prevent errors
+      try {
+        const { data: cvData, error: cvError } = await supabase
+          .from('cv_parsed_data')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
 
-      if (cvError) {
-        if (cvError.code !== 'PGRST116') {  // Ignore "no rows returned" error
-          console.error("Error fetching CV data:", cvError);
+        if (cvError) {
+          if (cvError.code !== 'PGRST116') {
+            // Only log errors that aren't "no rows returned"
+            console.error("Error fetching CV data:", cvError);
+          }
+        } else if (cvData) {
+          setParsedCvData(cvData);
         }
-      } else if (cvData) {
-        setParsedCvData(cvData);
+      } catch (error) {
+        console.log("Error fetching CV data, this might be expected:", error);
       }
       
       // Get list of user's CVs
       if (cvsBucketExists) {
-        const cvFiles = await listUserCVs(userId);
-        
-        // Mark default CV
-        const defaultCVUrl = profileData?.cv_url;
-        const filesWithDefault = cvFiles.map(file => ({
-          ...file,
-          isDefault: defaultCVUrl ? defaultCVUrl.includes(file.name) : false
-        }));
-        
-        setUserCVs(filesWithDefault);
+        try {
+          const cvFiles = await listUserCVs(userId);
+          
+          // Mark default CV
+          const defaultCVUrl = cvUrl;
+          const filesWithDefault = cvFiles.map(file => ({
+            ...file,
+            isDefault: defaultCVUrl ? defaultCVUrl.includes(file.name) : false
+          }));
+          
+          setUserCVs(filesWithDefault);
+        } catch (error) {
+          console.log("Error listing CVs:", error);
+        }
       }
     } catch (error) {
       console.error('Error loading CV data:', error);
-      toast.error("Failed to load CV data");
     } finally {
       setIsLoading(false);
     }

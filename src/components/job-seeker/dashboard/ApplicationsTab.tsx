@@ -131,25 +131,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
       if (!cvsBucketExists) {
         console.error("CV bucket does not exist");
         toast.error("CV storage is not properly configured");
-        
-        // Attempt to create the bucket
-        try {
-          const { error: bucketError } = await supabase.storage.createBucket('cvs', {
-            public: true
-          });
-          
-          if (bucketError) {
-            console.error("Error creating cvs bucket:", bucketError);
-            toast.error("Failed to create CV storage bucket");
-            return;
-          } else {
-            console.log("Successfully created cvs bucket");
-          }
-        } catch (bucketErr) {
-          console.error("Error creating storage bucket:", bucketErr);
-          toast.error("Failed to create CV storage bucket");
-          return;
-        }
+        return;
       }
       
       // Open CV URL in new tab
@@ -373,7 +355,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                     <div className="bg-muted p-3 rounded-md">
                       <div className="mb-3 pb-3 border-b">
                         <h4 className="text-sm font-medium mb-1">Message:</h4>
-                        <p className="text-sm">{application.notes || "No message provided"}</p>
+                        <p className="text-sm">{application.notes || application.message || "No message provided"}</p>
                       </div>
                       
                       <div>
