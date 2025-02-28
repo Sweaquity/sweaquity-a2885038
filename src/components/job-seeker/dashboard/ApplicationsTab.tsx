@@ -123,8 +123,18 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
         return;
       }
       
-      // Open CV URL directly in new tab
-      window.open(cvUrl, '_blank');
+      // Get the file extension from the CV URL
+      const fileExtension = cvUrl.split('.').pop()?.toLowerCase();
+      
+      if (fileExtension === 'pdf') {
+        // For PDFs, open directly - browsers can render these
+        window.open(cvUrl, '_blank');
+      } else {
+        // For other formats like docx, open in Google Docs Viewer or Office Online
+        // Format: https://docs.google.com/viewer?url=YOUR_FILE_URL&embedded=true
+        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(cvUrl)}&embedded=true`;
+        window.open(viewerUrl, '_blank');
+      }
 
     } catch (err) {
       console.error("Error opening CV:", err);
@@ -234,7 +244,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-destructive hover:bg-destructive/10"
+                        className="text-destructive hover:bg-destructive/10 hover:text-white hover:bg-destructive"
                         disabled={isWithdrawing === application.job_app_id}
                         onClick={() => handleWithdraw(application.job_app_id, application.task_id)}
                       >
@@ -326,7 +336,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-destructive hover:bg-destructive/10"
+                      className="text-destructive hover:bg-destructive hover:text-white"
                       onClick={() => handleWithdraw(application.job_app_id, application.task_id)}
                       disabled={isWithdrawing === application.job_app_id}
                       title="Withdraw application"
