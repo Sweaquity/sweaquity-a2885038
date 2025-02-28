@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -54,7 +53,8 @@ interface SubTask {
   completion_percentage: number;
   created_at: string;
   project_id: string;
-  matchScore?: number; // Add matchScore as optional
+  matchScore?: number;
+  matchedSkills?: string[];
 }
 
 interface JobSeekerProfile {
@@ -93,15 +93,21 @@ export const ProjectApplicationPage = () => {
     setSelectedTask(task);
   };
 
-  // Calculate skill match percentage
-  const calculateSkillMatch = (task: SubTask): number => {
-    if (!task.skills_required || task.skills_required.length === 0) return 0;
+  const calculateSkillMatch = (task: SubTask, userSkills: Skill[]): { 
+    matchScore: number, 
+    matchedSkills: string[] 
+  } => {
+    if (!task.skills_required || task.skills_required.length === 0) {
+      return { matchScore: 0, matchedSkills: [] };
+    }
     
-    const matchingSkills = task.skills_required.filter(skill => 
+    const matchedSkills = task.skills_required.filter(skill => 
       userSkills.some(userSkill => userSkill.skill.toLowerCase() === skill.toLowerCase())
     );
     
-    return Math.round((matchingSkills.length / task.skills_required.length) * 100);
+    const matchScore = Math.round((matchedSkills.length / task.skills_required.length) * 100);
+    
+    return { matchScore, matchedSkills };
   };
 
   const addSkill = async () => {
@@ -110,7 +116,6 @@ export const ProjectApplicationPage = () => {
       return;
     }
 
-    // Check if skill already exists
     if (userSkills.some((s) => s.skill.toLowerCase() === newSkill.toLowerCase())) {
       toast.error("This skill already exists in your profile");
       return;
@@ -123,7 +128,6 @@ export const ProjectApplicationPage = () => {
       const newSkillObject = { skill: newSkill, level: skillLevel };
       const updatedSkills = [...userSkills, newSkillObject];
 
-      // Update skills in profile
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ skills: updatedSkills })
@@ -131,19 +135,34 @@ export const ProjectApplicationPage = () => {
 
       if (profileError) throw profileError;
 
-      // Also update cv_parsed_data if it exists
       const { error: cvDataError } = await supabase
         .from('cv_parsed_data')
         .update({ skills: updatedSkills })
         .eq('user_id', session.user.id);
 
       if (cvDataError && cvDataError.code !== 'PGRST116') {
-        // PGRST116 is the error code for no rows returned
         throw cvDataError;
       }
 
       setUserSkills(updatedSkills);
       setNewSkill("");
+      
+      if (selectedTask) {
+        const { matchScore, matchedSkills } = calculateSkillMatch(selectedTask, updatedSkills);
+        selectedTask.matchScore = matchScore;
+        selectedTask.matchedSkills = matchedSkills;
+        setSelectedTask({ ...selectedTask });
+      }
+
+      setSubTasks(subTasks.map(task => {
+        const { matchScore, matchedSkills } = calculateSkillMatch(task, updatedSkills);
+        return {
+          ...task,
+          matchScore,
+          matchedSkills
+        };
+      }));
+      
       toast.success("Skill added successfully");
     } catch (error) {
       console.error('Error adding skill:', error);
@@ -179,7 +198,6 @@ export const ProjectApplicationPage = () => {
 
         if (projectError) throw projectError;
 
-        // Fetch all tasks
         const { data: taskData, error: taskError } = await supabase
           .from('project_sub_tasks')
           .select('*')
@@ -187,7 +205,6 @@ export const ProjectApplicationPage = () => {
 
         if (taskError) throw taskError;
 
-        // Get user's profile and skills
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -196,12 +213,10 @@ export const ProjectApplicationPage = () => {
 
         if (profileError) throw profileError;
 
-        // Extract user skills
         let extractedSkills: Skill[] = [];
         if (profileData.skills) {
           try {
             if (typeof profileData.skills === 'string') {
-              // Try to parse if it's a JSON string
               const parsedSkills = JSON.parse(profileData.skills);
               if (Array.isArray(parsedSkills)) {
                 extractedSkills = parsedSkills.map(s => 
@@ -209,7 +224,6 @@ export const ProjectApplicationPage = () => {
                 );
               }
             } else if (Array.isArray(profileData.skills)) {
-              // If it's already an array
               extractedSkills = profileData.skills.map(s => 
                 typeof s === 'string' ? { skill: s, level: "Intermediate" } : s
               );
@@ -225,7 +239,6 @@ export const ProjectApplicationPage = () => {
           skills: extractedSkills
         });
 
-        // Check for existing applications by this user
         const { data: userApplications, error: applicationError } = await supabase
           .from('job_applications')
           .select('task_id, status')
@@ -233,7 +246,6 @@ export const ProjectApplicationPage = () => {
           
         if (applicationError) throw applicationError;
           
-        // Create set of task IDs that are not available to apply to
         const unavailableTaskIds = new Set(
           userApplications
             .filter(app => ['pending', 'in review', 'negotiation', 'accepted'].includes(app.status))
@@ -242,30 +254,31 @@ export const ProjectApplicationPage = () => {
           
         console.log("Unavailable task IDs:", Array.from(unavailableTaskIds));
 
-        // Filter available tasks and sort by skill match
-        let availableTasks = taskData
+        const availableTasks = taskData
           .filter(task => task.status === 'open' && !unavailableTaskIds.has(task.id))
-          .map(task => ({
-            ...task,
-            matchScore: calculateSkillMatchScore(task, extractedSkills)
-          }))
+          .map(task => {
+            const { matchScore, matchedSkills } = calculateSkillMatch(task, extractedSkills);
+            return {
+              ...task,
+              matchScore,
+              matchedSkills
+            };
+          })
+          .filter(task => task.matchScore > 0)
           .sort((a, b) => b.matchScore! - a.matchScore!);
 
-        // Get stored CV
         const { data: cvData } = await supabase
           .from('cv_parsed_data')
           .select('cv_url')
           .eq('user_id', session.user.id)
           .maybeSingle();
 
-        // Get CV URL from profile if present
         const { data: cvUrlData } = await supabase
           .from('profiles')
           .select('cv_url')
           .eq('id', session.user.id)
           .single();
 
-        // Check if storage bucket exists
         const { data: buckets } = await supabase.storage.listBuckets();
         const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
         
@@ -292,7 +305,6 @@ export const ProjectApplicationPage = () => {
         setHasStoredCV(!!cvData?.cv_url || !!cvUrlData?.cv_url);
         setStoredCVUrl(cvData?.cv_url || cvUrlData?.cv_url || null);
 
-        // If available, automatically select the first task
         if (availableTasks.length > 0) {
           setSelectedTaskId(availableTasks[0].id);
           setSelectedTask(availableTasks[0]);
@@ -310,39 +322,6 @@ export const ProjectApplicationPage = () => {
       fetchData();
     }
   }, [id, navigate]);
-
-  // Helper function for calculating a more detailed skill match score
-  const calculateSkillMatchScore = (task: SubTask, userSkills: Skill[]): number => {
-    if (!task.skills_required || task.skills_required.length === 0) return 0;
-    
-    let matchCount = 0;
-    let totalWeight = task.skills_required.length;
-
-    for (const requiredSkill of task.skills_required) {
-      const matchingUserSkill = userSkills.find(
-        us => us.skill.toLowerCase() === requiredSkill.toLowerCase()
-      );
-      
-      if (matchingUserSkill) {
-        // Add weight based on skill level
-        switch (matchingUserSkill.level) {
-          case 'Expert':
-            matchCount += 1.2;
-            break;
-          case 'Intermediate':
-            matchCount += 1.0;
-            break;
-          case 'Beginner':
-            matchCount += 0.8;
-            break;
-          default:
-            matchCount += 1.0;
-        }
-      }
-    }
-    
-    return Math.round((matchCount / totalWeight) * 100);
-  };
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -409,15 +388,18 @@ export const ProjectApplicationPage = () => {
               <div className="mt-3">
                 <h4 className="font-medium mb-1">Required Skills</h4>
                 <div className="flex flex-wrap gap-2">
-                  {projectDetails.skills_required?.map((skill, index) => (
-                    <Badge 
-                      key={index} 
-                      variant={userSkills.some(us => us.skill.toLowerCase() === skill.toLowerCase()) ? "default" : "secondary"}
-                    >
-                      {skill}
-                      {userSkills.some(us => us.skill.toLowerCase() === skill.toLowerCase()) && " ✓"}
-                    </Badge>
-                  ))}
+                  {projectDetails.skills_required?.map((skill, index) => {
+                    const isMatch = userSkills.some(us => us.skill.toLowerCase() === skill.toLowerCase());
+                    return (
+                      <Badge 
+                        key={index} 
+                        variant={isMatch ? "default" : "secondary"}
+                      >
+                        {skill}
+                        {isMatch && " ✓"}
+                      </Badge>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -428,7 +410,7 @@ export const ProjectApplicationPage = () => {
       <Card>
         <CardContent className="space-y-6 pt-6">
           <div>
-            <h3 className="text-xl font-semibold mb-4">Available Tasks</h3>
+            <h3 className="text-xl font-semibold mb-4">Available Matching Tasks</h3>
             {subTasks.length > 0 ? (
               <div>
                 <div className="space-y-4 mb-4">
@@ -445,7 +427,7 @@ export const ProjectApplicationPage = () => {
                         <SelectItem key={task.id} value={task.id}>
                           <div>
                             <span className="font-medium">{task.title}</span>
-                            <span className="ml-2 text-xs">{task.matchScore || calculateSkillMatch(task)}% skill match</span>
+                            <span className="ml-2 text-xs">{task.matchScore}% skill match</span>
                           </div>
                         </SelectItem>
                       ))}
@@ -482,17 +464,34 @@ export const ProjectApplicationPage = () => {
                         </div>
                         
                         <div>
-                          <h6 className="text-sm font-medium text-muted-foreground">Required Skills</h6>
+                          <h6 className="text-sm font-medium text-muted-foreground">Matched Skills</h6>
                           <div className="flex flex-wrap gap-2 mt-1">
-                            {selectedTask.skills_required?.map((skill, index) => (
+                            {selectedTask.matchedSkills?.map((skill, index) => (
                               <Badge 
                                 key={index} 
-                                variant={userSkills.some(us => us.skill.toLowerCase() === skill.toLowerCase()) ? "default" : "secondary"}
+                                variant="default"
                               >
-                                {skill}
-                                {userSkills.some(us => us.skill.toLowerCase() === skill.toLowerCase()) && " ✓"}
+                                {skill} ✓
                               </Badge>
                             ))}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h6 className="text-sm font-medium text-muted-foreground">All Required Skills</h6>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {selectedTask.skills_required?.map((skill, index) => {
+                              const isMatch = selectedTask.matchedSkills?.includes(skill);
+                              return (
+                                <Badge 
+                                  key={index} 
+                                  variant={isMatch ? "default" : "secondary"}
+                                >
+                                  {skill}
+                                  {isMatch && " ✓"}
+                                </Badge>
+                              );
+                            })}
                           </div>
                         </div>
                         
@@ -501,11 +500,11 @@ export const ProjectApplicationPage = () => {
                           <div className="w-full bg-secondary h-2 rounded-full mt-1">
                             <div 
                               className="bg-primary h-2 rounded-full" 
-                              style={{ width: `${selectedTask.matchScore || calculateSkillMatch(selectedTask)}%` }}
+                              style={{ width: `${selectedTask.matchScore}%` }}
                             ></div>
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {selectedTask.matchScore || calculateSkillMatch(selectedTask)}% match with your skills
+                            {selectedTask.matchScore}% match with your skills
                           </p>
                         </div>
                       </div>
@@ -515,7 +514,7 @@ export const ProjectApplicationPage = () => {
               </div>
             ) : (
               <div className="p-4 border rounded-md bg-muted/50">
-                <p className="text-center text-muted-foreground">No available tasks to apply for at this time.</p>
+                <p className="text-center text-muted-foreground">No matching tasks found. Add more skills to see tasks that match your profile.</p>
               </div>
             )}
           </div>
@@ -553,15 +552,16 @@ export const ProjectApplicationPage = () => {
                 <div className="mt-4 border-t pt-4">
                   <h4 className="font-medium mb-2">Your Skills</h4>
                   <div className="flex flex-wrap gap-2 mb-4">
-                    {userSkills.map((skill, index) => (
-                      <Badge key={index} variant={
-                        selectedTask.skills_required.some(
-                          s => s.toLowerCase() === skill.skill.toLowerCase()
-                        ) ? "default" : "secondary"
-                      }>
-                        {skill.skill} ({skill.level})
-                      </Badge>
-                    ))}
+                    {userSkills.map((skill, index) => {
+                      const isMatch = selectedTask.skills_required.some(
+                        s => s.toLowerCase() === skill.skill.toLowerCase()
+                      );
+                      return (
+                        <Badge key={index} variant={isMatch ? "default" : "secondary"}>
+                          {skill.skill} ({skill.level}) {isMatch && "✓"}
+                        </Badge>
+                      );
+                    })}
                   </div>
                   
                   <div className="grid grid-cols-3 gap-2">

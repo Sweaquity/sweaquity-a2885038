@@ -5,7 +5,6 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ProjectHeader } from "@/components/projects/ProjectHeader";
-import { ProjectDetails } from "@/components/projects/ProjectDetails";
 import { SubTask } from "@/types/jobSeeker";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -326,16 +325,7 @@ export const ProjectDetailsPage = () => {
                         <Badge className="mt-1">{task.status}</Badge>
                       </div>
                       
-                      {isJobSeeker && (
-                        <div className="mt-3">
-                          <Button
-                            onClick={() => navigate(`/projects/${project.id}/apply`)}
-                            disabled={hasApplied}
-                          >
-                            {hasApplied ? "Already Applied" : "Apply for This Role"}
-                          </Button>
-                        </div>
-                      )}
+                      {/* Apply button removed as requested */}
                     </div>
                   </CollapsibleContent>
                 </Collapsible>

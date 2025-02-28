@@ -22,18 +22,21 @@ interface TaskCardProps {
     completion_percentage?: number;
   };
   userSkills: Skill[];
+  showMatchedSkills?: boolean;
 }
 
-export const TaskCard = ({ task, userSkills }: TaskCardProps) => {
+export const TaskCard = ({ task, userSkills, showMatchedSkills = false }: TaskCardProps) => {
   const navigate = useNavigate();
 
   const handleApply = () => {
     navigate(`/projects/${task.project_id}/apply`);
   };
 
-  // Use skill_requirements if available, otherwise use skills_required
-  const skillRequirements = task.skill_requirements || 
-    (task.skills_required?.map(skill => ({ skill, level: 'Unknown' })) || []);
+  // Use matching skill requirements if available, otherwise use regular skill_requirements, finally fallback to skills_required
+  const skillRequirements = showMatchedSkills && task.matchedSkills 
+    ? task.matchedSkills.map(skill => ({ skill, level: 'Matched' }))
+    : task.skill_requirements || 
+      (task.skills_required?.map(skill => ({ skill, level: 'Unknown' })) || []);
 
   return (
     <Card>
@@ -49,14 +52,22 @@ export const TaskCard = ({ task, userSkills }: TaskCardProps) => {
       <CardContent>
         <div className="space-y-4">
           <div>
-            <p className="text-sm font-medium mb-2">Required Skills:</p>
+            <p className="text-sm font-medium mb-2">
+              {showMatchedSkills ? "Matched Skills:" : "Required Skills:"}
+            </p>
             <div className="flex flex-wrap gap-2">
               {skillRequirements.map((req, index) => (
                 <Badge 
                   key={index}
-                  variant={userSkills.some(s => s.skill.toLowerCase() === req.skill.toLowerCase()) ? "default" : "secondary"}
+                  variant={
+                    req.level === 'Matched' || 
+                    userSkills.some(s => s.skill.toLowerCase() === req.skill.toLowerCase()) 
+                      ? "default" 
+                      : "secondary"
+                  }
                 >
-                  {req.skill} {req.level !== 'Unknown' ? `(${req.level})` : ''}
+                  {req.skill} {req.level !== 'Unknown' && req.level !== 'Matched' ? `(${req.level})` : ''}
+                  {(req.level === 'Matched' || userSkills.some(s => s.skill.toLowerCase() === req.skill.toLowerCase())) && " ✓"}
                 </Badge>
               ))}
             </div>

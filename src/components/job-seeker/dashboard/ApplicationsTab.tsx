@@ -2,12 +2,17 @@
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trash2, FileText } from "lucide-react";
+import { Trash2, FileText, ChevronDown, MessageSquare } from "lucide-react";
 import { JobApplication } from "@/types/jobSeeker";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface ApplicationsTabProps {
   applications: JobApplication[];
@@ -16,6 +21,19 @@ interface ApplicationsTabProps {
 
 export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} }: ApplicationsTabProps) => {
   const [isWithdrawing, setIsWithdrawing] = useState<string | null>(null);
+  const [expandedApplications, setExpandedApplications] = useState<Set<string>>(new Set());
+
+  const toggleApplicationExpanded = (applicationId: string) => {
+    setExpandedApplications(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(applicationId)) {
+        newExpanded.delete(applicationId);
+      } else {
+        newExpanded.add(applicationId);
+      }
+      return newExpanded;
+    });
+  };
 
   const handleWithdraw = async (applicationId: string, taskId: string) => {
     try {
@@ -132,6 +150,23 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     }
   };
 
+  // Get matched skills from application and task requirements
+  const getMatchedSkills = (application: JobApplication) => {
+    if (!application.business_roles?.skills_required) return [];
+    
+    // Get user's skills from profile (assuming they're stored somewhere in the application)
+    const userSkills = application.userSkills || [];
+    
+    // Find the intersection of user skills and required skills
+    return application.business_roles.skills_required.filter(skill => 
+      userSkills.some(userSkill => 
+        typeof userSkill === 'string' 
+          ? userSkill.toLowerCase() === skill.toLowerCase()
+          : userSkill.skill.toLowerCase() === skill.toLowerCase()
+      )
+    );
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -144,7 +179,12 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
           )}
           
           {applications.map(application => (
-            <div key={application.id} className="border p-4 rounded-lg hover:bg-secondary/50 transition-colors">
+            <Collapsible 
+              key={application.id} 
+              open={expandedApplications.has(application.id)}
+              onOpenChange={() => toggleApplicationExpanded(application.id)}
+              className="border p-4 rounded-lg hover:bg-secondary/50 transition-colors"
+            >
               {/* Mobile view */}
               <div className="block md:hidden space-y-3">
                 <div className="flex justify-between items-start">
@@ -169,11 +209,18 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                 
                 {application.business_roles?.skills_required && (
                   <div className="flex flex-wrap gap-1">
-                    {application.business_roles.skills_required.slice(0, 3).map((skill, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {skill}
-                      </Badge>
-                    ))}
+                    {application.business_roles.skills_required.slice(0, 3).map((skill, index) => {
+                      const isMatched = getMatchedSkills(application).includes(skill);
+                      return (
+                        <Badge 
+                          key={index} 
+                          variant={isMatched ? "default" : "outline"} 
+                          className="text-xs"
+                        >
+                          {skill} {isMatched && "✓"}
+                        </Badge>
+                      );
+                    })}
                     {(application.business_roles.skills_required.length > 3) && (
                       <span className="text-xs text-muted-foreground">
                         +{application.business_roles.skills_required.length - 3}
@@ -196,6 +243,14 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                         <FileText className="h-4 w-4" />
                       </Button>
                     )}
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
+                    </CollapsibleTrigger>
                     {application.status === 'pending' && (
                       <Button
                         variant="outline"
@@ -235,11 +290,18 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                   <div className="col-span-1">
                     <p className="text-sm font-medium text-muted-foreground">Skills</p>
                     <div className="flex flex-wrap gap-1">
-                      {application.business_roles?.skills_required?.slice(0, 2).map((skill, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {skill}
-                        </Badge>
-                      ))}
+                      {application.business_roles?.skills_required?.slice(0, 2).map((skill, index) => {
+                        const isMatched = getMatchedSkills(application).includes(skill);
+                        return (
+                          <Badge 
+                            key={index} 
+                            variant={isMatched ? "default" : "secondary"} 
+                            className="text-xs"
+                          >
+                            {skill} {isMatched && "✓"}
+                          </Badge>
+                        );
+                      })}
                       {(application.business_roles?.skills_required?.length || 0) > 2 && (
                         <span className="text-xs text-muted-foreground">
                           +{(application.business_roles?.skills_required?.length || 0) - 2}
@@ -272,6 +334,15 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                       <FileText className="h-4 w-4" />
                     </Button>
                   )}
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      title="View Message"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </Button>
+                  </CollapsibleTrigger>
                   {application.status === 'pending' && (
                     <Button
                       variant="outline"
@@ -287,7 +358,16 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                   )}
                 </div>
               </div>
-            </div>
+              
+              <CollapsibleContent className="mt-4 border-t pt-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Application Message:</p>
+                  <p className="text-sm bg-muted p-3 rounded-md">
+                    {application.notes || "No message provided"}
+                  </p>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           ))}
         </div>
       </CardContent>

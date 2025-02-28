@@ -17,6 +17,9 @@ interface ExtendedSubTask extends SubTask {
 }
 
 export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps) => {
+  console.log("Opportunities tab projects:", projects);
+  console.log("User skills:", userSkills);
+
   const matchedProjects = getProjectMatches(projects, userSkills);
 
   if (matchedProjects.length === 0) {
@@ -78,13 +81,13 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                   {project.matchedTasks
                     .sort((a, b) => b.matchScore - a.matchScore)
                     .map((task) => {
-                      // Convert MatchedTask to ExtendedSubTask with required properties
+                      // Convert MatchedTask to ExtendedSubTask with required properties and matched skills
                       const extendedTask: ExtendedSubTask = {
                         ...task,
                         project_id: project.projectId,
-                        skill_requirements: task.skills_required?.map(skill => ({
+                        skill_requirements: task.matchedSkills?.map(skill => ({
                           skill,
-                          level: "Intermediate"
+                          level: "Matched"
                         })) || [],
                         status: 'open',
                         task_status: 'open',
@@ -98,6 +101,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                           key={task.id}
                           task={extendedTask}
                           userSkills={userSkills}
+                          showMatchedSkills={true}
                         />
                       );
                     })}
