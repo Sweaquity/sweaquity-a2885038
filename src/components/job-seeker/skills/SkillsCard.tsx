@@ -3,11 +3,11 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { SkillBadge } from "@/components/job-seeker/dashboard/SkillBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skill } from "@/types/jobSeeker";
 import { toast } from "sonner";
 import { PlusCircle } from "lucide-react";
+import { SkillBadge } from "@/components/job-seeker/dashboard/SkillBadge";
 
 interface SkillsCardProps {
   skills: Skill[];
@@ -69,10 +69,44 @@ export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
             )}
           </div>
 
-          {/* Responsive form for adding new skills */}
-          <div className="space-y-2 sm:space-y-0">
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-              <div className="sm:col-span-5">
+          {/* Responsive form for adding new skills - mobile first design */}
+          <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-2">
+              <Input
+                placeholder="Add a new skill"
+                value={newSkill}
+                onChange={(e) => setNewSkill(e.target.value)}
+                className="w-full"
+              />
+            
+              <Select
+                value={skillLevel}
+                onValueChange={(value) => setSkillLevel(value as "Beginner" | "Intermediate" | "Expert")}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Skill level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Beginner">Beginner</SelectItem>
+                  <SelectItem value="Intermediate">Intermediate</SelectItem>
+                  <SelectItem value="Expert">Expert</SelectItem>
+                </SelectContent>
+              </Select>
+            
+              <Button 
+                onClick={addSkill} 
+                type="button" 
+                className="w-full"
+              >
+                <PlusCircle className="h-4 w-4 mr-1" /> Add Skill
+              </Button>
+            </div>
+          </div>
+
+          {/* For larger screens - horizontal layout */}
+          <div className="hidden sm:block">
+            <div className="grid grid-cols-12 gap-2">
+              <div className="col-span-5">
                 <Input
                   placeholder="Add a new skill"
                   value={newSkill}
@@ -80,7 +114,7 @@ export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
                   className="w-full"
                 />
               </div>
-              <div className="sm:col-span-4">
+              <div className="col-span-4">
                 <Select
                   value={skillLevel}
                   onValueChange={(value) => setSkillLevel(value as "Beginner" | "Intermediate" | "Expert")}
@@ -95,7 +129,7 @@ export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="sm:col-span-3">
+              <div className="col-span-3">
                 <Button 
                   onClick={addSkill} 
                   type="button" 
