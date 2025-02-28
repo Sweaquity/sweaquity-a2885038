@@ -143,8 +143,10 @@ export const ApplicationForm = ({
         project_id: projectId,
         task_id: taskId,
         user_id: userId,
-        message: message, // This is the correct field name
-        cv_url: selectedCvUrl
+        message: message, // Store in message field
+        notes: message,   // Also store in notes field for backward compatibility
+        cv_url: selectedCvUrl,
+        status: 'pending'  // Explicitly set status
       });
       
       if (error) {

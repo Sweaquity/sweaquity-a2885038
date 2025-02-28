@@ -79,17 +79,21 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
   const handleWithdraw = async (applicationId: string, taskId: string) => {
     try {
       setIsWithdrawing(applicationId);
+      console.log("Withdrawing application:", applicationId, taskId);
       
       // Update the application status to 'withdrawn' using job_app_id
-      const { error: applicationError } = await supabase
+      const { data, error: applicationError } = await supabase
         .from('job_applications')
         .update({ status: 'withdrawn' })
-        .eq('job_app_id', applicationId);
+        .eq('job_app_id', applicationId)
+        .select();
 
       if (applicationError) {
         console.error("Error updating application:", applicationError);
         throw applicationError;
       }
+      
+      console.log("Update application result:", data);
       
       // Then, update the task status to 'open'
       const { error: taskError } = await supabase
@@ -130,10 +134,9 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
         // For PDFs, open directly - browsers can render these
         window.open(cvUrl, '_blank');
       } else {
-        // For other formats like docx, open in Google Docs Viewer or Office Online
-        // Format: https://docs.google.com/viewer?url=YOUR_FILE_URL&embedded=true
-        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(cvUrl)}&embedded=true`;
-        window.open(viewerUrl, '_blank');
+        // For other formats like docx, use Office Online Viewer instead of Google Docs
+        const msViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(cvUrl)}`;
+        window.open(msViewerUrl, '_blank');
       }
 
     } catch (err) {
@@ -244,7 +247,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-destructive hover:bg-destructive/10 hover:text-white hover:bg-destructive"
+                        className="text-destructive hover:bg-destructive hover:text-white"
                         disabled={isWithdrawing === application.job_app_id}
                         onClick={() => handleWithdraw(application.job_app_id, application.task_id)}
                       >
@@ -355,7 +358,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                     <div className="bg-muted p-3 rounded-md">
                       <div className="mb-3 pb-3 border-b">
                         <h4 className="text-sm font-medium mb-1">Message:</h4>
-                        <p className="text-sm">{application.notes || "No message provided"}</p>
+                        <p className="text-sm">{application.message || application.notes || "No message provided"}</p>
                       </div>
                       
                       <div>

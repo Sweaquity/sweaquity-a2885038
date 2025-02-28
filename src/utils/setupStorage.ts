@@ -113,9 +113,9 @@ export const previewCV = async (userId: string, fileName: string) => {
         // For PDFs, open directly
         window.open(data.publicUrl, '_blank');
       } else {
-        // For other formats like docx, use Google Docs Viewer
-        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(data.publicUrl)}&embedded=true`;
-        window.open(viewerUrl, '_blank');
+        // For other formats like docx, use Microsoft Office Online Viewer
+        const msViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(data.publicUrl)}`;
+        window.open(msViewerUrl, '_blank');
       }
       return true;
     }
