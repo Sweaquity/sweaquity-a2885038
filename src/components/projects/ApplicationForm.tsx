@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { listUserCVs } from "@/utils/storage";
+import { listUserCVs } from "@/utils/setupStorage";
 
 interface ApplicationFormProps {
   projectId: string;
@@ -52,48 +52,38 @@ export const ApplicationForm = ({
         const userId = session.user.id;
 
         // Get user's default CV URL
-        try {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('cv_url')
-            .eq('id', userId)
-            .maybeSingle();
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('cv_url')
+          .eq('id', userId)
+          .maybeSingle();
 
-          const defaultCvUrl = profileData?.cv_url || null;
-          
-          // Check if cvs bucket exists
-          const { data: buckets } = await supabase.storage.listBuckets();
-          const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
-          
-          if (cvsBucketExists) {
-            // List all of the user's CVs
-            const cvFiles = await listUserCVs(userId);
-            
-            if (cvFiles.length > 0) {
-              const cvs = await Promise.all(cvFiles.map(async (file) => {
-                const { data } = supabase.storage
-                  .from('cvs')
-                  .getPublicUrl(`${userId}/${file.name}`);
-                  
-                return {
-                  name: file.name,
-                  url: data.publicUrl,
-                  isDefault: defaultCvUrl ? defaultCvUrl === data.publicUrl : false
-                };
-              }));
+        const defaultCvUrl = profileData?.cv_url || null;
+
+        // List all of the user's CVs
+        const cvFiles = await listUserCVs(userId);
+        
+        if (cvFiles.length > 0) {
+          const cvs = await Promise.all(cvFiles.map(async (file) => {
+            const { data } = supabase.storage
+              .from('cvs')
+              .getPublicUrl(`${userId}/${file.name}`);
               
-              setAvailableCvs(cvs);
-              
-              // Select the default CV if available
-              if (defaultCvUrl) {
-                setSelectedCvUrl(defaultCvUrl);
-              } else if (cvs.length > 0) {
-                setSelectedCvUrl(cvs[0].url);
-              }
-            }
+            return {
+              name: file.name,
+              url: data.publicUrl,
+              isDefault: defaultCvUrl ? defaultCvUrl === data.publicUrl : false
+            };
+          }));
+          
+          setAvailableCvs(cvs);
+          
+          // Select the default CV if available
+          if (defaultCvUrl) {
+            setSelectedCvUrl(defaultCvUrl);
+          } else if (cvs.length > 0) {
+            setSelectedCvUrl(cvs[0].url);
           }
-        } catch (error) {
-          console.error("Error fetching profile data:", error);
         }
       } catch (error) {
         console.error("Error loading CVs:", error);
@@ -124,8 +114,7 @@ export const ApplicationForm = ({
         task_id: taskId,
         user_id: userId,
         notes: message,
-        cv_url: selectedCvUrl,
-        message: message // Make sure to save the message for displaying later
+        cv_url: selectedCvUrl
       });
       
       if (error) {
@@ -178,7 +167,7 @@ export const ApplicationForm = ({
       </div>
       
       <div className="space-y-2">
-        <Label>Select CV to Attach (Optional)</Label>
+        <Label>Select CV to Attach</Label>
         {isLoading ? (
           <div className="flex items-center space-x-2">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -186,35 +175,23 @@ export const ApplicationForm = ({
           </div>
         ) : availableCvs.length > 0 ? (
           <div className="space-y-2 border rounded-md p-3">
-            <div className="flex items-center space-x-2 mb-2">
-              <Checkbox 
-                id="no-cv"
-                checked={selectedCvUrl === null}
-                onCheckedChange={() => setSelectedCvUrl(null)}
-              />
-              <Label htmlFor="no-cv" className="text-sm">
-                No CV (Apply without attaching a CV)
-              </Label>
-            </div>
-            <div className="border-t pt-2">
-              {availableCvs.map((cv) => (
-                <div key={cv.url} className="flex items-center space-x-2 mt-2">
-                  <Checkbox 
-                    id={`cv-${cv.name}`}
-                    checked={selectedCvUrl === cv.url}
-                    onCheckedChange={() => setSelectedCvUrl(cv.url)}
-                  />
-                  <Label htmlFor={`cv-${cv.name}`} className="text-sm">
-                    {cv.name}
-                    {cv.isDefault && <span className="text-xs text-muted-foreground ml-2">(Default)</span>}
-                  </Label>
-                </div>
-              ))}
-            </div>
+            {availableCvs.map((cv) => (
+              <div key={cv.url} className="flex items-center space-x-2">
+                <Checkbox 
+                  id={`cv-${cv.name}`}
+                  checked={selectedCvUrl === cv.url}
+                  onCheckedChange={() => setSelectedCvUrl(cv.url)}
+                />
+                <Label htmlFor={`cv-${cv.name}`} className="text-sm">
+                  {cv.name}
+                  {cv.isDefault && <span className="text-xs text-muted-foreground ml-2">(Default)</span>}
+                </Label>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="text-sm text-amber-600 border border-amber-200 bg-amber-50 p-3 rounded">
-            You don't have any CVs uploaded. You can still apply without a CV, or upload one in your profile first.
+            You don't have any CVs uploaded. Please upload a CV in your profile before applying.
           </div>
         )}
       </div>
@@ -227,7 +204,7 @@ export const ApplicationForm = ({
         )}
         <Button 
           type="submit" 
-          disabled={isSubmitting || message.trim().length === 0}
+          disabled={isSubmitting || !selectedCvUrl || message.trim().length === 0}
         >
           {isSubmitting ? (
             <>
