@@ -20,6 +20,7 @@ interface ExtendedSubTask extends SubTask {
 
 export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps) => {
   const [unavailableTaskIds, setUnavailableTaskIds] = useState<Set<string>>(new Set());
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   
   // Fetch user applications to filter out tasks that have already been applied for
   useEffect(() => {
@@ -53,25 +54,6 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
     fetchUserApplications();
   }, []);
 
-  useEffect(() => {
-    // Debug logging for project IDs
-    console.log("All project IDs:", projects.map(p => p.id));
-    
-    // Look for specific project ID
-    const hasSpecificProject = projects.some(p => p.id === "672387b6-6065-4d25-94c9-82f85e87dafc");
-    console.log("Contains specific project ID?", hasSpecificProject);
-    
-    // Log each project's structure to debug
-    projects.forEach((project, index) => {
-      console.log(`Project ${index + 1}:`, {
-        id: project.id,
-        project_id: project.project_id,
-        title: project.title,
-        subTasksCount: project.sub_tasks?.length || 0
-      });
-    });
-  }, [projects]);
-
   // Filter projects to remove tasks that have already been applied for
   const filteredProjects = projects.map(project => ({
     ...project,
@@ -79,8 +61,14 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
   })).filter(project => project.sub_tasks && project.sub_tasks.length > 0);
   
   const matchedProjects = getProjectMatches(filteredProjects, userSkills);
-  
-  console.log("Matched projects after filtering:", matchedProjects);
+
+  const handleProjectToggle = (projectId: string) => {
+    if (expandedProjectId === projectId) {
+      setExpandedProjectId(null);
+    } else {
+      setExpandedProjectId(projectId);
+    }
+  };
 
   if (matchedProjects.length === 0) {
     return (
@@ -109,14 +97,26 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
         </p>
       </CardHeader>
       <CardContent>
-        <Accordion type="single" collapsible className="space-y-4">
+        <Accordion 
+          type="single" 
+          collapsible 
+          className="space-y-4"
+          value={expandedProjectId || undefined}
+          onValueChange={setExpandedProjectId}
+        >
           {matchedProjects.map((project) => (
             <AccordionItem 
               key={project.projectId} 
               value={project.projectId}
               className="border rounded-lg p-2"
             >
-              <AccordionTrigger className="hover:no-underline">
+              <AccordionTrigger 
+                className="hover:no-underline"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleProjectToggle(project.projectId);
+                }}
+              >
                 <div className="flex items-center gap-4">
                   <span className="font-medium">{project.projectTitle}</span>
                   <Badge 
@@ -141,18 +141,10 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                   {project.matchedTasks
                     .sort((a, b) => b.matchScore - a.matchScore)
                     .map((task) => {
-                      console.log("Rendering matched task:", {
-                        id: task.task_id,
-                        title: task.title,
-                        matchScore: task.matchScore,
-                        matchedSkills: task.matchedSkills
-                      });
-                      
                       // Convert MatchedTask to ExtendedSubTask with required properties and matched skills
                       const extendedTask: ExtendedSubTask = {
                         ...task,
                         task_id: task.task_id, 
-                        id: task.task_id, // Keep id for backward compatibility
                         project_id: project.projectId,
                         skill_requirements: task.matchedSkills?.map(skill => ({
                           skill,

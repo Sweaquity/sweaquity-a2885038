@@ -31,7 +31,7 @@ interface BusinessDetails {
 }
 
 interface ProjectDetails {
-  project_id: string; // Updated from 'id' to 'project_id'
+  project_id: string;
   title: string;
   description: string;
   project_stage: string;
@@ -55,6 +55,7 @@ interface SubTask {
   completion_percentage: number;
   created_at: string;
   project_id: string;
+  task_id: string;
   matchScore?: number;
   matchedSkills?: string[];
 }
@@ -90,8 +91,10 @@ export const ProjectApplicationPage = () => {
   };
 
   const handleTaskSelect = (taskId: string) => {
+    if (!taskId) return;
+    
     setSelectedTaskId(taskId);
-    const task = subTasks.find(t => t.id === taskId) || null;
+    const task = subTasks.find(t => t.task_id === taskId) || null;
     setSelectedTask(task);
   };
 
@@ -188,7 +191,14 @@ export const ProjectApplicationPage = () => {
           return;
         }
 
-        // Updated query to use project_id instead of id
+        // Validate project ID
+        if (!id) {
+          toast.error("Invalid project ID");
+          navigate('/seeker/dashboard');
+          return;
+        }
+
+        // Get project details
         const { data: projectData, error: projectError } = await supabase
           .from('business_projects')
           .select(`
@@ -207,6 +217,7 @@ export const ProjectApplicationPage = () => {
 
         if (projectError) throw projectError;
 
+        // Get tasks for this project
         const { data: taskData, error: taskError } = await supabase
           .from('project_sub_tasks')
           .select('*')
@@ -214,6 +225,7 @@ export const ProjectApplicationPage = () => {
 
         if (taskError) throw taskError;
 
+        // Get user profile
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -222,6 +234,7 @@ export const ProjectApplicationPage = () => {
 
         if (profileError) throw profileError;
 
+        // Parse user skills
         let extractedSkills: Skill[] = [];
         if (profileData.skills) {
           try {
@@ -248,6 +261,7 @@ export const ProjectApplicationPage = () => {
           skills: extractedSkills
         });
 
+        // Get user applications to filter out tasks that are already applied for
         const { data: userApplications, error: applicationError } = await supabase
           .from('job_applications')
           .select('task_id, status')
@@ -260,9 +274,8 @@ export const ProjectApplicationPage = () => {
             .filter(app => ['pending', 'in review', 'negotiation', 'accepted'].includes(app.status))
             .map(app => app.task_id)
         );
-          
-        console.log("Unavailable task IDs:", Array.from(unavailableTaskIds));
 
+        // Process and filter tasks
         const processedTasks = taskData
           .filter(task => task.status === 'open' && !unavailableTaskIds.has(task.task_id))
           .map(task => {
@@ -275,21 +288,11 @@ export const ProjectApplicationPage = () => {
             };
           });
         
-        console.log("All processed tasks:", processedTasks.map(t => ({ 
-          id: t.id, 
-          title: t.title, 
-          score: t.matchScore 
-        })));
-        
+        // Sort tasks by match score
         const availableTasks = processedTasks
           .sort((a, b) => b.matchScore! - a.matchScore!);
-          
-        console.log("Matched tasks after filtering:", availableTasks.map(t => ({
-          id: t.id,
-          title: t.title,
-          score: t.matchScore
-        })));
 
+        // Get CV data
         const { data: cvData } = await supabase
           .from('cv_parsed_data')
           .select('cv_url')
@@ -302,6 +305,7 @@ export const ProjectApplicationPage = () => {
           .eq('id', session.user.id)
           .single();
 
+        // Check if CV storage bucket exists
         const { data: buckets } = await supabase.storage.listBuckets();
         const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
         
@@ -322,14 +326,16 @@ export const ProjectApplicationPage = () => {
           }
         }
 
+        // Set state values
         setBusinessDetails(projectData.businesses);
         setProjectDetails(projectData);
         setSubTasks(availableTasks);
         setHasStoredCV(!!cvData?.cv_url || !!cvUrlData?.cv_url);
         setStoredCVUrl(cvData?.cv_url || cvUrlData?.cv_url || null);
 
+        // Select first task by default if any are available
         if (availableTasks.length > 0) {
-          setSelectedTaskId(availableTasks[0].id);
+          setSelectedTaskId(availableTasks[0].task_id);
           setSelectedTask(availableTasks[0]);
         }
 
@@ -447,7 +453,7 @@ export const ProjectApplicationPage = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {subTasks.map((task) => (
-                        <SelectItem key={task.id} value={task.id}>
+                        <SelectItem key={task.task_id} value={task.task_id}>
                           <div className="flex flex-col">
                             <div className="flex items-center justify-between">
                               <span className="font-medium">{task.title}</span>
@@ -563,7 +569,7 @@ export const ProjectApplicationPage = () => {
         </CardContent>
       </Card>
 
-      {subTasks.length > 0 && selectedTask && (
+      {subTasks.length > 0 && selectedTask && selectedTaskId && (
         <Card>
           <CardHeader>
             <h3 className="text-xl font-semibold">Submit Application</h3>
@@ -645,7 +651,7 @@ export const ProjectApplicationPage = () => {
             )}
             <ApplicationForm
               projectId={id || ''}
-              taskId={selectedTaskId || ''}
+              taskId={selectedTaskId}
               projectTitle={projectDetails.title}
               taskTitle={selectedTask?.title}
               onApplicationSubmitted={() => {

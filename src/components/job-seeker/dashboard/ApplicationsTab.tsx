@@ -80,7 +80,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     try {
       setIsWithdrawing(applicationId);
       
-      // First, update the application status to 'withdrawn' - use job_app_id instead of id
+      // Update the application status to 'withdrawn' using job_app_id
       const { error: applicationError } = await supabase
         .from('job_applications')
         .update({ status: 'withdrawn' })
@@ -91,8 +91,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
         throw applicationError;
       }
       
-      // Then, update the task status to 'open' - use .maybeSingle() to avoid PGRST116 error
-      // or don't use single() at all since we don't need the response data
+      // Then, update the task status to 'open'
       const { error: taskError } = await supabase
         .from('project_sub_tasks')
         .update({ 
