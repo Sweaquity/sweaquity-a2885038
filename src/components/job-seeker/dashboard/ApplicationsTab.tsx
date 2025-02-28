@@ -81,26 +81,59 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
       setIsWithdrawing(applicationId);
       console.log("Withdrawing application:", applicationId, taskId);
       
+      // First, verify the application exists
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('job_applications')
+        .select('job_app_id, status')
+        .eq('job_app_id', applicationId);
+      
+      if (verifyError) {
+        console.error("Error verifying application:", verifyError);
+        throw verifyError;
+      }
+      
+      console.log("Application verification result:", verifyData);
+      
+      if (!verifyData || verifyData.length === 0) {
+        console.error("Application not found with job_app_id:", applicationId);
+        toast.error("Application not found");
+        setIsWithdrawing(null);
+        return;
+      }
+      
       // Update the application status to 'withdrawn'
-      const { error: applicationError } = await supabase
+      const { data: updateData, error: applicationError } = await supabase
         .from('job_applications')
         .update({ status: 'withdrawn' })
-        .eq('job_app_id', applicationId);
+        .eq('job_app_id', applicationId)
+        .select();
 
+      console.log("Update application result:", updateData);
+      
       if (applicationError) {
         console.error("Error updating application:", applicationError);
         throw applicationError;
       }
       
+      if (!updateData || updateData.length === 0) {
+        console.error("No rows updated for job_app_id:", applicationId);
+        toast.error("Failed to withdraw application");
+        setIsWithdrawing(null);
+        return;
+      }
+      
       // Then, update the task status to 'open'
-      const { error: taskError } = await supabase
+      const { data: taskUpdateData, error: taskError } = await supabase
         .from('project_sub_tasks')
         .update({ 
           status: 'open',
           task_status: 'open'
         })
-        .eq('task_id', taskId);
+        .eq('task_id', taskId)
+        .select();
         
+      console.log("Update task result:", taskUpdateData);
+      
       if (taskError) {
         console.error("Error updating task:", taskError);
         throw taskError;
