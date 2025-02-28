@@ -5,7 +5,7 @@ import { SkillsCard } from "./skills/SkillsCard";
 import { CareerHistoryCard } from "./career/CareerHistoryCard";
 import { ProfileEditor } from "./profile/ProfileEditor";
 import { Profile, Skill } from "@/types/jobSeeker";
-import { CVFile, useCVData } from "@/hooks/job-seeker/useCVData";
+import { CVFile } from "@/hooks/job-seeker/useCVData";
 import { supabase } from "@/lib/supabase";
 
 interface ProfileSectionProps {
@@ -32,15 +32,26 @@ export const ProfileSection = ({
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
+            // Check if bucket exists
+            const { data: buckets } = await supabase.storage.listBuckets();
+            const bucketExists = buckets?.some(bucket => bucket.name === 'cvs');
+            
+            if (!bucketExists) {
+              console.log("CV bucket doesn't exist, cannot load user CVs");
+              return;
+            }
+            
             const { data: cvData } = await supabase.storage
               .from('cvs')
               .list(session.user.id);
               
             if (cvData) {
-              const filesWithDefault = cvData.map(file => ({
-                ...file,
-                isDefault: cvUrl ? cvUrl.includes(file.name) : false
-              }));
+              const filesWithDefault = cvData
+                .filter(file => file.name !== '.folder')
+                .map(file => ({
+                  ...file,
+                  isDefault: cvUrl ? cvUrl.includes(file.name) : false
+                }));
               
               setUserCVs(filesWithDefault);
             }
@@ -59,6 +70,15 @@ export const ProfileSection = ({
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
+          // Check if bucket exists
+          const { data: buckets } = await supabase.storage.listBuckets();
+          const bucketExists = buckets?.some(bucket => bucket.name === 'cvs');
+          
+          if (!bucketExists) {
+            console.log("CV bucket doesn't exist, cannot update user CVs");
+            return;
+          }
+          
           const { data: cvData } = await supabase.storage
             .from('cvs')
             .list(session.user.id);
@@ -73,10 +93,12 @@ export const ProfileSection = ({
               
             const updatedCvUrl = profileData?.cv_url || null;
             
-            const filesWithDefault = cvData.map(file => ({
-              ...file,
-              isDefault: updatedCvUrl ? updatedCvUrl.includes(file.name) : false
-            }));
+            const filesWithDefault = cvData
+              .filter(file => file.name !== '.folder')
+              .map(file => ({
+                ...file,
+                isDefault: updatedCvUrl ? updatedCvUrl.includes(file.name) : false
+              }));
             
             setUserCVs(filesWithDefault);
           }

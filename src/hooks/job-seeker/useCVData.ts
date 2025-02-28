@@ -19,16 +19,58 @@ export const useCVData = () => {
   const [parsedCvData, setParsedCvData] = useState<any>(null);
   const [userCVs, setUserCVs] = useState<CVFile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [bucketReady, setBucketReady] = useState(false);
+
+  const ensureBucketExists = async () => {
+    try {
+      // Check if the cvs bucket exists
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      
+      if (bucketsError) {
+        console.error("Error listing buckets:", bucketsError);
+        return false;
+      }
+      
+      const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
+      
+      if (!cvsBucketExists) {
+        console.log("CV bucket doesn't exist. Will need to use or create it on the server side.");
+        // Attempt to create bucket via client-side (may fail due to permissions)
+        try {
+          const { data, error } = await supabase.storage.createBucket('cvs', {
+            public: true,
+            fileSizeLimit: 10485760, // 10MB limit
+          });
+          
+          if (error) {
+            console.log("Failed to create CV bucket from client:", error);
+            return false;
+          }
+          
+          console.log("Successfully created CV bucket");
+          return true;
+        } catch (err) {
+          console.error("Error creating CV bucket:", err);
+          return false;
+        }
+      }
+      
+      return cvsBucketExists;
+    } catch (error) {
+      console.error("Error checking bucket status:", error);
+      return false;
+    }
+  };
 
   const loadCVData = async (userId: string) => {
     try {
       setIsLoading(true);
       
-      // First, check if the cvs bucket exists
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
+      // First, check and ensure CV bucket exists
+      const bucketExists = await ensureBucketExists();
+      setBucketReady(bucketExists);
       
-      if (!cvsBucketExists) {
+      if (!bucketExists) {
         console.log("CV storage bucket doesn't exist, this is expected since it should be created by an admin");
       }
       
@@ -73,7 +115,7 @@ export const useCVData = () => {
       }
       
       // Get list of user's CVs
-      if (cvsBucketExists) {
+      if (bucketExists) {
         try {
           const cvFiles = await listUserCVs(userId);
           
@@ -104,6 +146,8 @@ export const useCVData = () => {
     loadCVData,
     userCVs,
     setUserCVs,
-    isLoading
+    isLoading,
+    bucketReady,
+    ensureBucketExists
   };
 };

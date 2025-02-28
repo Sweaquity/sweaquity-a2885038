@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -15,10 +14,28 @@ export const setupCvStorageBucket = async () => {
     const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
     
     if (!cvsBucketExists) {
-      console.log("CV bucket doesn't exist. Will need to use or create it on the server side.");
-      // We won't try to create the bucket from the client side as it will fail due to RLS
-      // Instead, we inform the user that they need to wait for setup to complete
-      toast.info("CV storage is being set up. Some features may be unavailable until setup is complete.");
+      console.log("CV bucket doesn't exist. Attempting to create it.");
+      
+      // Try to create the bucket from client-side
+      try {
+        const { data, error } = await supabase.storage.createBucket('cvs', {
+          public: true,
+          fileSizeLimit: 10485760, // 10MB limit
+        });
+        
+        if (error) {
+          console.log("Failed to create CV bucket from client:", error);
+          toast.info("CV storage is being set up. Some features may be unavailable until setup is complete.");
+          return false;
+        }
+        
+        console.log("Successfully created CV bucket");
+        return true;
+      } catch (err) {
+        console.error("Error creating CV bucket:", err);
+        toast.info("CV storage is being set up. Some features may be unavailable until setup is complete.");
+        return false;
+      }
     }
     
     return cvsBucketExists;
@@ -31,6 +48,23 @@ export const setupCvStorageBucket = async () => {
 
 export const listUserCVs = async (userId: string) => {
   try {
+    // First check if the bucket exists
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const bucketExists = buckets?.some(bucket => bucket.name === 'cvs');
+    
+    if (!bucketExists) {
+      console.log("CV bucket doesn't exist. Cannot list CVs.");
+      return [];
+    }
+    
+    // Try to create the user's folder if it doesn't exist
+    try {
+      await supabase.storage.from('cvs').upload(`${userId}/.folder`, new Blob(['']));
+    } catch (error) {
+      // Ignore error if folder already exists
+      console.log("User folder exists or couldn't be created");
+    }
+    
     const { data, error } = await supabase.storage
       .from('cvs')
       .list(userId);
@@ -40,7 +74,7 @@ export const listUserCVs = async (userId: string) => {
     }
     
     // Filter out folder objects, keep only files
-    return data?.filter(item => !item.id.endsWith('/')) || [];
+    return data?.filter(item => !item.id.endsWith('/') && item.name !== '.folder') || [];
     
   } catch (error) {
     console.error("Error listing user CVs:", error);
@@ -74,6 +108,7 @@ export const downloadCV = async (userId: string, fileName: string) => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     
+    toast.success("Downloaded CV successfully");
     return true;
   } catch (error) {
     console.error("Error downloading CV:", error);

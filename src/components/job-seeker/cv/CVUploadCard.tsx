@@ -13,7 +13,8 @@ import {
   Download, 
   Trash2, 
   Check,
-  Eye
+  Eye,
+  RefreshCw
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { 
@@ -45,6 +46,7 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
   const [storageError, setStorageError] = useState<string | null>(null);
   const [processingAction, setProcessingAction] = useState<{type: string, fileName: string} | null>(null);
   const [localUserCVs, setLocalUserCVs] = useState<CVFile[]>([]);
+  const [isBucketRefreshing, setIsBucketRefreshing] = useState(false);
 
   useEffect(() => {
     if (cvUrl) {
@@ -52,29 +54,36 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
     }
     
     // Check if the CV storage bucket exists
-    const checkStorage = async () => {
-      try {
-        const ready = await setupCvStorageBucket();
-        setBucketReady(ready);
-        if (!ready) {
-          setStorageError("CV storage is not ready yet. Please try again later or contact support.");
-          console.log("CV storage bucket not ready");
-        } else {
-          // Fetch user CVs if not provided via props
-          if (userCVs.length === 0) {
-            loadUserCVs();
-          } else {
-            setLocalUserCVs(userCVs);
-          }
-        }
-      } catch (error) {
-        console.error("Error checking storage:", error);
-        setStorageError("Error checking CV storage availability.");
-      }
-    };
-    
     checkStorage();
   }, [cvUrl, userCVs]);
+
+  const checkStorage = async () => {
+    try {
+      const ready = await setupCvStorageBucket();
+      setBucketReady(ready);
+      if (!ready) {
+        setStorageError("CV storage is not ready yet. Please try again later or contact support.");
+        console.log("CV storage bucket not ready");
+      } else {
+        setStorageError(null);
+        // Fetch user CVs if not provided via props
+        if (userCVs.length === 0) {
+          loadUserCVs();
+        } else {
+          setLocalUserCVs(userCVs);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking storage:", error);
+      setStorageError("Error checking CV storage availability.");
+    }
+  };
+
+  const refreshBucketStatus = async () => {
+    setIsBucketRefreshing(true);
+    await checkStorage();
+    setIsBucketRefreshing(false);
+  };
 
   const loadUserCVs = async () => {
     try {
@@ -143,7 +152,7 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
     }
     
     if (!bucketReady) {
-      toast.error("CV storage is not available yet. Please try again later or contact support.");
+      toast.error("CV storage is not available yet. Please try refreshing bucket status.");
       return;
     }
     
@@ -163,8 +172,17 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
       
       const userId = session.user.id;
       
+      // Make sure the user's folder exists
+      try {
+        await supabase.storage.from('cvs').upload(`${userId}/.folder`, new Blob(['']));
+      } catch (error) {
+        // Ignore error if folder already exists
+        console.log("User folder exists or couldn't be created");
+      }
+      
       // Set the file path to include the user ID as a folder
-      const filePath = `${userId}/${file.name}`;
+      const sanitizedFileName = file.name.replace(/[^\x00-\x7F]/g, '_'); // Replace non-ASCII chars
+      const filePath = `${userId}/${sanitizedFileName}`;
       
       // Upload the file
       const { data, error } = await supabase.storage
@@ -346,7 +364,23 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
         {storageError && (
           <Alert className="mb-4">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{storageError}</AlertDescription>
+            <AlertDescription>
+              {storageError}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="ml-2" 
+                onClick={refreshBucketStatus}
+                disabled={isBucketRefreshing}
+              >
+                {isBucketRefreshing ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                )}
+                Refresh Status
+              </Button>
+            </AlertDescription>
           </Alert>
         )}
         
@@ -484,7 +518,7 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
         {!bucketReady && (
           <div className="text-sm text-yellow-600 flex items-center gap-2 p-2 bg-yellow-50 rounded-md">
             <FileX className="h-4 w-4" />
-            <span>CV storage is being set up. Please check back later or contact support.</span>
+            <span>CV storage is being set up. Please refresh the bucket status or contact support if the issue persists.</span>
           </div>
         )}
         
