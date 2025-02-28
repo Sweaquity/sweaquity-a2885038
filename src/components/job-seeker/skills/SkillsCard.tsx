@@ -1,28 +1,13 @@
 
 import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { 
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle 
-} from "@/components/ui/card";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SkillBadge } from "@/components/job-seeker/dashboard/SkillBadge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skill } from "@/types/jobSeeker";
 import { toast } from "sonner";
-
-interface Skill {
-  skill: string;
-  level: 'Beginner' | 'Intermediate' | 'Expert';
-}
+import { PlusCircle } from "lucide-react";
 
 interface SkillsCardProps {
   skills: Skill[];
@@ -31,116 +16,96 @@ interface SkillsCardProps {
 
 export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
   const [newSkill, setNewSkill] = useState("");
-  const [newSkillLevel, setNewSkillLevel] = useState<'Beginner' | 'Intermediate' | 'Expert'>('Intermediate');
+  const [skillLevel, setSkillLevel] = useState<"Beginner" | "Intermediate" | "Expert">("Intermediate");
 
-  const handleDeleteSkill = (skillToDelete: string) => {
-    const updatedSkills = skills.filter(skill => skill.skill !== skillToDelete);
-    onSkillsUpdate(updatedSkills);
-    toast.success(`Removed skill: ${skillToDelete}`);
-  };
-
-  const handleAddSkill = () => {
-    if (!newSkill.trim()) {
-      toast.error("Please enter a skill");
+  const addSkill = () => {
+    if (newSkill.trim() === "") {
+      toast.error("Please enter a skill name");
       return;
     }
 
-    const skillName = newSkill.trim();
-    
-    if (skills.some(skill => skill.skill.toLowerCase() === skillName.toLowerCase())) {
-      toast.error("This skill already exists");
+    // Check if skill already exists
+    if (skills.some((s) => s.skill.toLowerCase() === newSkill.toLowerCase())) {
+      toast.error("This skill already exists in your profile");
       return;
     }
 
-    const updatedSkills = [...skills, { skill: skillName, level: newSkillLevel }];
+    // Add the new skill
+    const updatedSkills = [...skills, { skill: newSkill, level: skillLevel }];
     onSkillsUpdate(updatedSkills);
     setNewSkill("");
-    toast.success("Skill added successfully");
   };
 
-  const handleSkillLevelChange = (skillName: string, newLevel: 'Beginner' | 'Intermediate' | 'Expert') => {
-    const updatedSkills = skills.map(skill => 
-      skill.skill === skillName ? { ...skill, level: newLevel } : skill
+  const removeSkill = (skillName: string) => {
+    const updatedSkills = skills.filter((s) => s.skill !== skillName);
+    onSkillsUpdate(updatedSkills);
+  };
+
+  const updateSkillLevel = (skillName: string, newLevel: "Beginner" | "Intermediate" | "Expert") => {
+    const updatedSkills = skills.map((s) =>
+      s.skill === skillName ? { ...s, level: newLevel } : s
     );
     onSkillsUpdate(updatedSkills);
-    toast.success(`Updated ${skillName} level to ${newLevel}`);
   };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Skills</CardTitle>
-        <CardDescription>
-          Add your skills and expertise level
-        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <Label htmlFor="new-skill">Add a new skill</Label>
-            <Textarea
-              id="new-skill"
-              placeholder="Enter a skill (e.g., JavaScript, Project Management)"
-              value={newSkill}
-              onChange={(e) => setNewSkill(e.target.value)}
-              className="mt-2"
-            />
+      <CardContent>
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {skills.map((skill) => (
+              <SkillBadge
+                key={skill.skill}
+                skill={skill}
+                onRemove={() => removeSkill(skill.skill)}
+                onLevelChange={(level) => updateSkillLevel(skill.skill, level)}
+              />
+            ))}
+            {skills.length === 0 && (
+              <p className="text-sm text-muted-foreground">No skills added yet.</p>
+            )}
           </div>
-          <div className="space-y-2">
-            <Label>Skill Level</Label>
-            <Select
-              value={newSkillLevel}
-              onValueChange={(value: 'Beginner' | 'Intermediate' | 'Expert') => setNewSkillLevel(value)}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Beginner">Beginner</SelectItem>
-                <SelectItem value="Intermediate">Intermediate</SelectItem>
-                <SelectItem value="Expert">Expert</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <Button 
-            onClick={handleAddSkill}
-            className="mt-8"
-          >
-            Add Skill
-          </Button>
-        </div>
 
-        <div className="flex flex-wrap gap-2">
-          {skills.map((skill) => (
-            <div 
-              key={skill.skill} 
-              className="group bg-secondary px-3 py-1 rounded-full text-sm hover:bg-secondary/80 transition-colors flex items-center gap-2"
-            >
-              <span>{skill.skill}</span>
-              <Select
-                value={skill.level}
-                onValueChange={(value: 'Beginner' | 'Intermediate' | 'Expert') => 
-                  handleSkillLevelChange(skill.skill, value)
-                }
-              >
-                <SelectTrigger className="h-6 w-24 text-xs border-none bg-transparent">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Beginner">Beginner</SelectItem>
-                  <SelectItem value="Intermediate">Intermediate</SelectItem>
-                  <SelectItem value="Expert">Expert</SelectItem>
-                </SelectContent>
-              </Select>
-              <button
-                onClick={() => handleDeleteSkill(skill.skill)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80"
-                aria-label={`Delete ${skill.skill} skill`}
-              >
-                ×
-              </button>
+          {/* Responsive form for adding new skills */}
+          <div className="space-y-2 sm:space-y-0">
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+              <div className="sm:col-span-5">
+                <Input
+                  placeholder="Add a new skill"
+                  value={newSkill}
+                  onChange={(e) => setNewSkill(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <div className="sm:col-span-4">
+                <Select
+                  value={skillLevel}
+                  onValueChange={(value) => setSkillLevel(value as "Beginner" | "Intermediate" | "Expert")}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Skill level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Beginner">Beginner</SelectItem>
+                    <SelectItem value="Intermediate">Intermediate</SelectItem>
+                    <SelectItem value="Expert">Expert</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="sm:col-span-3">
+                <Button 
+                  onClick={addSkill} 
+                  type="button" 
+                  className="w-full"
+                >
+                  <PlusCircle className="h-4 w-4 mr-1" /> Add
+                </Button>
+              </div>
             </div>
-          ))}
+          </div>
         </div>
       </CardContent>
     </Card>

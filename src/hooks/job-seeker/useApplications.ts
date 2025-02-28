@@ -10,6 +10,7 @@ export const useApplications = () => {
 
   const loadApplications = async (userId: string) => {
     try {
+      // Simplify the query to avoid foreign key relationship issues
       const { data: applicationsData, error: applicationsError } = await supabase
         .from('job_applications')
         .select(`
@@ -22,14 +23,6 @@ export const useApplications = () => {
                 company_name
               )
             )
-          ),
-          profile:profiles (
-            first_name,
-            last_name,
-            title,
-            location,
-            employment_preference,
-            created_at
           )
         `)
         .eq('user_id', userId);

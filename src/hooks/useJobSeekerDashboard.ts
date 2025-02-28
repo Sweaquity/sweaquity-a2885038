@@ -45,7 +45,7 @@ export const useJobSeekerDashboard = () => {
         // Get the IDs of tasks they've already applied for
         const appliedTaskIds = new Set(userApplications.map(app => app.task_id));
 
-        // Fetch open tasks for opportunities that haven't been applied to
+        // Fetch ALL open tasks, not just from the user's projects
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
           .select(`
