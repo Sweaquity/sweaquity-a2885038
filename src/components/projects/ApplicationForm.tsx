@@ -153,15 +153,6 @@ export const ApplicationForm = ({
         throw error;
       }
       
-      // Update the task status to 'pending'
-      await supabase
-        .from("project_sub_tasks")
-        .update({ 
-          status: 'pending',
-          task_status: 'pending'
-        })
-        .eq("task_id", taskId);
-      
       toast.success("Application submitted successfully!");
       
       if (onApplicationSubmitted) {

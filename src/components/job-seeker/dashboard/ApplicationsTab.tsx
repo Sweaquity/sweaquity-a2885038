@@ -80,37 +80,15 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     try {
       setIsWithdrawing(applicationId);
       
-      // Direct update using the SQL API approach
-      const { data, error } = await supabase
-        .rpc('withdraw_application', { 
-          app_id: applicationId,
-          task_id_param: taskId 
-        });
+      // Only update the application status, don't touch the task status
+      const { error } = await supabase
+        .from('job_applications')
+        .update({ status: 'withdrawn' })
+        .eq('job_app_id', applicationId);
       
       if (error) {
-        console.error("RPC error:", error);
-        
-        // Fallback to regular update if RPC fails
-        console.log("Falling back to regular update method");
-        
-        const { error: updateError } = await supabase
-          .from('job_applications')
-          .update({ status: 'withdrawn' })
-          .eq('job_app_id', applicationId);
-          
-        if (updateError) {
-          console.error("Update error:", updateError);
-          throw updateError;
-        }
-        
-        // Update task regardless
-        await supabase
-          .from('project_sub_tasks')
-          .update({ 
-            status: 'open',
-            task_status: 'open'
-          })
-          .eq('task_id', taskId);
+        console.error("Update error:", error);
+        throw error;
       }
       
       toast.success("Application withdrawn successfully");
