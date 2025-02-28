@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 
 interface ApplicationSkillsProps {
   skills: string[];
-  matchedSkills?: string[];
+  matchedSkills: string[];
   totalSkills?: number;
   limit?: number;
   small?: boolean;
@@ -11,8 +11,8 @@ interface ApplicationSkillsProps {
 }
 
 export const ApplicationSkills = ({ 
-  skills = [], 
-  matchedSkills = [], 
+  skills, 
+  matchedSkills, 
   totalSkills = 0,
   limit,
   small = false,

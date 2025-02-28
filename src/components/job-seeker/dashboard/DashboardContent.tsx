@@ -4,6 +4,7 @@ import { ProfileSection } from "../ProfileSection";
 import { ApplicationsTab } from "./applications"; // Updated import path
 import { OpportunitiesTab } from "./OpportunitiesTab";
 import { EquityTab } from "./EquityTab";
+import { useState } from "react";
 
 interface DashboardContentProps {
   activeTab: string;
@@ -30,7 +31,6 @@ export const DashboardContent = ({
             onSkillsUpdate={dashboardData.handleSkillsUpdate}
             userCVs={dashboardData.userCVs}
             onCvListUpdated={dashboardData.onCvListUpdated}
-            preserveUserSkills={true}
           />
         </TabsContent>
         

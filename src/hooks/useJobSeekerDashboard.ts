@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -175,24 +174,6 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     };
   }, [navigate, refreshTrigger]);
 
-  // Check if user has a business profile without accessing businesses table directly
-  const checkBusinessProfile = async (userId: string) => {
-    try {
-      // Fix: Use profiles table to check if the user is also a business
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('is_also_job_seeker')
-        .eq('id', userId)
-        .maybeSingle();
-        
-      if (error) throw error;
-      return !!data?.is_also_job_seeker;
-    } catch (error) {
-      console.error("Error checking business profile:", error);
-      return false;
-    }
-  };
-
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -230,7 +211,6 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     setEquityProjects,
     handleSignOut,
     handleSkillsUpdate,
-    refreshApplications,
-    checkBusinessProfile
+    refreshApplications
   };
 };

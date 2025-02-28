@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,16 +29,9 @@ interface CVUploadCardProps {
   parsedCvData?: any;
   userCVs?: CVFile[];
   onCvListUpdated?: () => void;
-  preserveUserSkills?: boolean;
 }
 
-export const CVUploadCard = ({ 
-  cvUrl, 
-  parsedCvData, 
-  userCVs = [], 
-  onCvListUpdated,
-  preserveUserSkills = true // Default to preserving skills
-}: CVUploadCardProps) => {
+export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdated }: CVUploadCardProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -166,10 +160,10 @@ export const CVUploadCard = ({
             .eq('user_id', userId);
         }
         
-        // Trigger CV parsing function with preserve skills flag
+        // Trigger CV parsing function (if available)
         try {
           await supabase.functions.invoke('parse-cv', {
-            body: { userId, cvUrl: publicUrl, preserveUserSkills }
+            body: { userId, cvUrl: publicUrl }
           });
         } catch (parseError) {
           console.error("CV parsing function error:", parseError);
