@@ -1,6 +1,6 @@
 
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { EquityProject, Skill } from "@/types/jobSeeker";
+import { EquityProject, Skill, SubTask } from "@/types/jobSeeker";
 import { TaskCard } from "./TaskCard";
 import { getProjectMatches } from "@/utils/skillMatching";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -9,6 +9,11 @@ import { Badge } from "@/components/ui/badge";
 interface OpportunitiesTabProps {
   projects: EquityProject[];
   userSkills: Skill[];
+}
+
+interface ExtendedSubTask extends SubTask {
+  matchScore?: number;
+  matchedSkills?: string[];
 }
 
 export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps) => {
@@ -72,13 +77,30 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                 <div className="space-y-4 mt-4">
                   {project.matchedTasks
                     .sort((a, b) => b.matchScore - a.matchScore)
-                    .map((task) => (
-                      <TaskCard 
-                        key={task.id}
-                        task={task}
-                        userSkills={userSkills}
-                      />
-                    ))}
+                    .map((task) => {
+                      // Convert MatchedTask to ExtendedSubTask with required properties
+                      const extendedTask: ExtendedSubTask = {
+                        ...task,
+                        project_id: project.projectId,
+                        skill_requirements: task.skills_required?.map(skill => ({
+                          skill,
+                          level: "Intermediate"
+                        })) || [],
+                        status: 'open',
+                        task_status: 'open',
+                        completion_percentage: 0,
+                        matchScore: task.matchScore,
+                        matchedSkills: task.matchedSkills
+                      };
+                      
+                      return (
+                        <TaskCard 
+                          key={task.id}
+                          task={extendedTask}
+                          userSkills={userSkills}
+                        />
+                      );
+                    })}
                 </div>
               </AccordionContent>
             </AccordionItem>

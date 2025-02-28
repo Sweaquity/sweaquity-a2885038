@@ -53,6 +53,8 @@ interface SubTask {
   task_status: string;
   completion_percentage: number;
   created_at: string;
+  project_id: string;
+  matchScore?: number; // Add matchScore as optional
 }
 
 interface JobSeekerProfile {
@@ -247,7 +249,7 @@ export const ProjectApplicationPage = () => {
             ...task,
             matchScore: calculateSkillMatchScore(task, extractedSkills)
           }))
-          .sort((a, b) => b.matchScore - a.matchScore);
+          .sort((a, b) => b.matchScore! - a.matchScore!);
 
         // Get stored CV
         const { data: cvData } = await supabase
@@ -439,17 +441,14 @@ export const ProjectApplicationPage = () => {
                       <SelectValue placeholder="Select a task" />
                     </SelectTrigger>
                     <SelectContent>
-                      {subTasks.map((task) => {
-                        const matchPercentage = task.matchScore || calculateSkillMatch(task);
-                        return (
-                          <SelectItem key={task.id} value={task.id}>
-                            <div>
-                              <span className="font-medium">{task.title}</span>
-                              <span className="ml-2 text-xs">{matchPercentage}% skill match</span>
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
+                      {subTasks.map((task) => (
+                        <SelectItem key={task.id} value={task.id}>
+                          <div>
+                            <span className="font-medium">{task.title}</span>
+                            <span className="ml-2 text-xs">{task.matchScore || calculateSkillMatch(task)}% skill match</span>
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

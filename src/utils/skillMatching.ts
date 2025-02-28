@@ -1,15 +1,9 @@
 
-import { EquityProject, Skill } from "@/types/jobSeeker";
+import { EquityProject, Skill, SubTask } from "@/types/jobSeeker";
 
-interface MatchedTask {
-  id: string;
-  title: string;
-  description: string;
-  equity_allocation: number;
+interface MatchedTask extends Omit<SubTask, 'skill_requirements'> {
   matchScore: number;
   matchedSkills: string[];
-  skills_required?: string[];
-  timeframe?: string;
 }
 
 interface ProjectMatch {
@@ -119,14 +113,9 @@ export const getProjectMatches = (projects: EquityProject[], userSkills: Skill[]
       // If there's any match at all (minimum threshold)
       if (matchScore > 0) {
         matchedTasks.push({
-          id: task.id,
-          title: task.title,
-          description: task.description,
-          equity_allocation: task.equity_allocation,
+          ...task, // Include all SubTask properties
           matchScore,
-          matchedSkills,
-          skills_required: task.skills_required,
-          timeframe: task.timeframe
+          matchedSkills
         });
         totalProjectScore += matchScore;
       }

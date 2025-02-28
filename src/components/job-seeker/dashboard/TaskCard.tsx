@@ -2,11 +2,25 @@
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { SubTask, Skill } from "@/types/jobSeeker";
+import { Skill } from "@/types/jobSeeker";
 import { useNavigate } from "react-router-dom";
 
 interface TaskCardProps {
-  task: SubTask;
+  task: {
+    id: string;
+    project_id: string;
+    title: string;
+    description: string;
+    equity_allocation: number;
+    skills_required?: string[];
+    skill_requirements?: { skill: string; level: string }[];
+    timeframe?: string;
+    matchScore?: number;
+    matchedSkills?: string[];
+    status?: string;
+    task_status?: string;
+    completion_percentage?: number;
+  };
   userSkills: Skill[];
 }
 
@@ -16,6 +30,10 @@ export const TaskCard = ({ task, userSkills }: TaskCardProps) => {
   const handleApply = () => {
     navigate(`/projects/${task.project_id}/apply`);
   };
+
+  // Use skill_requirements if available, otherwise use skills_required
+  const skillRequirements = task.skill_requirements || 
+    (task.skills_required?.map(skill => ({ skill, level: 'Unknown' })) || []);
 
   return (
     <Card>
@@ -33,16 +51,32 @@ export const TaskCard = ({ task, userSkills }: TaskCardProps) => {
           <div>
             <p className="text-sm font-medium mb-2">Required Skills:</p>
             <div className="flex flex-wrap gap-2">
-              {task.skill_requirements.map((req, index) => (
+              {skillRequirements.map((req, index) => (
                 <Badge 
                   key={index}
-                  variant={userSkills.some(s => s.skill === req.skill) ? "default" : "secondary"}
+                  variant={userSkills.some(s => s.skill.toLowerCase() === req.skill.toLowerCase()) ? "default" : "secondary"}
                 >
-                  {req.skill} ({req.level})
+                  {req.skill} {req.level !== 'Unknown' ? `(${req.level})` : ''}
                 </Badge>
               ))}
             </div>
           </div>
+          
+          {task.matchScore !== undefined && (
+            <div>
+              <p className="text-sm font-medium mb-2">Skill Match:</p>
+              <div className="w-full bg-secondary h-2 rounded-full">
+                <div
+                  className="bg-primary h-2 rounded-full"
+                  style={{ width: `${task.matchScore}%` }}
+                ></div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {task.matchScore}% match with your skills
+              </p>
+            </div>
+          )}
+          
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Timeframe: {task.timeframe}</span>
             <Button onClick={handleApply}>Apply Now</Button>
