@@ -10,6 +10,7 @@ import { ProjectHeader } from "@/components/projects/ProjectHeader";
 import { ProjectDetails } from "@/components/projects/ProjectDetails";
 import { SubTask } from "@/types/jobSeeker";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
 import {
   Collapsible,

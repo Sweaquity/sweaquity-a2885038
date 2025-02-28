@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { 
   Card,
   CardContent,
@@ -278,7 +279,7 @@ export const CVUploadCard = ({
       if (storageError) throw storageError;
 
       // Update profile if this was the active CV
-      if (cvUrl === this.cvUrl) {
+      if (cvUrl === cvUrl) { // Fix: this.cvUrl -> cvUrl
         const { error: profileError } = await supabase
           .from('profiles')
           .update({ cv_url: null })
