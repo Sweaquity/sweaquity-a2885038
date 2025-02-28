@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { FileText, File, Trash2 } from "lucide-react";
 
 interface CVUploadCardProps {
   cvUrl: string | null;
@@ -34,6 +35,89 @@ export const CVUploadCard = ({
   const [isUploading, setIsUploading] = useState(false);
   const [selectedCVs, setSelectedCVs] = useState<string[]>([]);
   const [previewError, setPreviewError] = useState(false);
+  const [storedCVs, setStoredCVs] = useState<{path: string, url: string, name: string}[]>([]);
+  const [isFetchingCVs, setIsFetchingCVs] = useState(false);
+
+  useEffect(() => {
+    fetchStoredCVs();
+  }, []);
+
+  const fetchStoredCVs = async () => {
+    try {
+      setIsFetchingCVs(true);
+      
+      // Check if the storage bucket exists
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
+      
+      if (!cvsBucketExists) {
+        console.log("CV storage bucket doesn't exist, attempting to create it");
+        try {
+          const { error: bucketError } = await supabase.storage.createBucket('cvs', {
+            public: true
+          });
+          
+          if (bucketError) {
+            console.error("Error creating cvs bucket:", bucketError);
+            return;
+          } else {
+            console.log("Successfully created cvs bucket");
+          }
+        } catch (bucketErr) {
+          console.error("Error creating storage bucket:", bucketErr);
+          return;
+        }
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        return;
+      }
+
+      // Get all files for this user
+      const { data: files, error } = await supabase.storage
+        .from('cvs')
+        .list(`${session.user.id}`);
+
+      if (error) {
+        console.error("Error fetching stored CVs:", error);
+        return;
+      }
+
+      if (!files || files.length === 0) {
+        return;
+      }
+
+      console.log("Found stored CVs:", files);
+
+      // Generate public URLs
+      const cvFiles = files.map(file => {
+        const { data: { publicUrl } } = supabase.storage
+          .from('cvs')
+          .getPublicUrl(`${session.user.id}/${file.name}`);
+          
+        return {
+          path: `${session.user.id}/${file.name}`,
+          url: publicUrl,
+          name: file.name.split('-').slice(1).join('-') // Remove timestamp prefix
+        };
+      });
+
+      setStoredCVs(cvFiles);
+
+      // If we have a current CV URL, check if it matches any of the stored CVs
+      if (cvUrl) {
+        const matchingCV = cvFiles.find(cv => cv.url === cvUrl);
+        if (matchingCV) {
+          setSelectedCVs([matchingCV.url]);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching stored CVs:", error);
+    } finally {
+      setIsFetchingCVs(false);
+    }
+  };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -65,9 +149,26 @@ export const CVUploadCard = ({
         return;
       }
 
+      // Check if the bucket exists, if not create it
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
+      
+      if (!cvsBucketExists) {
+        console.log("CV storage bucket doesn't exist, attempting to create it");
+        const { error: bucketError } = await supabase.storage.createBucket('cvs', {
+          public: true
+        });
+        
+        if (bucketError) {
+          console.error("Error creating cvs bucket:", bucketError);
+          toast.error("Failed to create storage for CVs");
+          return;
+        }
+      }
+
       // Upload file to Supabase Storage
       const fileName = `${session.user.id}/${Date.now()}-${file.name}`;
-      const { error: uploadError, data: uploadData } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('cvs')
         .upload(fileName, file, {
           cacheControl: '3600',
@@ -89,12 +190,35 @@ export const CVUploadCard = ({
 
       if (updateError) throw updateError;
 
-      // Trigger CV parsing function (this would be a server function)
-      // Note: This is a placeholder, you'd need to implement the actual function call
+      // Also add to cv_parsed_data if it doesn't exist
+      const { data: cvData } = await supabase
+        .from('cv_parsed_data')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+        
+      if (!cvData) {
+        await supabase
+          .from('cv_parsed_data')
+          .insert({
+            user_id: session.user.id,
+            cv_url: urlData.publicUrl,
+            cv_upload_date: new Date().toISOString()
+          });
+      } else {
+        await supabase
+          .from('cv_parsed_data')
+          .update({
+            cv_url: urlData.publicUrl,
+            cv_upload_date: new Date().toISOString()
+          })
+          .eq('user_id', session.user.id);
+      }
+
       toast.success("CV uploaded successfully");
       
-      // Reload the page to refresh the data
-      window.location.reload();
+      // Refresh the list of stored CVs
+      await fetchStoredCVs();
     } catch (error) {
       console.error('Upload error:', error);
       toast.error("Failed to upload CV");
@@ -103,23 +227,21 @@ export const CVUploadCard = ({
     }
   };
 
-  const handleDownloadCV = async () => {
+  const handleDownloadCV = async (cvUrl: string) => {
     try {
       if (!cvUrl) return;
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const filePathMatch = cvUrl.match(/cvs\/([^?]+)/);
-      if (!filePathMatch) {
-        toast.error("Invalid CV URL");
-        return;
-      }
-
-      const filePath = filePathMatch[1];
+      // Extract file path from URL
+      const urlObj = new URL(cvUrl);
+      const pathSegments = urlObj.pathname.split('/');
+      const bucketName = 'cvs';
+      const filePathArray = pathSegments.slice(pathSegments.indexOf('cvs') + 1);
+      const filePath = filePathArray.join('/');
+      
+      console.log("Downloading file:", bucketName, filePath);
 
       const { data, error } = await supabase.storage
-        .from('cvs')
+        .from(bucketName)
         .createSignedUrl(filePath, 60);
 
       if (error) throw error;
@@ -136,37 +258,105 @@ export const CVUploadCard = ({
     }
   };
 
-  const handleDeleteCV = async () => {
+  const handleDeleteCV = async (cvUrl: string) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const filePathMatch = cvUrl?.match(/cvs\/([^?]+)/);
-      if (!filePathMatch) {
-        toast.error("Invalid CV URL");
+      // Find the corresponding CV file
+      const cv = storedCVs.find(cv => cv.url === cvUrl);
+      if (!cv) {
+        toast.error("CV not found");
         return;
       }
 
-      const filePath = filePathMatch[1];
-
+      // Remove from storage
       const { error: storageError } = await supabase.storage
         .from('cvs')
-        .remove([filePath]);
+        .remove([cv.path]);
 
       if (storageError) throw storageError;
 
-      const { error: dbError } = await supabase
-        .from('cv_parsed_data')
-        .delete()
-        .eq('user_id', session.user.id);
-
-      if (dbError) throw dbError;
+      // Update profile if this was the active CV
+      if (cvUrl === this.cvUrl) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ cv_url: null })
+          .eq('id', session.user.id);
+          
+        if (profileError) throw profileError;
+        
+        // Also update cv_parsed_data
+        const { error: cvDataError } = await supabase
+          .from('cv_parsed_data')
+          .update({ cv_url: null })
+          .eq('user_id', session.user.id);
+          
+        if (cvDataError) throw cvDataError;
+      }
 
       toast.success("CV deleted successfully");
-      window.location.reload();
+      
+      // Refresh the list
+      await fetchStoredCVs();
+      setSelectedCVs([]);
     } catch (error) {
       console.error('Delete error:', error);
       toast.error("Failed to delete CV");
+    }
+  };
+
+  const handleSetAsActive = async (cvUrl: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      // Update profile with the selected CV URL
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ cv_url: cvUrl })
+        .eq('id', session.user.id);
+        
+      if (profileError) throw profileError;
+      
+      // Also update cv_parsed_data
+      const { data: cvData, error: cvCheckError } = await supabase
+        .from('cv_parsed_data')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+        
+      if (cvCheckError && cvCheckError.code !== 'PGRST116') {
+        // PGRST116 is the error code for no rows returned
+        throw cvCheckError;
+      }
+      
+      if (cvData) {
+        const { error: cvUpdateError } = await supabase
+          .from('cv_parsed_data')
+          .update({ cv_url: cvUrl })
+          .eq('user_id', session.user.id);
+          
+        if (cvUpdateError) throw cvUpdateError;
+      } else {
+        const { error: cvInsertError } = await supabase
+          .from('cv_parsed_data')
+          .insert({
+            user_id: session.user.id,
+            cv_url: cvUrl,
+            cv_upload_date: new Date().toISOString()
+          });
+          
+        if (cvInsertError) throw cvInsertError;
+      }
+      
+      toast.success("CV set as active");
+      
+      // Update URL in the component
+      window.location.reload();
+    } catch (error) {
+      console.error('Error setting active CV:', error);
+      toast.error("Failed to set CV as active");
     }
   };
 
@@ -175,12 +365,12 @@ export const CVUploadCard = ({
       <CardHeader>
         <CardTitle>CV Management</CardTitle>
         <CardDescription>
-          Upload your CV and if possible this will automatically extract your skills and experience
+          Upload your CV or select from previously uploaded files
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <Label htmlFor="cv-upload">Upload CV</Label>
+          <Label htmlFor="cv-upload">Upload New CV</Label>
           <Input
             id="cv-upload"
             type="file"
@@ -189,72 +379,96 @@ export const CVUploadCard = ({
             disabled={isUploading}
             className="mt-2"
           />
+          {isUploading && (
+            <p className="text-sm text-muted-foreground mt-2">Uploading...</p>
+          )}
           {parsedCvData?.cv_upload_date && (
             <p className="text-sm text-muted-foreground mt-2">
               Last uploaded: {new Date(parsedCvData.cv_upload_date).toLocaleDateString()}
             </p>
           )}
         </div>
-        {cvUrl && (
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="cv-select"
-                checked={selectedCVs.includes(cvUrl)}
-                onCheckedChange={(checked) => {
-                  setSelectedCVs(checked ? [cvUrl] : []);
-                }}
-              />
-              <Label htmlFor="cv-select">Current CV</Label>
-            </div>
-            <div className="flex space-x-2">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline">Preview CV</Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl h-[80vh]">
-                  <DialogHeader>
-                    <DialogTitle>CV Preview</DialogTitle>
-                    <DialogDescription>
-                      Your uploaded CV document
-                    </DialogDescription>
-                  </DialogHeader>
-                  {!previewError ? (
-                    <iframe 
-                      src={`https://docs.google.com/viewer?url=${encodeURIComponent(cvUrl)}&embedded=true`}
-                      width="100%"
-                      height="100%"
-                      className="rounded-md"
-                      onError={() => setPreviewError(true)}
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full space-y-4">
-                      <p className="text-muted-foreground">Preview not available</p>
-                      <Button 
-                        variant="outline"
-                        onClick={() => window.open(cvUrl, '_blank')}
-                      >
-                        Open CV in new tab
-                      </Button>
-                    </div>
-                  )}
-                </DialogContent>
-              </Dialog>
-              <Button 
-                variant="outline"
-                onClick={handleDownloadCV}
-              >
-                Download CV
-              </Button>
-              {selectedCVs.length > 0 && (
-                <Button 
-                  variant="destructive" 
-                  onClick={handleDeleteCV}
+        
+        {isFetchingCVs ? (
+          <p className="text-sm text-muted-foreground">Loading stored CVs...</p>
+        ) : storedCVs.length > 0 ? (
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium">Your Stored CVs</h3>
+            <div className="space-y-2">
+              {storedCVs.map((cv, index) => (
+                <div 
+                  key={index}
+                  className={`
+                    flex items-center justify-between p-3 rounded-md border
+                    ${cv.url === cvUrl ? 'border-primary bg-primary/5' : 'border-border'}
+                  `}
                 >
-                  Delete CV
-                </Button>
-              )}
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium text-sm">{cv.name}</p>
+                      {cv.url === cvUrl && (
+                        <Badge variant="secondary" className="text-xs mt-1">Active</Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleDownloadCV(cv.url)}
+                    >
+                      Download
+                    </Button>
+                    
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">Preview</Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-4xl h-[80vh]">
+                        <DialogHeader>
+                          <DialogTitle>CV Preview</DialogTitle>
+                          <DialogDescription>
+                            {cv.name}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <iframe 
+                          src={`https://docs.google.com/viewer?url=${encodeURIComponent(cv.url)}&embedded=true`}
+                          width="100%"
+                          height="100%"
+                          className="rounded-md"
+                          onError={() => setPreviewError(true)}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                    
+                    {cv.url !== cvUrl && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleSetAsActive(cv.url)}
+                      >
+                        Set as Active
+                      </Button>
+                    )}
+                    
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDeleteCV(cv.url)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
+          </div>
+        ) : (
+          <div className="border border-dashed rounded-md p-6 flex flex-col items-center justify-center">
+            <File className="w-10 h-10 text-muted-foreground mb-2" />
+            <p className="text-muted-foreground">No CVs uploaded yet</p>
           </div>
         )}
       </CardContent>

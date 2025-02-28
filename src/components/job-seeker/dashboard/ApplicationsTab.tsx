@@ -57,32 +57,50 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     }
   };
 
-  const openCV = (cvUrl: string) => {
-    const url = new URL(cvUrl);
-    const bucketName = url.pathname.split('/')[2]; // Get the bucket name from the URL
-    const filePath = url.pathname.split('/').slice(3).join('/'); // Get the file path without the bucket name
-    
-    // Create a signed URL for the CV
-    const getSignedUrl = async () => {
-      try {
-        const { data, error } = await supabase.storage
-          .from(bucketName)
-          .createSignedUrl(filePath, 60);
-          
-        if (error) {
-          console.error("Error creating signed URL:", error);
-          toast.error("Could not access the CV file");
-          return;
-        }
-        
-        window.open(data.signedUrl, '_blank');
-      } catch (err) {
-        console.error("Error opening CV:", err);
-        toast.error("Failed to open CV");
+  const openCV = async (cvUrl: string) => {
+    try {
+      if (!cvUrl) {
+        toast.error("No CV URL provided");
+        return;
       }
-    };
-    
-    getSignedUrl();
+      
+      // First, check if the bucket exists
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
+      
+      if (!cvsBucketExists) {
+        console.error("CV bucket does not exist");
+        toast.error("CV storage is not properly configured");
+        return;
+      }
+      
+      // Extract the file path from the URL
+      const urlObj = new URL(cvUrl);
+      const pathSegments = urlObj.pathname.split('/');
+      // Format should be /storage/v1/object/public/cvs/[userId]/[fileName]
+      const bucketName = 'cvs';
+      const filePathArray = pathSegments.slice(pathSegments.indexOf('cvs') + 1);
+      const filePath = filePathArray.join('/');
+      
+      console.log("Attempting to access file:", bucketName, filePath);
+
+      // Create a signed URL for the file
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .createSignedUrl(filePath, 60);
+        
+      if (error) {
+        console.error("Error creating signed URL:", error);
+        toast.error("Could not access the CV file");
+        return;
+      }
+      
+      // Open the signed URL in a new tab
+      window.open(data.signedUrl, '_blank');
+    } catch (err) {
+      console.error("Error opening CV:", err);
+      toast.error("Failed to open CV");
+    }
   };
 
   return (
@@ -229,7 +247,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      className="text-destructive"
                       onClick={() => handleWithdraw(application.id, application.task_id)}
                       disabled={isWithdrawing === application.id}
                       title="Withdraw application"

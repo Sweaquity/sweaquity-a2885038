@@ -8,7 +8,15 @@ import { ApplicationForm } from "@/components/projects/ApplicationForm";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Calendar, MapPin, Briefcase, Users2 } from "lucide-react";
+import { Building2, Calendar, MapPin, Briefcase, Users2, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface BusinessDetails {
   company_name: string;
@@ -41,6 +49,7 @@ interface SubTask {
   skill_requirements: any[];
   task_status: string;
   completion_percentage: number;
+  created_at: string;
 }
 
 interface JobSeekerProfile {
@@ -61,8 +70,31 @@ export const ProjectApplicationPage = () => {
   const [subTasks, setSubTasks] = useState<SubTask[]>([]);
   const [hasStoredCV, setHasStoredCV] = useState(false);
   const [storedCVUrl, setStoredCVUrl] = useState<string | null>(null);
+  const [userSkills, setUserSkills] = useState<string[]>([]);
   const [jobSeekerProfile, setJobSeekerProfile] = useState<JobSeekerProfile | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<SubTask | null>(null);
+
+  const handleGoBack = () => {
+    navigate(-1); // Navigate back to the previous page
+  };
+
+  const handleTaskSelect = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    const task = subTasks.find(t => t.id === taskId) || null;
+    setSelectedTask(task);
+  };
+
+  // Calculate skill match percentage
+  const calculateSkillMatch = (task: SubTask): number => {
+    if (!task.skills_required || task.skills_required.length === 0) return 0;
+    
+    const matchingSkills = task.skills_required.filter(skill => 
+      userSkills.some(userSkill => userSkill.toLowerCase() === skill.toLowerCase())
+    );
+    
+    return Math.round((matchingSkills.length / task.skills_required.length) * 100);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -100,14 +132,50 @@ export const ProjectApplicationPage = () => {
 
         if (taskError) throw taskError;
 
-        // Get user's profile
+        // Get user's profile and skills
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('*')
+          .select('*, skills')
           .eq('id', session.user.id)
           .single();
 
         if (profileError) throw profileError;
+
+        // Extract user skills
+        let extractedSkills: string[] = [];
+        if (profileData.skills) {
+          try {
+            if (typeof profileData.skills === 'string') {
+              // Try to parse if it's a JSON string
+              const parsedSkills = JSON.parse(profileData.skills);
+              if (Array.isArray(parsedSkills)) {
+                extractedSkills = parsedSkills.map(s => 
+                  typeof s === 'string' ? s : s.skill || ''
+                ).filter(Boolean);
+              } else if (Array.isArray(parsedSkills.skills)) {
+                extractedSkills = parsedSkills.skills.map(s => 
+                  typeof s === 'string' ? s : s.skill || ''
+                ).filter(Boolean);
+              }
+            } else if (Array.isArray(profileData.skills)) {
+              // If it's already an array
+              extractedSkills = profileData.skills.map(s => 
+                typeof s === 'string' ? s : s.skill || ''
+              ).filter(Boolean);
+            } else if (profileData.skills && typeof profileData.skills === 'object') {
+              // If it's an object with a skills property
+              if (Array.isArray(profileData.skills.skills)) {
+                extractedSkills = profileData.skills.skills.map(s => 
+                  typeof s === 'string' ? s : s.skill || ''
+                ).filter(Boolean);
+              }
+            }
+          } catch (e) {
+            console.error("Error parsing skills:", e);
+          }
+        }
+        
+        setUserSkills(extractedSkills);
 
         // Check for existing applications by this user
         const { data: userApplications, error: applicationError } = await supabase
@@ -131,11 +199,12 @@ export const ProjectApplicationPage = () => {
           task.status === 'open' && !unavailableTaskIds.has(task.id)
         );
 
+        // Get stored CV
         const { data: cvData } = await supabase
           .from('cv_parsed_data')
           .select('cv_url')
           .eq('user_id', session.user.id)
-          .single();
+          .maybeSingle();
 
         // Get CV URL from profile if present
         const { data: cvUrlData } = await supabase
@@ -143,6 +212,27 @@ export const ProjectApplicationPage = () => {
           .select('cv_url')
           .eq('id', session.user.id)
           .single();
+
+        // Check if storage bucket exists
+        const { data: buckets } = await supabase.storage.listBuckets();
+        const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
+        
+        if (!cvsBucketExists) {
+          console.log("CV storage bucket doesn't exist, attempting to create it");
+          try {
+            const { error: bucketError } = await supabase.storage.createBucket('cvs', {
+              public: true
+            });
+            
+            if (bucketError) {
+              console.error("Error creating cvs bucket:", bucketError);
+            } else {
+              console.log("Successfully created cvs bucket");
+            }
+          } catch (bucketErr) {
+            console.error("Error creating storage bucket:", bucketErr);
+          }
+        }
 
         setBusinessDetails(projectData.businesses);
         setProjectDetails(projectData);
@@ -154,6 +244,7 @@ export const ProjectApplicationPage = () => {
         // If available, automatically select the first task
         if (availableTasks.length > 0) {
           setSelectedTaskId(availableTasks[0].id);
+          setSelectedTask(availableTasks[0]);
         }
 
       } catch (error) {
@@ -179,6 +270,18 @@ export const ProjectApplicationPage = () => {
 
   return (
     <div className="container mx-auto py-8 px-4 space-y-6">
+      <div className="flex items-center mb-4">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="mr-2" 
+          onClick={handleGoBack}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+      </div>
+
       <Card>
         <CardHeader className="space-y-2">
           <div className="flex items-center justify-between">
@@ -234,7 +337,13 @@ export const ProjectApplicationPage = () => {
             <h4 className="font-medium mb-2">Required Skills</h4>
             <div className="flex flex-wrap gap-2">
               {projectDetails.skills_required?.map((skill, index) => (
-                <Badge key={index} variant="secondary">{skill}</Badge>
+                <Badge 
+                  key={index} 
+                  variant={userSkills.includes(skill) ? "default" : "secondary"}
+                >
+                  {skill}
+                  {userSkills.includes(skill) && " ✓"}
+                </Badge>
               ))}
             </div>
           </div>
@@ -242,52 +351,91 @@ export const ProjectApplicationPage = () => {
           {subTasks.length > 0 ? (
             <div>
               <h4 className="font-medium mb-2">Available Tasks</h4>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="px-4 py-2 text-left">Select</th>
-                      <th className="px-4 py-2 text-left">Title</th>
-                      <th className="px-4 py-2 text-left">Equity</th>
-                      <th className="px-4 py-2 text-left">Timeframe</th>
-                      <th className="px-4 py-2 text-left">Skills Required</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {subTasks.map((task) => (
-                      <tr key={task.id} className="border-b hover:bg-muted/50">
-                        <td className="px-4 py-2">
-                          <input
-                            type="radio"
-                            name="taskSelection"
-                            value={task.id}
-                            checked={selectedTaskId === task.id}
-                            onChange={() => setSelectedTaskId(task.id)}
-                            className="h-4 w-4"
-                          />
-                        </td>
-                        <td className="px-4 py-2">
+              
+              <div className="space-y-4 mb-4">
+                <label className="text-sm font-medium">Select a task to apply for:</label>
+                <Select
+                  value={selectedTaskId || ''}
+                  onValueChange={handleTaskSelect}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a task" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subTasks.map((task) => {
+                      const matchPercentage = calculateSkillMatch(task);
+                      return (
+                        <SelectItem key={task.id} value={task.id}>
                           <div>
-                            <div className="font-medium">{task.title}</div>
-                            <div className="text-sm text-muted-foreground">{task.description}</div>
+                            <span className="font-medium">{task.title}</span>
+                            <span className="ml-2 text-xs">{matchPercentage}% skill match</span>
                           </div>
-                        </td>
-                        <td className="px-4 py-2">{task.equity_allocation}%</td>
-                        <td className="px-4 py-2">{task.timeframe}</td>
-                        <td className="px-4 py-2">
-                          <div className="flex flex-wrap gap-1">
-                            {task.skills_required?.map((skill, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
-                                {skill}
-                              </Badge>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
+              
+              {selectedTask && (
+                <Card className="mb-4">
+                  <CardContent className="pt-6">
+                    <div className="space-y-4">
+                      <div>
+                        <h5 className="font-medium">Task Details</h5>
+                        <p className="text-sm text-muted-foreground mt-1">{selectedTask.description}</p>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <h6 className="text-sm font-medium text-muted-foreground">Equity</h6>
+                          <p>{selectedTask.equity_allocation}%</p>
+                        </div>
+                        <div>
+                          <h6 className="text-sm font-medium text-muted-foreground">Timeframe</h6>
+                          <p>{selectedTask.timeframe}</p>
+                        </div>
+                        <div>
+                          <h6 className="text-sm font-medium text-muted-foreground">Created</h6>
+                          <p>{format(new Date(selectedTask.created_at || projectDetails.created_at), 'PPP')}</p>
+                        </div>
+                        <div>
+                          <h6 className="text-sm font-medium text-muted-foreground">Completion</h6>
+                          <p>{selectedTask.completion_percentage || 0}%</p>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h6 className="text-sm font-medium text-muted-foreground">Required Skills</h6>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {selectedTask.skills_required?.map((skill, index) => (
+                            <Badge 
+                              key={index} 
+                              variant={userSkills.includes(skill) ? "default" : "secondary"}
+                            >
+                              {skill}
+                              {userSkills.includes(skill) && " ✓"}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h6 className="text-sm font-medium text-muted-foreground">Skill Match</h6>
+                        <div className="w-full bg-secondary h-2 rounded-full mt-1">
+                          <div 
+                            className="bg-primary h-2 rounded-full" 
+                            style={{ width: `${calculateSkillMatch(selectedTask)}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {calculateSkillMatch(selectedTask)}% match with your skills
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           ) : (
             <div className="p-4 border rounded-md bg-muted/50">

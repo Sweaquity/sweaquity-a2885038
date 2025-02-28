@@ -8,9 +8,15 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ProjectsSection } from "@/components/business/ProjectsSection";
 import { BusinessProfileCompletion } from "@/components/business/BusinessProfileCompletion";
-import { UserCircle2 } from "lucide-react";
+import { UserCircle2, Menu } from "lucide-react";
 import { ActiveRolesTable } from "@/components/business/roles/ActiveRolesTable";
 import { ProjectApplicationsSection } from "@/components/business/ProjectApplicationsSection";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface SubTask {
   id: string;
@@ -126,20 +132,45 @@ const BusinessDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-xl md:text-2xl font-bold">
             {businessData?.company_name} Dashboard
           </h1>
-          <div className="flex items-center gap-4">
-            {hasJobSeekerProfile && (
-              <Button variant="outline" onClick={handleProfileSwitch}>
-                <UserCircle2 className="mr-2 h-4 w-4" />
-                Switch to Job Seeker
-              </Button>
-            )}
-            <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
+          <div className="flex items-center gap-2">
+            {/* Desktop view */}
+            <div className="hidden md:flex items-center gap-4">
+              {hasJobSeekerProfile && (
+                <Button variant="outline" onClick={handleProfileSwitch}>
+                  <UserCircle2 className="mr-2 h-4 w-4" />
+                  Switch to Job Seeker
+                </Button>
+              )}
+              <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
+            </div>
+            
+            {/* Mobile view */}
+            <div className="flex md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {hasJobSeekerProfile && (
+                    <DropdownMenuItem onClick={handleProfileSwitch}>
+                      <UserCircle2 className="mr-2 h-4 w-4" />
+                      Switch to Job Seeker
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
 
@@ -159,7 +190,7 @@ const BusinessDashboard = () => {
                   <h2 className="text-lg font-semibold">Business Details</h2>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <p className="font-semibold">Company Name</p>
                       <p>{businessData.company_name || 'Not specified'}</p>
@@ -193,7 +224,7 @@ const BusinessDashboard = () => {
                   <h2 className="text-lg font-semibold">Banking Details</h2>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <p className="font-semibold">Account Name</p>
                       <p>{businessData.banking_details?.account_name || 'Not specified'}</p>

@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,8 +8,14 @@ import { toast } from "sonner";
 import { ActiveRolesTable } from "@/components/business/roles/ActiveRolesTable";
 import { ProjectHeader } from "@/components/projects/ProjectHeader";
 import { ProjectDetails } from "@/components/projects/ProjectDetails";
-import { ApplicationForm } from "@/components/projects/ApplicationForm";
 import { SubTask } from "@/types/jobSeeker";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface Business {
   id?: string;
@@ -21,7 +27,7 @@ interface Business {
   location: string;
 }
 
-interface ProjectDetails {
+interface ProjectDetailsData {
   id: string;
   title: string;
   description: string;
@@ -36,12 +42,30 @@ interface ProjectDetails {
 
 export const ProjectDetailsPage = () => {
   const { id } = useParams<{ id: string }>();
-  const [project, setProject] = useState<ProjectDetails | null>(null);
+  const navigate = useNavigate();
+  const [project, setProject] = useState<ProjectDetailsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasStoredCV, setHasStoredCV] = useState(false);
   const [storedCVUrl, setStoredCVUrl] = useState<string | null>(null);
   const [hasApplied, setHasApplied] = useState(false);
   const [isJobSeeker, setIsJobSeeker] = useState(false);
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+
+  const handleGoBack = () => {
+    navigate(-1); // Navigate back to the previous page
+  };
+
+  const toggleTaskExpanded = (taskId: string) => {
+    setExpandedTasks(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(taskId)) {
+        newExpanded.delete(taskId);
+      } else {
+        newExpanded.add(taskId);
+      }
+      return newExpanded;
+    });
+  };
 
   useEffect(() => {
     const fetchProjectDetails = async () => {
@@ -93,7 +117,8 @@ export const ProjectDetailsPage = () => {
               timeframe,
               skill_requirements,
               task_status,
-              completion_percentage
+              completion_percentage,
+              created_at
             )
           `)
           .eq('id', id)
@@ -151,7 +176,7 @@ export const ProjectDetailsPage = () => {
         // Map task data to match SubTask interface
         const mappedTasks: SubTask[] = (projectData.tasks || []).map(task => ({
           id: task.id,
-          project_id: projectData.id, // Using the parent project's ID
+          project_id: projectData.id,
           title: task.title,
           description: task.description,
           status: task.status,
@@ -198,6 +223,18 @@ export const ProjectDetailsPage = () => {
 
   return (
     <div className="container mx-auto py-8 px-4">
+      <div className="flex items-center mb-4">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="mr-2" 
+          onClick={handleGoBack}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+      </div>
+
       <Card>
         <CardHeader>
           <ProjectHeader
@@ -211,7 +248,6 @@ export const ProjectDetailsPage = () => {
             <TabsList>
               <TabsTrigger value="details">Project Details</TabsTrigger>
               <TabsTrigger value="roles">Available Roles</TabsTrigger>
-              {isJobSeeker && <TabsTrigger value="apply">Apply</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="details">
@@ -224,27 +260,76 @@ export const ProjectDetailsPage = () => {
             </TabsContent>
 
             <TabsContent value="roles">
-              <ActiveRolesTable project={project} />
-            </TabsContent>
-
-            {isJobSeeker && (
-              <TabsContent value="apply">
-                {hasApplied ? (
-                  <div className="bg-green-50 border border-green-200 rounded-md p-4">
-                    <p className="text-green-800">
-                      You have already applied for this opportunity. We'll notify you of any updates.
-                    </p>
-                  </div>
-                ) : (
-                  <ApplicationForm
-                    projectId={id || ''}
-                    hasStoredCV={hasStoredCV}
-                    storedCVUrl={storedCVUrl}
-                    onApplicationSubmitted={() => setHasApplied(true)}
-                  />
+              <div className="space-y-4">
+                {project.tasks.map((task) => (
+                  <Collapsible 
+                    key={task.id} 
+                    open={expandedTasks.has(task.id)}
+                    onOpenChange={() => toggleTaskExpanded(task.id)}
+                    className="border rounded-lg overflow-hidden"
+                  >
+                    <CollapsibleTrigger className="flex justify-between items-center w-full p-4 text-left hover:bg-muted/50">
+                      <div>
+                        <div className="flex items-center">
+                          <h3 className="text-lg font-medium">{task.title}</h3>
+                          <Badge variant="outline" className="ml-2">
+                            {task.equity_allocation}% equity
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Timeframe: {task.timeframe}
+                        </p>
+                      </div>
+                      {expandedTasks.has(task.id) ? (
+                        <ArrowLeft className="h-5 w-5 transform rotate-90" />
+                      ) : (
+                        <ArrowLeft className="h-5 w-5 transform -rotate-90" />
+                      )}
+                    </CollapsibleTrigger>
+                    
+                    <CollapsibleContent className="px-4 pb-4">
+                      <div className="space-y-3 mt-2">
+                        <div>
+                          <h4 className="text-sm font-medium text-muted-foreground">Description</h4>
+                          <p className="text-sm mt-1">{task.description}</p>
+                        </div>
+                        
+                        <div>
+                          <h4 className="text-sm font-medium text-muted-foreground">Required Skills</h4>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {task.skills_required.map((skill, i) => (
+                              <Badge key={i} variant="secondary" className="text-xs">
+                                {skill}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h4 className="text-sm font-medium text-muted-foreground">Status</h4>
+                          <Badge className="mt-1">{task.status}</Badge>
+                        </div>
+                        
+                        {isJobSeeker && (
+                          <div className="mt-3">
+                            <Button
+                              onClick={() => navigate(`/projects/${project.id}/apply`)}
+                              disabled={hasApplied}
+                            >
+                              {hasApplied ? "Already Applied" : "Apply for This Role"}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ))}
+                
+                {project.tasks.length === 0 && (
+                  <p className="text-center text-muted-foreground">No available roles for this project.</p>
                 )}
-              </TabsContent>
-            )}
+              </div>
+            </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
