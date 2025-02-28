@@ -8,33 +8,18 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-
-interface Project {
-  id: string;
-  title: string;
-  status: string;
-  equity_amount: number;
-  start_date: string;
-  end_date?: string;
-  total_hours_logged: number;
-  documents?: {
-    contract?: {
-      status: 'draft' | 'pending' | 'approved';
-      url: string;
-    };
-  };
-}
+import { EquityProject } from "@/types/jobSeeker";
 
 interface ProjectsOverviewProps {
-  currentProjects: Project[];
-  pastProjects: Project[];
-  onDocumentAction: (projectId: string, action: 'edit' | 'approve') => void;
+  currentProjects?: EquityProject[];
+  pastProjects?: EquityProject[];
+  onDocumentAction?: (projectId: string, action: 'edit' | 'approve') => void;
 }
 
 export const ProjectsOverview = ({
-  currentProjects,
-  pastProjects,
-  onDocumentAction
+  currentProjects = [],
+  pastProjects = [],
+  onDocumentAction = () => {}
 }: ProjectsOverviewProps) => {
   return (
     <div className="space-y-6">

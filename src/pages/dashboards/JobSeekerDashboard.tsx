@@ -91,12 +91,17 @@ const JobSeekerDashboard = () => {
     return <ProfileCompletionForm />;
   }
 
+  // Function for document actions (not implemented yet)
+  const handleDocumentAction = (projectId: string, action: 'edit' | 'approve') => {
+    console.log(`Document action: ${action} for project ${projectId}`);
+    toast.info(`${action} action for document is not implemented yet`);
+  };
+
   return (
     <div className="min-h-screen p-6">
       <div className="max-w-7xl mx-auto">
         <DashboardHeader
-          firstName={profile?.first_name || ""}
-          profilePicture=""
+          profile={profile}
           onSignOut={handleSignOut}
         />
 
@@ -113,7 +118,11 @@ const JobSeekerDashboard = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
-            <ProjectsOverview equityProjects={equityProjects} />
+            <ProjectsOverview 
+              currentProjects={equityProjects} 
+              pastProjects={[]} 
+              onDocumentAction={handleDocumentAction}
+            />
             <DashboardContent
               profile={profile}
               applications={applications}

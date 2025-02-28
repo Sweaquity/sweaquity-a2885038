@@ -2,29 +2,28 @@
 import { CVUploadCard } from "./cv/CVUploadCard";
 import { SkillsCard } from "./skills/SkillsCard";
 import { CareerHistoryCard } from "./career/CareerHistoryCard";
-import { Skill } from "@/types/jobSeeker";
+import { Profile, Skill } from "@/types/jobSeeker";
 
 interface ProfileSectionProps {
-  cvUrl: string | null;
-  parsedCvData: any;
-  skills: Skill[];
-  handleFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onSkillsUpdate: (skills: Skill[]) => void;
+  profile?: Profile;
+  cvUrl?: string | null;
+  parsedCvData?: any;
+  skills?: Skill[];
+  onSkillsUpdate?: (skills: Skill[]) => void;
 }
 
 export const ProfileSection = ({
-  cvUrl,
-  parsedCvData,
-  skills,
-  handleFileUpload,
-  onSkillsUpdate,
+  profile,
+  cvUrl = null,
+  parsedCvData = {},
+  skills = [],
+  onSkillsUpdate = () => {}
 }: ProfileSectionProps) => {
   return (
     <div className="space-y-6">
       <CVUploadCard 
         cvUrl={cvUrl}
         parsedCvData={parsedCvData}
-        handleFileUpload={handleFileUpload}
       />
       <SkillsCard 
         skills={skills}
