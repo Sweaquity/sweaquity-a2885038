@@ -187,9 +187,9 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
           
           {applications.map(application => (
             <Collapsible 
-              key={application.id} 
-              open={expandedApplications.has(application.id)}
-              onOpenChange={() => toggleApplicationExpanded(application.id)}
+              key={application.job_app_id} 
+              open={expandedApplications.has(application.job_app_id)}
+              onOpenChange={() => toggleApplicationExpanded(application.job_app_id)}
               className="border p-4 rounded-lg hover:bg-secondary/50 transition-colors"
             >
               {/* Mobile view */}
@@ -263,11 +263,11 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                         variant="outline"
                         size="sm"
                         className="text-destructive hover:bg-destructive/10"
-                        disabled={isWithdrawing === application.id}
-                        onClick={() => handleWithdraw(application.id, application.task_id)}
+                        disabled={isWithdrawing === application.job_app_id}
+                        onClick={() => handleWithdraw(application.job_app_id, application.task_id)}
                       >
                         <Trash2 className="h-4 w-4" />
-                        {isWithdrawing === application.id && <span className="ml-2">...</span>}
+                        {isWithdrawing === application.job_app_id && <span className="ml-2">...</span>}
                       </Button>
                     )}
                   </div>
@@ -355,12 +355,12 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                       variant="outline"
                       size="sm"
                       className="text-destructive hover:bg-destructive/10"
-                      onClick={() => handleWithdraw(application.id, application.task_id)}
-                      disabled={isWithdrawing === application.id}
+                      onClick={() => handleWithdraw(application.job_app_id, application.task_id)}
+                      disabled={isWithdrawing === application.job_app_id}
                       title="Withdraw application"
                     >
                       <Trash2 className="h-4 w-4" />
-                      {isWithdrawing === application.id && <span className="ml-2">...</span>}
+                      {isWithdrawing === application.job_app_id && <span className="ml-2">...</span>}
                     </Button>
                   )}
                 </div>

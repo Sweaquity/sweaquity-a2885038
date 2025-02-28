@@ -7,7 +7,7 @@ import { useProfile } from "./job-seeker/useProfile";
 import { useApplications } from "./job-seeker/useApplications";
 import { useEquityProjects } from "./job-seeker/useEquityProjects";
 import { useCVData } from "./job-seeker/useCVData";
-import { EquityProject } from "@/types/jobSeeker";
+import { EquityProject, SubTask } from "@/types/jobSeeker";
 
 export const useJobSeekerDashboard = (refreshTrigger = 0) => {
   const navigate = useNavigate();
@@ -128,6 +128,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
             title: task.title,
             sub_tasks: [{
               id: task.id,
+              task_id: task.id, // Ensure task_id is set
               project_id: task.project_id,
               title: task.title,
               description: task.description,

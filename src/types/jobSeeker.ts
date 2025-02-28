@@ -17,6 +17,7 @@ export interface JobApplication {
     skills_required?: string[];
     equity_allocation?: number;
   };
+  id: string; // Adding this for backward compatibility
 }
 
 export interface SkillRequirement {
@@ -36,6 +37,7 @@ export interface SubTask {
   status: string;
   task_status: string;
   completion_percentage: number;
+  id: string; // Adding this for backward compatibility
 }
 
 export interface EquityProject {

@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 interface TaskCardProps {
   task: {
     id: string;
+    task_id: string;
     project_id: string;
     title: string;
     description: string;

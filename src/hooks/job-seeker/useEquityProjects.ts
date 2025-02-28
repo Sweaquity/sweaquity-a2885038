@@ -25,6 +25,7 @@ export const useEquityProjects = () => {
         title: app.business_roles?.title || '',
         sub_tasks: [{
           id: app.task_id,
+          task_id: app.task_id, // Added task_id here
           project_id: app.project_id,
           title: app.business_roles?.title || '',
           description: app.business_roles?.description || '',

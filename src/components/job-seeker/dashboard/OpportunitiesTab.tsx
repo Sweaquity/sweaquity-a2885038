@@ -104,7 +104,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                     .sort((a, b) => b.matchScore - a.matchScore)
                     .map((task) => {
                       console.log("Rendering matched task:", {
-                        id: task.id,
+                        id: task.task_id,
                         title: task.title,
                         matchScore: task.matchScore,
                         matchedSkills: task.matchedSkills
@@ -113,6 +113,8 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                       // Convert MatchedTask to ExtendedSubTask with required properties and matched skills
                       const extendedTask: ExtendedSubTask = {
                         ...task,
+                        task_id: task.task_id || task.id, // Use task_id if available, otherwise id
+                        id: task.task_id || task.id, // Ensure id is also set
                         project_id: project.projectId,
                         skill_requirements: task.matchedSkills?.map(skill => ({
                           skill,
@@ -127,7 +129,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                       
                       return (
                         <TaskCard 
-                          key={task.id}
+                          key={extendedTask.task_id}
                           task={extendedTask}
                           userSkills={userSkills}
                           showMatchedSkills={true}

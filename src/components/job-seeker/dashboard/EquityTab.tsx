@@ -107,7 +107,7 @@ export const EquityTab = ({
                   <p className="text-sm text-muted-foreground">Tasks</p>
                   <div className="mt-2 space-y-2">
                     {project.sub_tasks?.map((task) => (
-                      <div key={task.id} className="text-sm p-2 bg-secondary/50 rounded-md">
+                      <div key={task.task_id} className="text-sm p-2 bg-secondary/50 rounded-md">
                         <div className="flex justify-between">
                           <p className="font-medium">{task.title}</p>
                           <span>{task.completion_percentage}% complete</span>
