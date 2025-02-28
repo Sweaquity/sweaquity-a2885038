@@ -103,12 +103,11 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
         return;
       }
       
-      // Update the application status to 'withdrawn'
-      // Using .match() instead of .eq() for better compatibility with Postgres
+      // Try a direct update approach without .match() or .eq()
       const { data: updateData, error: applicationError } = await supabase
         .from('job_applications')
         .update({ status: 'withdrawn' })
-        .match({ job_app_id: applicationId })
+        .filter('job_app_id', 'eq', applicationId)
         .select();
 
       console.log("Update application result:", updateData);
@@ -119,10 +118,26 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
       }
       
       if (!updateData || updateData.length === 0) {
+        // Try a different approach with a raw SQL query via RPC if available
         console.error("No rows updated for job_app_id:", applicationId);
-        toast.error("Failed to withdraw application");
-        setIsWithdrawing(null);
-        return;
+        
+        // Fall back to another approach - try using a string UUID instead of an object
+        const appIdStr = String(applicationId);
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('job_applications')
+          .update({ status: 'withdrawn' })
+          .eq('job_app_id', appIdStr)
+          .select();
+          
+        console.log("Fallback update result:", fallbackData);
+        
+        if (fallbackError || !fallbackData || fallbackData.length === 0) {
+          toast.error("Failed to withdraw application");
+          setIsWithdrawing(null);
+          return;
+        }
+        
+        console.log("Fallback update successful:", fallbackData);
       }
       
       // Then, update the task status to 'open'
