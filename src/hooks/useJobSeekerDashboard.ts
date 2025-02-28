@@ -92,7 +92,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
 
         console.log("Unavailable task IDs:", Array.from(unavailableTaskIds));
 
-        // Fetch ALL open tasks
+        // Fetch ALL open tasks from ALL businesses, not just the user's businesses
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
           .select(`

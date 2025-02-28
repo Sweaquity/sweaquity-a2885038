@@ -1,70 +1,97 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Profile, Skill } from "@/types/jobSeeker";
 import { toast } from "sonner";
+import { Profile, Skill } from "@/types/jobSeeker";
 
 export const useProfile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [skills, setSkills] = useState<Skill[]>([]);
 
   const loadProfile = async (userId: string) => {
     try {
-      const { data: profileData, error: profileError } = await supabase
+      setIsLoading(true);
+      
+      const { data, error } = await supabase
         .from('profiles')
-        .select('first_name, last_name, title, email, location, skills')
+        .select('*')
         .eq('id', userId)
         .single();
-
-      if (profileError) throw profileError;
-      setProfile(profileData);
-
-      if (profileData.skills && Array.isArray(profileData.skills)) {
-        const convertedSkills: Skill[] = profileData.skills.map((skill: any) => {
-          if (typeof skill === 'string') {
-            return { skill: skill, level: 'Intermediate' };
-          }
-          if ('name' in skill) {
-            return { skill: skill.name, level: skill.level };
-          }
-          return skill as Skill;
-        });
-        setSkills(convertedSkills);
+        
+      if (error) {
+        throw error;
       }
+
+      // Parse availability from string to array if needed
+      if (data.availability) {
+        try {
+          if (typeof data.availability === 'string' && data.availability.startsWith('[')) {
+            data.availability = JSON.parse(data.availability);
+          } else if (typeof data.availability === 'string') {
+            // If it's a single string value, convert to array with one item
+            data.availability = [data.availability];
+          }
+        } catch (e) {
+          console.error("Error parsing availability:", e);
+          // Keep it as is if parsing fails
+        }
+      } else {
+        data.availability = [];
+      }
+      
+      // Load skills
+      let parsedSkills: Skill[] = [];
+      if (data.skills) {
+        try {
+          if (typeof data.skills === 'string') {
+            parsedSkills = JSON.parse(data.skills);
+          } else {
+            parsedSkills = data.skills;
+          }
+        } catch (e) {
+          console.error("Error parsing skills:", e);
+        }
+      }
+      
+      setProfile(data);
+      setSkills(parsedSkills);
     } catch (error) {
-      console.error('Error loading profile:', error);
+      console.error("Error loading profile:", error);
       toast.error("Failed to load profile data");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleSkillsUpdate = async (updatedSkills: Skill[]) => {
+    if (!profile) return;
+    
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const { error: profileError } = await supabase
+      // Update in the database
+      const { error } = await supabase
         .from('profiles')
-        .update({ skills: updatedSkills })
-        .eq('id', session.user.id);
-
-      if (profileError) throw profileError;
-
-      const { error: cvDataError } = await supabase
-        .from('cv_parsed_data')
-        .update({ skills: updatedSkills })
-        .eq('user_id', session.user.id);
-
-      if (cvDataError && cvDataError.code !== 'PGRST116') {
-        throw cvDataError;
-      }
-
+        .update({
+          skills: updatedSkills,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', profile.id);
+        
+      if (error) throw error;
+      
+      // Update local state
       setSkills(updatedSkills);
       toast.success("Skills updated successfully");
     } catch (error) {
-      console.error('Error updating skills:', error);
+      console.error("Error updating skills:", error);
       toast.error("Failed to update skills");
     }
   };
 
-  return { profile, skills, loadProfile, handleSkillsUpdate };
+  return {
+    profile,
+    isLoading,
+    skills,
+    loadProfile,
+    handleSkillsUpdate
+  };
 };
