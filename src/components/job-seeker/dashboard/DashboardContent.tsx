@@ -41,7 +41,8 @@ export const DashboardContent = ({
         
         <TabsContent value="opportunities" className="space-y-6">
           <OpportunitiesTab 
-            opportunities={dashboardData.availableOpportunities}
+            projects={dashboardData.availableOpportunities}
+            userSkills={dashboardData.skills || []}
           />
         </TabsContent>
         
@@ -49,8 +50,8 @@ export const DashboardContent = ({
           <EquityTab 
             equityProjects={dashboardData.equityProjects}
             logEffort={dashboardData.logEffort}
-            setLogEffort={dashboardData.setLogEffort}
-            setEquityProjects={dashboardData.setEquityProjects}
+            onLogEffort={dashboardData.onLogEffort}
+            onLogEffortChange={dashboardData.onLogEffortChange}
           />
         </TabsContent>
       </Tabs>

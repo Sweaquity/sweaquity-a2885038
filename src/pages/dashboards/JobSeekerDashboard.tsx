@@ -5,7 +5,7 @@ import { DashboardContent } from "@/components/job-seeker/dashboard/DashboardCon
 import { useJobSeekerDashboard } from "@/hooks/useJobSeekerDashboard";
 import { DashboardHeader } from "@/components/job-seeker/dashboard/DashboardHeader";
 import { ProfileSection } from "@/components/job-seeker/ProfileSection";
-import { ApplicationsTab } from "@/components/job-seeker/dashboard/ApplicationsTab";
+import { ApplicationsTab } from "@/components/job-seeker/dashboard/applications"; // Updated import
 import { EquityTab } from "@/components/job-seeker/dashboard/EquityTab";
 import { OpportunitiesTab } from "@/components/job-seeker/dashboard/OpportunitiesTab";
 import { ProjectsOverview } from "@/components/job-seeker/ProjectsOverview";
@@ -210,12 +210,23 @@ const JobSeekerDashboard = () => {
               onDocumentAction={handleDocumentAction}
             />
             <DashboardContent
-              profile={profile}
-              applications={applications}
-              equityProjects={equityProjects}
-              onViewProfile={() => handleTabChange("profile")}
-              onViewApplications={() => handleTabChange("applications")}
-              onViewOpportunities={() => handleTabChange("opportunities")}
+              activeTab={activeTab}
+              dashboardData={{
+                profile,
+                cvUrl,
+                parsedCvData,
+                setCvUrl: () => {},
+                setParsedCvData: () => {},
+                skills,
+                handleSkillsUpdate,
+                applications,
+                availableOpportunities,
+                equityProjects,
+                logEffort: null,
+                onLogEffort: () => {},
+                onLogEffortChange: () => {}
+              }}
+              refreshApplications={refreshApplications}
             />
           </TabsContent>
 
@@ -226,6 +237,8 @@ const JobSeekerDashboard = () => {
               skills={skills}
               parsedCvData={parsedCvData}
               onSkillsUpdate={handleSkillsUpdate}
+              setCvUrl={() => {}}
+              setParsedCvData={() => {}}
             />
           </TabsContent>
 
@@ -238,7 +251,7 @@ const JobSeekerDashboard = () => {
           </TabsContent>
 
           <TabsContent value="opportunities" className="space-y-6">
-            <OpportunitiesTab projects={availableOpportunities} userSkills={skills} />
+            <OpportunitiesTab projects={availableOpportunities} userSkills={skills || []} />
           </TabsContent>
         </Tabs>
       </div>

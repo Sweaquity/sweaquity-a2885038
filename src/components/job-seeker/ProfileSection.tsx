@@ -9,6 +9,8 @@ interface ProfileSectionProps {
   profile?: Profile;
   cvUrl?: string | null;
   parsedCvData?: any;
+  setCvUrl?: (url: string | null) => void;
+  setParsedCvData?: (data: any) => void;
   skills?: Skill[];
   onSkillsUpdate?: (skills: Skill[]) => void;
 }
@@ -17,6 +19,8 @@ export const ProfileSection = ({
   profile,
   cvUrl = null,
   parsedCvData = {},
+  setCvUrl = () => {},
+  setParsedCvData = () => {},
   skills = [],
   onSkillsUpdate = () => {}
 }: ProfileSectionProps) => {
