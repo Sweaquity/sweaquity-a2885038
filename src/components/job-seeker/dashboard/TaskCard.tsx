@@ -30,7 +30,7 @@ export const TaskCard = ({ task, userSkills, showMatchedSkills = false }: TaskCa
   const navigate = useNavigate();
 
   const handleApply = () => {
-    navigate(`/projects/${task.project_id}/apply`);
+    navigate(`/projects/${task.project_id}/apply?taskId=${task.task_id}`);
   };
 
   // Use matching skill requirements if available, otherwise use regular skill_requirements, finally fallback to skills_required
@@ -57,7 +57,7 @@ export const TaskCard = ({ task, userSkills, showMatchedSkills = false }: TaskCa
               {showMatchedSkills ? "Matched Skills:" : "Required Skills:"}
             </p>
             <div className="flex flex-wrap gap-2">
-              {skillRequirements.map((req, index) => (
+              {skillRequirements && skillRequirements.map((req, index) => (
                 <Badge 
                   key={index}
                   variant={

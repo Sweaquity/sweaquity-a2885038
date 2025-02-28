@@ -47,7 +47,8 @@ const JobSeekerDashboard = () => {
     skills,
     handleSignOut,
     handleSkillsUpdate,
-    refreshApplications
+    refreshApplications,
+    checkBusinessProfile
   } = useJobSeekerDashboard(forceRefresh);
 
   // Handle tab changes by updating the URL
@@ -83,14 +84,11 @@ const JobSeekerDashboard = () => {
           return;
         }
 
-        // Check if user has a business profile
-        const { data: businessData } = await supabase
-          .from('businesses')
-          .select('id')
-          .eq('id', session.user.id)
-          .maybeSingle();
-          
-        setHasBusinessProfile(!!businessData);
+        // Check if user has a business profile using our safer function
+        if (checkBusinessProfile) {
+          const hasBusinessAccess = await checkBusinessProfile(session.user.id);
+          setHasBusinessProfile(hasBusinessAccess);
+        }
 
         // Check if profile is complete
         const { data: profileData, error: profileError } = await supabase
@@ -252,7 +250,10 @@ const JobSeekerDashboard = () => {
           </TabsContent>
 
           <TabsContent value="opportunities" className="space-y-6">
-            <OpportunitiesTab projects={availableOpportunities} userSkills={skills || []} />
+            <OpportunitiesTab 
+              projects={availableOpportunities || []} 
+              userSkills={skills || []} 
+            />
           </TabsContent>
         </Tabs>
       </div>

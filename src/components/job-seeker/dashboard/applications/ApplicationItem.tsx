@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -119,7 +118,7 @@ export const ApplicationItem = ({
               <div>
                 <h4 className="text-sm font-medium mb-1">Required Skills:</h4>
                 <ApplicationSkills 
-                  skills={application.business_roles.skills_required} 
+                  skills={application.business_roles.skills_required || []}
                   matchedSkills={[]}
                 />
               </div>

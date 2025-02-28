@@ -131,7 +131,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                 </AccordionTrigger>
                 <AccordionContent className="px-4 pt-2 pb-4">
                   <div className="space-y-4">
-                    {project.subTasks.map((task: any) => (
+                    {project.subTasks && project.subTasks.map((task: any) => (
                       <TaskCard
                         key={task.task_id}
                         task={task}
