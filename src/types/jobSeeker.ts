@@ -56,8 +56,16 @@ export interface EquityProject {
   business_roles?: {
     title: string;
     description: string;
+    company_name?: string;
+    project_title?: string;
   };
   title?: string;
+  documents?: {
+    contract?: {
+      url: string;
+      status?: string;
+    };
+  };
 }
 
 export interface Profile {

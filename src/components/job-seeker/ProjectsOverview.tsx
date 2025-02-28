@@ -10,9 +10,18 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { EquityProject } from "@/types/jobSeeker";
 
+// Update the EquityProject type to include the documents property
+interface ProjectWithDocuments extends EquityProject {
+  documents?: {
+    contract?: {
+      url: string;
+    };
+  };
+}
+
 interface ProjectsOverviewProps {
-  currentProjects?: EquityProject[];
-  pastProjects?: EquityProject[];
+  currentProjects?: ProjectWithDocuments[];
+  pastProjects?: ProjectWithDocuments[];
   onDocumentAction?: (projectId: string, action: 'edit' | 'approve') => void;
 }
 

@@ -25,19 +25,17 @@ import { toast } from "sonner";
 interface CVUploadCardProps {
   cvUrl: string | null;
   parsedCvData: any;
-  handleFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 export const CVUploadCard = ({
   cvUrl,
   parsedCvData,
-  handleFileUpload,
 }: CVUploadCardProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedCVs, setSelectedCVs] = useState<string[]>([]);
   const [previewError, setPreviewError] = useState(false);
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -61,8 +59,42 @@ export const CVUploadCard = ({
 
     setIsUploading(true);
     try {
-      await handleFileUpload(event);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("You must be logged in to upload a CV");
+        return;
+      }
+
+      // Upload file to Supabase Storage
+      const fileName = `${session.user.id}/${Date.now()}-${file.name}`;
+      const { error: uploadError, data: uploadData } = await supabase.storage
+        .from('cvs')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('cvs')
+        .getPublicUrl(fileName);
+
+      // Update profile with CV URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ cv_url: urlData.publicUrl })
+        .eq('id', session.user.id);
+
+      if (updateError) throw updateError;
+
+      // Trigger CV parsing function (this would be a server function)
+      // Note: This is a placeholder, you'd need to implement the actual function call
       toast.success("CV uploaded successfully");
+      
+      // Reload the page to refresh the data
+      window.location.reload();
     } catch (error) {
       console.error('Upload error:', error);
       toast.error("Failed to upload CV");
@@ -153,7 +185,7 @@ export const CVUploadCard = ({
             id="cv-upload"
             type="file"
             accept=".pdf,.doc,.docx"
-            onChange={handleFileChange}
+            onChange={handleFileUpload}
             disabled={isUploading}
             className="mt-2"
           />
