@@ -104,10 +104,11 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
       }
       
       // Update the application status to 'withdrawn'
+      // Using .match() instead of .eq() for better compatibility with Postgres
       const { data: updateData, error: applicationError } = await supabase
         .from('job_applications')
         .update({ status: 'withdrawn' })
-        .eq('job_app_id', applicationId)
+        .match({ job_app_id: applicationId })
         .select();
 
       console.log("Update application result:", updateData);
