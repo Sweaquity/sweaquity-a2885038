@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { FileUp, Loader2, FileX, ExternalLink } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { setupCvStorageBucket } from "@/utils/setupStorage";
+import { Progress } from "@/components/ui/progress";
 
 interface CVUploadCardProps {
   cvUrl: string | null;
@@ -46,6 +47,31 @@ export const CVUploadCard = ({ cvUrl, parsedCvData }: CVUploadCardProps) => {
     }
   };
 
+  // Helper function to simulate progress updates
+  const simulateProgress = () => {
+    // Reset progress
+    setUploadProgress(0);
+    
+    // Simulate progress updates
+    const interval = setInterval(() => {
+      setUploadProgress(prev => {
+        // Start slow, accelerate in the middle, then slow down approaching 90%
+        const increment = prev < 30 ? 5 : prev < 70 ? 10 : 2;
+        const newValue = Math.min(prev + increment, 90);
+        
+        // Stop at 90% - the final 10% will be set after upload completes
+        if (newValue >= 90) {
+          clearInterval(interval);
+        }
+        
+        return newValue;
+      });
+    }, 300);
+    
+    // Return the interval ID so it can be cleared
+    return interval;
+  };
+
   const uploadCV = async () => {
     if (!file) {
       toast.error("Please select a file to upload");
@@ -63,11 +89,14 @@ export const CVUploadCard = ({ cvUrl, parsedCvData }: CVUploadCardProps) => {
     
     try {
       setIsUploading(true);
-      setUploadProgress(0);
+      
+      // Start simulating progress updates
+      const progressInterval = simulateProgress();
       
       // Get the current user's ID
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
+        clearInterval(progressInterval);
         toast.error("You must be logged in to upload a CV");
         return;
       }
@@ -77,20 +106,23 @@ export const CVUploadCard = ({ cvUrl, parsedCvData }: CVUploadCardProps) => {
       // Set the file path to include the user ID as a folder
       const filePath = `${userId}/${file.name}`;
       
-      // Upload the file with progress tracking
+      // Upload the file
       const { data, error } = await supabase.storage
         .from('cvs')
         .upload(filePath, file, {
           cacheControl: '3600',
-          upsert: true,
-          onUploadProgress: (progress) => {
-            setUploadProgress(Math.round((progress.loaded / progress.total) * 100));
-          }
+          upsert: true
         });
+        
+      // Clear the progress simulation interval
+      clearInterval(progressInterval);
         
       if (error) {
         throw error;
       }
+      
+      // Set progress to 100% when upload is done
+      setUploadProgress(100);
       
       // Create a public URL for the uploaded file
       const { data: publicUrlData } = supabase.storage
@@ -144,7 +176,12 @@ export const CVUploadCard = ({ cvUrl, parsedCvData }: CVUploadCardProps) => {
     } finally {
       setIsUploading(false);
       setFile(null);
-      setUploadProgress(0);
+      
+      // Reset the progress after a short delay
+      setTimeout(() => {
+        setUploadProgress(0);
+      }, 2000);
+      
       // Reset the file input
       const fileInput = document.getElementById('cv-upload') as HTMLInputElement;
       if (fileInput) {
@@ -213,6 +250,13 @@ export const CVUploadCard = ({ cvUrl, parsedCvData }: CVUploadCardProps) => {
                   )}
                 </Button>
               </div>
+              
+              {/* Show progress bar when uploading */}
+              {isUploading && (
+                <div className="mt-2">
+                  <Progress value={uploadProgress} className="h-2" />
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -254,6 +298,13 @@ export const CVUploadCard = ({ cvUrl, parsedCvData }: CVUploadCardProps) => {
                 )}
               </Button>
             </div>
+            
+            {/* Show progress bar when uploading */}
+            {isUploading && (
+              <div className="mt-2">
+                <Progress value={uploadProgress} className="h-2" />
+              </div>
+            )}
             
             {!bucketReady && (
               <div className="text-sm text-yellow-600 flex items-center gap-2 p-2 bg-yellow-50 rounded-md">
