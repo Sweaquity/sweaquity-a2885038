@@ -105,7 +105,7 @@ export const ProjectDetailsPage = () => {
               location
             ),
             tasks:project_sub_tasks (
-              id,
+              task_id,
               project_id,
               title,
               description,
@@ -173,8 +173,9 @@ export const ProjectDetailsPage = () => {
 
         // Map task data to match SubTask interface
         const mappedTasks: SubTask[] = (projectData.tasks || []).map(task => ({
-          id: task.id,
-          project_id: projectData.id,
+          id: task.task_id, // Keep id for backward compatibility
+          task_id: task.task_id, // Ensure task_id is set
+          project_id: task.project_id,
           title: task.title,
           description: task.description,
           status: task.status,
@@ -278,9 +279,9 @@ export const ProjectDetailsPage = () => {
             <div className="space-y-4">
               {project.tasks.map((task) => (
                 <Collapsible 
-                  key={task.id} 
-                  open={expandedTasks.has(task.id)}
-                  onOpenChange={() => toggleTaskExpanded(task.id)}
+                  key={task.task_id} 
+                  open={expandedTasks.has(task.task_id)}
+                  onOpenChange={() => toggleTaskExpanded(task.task_id)}
                   className="border rounded-lg overflow-hidden"
                 >
                   <CollapsibleTrigger className="flex justify-between items-center w-full p-4 text-left hover:bg-muted/50">
@@ -295,7 +296,7 @@ export const ProjectDetailsPage = () => {
                         Timeframe: {task.timeframe}
                       </p>
                     </div>
-                    {expandedTasks.has(task.id) ? (
+                    {expandedTasks.has(task.task_id) ? (
                       <ArrowLeft className="h-5 w-5 transform rotate-90" />
                     ) : (
                       <ArrowLeft className="h-5 w-5 transform -rotate-90" />

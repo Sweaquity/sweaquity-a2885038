@@ -55,7 +55,7 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
-            referencedColumns: ["id"]
+            referencedColumns: ["businesses_id"]
           },
         ]
       }
@@ -111,7 +111,7 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
-            referencedColumns: ["id"]
+            referencedColumns: ["businesses_id"]
           },
         ]
       }
@@ -149,7 +149,7 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
-            referencedColumns: ["id"]
+            referencedColumns: ["businesses_id"]
           },
         ]
       }
@@ -157,13 +157,13 @@ export type Database = {
         Row: {
           banking_details: Json | null
           business_type: Database["public"]["Enums"]["business_type"]
+          businesses_id: string
           company_name: string | null
           company_size: number | null
           contact_email: string
           contact_phone: string | null
           created_at: string | null
           geographic_scope: Json | null
-          id: string
           industry: string | null
           is_also_job_seeker: boolean | null
           is_parent: boolean | null
@@ -183,13 +183,13 @@ export type Database = {
         Insert: {
           banking_details?: Json | null
           business_type?: Database["public"]["Enums"]["business_type"]
+          businesses_id: string
           company_name?: string | null
           company_size?: number | null
           contact_email: string
           contact_phone?: string | null
           created_at?: string | null
           geographic_scope?: Json | null
-          id: string
           industry?: string | null
           is_also_job_seeker?: boolean | null
           is_parent?: boolean | null
@@ -211,13 +211,13 @@ export type Database = {
         Update: {
           banking_details?: Json | null
           business_type?: Database["public"]["Enums"]["business_type"]
+          businesses_id?: string
           company_name?: string | null
           company_size?: number | null
           contact_email?: string
           contact_phone?: string | null
           created_at?: string | null
           geographic_scope?: Json | null
-          id?: string
           industry?: string | null
           is_also_job_seeker?: boolean | null
           is_parent?: boolean | null
@@ -242,7 +242,7 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "businesses"
-            referencedColumns: ["id"]
+            referencedColumns: ["businesses_id"]
           },
         ]
       }
@@ -281,7 +281,7 @@ export type Database = {
           applied_at: string | null
           created_at: string | null
           cv_url: string | null
-          id: string
+          job_app_id: string
           message: string | null
           project_id: string | null
           status: string | null
@@ -293,7 +293,7 @@ export type Database = {
           applied_at?: string | null
           created_at?: string | null
           cv_url?: string | null
-          id?: string
+          job_app_id?: string
           message?: string | null
           project_id?: string | null
           status?: string | null
@@ -305,7 +305,7 @@ export type Database = {
           applied_at?: string | null
           created_at?: string | null
           cv_url?: string | null
-          id?: string
+          job_app_id?: string
           message?: string | null
           project_id?: string | null
           status?: string | null
@@ -333,7 +333,7 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "project_sub_tasks"
-            referencedColumns: ["id"]
+            referencedColumns: ["task_id"]
           },
         ]
       }
@@ -342,8 +342,8 @@ export type Database = {
           contact_type: string | null
           email: string
           first_name: string | null
-          id: string
           last_name: string | null
+          marketing_id: string
           organization_id: string | null
           preferences: Json | null
           subscribed_at: string | null
@@ -354,8 +354,8 @@ export type Database = {
           contact_type?: string | null
           email: string
           first_name?: string | null
-          id?: string
           last_name?: string | null
+          marketing_id?: string
           organization_id?: string | null
           preferences?: Json | null
           subscribed_at?: string | null
@@ -366,8 +366,8 @@ export type Database = {
           contact_type?: string | null
           email?: string
           first_name?: string | null
-          id?: string
           last_name?: string | null
+          marketing_id?: string
           organization_id?: string | null
           preferences?: Json | null
           subscribed_at?: string | null
@@ -488,7 +488,7 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "project_sub_tasks"
-            referencedColumns: ["id"]
+            referencedColumns: ["task_id"]
           },
         ]
       }
@@ -500,12 +500,12 @@ export type Database = {
           dependencies: string[] | null
           description: string | null
           equity_allocation: number
-          id: string
           last_activity_at: string | null
           project_id: string | null
           skill_requirements: Json | null
           skills_required: string[] | null
           status: string | null
+          task_id: string
           task_status: string | null
           timeframe: string
           title: string
@@ -518,12 +518,12 @@ export type Database = {
           dependencies?: string[] | null
           description?: string | null
           equity_allocation: number
-          id?: string
           last_activity_at?: string | null
           project_id?: string | null
           skill_requirements?: Json | null
           skills_required?: string[] | null
           status?: string | null
+          task_id?: string
           task_status?: string | null
           timeframe: string
           title: string
@@ -536,12 +536,12 @@ export type Database = {
           dependencies?: string[] | null
           description?: string | null
           equity_allocation?: number
-          id?: string
           last_activity_at?: string | null
           project_id?: string | null
           skill_requirements?: Json | null
           skills_required?: string[] | null
           status?: string | null
+          task_id?: string
           task_status?: string | null
           timeframe?: string
           title?: string
