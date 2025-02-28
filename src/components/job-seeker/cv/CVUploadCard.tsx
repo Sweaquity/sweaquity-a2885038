@@ -62,13 +62,13 @@ export const CVUploadCard = ({
     }
   };
 
-  // Fix the function signature - wrapping the boolean return to void
-  const handleCVsUpdated = async () => {
+  // Fix the function signature by explicitly making it return void
+  const handleCVsUpdated = async (): Promise<void> => {
     await loadUserCVs();
     if (onCvListUpdated) {
       onCvListUpdated();
     }
-    // Since we don't need to return anything, no return statement is needed
+    // We don't return anything, which makes this function return Promise<void>
   };
 
   return (
