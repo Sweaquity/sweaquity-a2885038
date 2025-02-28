@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -138,15 +137,14 @@ export const ApplicationForm = ({
         selectedCvUrl
       });
       
-      // Submit the application - using the message field instead of notes
+      // Submit the application using only the message field, removed the notes field
       const { error } = await supabase.from("job_applications").insert({
         project_id: projectId,
         task_id: taskId,
         user_id: userId,
-        message: message, // Store in message field
-        notes: message,   // Also store in notes field for backward compatibility
+        message: message,
         cv_url: selectedCvUrl,
-        status: 'pending'  // Explicitly set status
+        status: 'pending'
       });
       
       if (error) {

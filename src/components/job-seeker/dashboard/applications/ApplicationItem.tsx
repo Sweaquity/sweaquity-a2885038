@@ -1,216 +1,143 @@
 
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash2, FileText, MessageSquare, ChevronDown } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { JobApplication } from "@/types/jobSeeker";
 import { useApplicationActions } from "./hooks/useApplicationActions";
-import { Link } from "react-router-dom";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { ApplicationSkills } from "./ApplicationSkills";
 
 interface ApplicationItemProps {
   application: JobApplication;
-  isExpanded: boolean;
-  toggleExpanded: () => void;
-  getMatchedSkills: (application: JobApplication) => string[];
-  onApplicationUpdated?: () => void;
+  onApplicationUpdated: () => void;
 }
 
-export const ApplicationItem = ({ 
-  application, 
-  isExpanded, 
-  toggleExpanded,
-  getMatchedSkills, 
-  onApplicationUpdated 
+export const ApplicationItem = ({
+  application,
+  onApplicationUpdated,
 }: ApplicationItemProps) => {
+  const [expanded, setExpanded] = useState(false);
   const { isWithdrawing, handleWithdraw, openCV } = useApplicationActions(onApplicationUpdated);
-  const matchedSkills = getMatchedSkills(application);
+  
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'accepted':
+        return 'bg-green-500 text-white';
+      case 'rejected':
+        return 'bg-red-500 text-white';
+      case 'pending':
+        return 'bg-yellow-500 text-white';
+      case 'withdrawn':
+        return 'bg-gray-500 text-white';
+      case 'in review':
+        return 'bg-blue-500 text-white';
+      default:
+        return 'bg-gray-200';
+    }
+  };
+
+  const isWithdrawable = application.status.toLowerCase() === 'pending';
+  
+  const formattedDate = new Date(application.applied_at).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
 
   return (
-    <Collapsible 
-      open={isExpanded}
-      onOpenChange={toggleExpanded}
-      className="border p-4 rounded-lg hover:bg-secondary/50 transition-colors"
-    >
-      {/* Mobile view */}
-      <div className="block md:hidden space-y-3">
-        <div className="flex justify-between items-start">
-          <div>
-            <Link 
-              to={`/projects/${application.project_id}`}
-              className="font-medium hover:text-blue-600 hover:underline"
-            >
-              {application.business_roles?.title || 'N/A'}
-            </Link>
+    <Card className="overflow-hidden">
+      <CardContent className="p-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4">
+          <div className="space-y-1 mb-2 sm:mb-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <h3 className="font-medium">
+                {application.business_roles?.title || "Unknown Role"}
+              </h3>
+              <Badge 
+                className={`${getStatusColor(application.status)} px-2 py-0.5 text-xs capitalize w-fit`}
+              >
+                {application.status}
+              </Badge>
+            </div>
             <p className="text-sm text-muted-foreground">
-              {application.business_roles?.company_name || 'N/A'} • {application.business_roles?.project_title || 'N/A'}
+              {application.business_roles?.project_title || "Unknown Project"} • Applied {formattedDate}
             </p>
           </div>
-          <Badge 
-            variant={application.status === 'pending' ? 'secondary' : 
-                    application.status === 'accepted' ? 'default' : 'destructive'}
-          >
-            {application.status}
-          </Badge>
-        </div>
-        
-        <ApplicationSkills 
-          skills={application.business_roles?.skills_required?.slice(0, 3) || []} 
-          matchedSkills={matchedSkills}
-          totalSkills={application.business_roles?.skills_required?.length || 0}
-          limit={3}
-          small
-        />
-        
-        <div className="flex justify-between items-center">
-          <p className="text-sm text-muted-foreground">
-            Applied: {new Date(application.applied_at).toLocaleDateString()}
-          </p>
-          <div className="flex gap-2">
-            {application.cv_url && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => openCV(application.cv_url!)}
-              >
-                <FileText className="h-4 w-4" />
-              </Button>
-            )}
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-              >
-                <MessageSquare className="h-4 w-4" />
-              </Button>
-            </CollapsibleTrigger>
-            {application.status === 'pending' && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-destructive hover:bg-destructive hover:text-white"
-                disabled={isWithdrawing === application.job_app_id}
-                onClick={() => handleWithdraw(application.job_app_id, application.task_id)}
-              >
-                <Trash2 className="h-4 w-4" />
-                {isWithdrawing === application.job_app_id && <span className="ml-2">...</span>}
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
 
-      {/* Desktop view */}
-      <div className="hidden md:flex items-center justify-between gap-4">
-        <div className="grid grid-cols-6 flex-1 gap-6">
-          <div className="col-span-1">
-            <p className="text-sm font-medium text-muted-foreground">Company</p>
-            <p className="truncate">{application.business_roles?.company_name || 'N/A'}</p>
-          </div>
-          <div className="col-span-1">
-            <p className="text-sm font-medium text-muted-foreground">Project</p>
-            <p className="truncate">{application.business_roles?.project_title || 'N/A'}</p>
-          </div>
-          <div className="col-span-1">
-            <p className="text-sm font-medium text-muted-foreground">Task</p>
-            <Link 
-              to={`/projects/${application.project_id}`}
-              className="truncate hover:text-blue-600 hover:underline"
+          <div className="flex items-center gap-2">
+            {isWithdrawable && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => handleWithdraw(application.job_app_id)}
+                disabled={Boolean(isWithdrawing)}
+              >
+                {isWithdrawing === application.job_app_id ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Withdrawing...
+                  </>
+                ) : (
+                  'Withdraw'
+                )}
+              </Button>
+            )}
+            
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setExpanded(!expanded)}
+              className="ml-auto"
             >
-              {application.business_roles?.title || 'N/A'}
-            </Link>
-          </div>
-          <div className="col-span-1">
-            <p className="text-sm font-medium text-muted-foreground">Skills</p>
-            <ApplicationSkills 
-              skills={application.business_roles?.skills_required?.slice(0, 2) || []} 
-              matchedSkills={matchedSkills}
-              totalSkills={application.business_roles?.skills_required?.length || 0}
-              limit={2}
-              small
-            />
-          </div>
-          <div className="col-span-1">
-            <p className="text-sm font-medium text-muted-foreground">Status</p>
-            <Badge 
-              variant={application.status === 'pending' ? 'secondary' : 
-                     application.status === 'accepted' ? 'default' : 'destructive'}
-            >
-              {application.status}
-            </Badge>
-          </div>
-          <div className="col-span-1">
-            <p className="text-sm font-medium text-muted-foreground">Applied</p>
-            <p className="text-sm">{new Date(application.applied_at).toLocaleDateString()}</p>
+              {expanded ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {application.cv_url && (
-            <Button
-              variant="outline"
-              size="sm"
-              title="View CV"
-              onClick={() => openCV(application.cv_url!)}
-            >
-              <FileText className="h-4 w-4" />
-            </Button>
-          )}
-          <CollapsibleTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              title="View Message"
-            >
-              <MessageSquare className="h-4 w-4" />
-            </Button>
-          </CollapsibleTrigger>
-          {application.status === 'pending' && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-destructive hover:bg-destructive hover:text-white"
-              onClick={() => handleWithdraw(application.job_app_id, application.task_id)}
-              disabled={isWithdrawing === application.job_app_id}
-              title="Withdraw application"
-            >
-              <Trash2 className="h-4 w-4" />
-              {isWithdrawing === application.job_app_id && <span className="ml-2">...</span>}
-            </Button>
-          )}
-        </div>
-      </div>
-      
-      <CollapsibleContent className="mt-4 border-t pt-4">
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-sm font-medium mb-2">Application Details</h3>
-            <div className="bg-muted p-3 rounded-md">
-              <div className="mb-3 pb-3 border-b">
-                <h4 className="text-sm font-medium mb-1">Message:</h4>
-                <p className="text-sm">{application.message || application.notes || "No message provided"}</p>
-              </div>
-              
+
+        {expanded && (
+          <div className="px-4 pb-4 border-t pt-4 space-y-4">
+            {application.message && (
               <div>
-                <h4 className="text-sm font-medium mb-1">Task Description:</h4>
-                <p className="text-sm">{application.business_roles?.description || "No description available"}</p>
+                <h4 className="text-sm font-medium mb-1">Your Application Message:</h4>
+                <p className="text-sm text-muted-foreground">{application.message}</p>
               </div>
-            </div>
+            )}
+            
+            {application.business_roles?.description && (
+              <div>
+                <h4 className="text-sm font-medium mb-1">Role Description:</h4>
+                <p className="text-sm text-muted-foreground">{application.business_roles.description}</p>
+              </div>
+            )}
+            
+            {application.business_roles?.skills_required && (
+              <div>
+                <h4 className="text-sm font-medium mb-1">Required Skills:</h4>
+                <ApplicationSkills 
+                  requiredSkills={application.business_roles.skills_required} 
+                />
+              </div>
+            )}
+            
+            {application.cv_url && (
+              <div className="flex justify-end">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => openCV(application.cv_url as string)}
+                >
+                  View CV
+                </Button>
+              </div>
+            )}
           </div>
-          
-          <div>
-            <h4 className="text-sm font-medium mb-2">Required Skills:</h4>
-            <ApplicationSkills 
-              skills={application.business_roles?.skills_required || []} 
-              matchedSkills={matchedSkills}
-              displayEmpty
-            />
-          </div>
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+        )}
+      </CardContent>
+    </Card>
   );
 };

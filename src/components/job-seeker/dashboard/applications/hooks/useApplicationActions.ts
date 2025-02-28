@@ -6,11 +6,11 @@ import { toast } from "sonner";
 export const useApplicationActions = (onApplicationUpdated?: () => void) => {
   const [isWithdrawing, setIsWithdrawing] = useState<string | null>(null);
 
-  const handleWithdraw = async (applicationId: string, taskId: string) => {
+  const handleWithdraw = async (applicationId: string) => {
     try {
       setIsWithdrawing(applicationId);
       
-      // Only update the application status, don't touch the task status
+      // Update only the application status to 'withdrawn'
       const { error } = await supabase
         .from('job_applications')
         .update({ status: 'withdrawn' })
