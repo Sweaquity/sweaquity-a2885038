@@ -7,9 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { 
   FileUp, 
   Loader2, 
-  FileX, 
   ExternalLink, 
-  AlertCircle, 
   Download, 
   Trash2, 
   Check,
@@ -17,14 +15,12 @@ import {
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { 
-  setupCvStorageBucket, 
   downloadCV,
   deleteCV,
   previewCV,
   setDefaultCV
 } from "@/utils/setupStorage";
 import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CVFile } from "@/hooks/job-seeker/useCVData";
 
@@ -40,31 +36,12 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [displayUrl, setDisplayUrl] = useState<string | null>(null);
-  const [bucketReady, setBucketReady] = useState(false);
-  const [storageError, setStorageError] = useState<string | null>(null);
   const [processingAction, setProcessingAction] = useState<{type: string, fileName: string} | null>(null);
 
   useEffect(() => {
     if (cvUrl) {
       setDisplayUrl(cvUrl);
     }
-    
-    // Check if the CV storage bucket exists
-    const checkStorage = async () => {
-      try {
-        const ready = await setupCvStorageBucket();
-        setBucketReady(ready);
-        if (!ready) {
-          setStorageError("CV storage is not ready yet. Please try again later or contact support.");
-          console.log("CV storage bucket not ready");
-        }
-      } catch (error) {
-        console.error("Error checking storage:", error);
-        setStorageError("Error checking CV storage availability.");
-      }
-    };
-    
-    checkStorage();
   }, [cvUrl]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,11 +84,6 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
   const uploadCV = async () => {
     if (!file) {
       toast.error("Please select a file to upload");
-      return;
-    }
-    
-    if (!bucketReady) {
-      toast.error("CV storage is not available yet. Please try again later or contact support.");
       return;
     }
     
@@ -304,13 +276,6 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
         <CardTitle>CV / Resume</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {storageError && (
-          <Alert className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{storageError}</AlertDescription>
-          </Alert>
-        )}
-        
         <div className="space-y-4">
           {displayUrl && (
             <div>
@@ -340,12 +305,11 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
                     hover:file:bg-primary/90"
                   onChange={handleFileChange}
                   accept="application/pdf"
-                  disabled={!bucketReady}
                 />
               </div>
               <Button 
                 onClick={uploadCV} 
-                disabled={!file || isUploading || !bucketReady}
+                disabled={!file || isUploading}
                 variant="secondary"
               >
                 {isUploading ? (
@@ -442,14 +406,7 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
           </div>
         )}
         
-        {!bucketReady && (
-          <div className="text-sm text-yellow-600 flex items-center gap-2 p-2 bg-yellow-50 rounded-md">
-            <FileX className="h-4 w-4" />
-            <span>CV storage is not available yet. Please check back later or contact support.</span>
-          </div>
-        )}
-        
-        {bucketReady && userCVs.length === 0 && !displayUrl && (
+        {userCVs.length === 0 && !displayUrl && (
           <div className="text-sm text-muted-foreground">
             <p>Upload your CV to help us understand your skills and experience. We'll automatically extract information to enhance your profile.</p>
           </div>

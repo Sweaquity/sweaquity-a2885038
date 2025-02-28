@@ -115,9 +115,9 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
         
         // Filter out tasks that have already been applied for and are not withdrawn/rejected
         const opportunities = tasksData
-          ?.filter(task => !unavailableTaskIds.has(task.id))
+          ?.filter(task => !unavailableTaskIds.has(task.task_id))
           .map(task => ({
-            id: task.id,
+            id: task.task_id,
             project_id: task.project_id,
             equity_amount: task.equity_allocation,
             time_allocated: task.timeframe,
@@ -127,8 +127,8 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
             total_hours_logged: 0,
             title: task.title,
             sub_tasks: [{
-              id: task.id,
-              task_id: task.id, // Ensure task_id is set
+              id: task.task_id,
+              task_id: task.task_id, // Ensure task_id is set
               project_id: task.project_id,
               title: task.title,
               description: task.description,

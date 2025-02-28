@@ -60,29 +60,42 @@ export const ApplicationForm = ({
 
         const defaultCvUrl = profileData?.cv_url || null;
 
-        // List all of the user's CVs
-        const cvFiles = await listUserCVs(userId);
-        
-        if (cvFiles.length > 0) {
-          const cvs = await Promise.all(cvFiles.map(async (file) => {
-            const { data } = supabase.storage
-              .from('cvs')
-              .getPublicUrl(`${userId}/${file.name}`);
-              
-            return {
-              name: file.name,
-              url: data.publicUrl,
-              isDefault: defaultCvUrl ? defaultCvUrl === data.publicUrl : false
-            };
-          }));
+        // Try to list CVs, handle gracefully if bucket doesn't exist
+        try {
+          const cvFiles = await listUserCVs(userId);
           
-          setAvailableCvs(cvs);
-          
-          // Select the default CV if available
+          if (cvFiles.length > 0) {
+            const cvs = await Promise.all(cvFiles.map(async (file) => {
+              const { data } = supabase.storage
+                .from('cvs')
+                .getPublicUrl(`${userId}/${file.name}`);
+                
+              return {
+                name: file.name,
+                url: data.publicUrl,
+                isDefault: defaultCvUrl ? defaultCvUrl === data.publicUrl : false
+              };
+            }));
+            
+            setAvailableCvs(cvs);
+            
+            // Select the default CV if available
+            if (defaultCvUrl) {
+              setSelectedCvUrl(defaultCvUrl);
+            } else if (cvs.length > 0) {
+              setSelectedCvUrl(cvs[0].url);
+            }
+          }
+        } catch (error) {
+          // If we can't access CVs, just use the default CV if available
+          console.error("Error accessing CV bucket:", error);
           if (defaultCvUrl) {
             setSelectedCvUrl(defaultCvUrl);
-          } else if (cvs.length > 0) {
-            setSelectedCvUrl(cvs[0].url);
+            setAvailableCvs([{
+              name: defaultCvUrl.split('/').pop() || "Default CV",
+              url: defaultCvUrl,
+              isDefault: true
+            }]);
           }
         }
       } catch (error) {

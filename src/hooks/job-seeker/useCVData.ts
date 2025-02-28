@@ -24,14 +24,6 @@ export const useCVData = () => {
     try {
       setIsLoading(true);
       
-      // First, check if the cvs bucket exists, and if not, try to create it
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
-      
-      if (!cvsBucketExists) {
-        console.log("CV storage bucket doesn't exist, this is expected since it should be created by an admin");
-      }
-      
       // Get user's profile data to check for CV URL
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -62,8 +54,8 @@ export const useCVData = () => {
         setParsedCvData(cvData);
       }
       
-      // Get list of user's CVs
-      if (cvsBucketExists) {
+      try {
+        // Get list of user's CVs
         const cvFiles = await listUserCVs(userId);
         
         // Mark default CV
@@ -74,6 +66,8 @@ export const useCVData = () => {
         }));
         
         setUserCVs(filesWithDefault);
+      } catch (error) {
+        console.error('Error loading CV list:', error);
       }
     } catch (error) {
       console.error('Error loading CV data:', error);
