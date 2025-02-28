@@ -79,82 +79,38 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
   const handleWithdraw = async (applicationId: string, taskId: string) => {
     try {
       setIsWithdrawing(applicationId);
-      // Log the separate values for debugging
-      console.log("Withdrawing application with ID:", applicationId);
-      console.log("Associated task ID:", taskId);
       
-      // First, verify the application exists
-      const { data: verifyData, error: verifyError } = await supabase
-        .from('job_applications')
-        .select('job_app_id, status')
-        .eq('job_app_id', applicationId);
+      // Direct update using the SQL API approach
+      const { data, error } = await supabase
+        .rpc('withdraw_application', { 
+          app_id: applicationId,
+          task_id_param: taskId 
+        });
       
-      if (verifyError) {
-        console.error("Error verifying application:", verifyError);
-        throw verifyError;
-      }
-      
-      console.log("Application verification result:", verifyData);
-      
-      if (!verifyData || verifyData.length === 0) {
-        console.error("Application not found with job_app_id:", applicationId);
-        toast.error("Application not found");
-        setIsWithdrawing(null);
-        return;
-      }
-      
-      // Try a direct update approach without .match() or .eq()
-      const { data: updateData, error: applicationError } = await supabase
-        .from('job_applications')
-        .update({ status: 'withdrawn' })
-        .filter('job_app_id', 'eq', applicationId)
-        .select();
-
-      console.log("Update application result:", updateData);
-      
-      if (applicationError) {
-        console.error("Error updating application:", applicationError);
-        throw applicationError;
-      }
-      
-      if (!updateData || updateData.length === 0) {
-        // Try a different approach with a raw SQL query via RPC if available
-        console.error("No rows updated for job_app_id:", applicationId);
+      if (error) {
+        console.error("RPC error:", error);
         
-        // Fall back to another approach - try using a string UUID instead of an object
-        const appIdStr = String(applicationId);
-        const { data: fallbackData, error: fallbackError } = await supabase
+        // Fallback to regular update if RPC fails
+        console.log("Falling back to regular update method");
+        
+        const { error: updateError } = await supabase
           .from('job_applications')
           .update({ status: 'withdrawn' })
-          .eq('job_app_id', appIdStr)
-          .select();
+          .eq('job_app_id', applicationId);
           
-        console.log("Fallback update result:", fallbackData);
-        
-        if (fallbackError || !fallbackData || fallbackData.length === 0) {
-          toast.error("Failed to withdraw application");
-          setIsWithdrawing(null);
-          return;
+        if (updateError) {
+          console.error("Update error:", updateError);
+          throw updateError;
         }
         
-        console.log("Fallback update successful:", fallbackData);
-      }
-      
-      // Then, update the task status to 'open'
-      const { data: taskUpdateData, error: taskError } = await supabase
-        .from('project_sub_tasks')
-        .update({ 
-          status: 'open',
-          task_status: 'open'
-        })
-        .eq('task_id', taskId)
-        .select();
-        
-      console.log("Update task result:", taskUpdateData);
-      
-      if (taskError) {
-        console.error("Error updating task:", taskError);
-        throw taskError;
+        // Update task regardless
+        await supabase
+          .from('project_sub_tasks')
+          .update({ 
+            status: 'open',
+            task_status: 'open'
+          })
+          .eq('task_id', taskId);
       }
       
       toast.success("Application withdrawn successfully");
