@@ -2,8 +2,14 @@
 import { useState } from "react";
 import { JobApplication, Skill } from "@/types/jobSeeker";
 import { ApplicationItem } from "./ApplicationItem";
-import { EmptyState } from "../EmptyState";
 import { useUserSkills } from "./hooks/useUserSkills";
+
+// Create an EmptyState component since it's missing
+const EmptyState = ({ message }: { message: string }) => (
+  <div className="flex flex-col items-center justify-center p-8 text-center border rounded-lg bg-gray-50">
+    <p className="text-muted-foreground">{message}</p>
+  </div>
+);
 
 interface ApplicationsListProps {
   applications: JobApplication[];
@@ -18,18 +24,16 @@ export const ApplicationsList = ({
   emptyMessage = "You haven't applied to any opportunities yet.",
   onApplicationUpdated,
 }: ApplicationsListProps) => {
-  const { getUserSkillNames } = useUserSkills(userSkills);
+  const { userSkills: hookUserSkills, getMatchedSkills } = useUserSkills();
   const [expandedApplicationId, setExpandedApplicationId] = useState<string | null>(null);
   
   // Function to get matched skills for an application
-  const getMatchedSkills = (application: JobApplication) => {
-    const userSkillNames = getUserSkillNames();
+  const getMatchedSkillsForApplication = (application: JobApplication) => {
     const requiredSkills = application.business_roles?.skills_required || [];
+    const skillNames = (userSkills || hookUserSkills).map(skill => skill.skill.toLowerCase());
     
     return requiredSkills.filter(skill => 
-      userSkillNames.some(userSkill => 
-        userSkill.toLowerCase() === skill.toLowerCase()
-      )
+      skillNames.includes(skill.toLowerCase())
     );
   };
   
@@ -51,7 +55,7 @@ export const ApplicationsList = ({
                 : application.job_app_id
             );
           }}
-          getMatchedSkills={getMatchedSkills}
+          getMatchedSkills={getMatchedSkillsForApplication}
           onApplicationUpdated={onApplicationUpdated}
         />
       ))}

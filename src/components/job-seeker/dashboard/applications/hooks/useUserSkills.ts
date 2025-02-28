@@ -3,10 +3,15 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Skill, JobApplication } from "@/types/jobSeeker";
 
-export const useUserSkills = () => {
-  const [userSkills, setUserSkills] = useState<Skill[]>([]);
+export const useUserSkills = (initialSkills?: Skill[]) => {
+  const [userSkills, setUserSkills] = useState<Skill[]>(initialSkills || []);
 
   useEffect(() => {
+    if (initialSkills) {
+      setUserSkills(initialSkills);
+      return;
+    }
+
     const fetchUserSkills = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -43,7 +48,7 @@ export const useUserSkills = () => {
     };
     
     fetchUserSkills();
-  }, []);
+  }, [initialSkills]);
 
   // Get matched skills from application and task requirements
   const getMatchedSkills = (application: JobApplication): string[] => {
