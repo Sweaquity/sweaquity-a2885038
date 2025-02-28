@@ -2,8 +2,9 @@
 import { Badge } from "@/components/ui/badge";
 
 interface ApplicationSkillsProps {
-  skills: string[];
-  matchedSkills: string[];
+  skills?: string[];
+  matchedSkills?: string[];
+  roleSkills?: string[];
   totalSkills?: number;
   limit?: number;
   small?: boolean;
@@ -11,18 +12,22 @@ interface ApplicationSkillsProps {
 }
 
 export const ApplicationSkills = ({ 
-  skills, 
-  matchedSkills, 
+  skills = [], 
+  matchedSkills = [],
+  roleSkills = [],
   totalSkills = 0,
   limit,
   small = false,
   displayEmpty = false
 }: ApplicationSkillsProps) => {
-  if (skills.length === 0 && displayEmpty) {
+  // Use roleSkills if provided, otherwise use skills
+  const displaySkillsArray = roleSkills.length > 0 ? roleSkills : skills;
+  
+  if (displaySkillsArray.length === 0 && displayEmpty) {
     return <p className="text-sm text-muted-foreground">No skills specified for this task</p>;
   }
   
-  const displaySkills = limit ? skills.slice(0, limit) : skills;
+  const displaySkills = limit ? displaySkillsArray.slice(0, limit) : displaySkillsArray;
   const remainingCount = totalSkills > displaySkills.length ? totalSkills - displaySkills.length : 0;
   
   return (

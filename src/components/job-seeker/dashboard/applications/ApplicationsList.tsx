@@ -1,42 +1,60 @@
 
-import { JobApplication } from "@/types/jobSeeker";
 import { useState } from "react";
-import { useUserSkills } from "./hooks/useUserSkills";
+import { JobApplication, Skill } from "@/types/jobSeeker";
 import { ApplicationItem } from "./ApplicationItem";
+import { EmptyState } from "../EmptyState";
+import { useUserSkills } from "./hooks/useUserSkills";
 
 interface ApplicationsListProps {
   applications: JobApplication[];
+  userSkills?: Skill[];
+  emptyMessage?: string;
   onApplicationUpdated?: () => void;
 }
 
-export const ApplicationsList = ({ applications, onApplicationUpdated = () => {} }: ApplicationsListProps) => {
-  const [expandedApplications, setExpandedApplications] = useState<Set<string>>(new Set());
-  const { userSkills, getMatchedSkills } = useUserSkills();
-
-  const toggleApplicationExpanded = (applicationId: string) => {
-    setExpandedApplications(prev => {
-      const newExpanded = new Set(prev);
-      if (newExpanded.has(applicationId)) {
-        newExpanded.delete(applicationId);
-      } else {
-        newExpanded.add(applicationId);
-      }
-      return newExpanded;
-    });
+export const ApplicationsList = ({
+  applications,
+  userSkills = [],
+  emptyMessage = "You haven't applied to any opportunities yet.",
+  onApplicationUpdated,
+}: ApplicationsListProps) => {
+  const { getUserSkillNames } = useUserSkills(userSkills);
+  const [expandedApplicationId, setExpandedApplicationId] = useState<string | null>(null);
+  
+  // Function to get matched skills for an application
+  const getMatchedSkills = (application: JobApplication) => {
+    const userSkillNames = getUserSkillNames();
+    const requiredSkills = application.business_roles?.skills_required || [];
+    
+    return requiredSkills.filter(skill => 
+      userSkillNames.some(userSkill => 
+        userSkill.toLowerCase() === skill.toLowerCase()
+      )
+    );
   };
-
+  
+  if (applications.length === 0) {
+    return <EmptyState message={emptyMessage} />;
+  }
+  
   return (
-    <>
+    <div className="space-y-4">
       {applications.map(application => (
-        <ApplicationItem
-          key={application.job_app_id}
+        <ApplicationItem 
+          key={application.job_app_id} 
           application={application}
-          isExpanded={expandedApplications.has(application.job_app_id)}
-          toggleExpanded={() => toggleApplicationExpanded(application.job_app_id)}
+          isExpanded={expandedApplicationId === application.job_app_id}
+          toggleExpanded={() => {
+            setExpandedApplicationId(
+              expandedApplicationId === application.job_app_id 
+                ? null 
+                : application.job_app_id
+            );
+          }}
           getMatchedSkills={getMatchedSkills}
           onApplicationUpdated={onApplicationUpdated}
         />
       ))}
-    </>
+    </div>
   );
 };
