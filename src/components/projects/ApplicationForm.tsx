@@ -143,10 +143,9 @@ export const ApplicationForm = ({
         project_id: projectId,
         task_id: taskId,
         user_id: userId,
-        message: message, // Store in message field
-        notes: message,   // Also store in notes field for backward compatibility
+        message: message, // Use message field
         cv_url: selectedCvUrl,
-        status: 'pending'  // Explicitly set status
+        status: 'pending'
       });
       
       if (error) {

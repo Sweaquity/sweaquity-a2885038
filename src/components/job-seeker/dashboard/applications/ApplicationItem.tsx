@@ -191,7 +191,7 @@ export const ApplicationItem = ({
             <div className="bg-muted p-3 rounded-md">
               <div className="mb-3 pb-3 border-b">
                 <h4 className="text-sm font-medium mb-1">Message:</h4>
-                <p className="text-sm">{application.message || application.notes || "No message provided"}</p>
+                <p className="text-sm">{application.message || "No message provided"}</p>
               </div>
               
               <div>
