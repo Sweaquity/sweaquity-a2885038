@@ -21,41 +21,17 @@ export const useCVData = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [bucketReady, setBucketReady] = useState(false);
 
-  const ensureBucketExists = async () => {
+  // Check if the CV storage bucket exists
+  const checkBucketExists = async () => {
     try {
-      // Check if the cvs bucket exists
-      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      const { data, error } = await supabase.storage.getBucket('cvs');
       
-      if (bucketsError) {
-        console.error("Error listing buckets:", bucketsError);
+      if (error) {
+        console.error("Error checking CV bucket:", error);
         return false;
       }
       
-      const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
-      
-      if (!cvsBucketExists) {
-        console.log("CV bucket doesn't exist. Will need to use or create it on the server side.");
-        // Attempt to create bucket via client-side (may fail due to permissions)
-        try {
-          const { data, error } = await supabase.storage.createBucket('cvs', {
-            public: true,
-            fileSizeLimit: 10485760, // 10MB limit
-          });
-          
-          if (error) {
-            console.log("Failed to create CV bucket from client:", error);
-            return false;
-          }
-          
-          console.log("Successfully created CV bucket");
-          return true;
-        } catch (err) {
-          console.error("Error creating CV bucket:", err);
-          return false;
-        }
-      }
-      
-      return cvsBucketExists;
+      return data !== null;
     } catch (error) {
       console.error("Error checking bucket status:", error);
       return false;
@@ -66,12 +42,13 @@ export const useCVData = () => {
     try {
       setIsLoading(true);
       
-      // First, check and ensure CV bucket exists
-      const bucketExists = await ensureBucketExists();
+      // First, check if CV bucket exists
+      const bucketExists = await checkBucketExists();
       setBucketReady(bucketExists);
       
       if (!bucketExists) {
-        console.log("CV storage bucket doesn't exist, this is expected since it should be created by an admin");
+        console.log("CV storage bucket not accessible or doesn't exist");
+        return;
       }
       
       // Get user's profile data to check for CV URL
@@ -91,7 +68,7 @@ export const useCVData = () => {
           setCvUrl(profileData.cv_url);
         }
       } catch (error) {
-        console.log("Error fetching profile, this might be expected if cv_url column doesn't exist yet:", error);
+        console.log("Error fetching profile:", error);
       }
 
       // Get parsed CV data if available
@@ -111,7 +88,7 @@ export const useCVData = () => {
           setParsedCvData(cvData);
         }
       } catch (error) {
-        console.log("Error fetching CV data, this might be expected:", error);
+        console.log("Error fetching CV data:", error);
       }
       
       // Get list of user's CVs
@@ -148,6 +125,6 @@ export const useCVData = () => {
     setUserCVs,
     isLoading,
     bucketReady,
-    ensureBucketExists
+    checkBucketExists
   };
 };

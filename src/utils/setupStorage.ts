@@ -3,78 +3,43 @@ import { toast } from "sonner";
 
 export const setupCvStorageBucket = async () => {
   try {
-    // Check if the cvs bucket already exists
-    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+    // Check if the cvs bucket exists - don't try to create it from client side anymore
+    const { data, error } = await supabase.storage.getBucket('cvs');
     
-    if (bucketsError) {
-      console.error("Error listing buckets:", bucketsError);
+    if (error) {
+      console.error("Error checking CV bucket:", error);
       return false;
     }
     
-    const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
-    
-    if (!cvsBucketExists) {
-      console.log("CV bucket doesn't exist. Attempting to create it.");
-      
-      // Try to create the bucket from client-side
-      try {
-        const { data, error } = await supabase.storage.createBucket('cvs', {
-          public: true,
-          fileSizeLimit: 10485760, // 10MB limit
-        });
-        
-        if (error) {
-          console.log("Failed to create CV bucket from client:", error);
-          toast.info("CV storage is being set up. Some features may be unavailable until setup is complete.");
-          return false;
-        }
-        
-        console.log("Successfully created CV bucket");
-        return true;
-      } catch (err) {
-        console.error("Error creating CV bucket:", err);
-        toast.info("CV storage is being set up. Some features may be unavailable until setup is complete.");
-        return false;
-      }
-    }
-    
-    return cvsBucketExists;
-    
+    return data !== null;
   } catch (error) {
-    console.error("Error setting up CV bucket:", error);
+    console.error("Error checking bucket status:", error);
     return false;
   }
 };
 
 export const listUserCVs = async (userId: string) => {
   try {
-    // First check if the bucket exists
-    const { data: buckets } = await supabase.storage.listBuckets();
-    const bucketExists = buckets?.some(bucket => bucket.name === 'cvs');
+    // Check if the bucket exists
+    const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('cvs');
     
-    if (!bucketExists) {
-      console.log("CV bucket doesn't exist. Cannot list CVs.");
+    if (bucketError) {
+      console.error("Error checking bucket status:", bucketError);
       return [];
     }
     
-    // Try to create the user's folder if it doesn't exist
-    try {
-      await supabase.storage.from('cvs').upload(`${userId}/.folder`, new Blob(['']));
-    } catch (error) {
-      // Ignore error if folder already exists
-      console.log("User folder exists or couldn't be created");
-    }
-    
+    // List files in the user's folder
     const { data, error } = await supabase.storage
       .from('cvs')
       .list(userId);
       
     if (error) {
-      throw error;
+      console.error("Error listing files:", error);
+      return [];
     }
     
     // Filter out folder objects, keep only files
-    return data?.filter(item => !item.id.endsWith('/') && item.name !== '.folder') || [];
+    return data?.filter(item => item.name !== '.folder') || [];
     
   } catch (error) {
     console.error("Error listing user CVs:", error);

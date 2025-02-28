@@ -5,8 +5,7 @@ import { SkillsCard } from "./skills/SkillsCard";
 import { CareerHistoryCard } from "./career/CareerHistoryCard";
 import { ProfileEditor } from "./profile/ProfileEditor";
 import { Profile, Skill } from "@/types/jobSeeker";
-import { CVFile } from "@/hooks/job-seeker/useCVData";
-import { supabase } from "@/lib/supabase";
+import { CVFile, useCVData } from "@/hooks/job-seeker/useCVData";
 
 interface ProfileSectionProps {
   profile?: Profile;
@@ -24,87 +23,41 @@ export const ProfileSection = ({
   onSkillsUpdate = () => {}
 }: ProfileSectionProps) => {
   const [userCVs, setUserCVs] = useState<CVFile[]>([]);
+  const { loadCVData, userCVs: hookUserCVs } = useCVData();
   
   useEffect(() => {
     // Load user's CVs if profile exists
-    const loadUserCVs = async () => {
+    const loadData = async () => {
       if (profile) {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            // Check if bucket exists
-            const { data: buckets } = await supabase.storage.listBuckets();
-            const bucketExists = buckets?.some(bucket => bucket.name === 'cvs');
-            
-            if (!bucketExists) {
-              console.log("CV bucket doesn't exist, cannot load user CVs");
-              return;
-            }
-            
-            const { data: cvData } = await supabase.storage
-              .from('cvs')
-              .list(session.user.id);
-              
-            if (cvData) {
-              const filesWithDefault = cvData
-                .filter(file => file.name !== '.folder')
-                .map(file => ({
-                  ...file,
-                  isDefault: cvUrl ? cvUrl.includes(file.name) : false
-                }));
-              
-              setUserCVs(filesWithDefault);
-            }
+          await loadCVData(profile.id);
+          
+          // If hook has CVs, use them
+          if (hookUserCVs.length > 0) {
+            setUserCVs(hookUserCVs);
           }
         } catch (error) {
-          console.error("Error loading user CVs:", error);
+          console.error("Error loading CV data:", error);
         }
       }
     };
     
-    loadUserCVs();
-  }, [profile, cvUrl]);
+    loadData();
+  }, [profile, loadCVData, hookUserCVs]);
+  
+  // Set hook's userCVs if they change
+  useEffect(() => {
+    if (hookUserCVs.length > 0) {
+      setUserCVs(hookUserCVs);
+    }
+  }, [hookUserCVs]);
   
   const handleCvListUpdated = async () => {
     if (profile) {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          // Check if bucket exists
-          const { data: buckets } = await supabase.storage.listBuckets();
-          const bucketExists = buckets?.some(bucket => bucket.name === 'cvs');
-          
-          if (!bucketExists) {
-            console.log("CV bucket doesn't exist, cannot update user CVs");
-            return;
-          }
-          
-          const { data: cvData } = await supabase.storage
-            .from('cvs')
-            .list(session.user.id);
-            
-          if (cvData) {
-            // Get the updated CV URL
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('cv_url')
-              .eq('id', session.user.id)
-              .maybeSingle();
-              
-            const updatedCvUrl = profileData?.cv_url || null;
-            
-            const filesWithDefault = cvData
-              .filter(file => file.name !== '.folder')
-              .map(file => ({
-                ...file,
-                isDefault: updatedCvUrl ? updatedCvUrl.includes(file.name) : false
-              }));
-            
-            setUserCVs(filesWithDefault);
-          }
-        }
+        await loadCVData(profile.id);
       } catch (error) {
-        console.error("Error updating user CVs list:", error);
+        console.error("Error updating CV list:", error);
       }
     }
   };

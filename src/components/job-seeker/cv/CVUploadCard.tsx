@@ -7,8 +7,6 @@ import { supabase } from "@/lib/supabase";
 import { 
   FileUp, 
   Loader2, 
-  FileX, 
-  ExternalLink, 
   AlertCircle, 
   Download, 
   Trash2, 
@@ -55,22 +53,26 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
     
     // Check if the CV storage bucket exists
     checkStorage();
-  }, [cvUrl, userCVs]);
+  }, [cvUrl]);
+
+  useEffect(() => {
+    if (userCVs && userCVs.length > 0) {
+      setLocalUserCVs(userCVs);
+    }
+  }, [userCVs]);
 
   const checkStorage = async () => {
     try {
       const ready = await setupCvStorageBucket();
       setBucketReady(ready);
       if (!ready) {
-        setStorageError("CV storage is not ready yet. Please try again later or contact support.");
+        setStorageError("CV storage is not available. Please refresh bucket status or contact support.");
         console.log("CV storage bucket not ready");
       } else {
         setStorageError(null);
         // Fetch user CVs if not provided via props
-        if (userCVs.length === 0) {
-          loadUserCVs();
-        } else {
-          setLocalUserCVs(userCVs);
+        if (localUserCVs.length === 0) {
+          await loadUserCVs();
         }
       }
     } catch (error) {
@@ -167,22 +169,26 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
       if (!session?.user) {
         clearInterval(progressInterval);
         toast.error("You must be logged in to upload a CV");
+        setIsUploading(false);
         return;
       }
       
       const userId = session.user.id;
       
-      // Make sure the user's folder exists
-      try {
-        await supabase.storage.from('cvs').upload(`${userId}/.folder`, new Blob(['']));
-      } catch (error) {
-        // Ignore error if folder already exists
-        console.log("User folder exists or couldn't be created");
-      }
+      // Sanitize the filename to remove non-ASCII characters
+      const fileName = file.name;
+      const sanitizedFileName = fileName.replace(/[^\x00-\x7F]/g, '_');
+      
+      // Get file extension (default to pdf if not found)
+      const fileExt = fileName.split('.').pop() || 'pdf';
+      
+      // Create a unique filename with timestamp if needed
+      const finalFileName = fileName !== sanitizedFileName 
+        ? `cv_${Date.now()}.${fileExt}` 
+        : sanitizedFileName;
       
       // Set the file path to include the user ID as a folder
-      const sanitizedFileName = file.name.replace(/[^\x00-\x7F]/g, '_'); // Replace non-ASCII chars
-      const filePath = `${userId}/${sanitizedFileName}`;
+      const filePath = `${userId}/${finalFileName}`;
       
       // Upload the file
       const { data, error } = await supabase.storage
@@ -196,6 +202,7 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
       clearInterval(progressInterval);
         
       if (error) {
+        console.error("Upload error:", error);
         throw error;
       }
       
@@ -390,8 +397,11 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
               <Label className="text-muted-foreground">Default CV</Label>
               <div className="flex items-center justify-between mt-2">
                 <p className="text-sm truncate max-w-[250px]">{displayUrl.split('/').pop()}</p>
-                <Button variant="outline" onClick={() => handlePreview(displayUrl.split('/').pop() || '')}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
+                <Button 
+                  variant="outline" 
+                  onClick={() => handlePreview(displayUrl.split('/').pop() || '')}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
                   View CV
                 </Button>
               </div>
@@ -413,7 +423,7 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
                     hover:file:bg-primary/90"
                   onChange={handleFileChange}
                   accept="application/pdf"
-                  disabled={!bucketReady}
+                  disabled={!bucketReady || isUploading}
                 />
               </div>
               <Button 
@@ -517,8 +527,8 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
         
         {!bucketReady && (
           <div className="text-sm text-yellow-600 flex items-center gap-2 p-2 bg-yellow-50 rounded-md">
-            <FileX className="h-4 w-4" />
-            <span>CV storage is being set up. Please refresh the bucket status or contact support if the issue persists.</span>
+            <AlertCircle className="h-4 w-4" />
+            <span>CV storage is not available. Please refresh the bucket status or contact support if the issue persists.</span>
           </div>
         )}
         
