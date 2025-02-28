@@ -47,7 +47,7 @@ interface Task {
 }
 
 interface Project {
-  id: string;
+  project_id: string; // Changed from id to project_id
   title: string;
   description: string;
   status: string;
@@ -90,7 +90,7 @@ export const ProjectsSection = () => {
 
       const projectsWithTasks = projectsData.map((project: any) => ({
         ...project,
-        tasks: tasksData.filter((task: any) => task.project_id === project.id) || []
+        tasks: tasksData.filter((task: any) => task.project_id === project.project_id) || [] // Changed from project.id to project.project_id
       }));
 
       setProjects(projectsWithTasks);
@@ -107,12 +107,12 @@ export const ProjectsSection = () => {
 
   const handleProjectUpdated = (updatedProject: Project) => {
     setProjects(projects.map(project => 
-      project.id === updatedProject.id ? updatedProject : project
+      project.project_id === updatedProject.project_id ? updatedProject : project // Changed from project.id to project.project_id
     ));
   };
 
   const handleProjectDeleted = (projectId: string) => {
-    setProjects(projects.filter(project => project.id !== projectId));
+    setProjects(projects.filter(project => project.project_id !== projectId)); // Changed from project.id to project.project_id
   };
 
   const toggleProjectExpanded = (projectId: string) => {
@@ -142,7 +142,7 @@ export const ProjectsSection = () => {
   const handleDeleteProject = async (projectId: string) => {
     try {
       // Check if project has allocated equity
-      const project = projects.find(p => p.id === projectId);
+      const project = projects.find(p => p.project_id === projectId); // Changed from p.id to p.project_id
       if (project && project.equity_allocated > 0) {
         toast.error("Cannot delete a project with allocated equity");
         return;
@@ -151,7 +151,7 @@ export const ProjectsSection = () => {
       const { error } = await supabase
         .from('business_projects')
         .delete()
-        .eq('id', projectId);
+        .eq('project_id', projectId); // Changed from 'id' to 'project_id'
 
       if (error) throw error;
 
@@ -210,14 +210,14 @@ export const ProjectsSection = () => {
                 ) : (
                   projects.map((project) => (
                     <Collapsible 
-                      key={project.id} 
-                      open={expandedProjects.has(project.id)}
-                      onOpenChange={() => toggleProjectExpanded(project.id)}
+                      key={project.project_id} // Changed from project.id to project.project_id
+                      open={expandedProjects.has(project.project_id)} // Changed from project.id to project.project_id
+                      onOpenChange={() => toggleProjectExpanded(project.project_id)} // Changed from project.id to project.project_id
                       className="border rounded-lg overflow-hidden"
                     >
                       <CollapsibleTrigger className="flex justify-between items-center w-full p-4 text-left hover:bg-muted/50">
                         <Link
-                          to={`/projects/${project.id}`}
+                          to={`/projects/${project.project_id}`} // Changed from project.id to project.project_id
                           className="flex items-center gap-2 flex-1 hover:text-blue-600"
                         >
                           <span className="font-medium text-lg">{project.title}</span>
@@ -226,7 +226,7 @@ export const ProjectsSection = () => {
                         </Link>
                         <div className="flex items-center gap-2">
                           <Button variant="ghost" size="sm" className="p-0 h-8 w-8" asChild>
-                            <Link to={`/projects/${project.id}`} title="View project details">
+                            <Link to={`/projects/${project.project_id}`} title="View project details"> // Changed from project.id to project.project_id
                               <Link2 className="h-4 w-4" />
                             </Link>
                           </Button>
@@ -251,7 +251,7 @@ export const ProjectsSection = () => {
                             className="p-0 h-8 w-8 text-destructive hover:text-destructive"
                             onClick={(e) => {
                               e.stopPropagation();
-                              showDeleteConfirmation(project.id);
+                              showDeleteConfirmation(project.project_id); // Changed from project.id to project.project_id
                             }}
                             disabled={project.equity_allocated > 0}
                             title={project.equity_allocated > 0 ? 
@@ -263,7 +263,7 @@ export const ProjectsSection = () => {
                         </div>
 
                         <div className="ml-2">
-                          {expandedProjects.has(project.id) ? 
+                          {expandedProjects.has(project.project_id) ? // Changed from project.id to project.project_id
                             <ChevronDown className="h-5 w-5 flex-shrink-0" /> : 
                             <ChevronRight className="h-5 w-5 flex-shrink-0" />
                           }

@@ -14,7 +14,7 @@ import {
 import { Skill } from "@/types/jobSeeker";
 
 interface Application {
-  id: string;
+  job_app_id: string; // Changed from id to job_app_id
   task_id: string;
   user_id: string;
   applied_at: string;
@@ -41,7 +41,7 @@ interface Application {
 }
 
 interface Project {
-  project_id: string; // Updated from id to project_id
+  project_id: string; // Changed from id to project_id
   title: string;
   description: string;
   skills_required?: string[];
@@ -85,7 +85,7 @@ export const ProjectApplicationsSection = () => {
         // Get all tasks for this project
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
-          .select('id, skills_required')
+          .select('task_id, skills_required') // Changed from id to task_id
           .eq('project_id', project.project_id); // Changed from project.id to project.project_id
 
         if (tasksError) {
@@ -93,7 +93,7 @@ export const ProjectApplicationsSection = () => {
           continue;
         }
 
-        const taskIds = tasksData.map(task => task.id);
+        const taskIds = tasksData.map(task => task.task_id); // Changed from task.id to task.task_id
 
         if (taskIds.length === 0) {
           projectsWithApplications.push({
@@ -106,7 +106,7 @@ export const ProjectApplicationsSection = () => {
         // Create a map of task IDs to their skills required
         const taskSkillsMap = new Map<string, string[]>();
         tasksData.forEach(task => {
-          taskSkillsMap.set(task.id, task.skills_required || []);
+          taskSkillsMap.set(task.task_id, task.skills_required || []); // Changed from task.id to task.task_id
         });
 
         // Get all applications for these tasks
@@ -148,7 +148,7 @@ export const ProjectApplicationsSection = () => {
           const { data: taskData, error: taskError } = await supabase
             .from('project_sub_tasks')
             .select('title, description, skills_required')
-            .eq('id', app.task_id)
+            .eq('task_id', app.task_id) // Changed from 'id' to 'task_id'
             .single();
 
           if (taskError) {
@@ -230,7 +230,7 @@ export const ProjectApplicationsSection = () => {
       const { error } = await supabase
         .from('job_applications')
         .update({ status: newStatus })
-        .eq('id', applicationId);
+        .eq('job_app_id', applicationId); // Changed from 'id' to 'job_app_id'
       
       if (error) throw error;
       
@@ -238,7 +238,7 @@ export const ProjectApplicationsSection = () => {
       setProjects(projects.map(project => ({
         ...project,
         applications: project.applications.map(app => 
-          app.id === applicationId ? { ...app, status: newStatus } : app
+          app.job_app_id === applicationId ? { ...app, status: newStatus } : app // Changed from app.id to app.job_app_id
         )
       })));
       
@@ -300,9 +300,9 @@ export const ProjectApplicationsSection = () => {
           <div className="space-y-4">
             {projects.map(project => (
               <Collapsible 
-                key={project.project_id} // Updated from project.id to project.project_id
-                open={expandedProjects.has(project.project_id)} // Updated from project.id to project.project_id
-                onOpenChange={() => toggleProjectExpanded(project.project_id)} // Updated from project.id to project.project_id
+                key={project.project_id} // Changed from project.id to project.project_id
+                open={expandedProjects.has(project.project_id)} // Changed from project.id to project.project_id
+                onOpenChange={() => toggleProjectExpanded(project.project_id)} // Changed from project.id to project.project_id
                 className="border rounded-lg overflow-hidden"
               >
                 <CollapsibleTrigger className="flex justify-between items-center w-full p-4 text-left hover:bg-muted/50">
@@ -331,7 +331,7 @@ export const ProjectApplicationsSection = () => {
                       )}
                     </div>
                   </div>
-                  {expandedProjects.has(project.project_id) ? // Updated from project.id to project.project_id
+                  {expandedProjects.has(project.project_id) ? // Changed from project.id to project.project_id
                     <ChevronDown className="h-5 w-5 flex-shrink-0" /> : 
                     <ChevronRight className="h-5 w-5 flex-shrink-0" />
                   }
@@ -343,9 +343,9 @@ export const ProjectApplicationsSection = () => {
                     <div className="space-y-2">
                       {project.applications.map(application => (
                         <Collapsible
-                          key={application.id}
-                          open={expandedApplications.has(application.id)}
-                          onOpenChange={() => toggleApplicationExpanded(application.id)}
+                          key={application.job_app_id} // Changed from application.id to application.job_app_id
+                          open={expandedApplications.has(application.job_app_id)} // Changed from application.id to application.job_app_id
+                          onOpenChange={() => toggleApplicationExpanded(application.job_app_id)} // Changed from application.id to application.job_app_id
                           className="border rounded-lg overflow-hidden"
                         >
                           <CollapsibleTrigger className="flex justify-between items-center w-full p-3 text-left hover:bg-muted/50">
@@ -370,7 +370,7 @@ export const ProjectApplicationsSection = () => {
                                 <select 
                                   className="px-2 py-1 border rounded text-xs"
                                   value={application.status}
-                                  onChange={(e) => handleStatusChange(application.id, e.target.value)}
+                                  onChange={(e) => handleStatusChange(application.job_app_id, e.target.value)} // Changed from application.id to application.job_app_id
                                 >
                                   <option value="pending">Pending</option>
                                   <option value="in review">In Review</option>
@@ -380,7 +380,7 @@ export const ProjectApplicationsSection = () => {
                                 </select>
                               </div>
                             </div>
-                            {expandedApplications.has(application.id) ? 
+                            {expandedApplications.has(application.job_app_id) ? // Changed from application.id to application.job_app_id 
                               <ChevronDown className="h-4 w-4 flex-shrink-0 ml-2" /> : 
                               <ChevronRight className="h-4 w-4 flex-shrink-0 ml-2" />
                             }
@@ -440,4 +440,4 @@ export const ProjectApplicationsSection = () => {
       </CardContent>
     </Card>
   );
-};
+}

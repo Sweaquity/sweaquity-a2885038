@@ -35,7 +35,7 @@ interface Task {
 }
 
 interface Project {
-  id: string;
+  project_id: string; // Changed from id to project_id
   title: string;
   description: string;
   status: string;
@@ -70,7 +70,7 @@ export const ProjectEditDialog = ({
         .from('project_sub_tasks')
         .insert({
           ...newTask,
-          project_id: currentProject.id
+          project_id: currentProject.project_id // Changed from currentProject.id
         })
         .select()
         .single();
@@ -83,7 +83,7 @@ export const ProjectEditDialog = ({
         .insert({
           title: newTask.title,
           description: newTask.description,
-          business_id: currentProject.id,
+          business_id: currentProject.project_id, // Changed from currentProject.id
           open_to_recruiters: true,
         });
 
@@ -102,7 +102,7 @@ export const ProjectEditDialog = ({
   };
 
   const handleProjectUpdate = async (updatedData: Partial<Project>) => {
-    if (!project?.id) return;
+    if (!project?.project_id) return; // Changed from project?.id
     
     setIsSubmitting(true);
     try {
@@ -116,7 +116,7 @@ export const ProjectEditDialog = ({
           skills_required: updatedData.skills_required,
           project_timeframe: updatedData.project_timeframe
         })
-        .eq('id', project.id)
+        .eq('project_id', project.project_id) // Changed from 'id' to 'project_id'
         .select()
         .single();
 
@@ -149,7 +149,7 @@ export const ProjectEditDialog = ({
       await supabase
         .from('business_roles')
         .delete()
-        .eq('business_id', currentProject.id)
+        .eq('business_id', currentProject.project_id) // Changed from currentProject.id
         .eq('title', currentProject.tasks.find(t => t.id === taskId)?.title);
 
       const updatedProject = {
@@ -183,7 +183,7 @@ export const ProjectEditDialog = ({
           title: updatedTask.title,
           description: updatedTask.description
         })
-        .eq('business_id', currentProject.id)
+        .eq('business_id', currentProject.project_id) // Changed from currentProject.id
         .eq('title', currentProject.tasks.find(t => t.id === updatedTask.id)?.title);
 
       const updatedProject = {
@@ -228,7 +228,7 @@ export const ProjectEditDialog = ({
 
             {showSubTaskForm ? (
               <SubTaskForm
-                projectId={project.id}
+                projectId={project.project_id} // Changed from project.id
                 availableSkills={project.skills_required}
                 totalEquity={project.equity_allocation}
                 currentTotalTaskEquity={project.tasks.reduce((sum, task) => sum + (task.equity_allocation || 0), 0)}
@@ -237,7 +237,7 @@ export const ProjectEditDialog = ({
               />
             ) : (
               <TaskList
-                projectId={project.id}
+                projectId={project.project_id} // Changed from project.id
                 tasks={currentProject?.tasks || []}
                 onTaskDeleted={handleTaskDeleted}
                 onTaskUpdated={handleTaskUpdated}

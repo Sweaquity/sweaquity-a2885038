@@ -25,7 +25,7 @@ interface Task {
 }
 
 interface Project {
-  project_id: string; // Updated from id to project_id
+  project_id: string; // Changed from id to project_id
   title: string;
   description: string;
   status: string;
@@ -49,7 +49,7 @@ export const ProjectList = ({ projects, onProjectUpdated, onProjectDeleted }: Pr
       const { error } = await supabase
         .from('business_projects')
         .delete()
-        .eq('project_id', projectId); // Updated from 'id' to 'project_id'
+        .eq('project_id', projectId); // Changed from 'id' to 'project_id'
 
       if (error) throw error;
 
@@ -66,7 +66,7 @@ export const ProjectList = ({ projects, onProjectUpdated, onProjectDeleted }: Pr
       <div className="space-y-6">
         {projects.map(project => (
           <ProjectCard
-            key={project.project_id} // Updated from project.id to project.project_id
+            key={project.project_id} // Changed from project.id to project.project_id
             project={project}
             onEdit={setEditingProject}
             onDelete={handleDeleteProject}

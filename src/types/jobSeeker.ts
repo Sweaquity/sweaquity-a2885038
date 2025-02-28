@@ -1,6 +1,6 @@
 
 export interface JobApplication {
-  id: string;
+  job_app_id: string; // Changed from id to job_app_id
   role_id: string;
   status: string;
   applied_at: string;
@@ -25,7 +25,7 @@ export interface SkillRequirement {
 }
 
 export interface SubTask {
-  id: string;
+  task_id: string; // Changed from id to task_id
   project_id: string;
   title: string;
   description: string;
@@ -69,7 +69,7 @@ export interface EquityProject {
 }
 
 export interface Profile {
-  id: string; // Added this property to fix the error
+  id: string;
   first_name: string | null;
   last_name: string | null;
   title: string | null;
