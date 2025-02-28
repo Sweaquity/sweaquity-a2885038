@@ -123,7 +123,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
         return;
       }
       
-      // Directly open CV URL in new tab without checking bucket existence
+      // Open CV URL directly in new tab
       window.open(cvUrl, '_blank');
 
     } catch (err) {
@@ -149,6 +149,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     <Card>
       <CardHeader>
         <h2 className="text-lg font-semibold">Projects that you've applied for</h2>
+        <p className="text-muted-foreground text-sm">View and manage your applications</p>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
