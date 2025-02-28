@@ -119,7 +119,8 @@ export const ApplicationItem = ({
               <div>
                 <h4 className="text-sm font-medium mb-1">Required Skills:</h4>
                 <ApplicationSkills 
-                  requiredSkills={application.business_roles.skills_required} 
+                  skills={application.business_roles.skills_required} 
+                  matchedSkills={[]}
                 />
               </div>
             )}

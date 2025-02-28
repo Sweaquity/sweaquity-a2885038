@@ -7,12 +7,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { SkillBadge } from "./SkillBadge";
-import { TaskCard } from "./TaskCard";
 import { Skill } from "@/types/jobSeeker";
 import { useNavigate } from "react-router-dom";
+import { TaskCard } from "./TaskCard";
 
 interface OpportunitiesTabProps {
   projects: any[];
@@ -136,13 +134,9 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                     {project.subTasks.map((task: any) => (
                       <TaskCard
                         key={task.task_id}
-                        title={task.title}
-                        description={task.description}
-                        equity={task.equity_allocation}
-                        timeframe={task.timeframe}
-                        skills={task.skill_requirements?.map((r: any) => r.skill) || task.skills_required || []}
-                        matchScore={task.matchScore}
-                        onApply={() => handleApplyClick(project.project_id, task.task_id)}
+                        task={task}
+                        userSkills={userSkills}
+                        showMatchedSkills={true}
                       />
                     ))}
                   </div>
