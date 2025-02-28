@@ -123,35 +123,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
         return;
       }
       
-      // Check if storage bucket exists
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
-      
-      if (!cvsBucketExists) {
-        console.error("CV bucket does not exist");
-        toast.error("CV storage is not properly configured");
-        
-        // Attempt to create the bucket
-        try {
-          const { error: bucketError } = await supabase.storage.createBucket('cvs', {
-            public: true
-          });
-          
-          if (bucketError) {
-            console.error("Error creating cvs bucket:", bucketError);
-            toast.error("Failed to create CV storage bucket");
-            return;
-          } else {
-            console.log("Successfully created cvs bucket");
-          }
-        } catch (bucketErr) {
-          console.error("Error creating storage bucket:", bucketErr);
-          toast.error("Failed to create CV storage bucket");
-          return;
-        }
-      }
-      
-      // Open CV URL in new tab
+      // Directly open CV URL in new tab without checking bucket existence
       window.open(cvUrl, '_blank');
 
     } catch (err) {
