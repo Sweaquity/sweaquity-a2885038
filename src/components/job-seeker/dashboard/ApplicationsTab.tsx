@@ -81,19 +81,16 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
       setIsWithdrawing(applicationId);
       console.log("Withdrawing application:", applicationId, taskId);
       
-      // Update the application status to 'withdrawn' using job_app_id
-      const { data, error: applicationError } = await supabase
+      // Update the application status to 'withdrawn'
+      const { error: applicationError } = await supabase
         .from('job_applications')
         .update({ status: 'withdrawn' })
-        .eq('job_app_id', applicationId)
-        .select();
+        .eq('job_app_id', applicationId);
 
       if (applicationError) {
         console.error("Error updating application:", applicationError);
         throw applicationError;
       }
-      
-      console.log("Update application result:", data);
       
       // Then, update the task status to 'open'
       const { error: taskError } = await supabase
@@ -110,7 +107,9 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
       }
       
       toast.success("Application withdrawn successfully");
-      onApplicationUpdated();
+      if (onApplicationUpdated) {
+        onApplicationUpdated();
+      }
 
     } catch (error) {
       console.error('Error withdrawing application:', error);
@@ -127,18 +126,8 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
         return;
       }
       
-      // Get the file extension from the CV URL
-      const fileExtension = cvUrl.split('.').pop()?.toLowerCase();
-      
-      if (fileExtension === 'pdf') {
-        // For PDFs, open directly - browsers can render these
-        window.open(cvUrl, '_blank');
-      } else {
-        // For other formats like docx, use Office Online Viewer instead of Google Docs
-        const msViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(cvUrl)}`;
-        window.open(msViewerUrl, '_blank');
-      }
-
+      // Simply open the CV in a new tab
+      window.open(cvUrl, '_blank');
     } catch (err) {
       console.error("Error opening CV:", err);
       toast.error("Failed to open CV");

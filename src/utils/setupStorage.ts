@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -106,17 +105,8 @@ export const previewCV = async (userId: string, fileName: string) => {
       .getPublicUrl(filePath);
       
     if (data?.publicUrl) {
-      // Get the file extension
-      const fileExtension = fileName.split('.').pop()?.toLowerCase();
-      
-      if (fileExtension === 'pdf') {
-        // For PDFs, open directly
-        window.open(data.publicUrl, '_blank');
-      } else {
-        // For other formats like docx, use Microsoft Office Online Viewer
-        const msViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(data.publicUrl)}`;
-        window.open(msViewerUrl, '_blank');
-      }
+      // Open the file directly in a new tab
+      window.open(data.publicUrl, '_blank');
       return true;
     }
     
