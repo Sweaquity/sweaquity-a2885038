@@ -24,7 +24,7 @@ export const useCVData = () => {
     try {
       setIsLoading(true);
       
-      // First, check if the cvs bucket exists, and if not, try to create it
+      // First, check if the cvs bucket exists
       const { data: buckets } = await supabase.storage.listBuckets();
       const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
       
@@ -32,17 +32,17 @@ export const useCVData = () => {
         console.log("CV storage bucket doesn't exist, this is expected since it should be created by an admin");
       }
       
-      // Get user's profile data to check for CV URL - use maybeSingle to prevent errors
+      // Get user's profile data to check for CV URL
       try {
         const { data: profileData, error } = await supabase
           .from('profiles')
           .select('cv_url')
           .eq('id', userId)
-          .maybeSingle();
+          .single();
           
         if (error) {
-          if (error.code !== 'PGRST116' && error.code !== '42703') {
-            // Only log errors that aren't "no rows returned" or "column does not exist"
+          if (error.code !== 'PGRST116') {
+            // Only log errors that aren't "no rows returned"
             console.error("Error fetching profile CV URL:", error);
           }
         } else if (profileData?.cv_url) {
@@ -52,7 +52,7 @@ export const useCVData = () => {
         console.log("Error fetching profile, this might be expected if cv_url column doesn't exist yet:", error);
       }
 
-      // Get parsed CV data if available - use maybeSingle to prevent errors
+      // Get parsed CV data if available
       try {
         const { data: cvData, error: cvError } = await supabase
           .from('cv_parsed_data')

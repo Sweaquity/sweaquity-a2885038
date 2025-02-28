@@ -97,7 +97,7 @@ export const deleteCV = async (userId: string, fileName: string) => {
       .from('profiles')
       .select('cv_url')
       .eq('id', userId)
-      .maybeSingle();
+      .single();
       
     if (profileData?.cv_url) {
       const cvUrl = profileData.cv_url;

@@ -51,13 +51,13 @@ export const ApplicationForm = ({
 
         const userId = session.user.id;
 
-        // Get user's default CV URL - using maybeSingle to prevent errors
+        // Get user's default CV URL
         try {
           const { data: profileData } = await supabase
             .from('profiles')
             .select('cv_url')
             .eq('id', userId)
-            .maybeSingle();
+            .single();
 
           const defaultCvUrl = profileData?.cv_url || null;
           

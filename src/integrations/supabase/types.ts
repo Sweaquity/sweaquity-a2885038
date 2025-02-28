@@ -388,6 +388,7 @@ export type Database = {
         Row: {
           availability: string | null
           created_at: string | null
+          cv_url: string | null
           email: string | null
           employment_preference:
             | Database["public"]["Enums"]["employment_preference"]
@@ -407,6 +408,7 @@ export type Database = {
         Insert: {
           availability?: string | null
           created_at?: string | null
+          cv_url?: string | null
           email?: string | null
           employment_preference?:
             | Database["public"]["Enums"]["employment_preference"]
@@ -426,6 +428,7 @@ export type Database = {
         Update: {
           availability?: string | null
           created_at?: string | null
+          cv_url?: string | null
           email?: string | null
           employment_preference?:
             | Database["public"]["Enums"]["employment_preference"]

@@ -55,12 +55,11 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
         ]);
 
         // After loading profile, check if it's complete
-        // Using maybeSingle() instead of single() to avoid PGRST116 error
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('first_name, last_name, terms_accepted')
           .eq('id', session.user.id)
-          .maybeSingle();
+          .single();
 
         if (profileError) {
           console.error("Error checking profile:", profileError);
@@ -93,7 +92,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
 
         console.log("Unavailable task IDs:", Array.from(unavailableTaskIds));
 
-        // Fetch ALL open tasks from ALL businesses, not just the user's businesses
+        // Fetch ALL open tasks from ALL businesses
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
           .select(`
