@@ -1,6 +1,6 @@
 
 export interface JobApplication {
-  job_app_id: string; // Changed from id to job_app_id
+  job_app_id: string;
   role_id: string;
   status: string;
   applied_at: string;
@@ -25,7 +25,7 @@ export interface SkillRequirement {
 }
 
 export interface SubTask {
-  task_id: string; // Changed from id to task_id
+  task_id: string;
   project_id: string;
   title: string;
   description: string;

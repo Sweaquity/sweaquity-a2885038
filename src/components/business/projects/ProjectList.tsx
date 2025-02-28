@@ -25,7 +25,7 @@ interface Task {
 }
 
 interface Project {
-  project_id: string; // Changed from id to project_id
+  project_id: string;
   title: string;
   description: string;
   status: string;
@@ -44,32 +44,15 @@ interface ProjectListProps {
 export const ProjectList = ({ projects, onProjectUpdated, onProjectDeleted }: ProjectListProps) => {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
-  const handleDeleteProject = async (projectId: string) => {
-    try {
-      const { error } = await supabase
-        .from('business_projects')
-        .delete()
-        .eq('project_id', projectId); // Changed from 'id' to 'project_id'
-
-      if (error) throw error;
-
-      onProjectDeleted(projectId);
-      toast.success("Project deleted successfully");
-    } catch (error) {
-      console.error('Error deleting project:', error);
-      toast.error("Failed to delete project");
-    }
-  };
-
   return (
     <>
       <div className="space-y-6">
         {projects.map(project => (
           <ProjectCard
-            key={project.project_id} // Changed from project.id to project.project_id
+            key={project.project_id}
             project={project}
             onEdit={setEditingProject}
-            onDelete={handleDeleteProject}
+            onDelete={onProjectDeleted}
           />
         ))}
       </div>

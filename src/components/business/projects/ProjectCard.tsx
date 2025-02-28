@@ -20,7 +20,7 @@ interface Task {
 }
 
 interface Project {
-  project_id: string; // Changed from id to project_id
+  project_id: string;
   title: string;
   description: string;
   status: string;
@@ -57,7 +57,7 @@ export const ProjectCard = ({ project, onEdit, onDelete }: ProjectCardProps) => 
           <div>
             <h3 className="text-lg font-medium">
               <Link 
-                to={`/projects/${project.project_id}`} // Changed from project.id to project.project_id
+                to={`/projects/${project.project_id}`}
                 className="text-blue-600 hover:underline hover:text-blue-800"
               >
                 {project.title}
@@ -72,7 +72,7 @@ export const ProjectCard = ({ project, onEdit, onDelete }: ProjectCardProps) => 
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => onDelete(project.project_id)} // Changed from project.id to project.project_id
+              onClick={() => onDelete(project.project_id)}
               className="text-destructive hover:text-destructive"
             >
               <Trash className="h-4 w-4" />
@@ -98,7 +98,7 @@ export const ProjectCard = ({ project, onEdit, onDelete }: ProjectCardProps) => 
       </CardHeader>
       <CardContent>
         <TaskList 
-          projectId={project.project_id} // Changed from project.id to project.project_id
+          projectId={project.project_id}
           tasks={project.tasks}
           onTaskDeleted={handleTaskDeleted}
           onTaskUpdated={handleTaskUpdated}
