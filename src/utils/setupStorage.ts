@@ -1,5 +1,6 @@
 
 import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 export const setupCvStorageBucket = async () => {
   try {

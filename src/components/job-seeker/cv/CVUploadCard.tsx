@@ -210,7 +210,7 @@ export const CVUploadCard = ({ cvUrl, parsedCvData }: CVUploadCardProps) => {
       </CardHeader>
       <CardContent className="space-y-4">
         {storageError && (
-          <Alert variant="warning" className="mb-4">
+          <Alert className="mb-4">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{storageError}</AlertDescription>
           </Alert>
