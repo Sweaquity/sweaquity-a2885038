@@ -11,7 +11,7 @@ import JobSeekerDashboard from "./pages/dashboards/JobSeekerDashboard";
 import BusinessDashboard from "./pages/dashboards/BusinessDashboard";
 import RecruiterDashboard from "./pages/dashboards/RecruiterDashboard";
 import Index from "./pages/Index";
-import ProjectDetailsPage from "./pages/projects/ProjectDetailsPage";
+import { ProjectDetailsPage } from "./pages/projects/ProjectDetailsPage";
 import ProjectApplicationPage from "./pages/projects/ProjectApplicationPage";
 import NotFound from "./pages/NotFound";
 import { Toaster } from "@/components/ui/toaster";
