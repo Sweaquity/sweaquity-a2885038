@@ -62,6 +62,7 @@ export const CVUploadCard = ({
     }
   };
 
+  // Fix the function signature - this function is returning void anyway
   const handleCVsUpdated = async () => {
     await loadUserCVs();
     if (onCvListUpdated) {

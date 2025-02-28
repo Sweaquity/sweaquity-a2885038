@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { listUserCVs } from "@/utils/setupStorage";
+import { listUserCVs } from "@/utils/storage";
 
 interface ApplicationFormProps {
   projectId: string;

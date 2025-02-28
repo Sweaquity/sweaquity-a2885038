@@ -1,9 +1,6 @@
 
+import { FileIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Eye } from "lucide-react";
-import { previewCV } from "@/utils/setupStorage";
-import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
 interface DefaultCVDisplayProps {
@@ -11,36 +8,33 @@ interface DefaultCVDisplayProps {
 }
 
 export const DefaultCVDisplay = ({ displayUrl }: DefaultCVDisplayProps) => {
-  if (!displayUrl) return null;
-
-  const fileName = displayUrl.split('/').pop() || '';
-
-  const handlePreview = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        toast.error("You must be logged in to preview CVs");
-        return;
-      }
-
-      await previewCV(session.user.id, fileName);
-    } catch (error) {
-      console.error("Error previewing CV:", error);
-      toast.error("Failed to preview CV");
+  const viewCV = () => {
+    if (!displayUrl) {
+      toast.error("No CV available to view");
+      return;
     }
+    window.open(displayUrl, '_blank');
   };
 
+  if (!displayUrl) {
+    return null;
+  }
+
   return (
-    <div>
-      <Label className="text-muted-foreground">Default CV</Label>
-      <div className="flex items-center justify-between mt-2">
-        <p className="text-sm truncate max-w-[250px]">{fileName}</p>
+    <div className="rounded-md border bg-muted/50 p-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <FileIcon className="h-5 w-5 text-blue-500" />
+          <span className="text-sm font-medium truncate max-w-[200px]">
+            Default CV
+          </span>
+        </div>
         <Button 
-          variant="outline" 
-          onClick={handlePreview}
+          variant="ghost" 
+          size="sm" 
+          onClick={viewCV}
         >
-          <Eye className="h-4 w-4 mr-2" />
-          View CV
+          View
         </Button>
       </div>
     </div>
