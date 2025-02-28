@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { listUserCVs } from "@/utils/setupStorage";
+import { listUserCVs } from "@/utils/storage";
 
 export interface CVFile {
   id: string;

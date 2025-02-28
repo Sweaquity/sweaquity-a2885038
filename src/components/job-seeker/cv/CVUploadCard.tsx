@@ -8,7 +8,7 @@ import { CVFileList } from "./cv-upload/CVFileList";
 import { BucketStatusAlert } from "./cv-upload/BucketStatusAlert";
 import { CVStorageHint } from "./cv-upload/CVStorageHint";
 import { useBucketStatus } from "./cv-upload/useBucketStatus";
-import { listUserCVs } from "@/utils/setupStorage";
+import { listUserCVs } from "@/utils/storage";
 import { supabase } from "@/lib/supabase";
 
 interface CVUploadCardProps {

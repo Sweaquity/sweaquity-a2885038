@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from "react";
-import { setupCvStorageBucket } from "@/utils/setupStorage";
+import { setupCvStorageBucket } from "@/utils/storage";
 
 export const useBucketStatus = () => {
   const [bucketReady, setBucketReady] = useState(false);

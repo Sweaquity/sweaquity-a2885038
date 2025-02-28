@@ -5,7 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Loader2, Eye, Download, Trash2 } from "lucide-react";
 import { CVFile } from "@/hooks/job-seeker/useCVData";
-import { downloadCV, deleteCV, previewCV, setDefaultCV } from "@/utils/setupStorage";
+import { downloadCV, deleteCV, previewCV, setDefaultCV } from "@/utils/storage";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
