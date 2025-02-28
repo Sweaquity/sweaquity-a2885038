@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
@@ -156,3 +155,48 @@ function extractCareerHistory(text: string): any[] {
 
   return careerHistory;
 }
+
+export const parseCV = async (req: any) => {
+  // Get request payload
+  const { userId, cvUrl, preserveUserSkills = true } = req.body;
+
+  // Log the incoming request
+  console.log("CV parsing request received:", { userId, cvUrl, preserveUserSkills });
+
+  try {
+    // Your existing CV parsing logic goes here
+    
+    // After parsing, before storing the skills data
+    if (preserveUserSkills) {
+      // Fetch existing user skills
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('skills')
+        .eq('id', userId)
+        .single();
+        
+      if (profileError) {
+        console.error("Error fetching existing profile skills:", profileError);
+      } else if (profileData?.skills) {
+        // If the user has existing skills, keep them instead of overwriting
+        console.log("Preserving existing user skills:", profileData.skills);
+        
+        // Don't update skills in the profile
+        // Continue with other CV data updates, but skip the skills update
+        
+        // Your existing code to update other CV data...
+        return;
+      }
+    }
+    
+    // Continue with the existing CV parsing and storage logic
+    // This part only runs if preserveUserSkills is false or if user doesn't have existing skills
+    
+  } catch (error) {
+    console.error("Error in parse-cv function:", error);
+    throw error;
+  }
+};
+
+// Make sure to export the function as expected by the Edge Runtime
+export default parseCV;

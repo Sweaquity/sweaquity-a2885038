@@ -16,6 +16,7 @@ interface ProfileSectionProps {
   onSkillsUpdate?: (skills: Skill[]) => void;
   userCVs?: CVFile[];
   onCvListUpdated?: () => void;
+  preserveUserSkills?: boolean;
 }
 
 export const ProfileSection = ({
@@ -27,7 +28,8 @@ export const ProfileSection = ({
   skills = [],
   onSkillsUpdate = () => {},
   userCVs = [],
-  onCvListUpdated = () => {}
+  onCvListUpdated = () => {},
+  preserveUserSkills = true // Default to preserving skills
 }: ProfileSectionProps) => {
   return (
     <div className="space-y-6">
@@ -37,6 +39,7 @@ export const ProfileSection = ({
         parsedCvData={parsedCvData}
         userCVs={userCVs}
         onCvListUpdated={onCvListUpdated}
+        preserveUserSkills={preserveUserSkills}
       />
       <SkillsCard 
         skills={skills}
