@@ -13,9 +13,12 @@ import { listUserCVs } from "@/utils/setupStorage";
 interface ApplicationFormProps {
   projectId: string;
   taskId: string;
-  projectTitle: string;
-  taskTitle: string;
-  onCancel: () => void;
+  projectTitle?: string;
+  taskTitle?: string;
+  onCancel?: () => void;
+  hasStoredCV?: boolean;
+  storedCVUrl?: string | null;
+  onApplicationSubmitted?: () => void;
 }
 
 export const ApplicationForm = ({
@@ -24,6 +27,9 @@ export const ApplicationForm = ({
   projectTitle,
   taskTitle,
   onCancel,
+  hasStoredCV,
+  storedCVUrl,
+  onApplicationSubmitted,
 }: ApplicationFormProps) => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -125,7 +131,12 @@ export const ApplicationForm = ({
         .eq("id", taskId);
       
       toast.success("Application submitted successfully!");
-      navigate("/seeker/dashboard");
+      
+      if (onApplicationSubmitted) {
+        onApplicationSubmitted();
+      } else {
+        navigate("/seeker/dashboard");
+      }
     } catch (error: any) {
       console.error("Error submitting application:", error);
       toast.error(error.message || "Failed to submit application");
@@ -136,10 +147,12 @@ export const ApplicationForm = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium">Apply for: {taskTitle}</h3>
-        <p className="text-sm text-muted-foreground mt-1">Project: {projectTitle}</p>
-      </div>
+      {(projectTitle || taskTitle) && (
+        <div>
+          <h3 className="text-lg font-medium">Apply for: {taskTitle}</h3>
+          {projectTitle && <p className="text-sm text-muted-foreground mt-1">Project: {projectTitle}</p>}
+        </div>
+      )}
       
       <div className="space-y-2">
         <Label htmlFor="message">Message to Project Owner</Label>
@@ -184,9 +197,11 @@ export const ApplicationForm = ({
       </div>
       
       <div className="flex justify-end space-x-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
         <Button 
           type="submit" 
           disabled={isSubmitting || !selectedCvUrl || message.trim().length === 0}

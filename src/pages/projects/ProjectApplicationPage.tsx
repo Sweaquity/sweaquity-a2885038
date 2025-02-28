@@ -622,9 +622,9 @@ export const ProjectApplicationPage = () => {
             )}
             <ApplicationForm
               projectId={id || ''}
-              taskId={selectedTaskId || undefined}
-              hasStoredCV={hasStoredCV}
-              storedCVUrl={storedCVUrl}
+              taskId={selectedTaskId || ''}
+              projectTitle={projectDetails.title}
+              taskTitle={selectedTask?.title}
               onApplicationSubmitted={() => {
                 toast.success("Application submitted successfully");
                 navigate("/seeker/dashboard?tab=applications");
