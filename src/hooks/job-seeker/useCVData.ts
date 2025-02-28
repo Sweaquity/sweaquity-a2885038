@@ -24,7 +24,7 @@ export const useCVData = () => {
     try {
       setIsLoading(true);
       
-      // First, check if the cvs bucket exists, and if not, try to create it
+      // First, check if the cvs bucket exists
       const { data: buckets } = await supabase.storage.listBuckets();
       const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
       
@@ -32,7 +32,7 @@ export const useCVData = () => {
         console.log("CV storage bucket doesn't exist, this is expected since it should be created by an admin");
       }
       
-      // Get user's profile data to check for CV URL - use maybeSingle to prevent errors
+      // Get user's profile data to check for CV URL
       try {
         const { data: profileData, error } = await supabase
           .from('profiles')
@@ -41,18 +41,18 @@ export const useCVData = () => {
           .maybeSingle();
           
         if (error) {
+          // Handle error or column not existing
           if (error.code !== 'PGRST116' && error.code !== '42703') {
-            // Only log errors that aren't "no rows returned" or "column does not exist"
             console.error("Error fetching profile CV URL:", error);
           }
         } else if (profileData?.cv_url) {
           setCvUrl(profileData.cv_url);
         }
       } catch (error) {
-        console.log("Error fetching profile, this might be expected if cv_url column doesn't exist yet:", error);
+        console.log("Error fetching profile, might be expected if cv_url column doesn't exist yet:", error);
       }
 
-      // Get parsed CV data if available - use maybeSingle to prevent errors
+      // Get parsed CV data if available
       try {
         const { data: cvData, error: cvError } = await supabase
           .from('cv_parsed_data')
@@ -62,17 +62,16 @@ export const useCVData = () => {
 
         if (cvError) {
           if (cvError.code !== 'PGRST116') {
-            // Only log errors that aren't "no rows returned"
             console.error("Error fetching CV data:", cvError);
           }
         } else if (cvData) {
           setParsedCvData(cvData);
         }
       } catch (error) {
-        console.log("Error fetching CV data, this might be expected:", error);
+        console.log("Error fetching CV data, might be expected:", error);
       }
       
-      // Get list of user's CVs
+      // Get list of user's CVs if bucket exists
       if (cvsBucketExists) {
         try {
           const cvFiles = await listUserCVs(userId);

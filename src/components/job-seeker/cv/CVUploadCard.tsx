@@ -102,11 +102,6 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFile = e.target.files[0];
-      // Only accept PDF files
-      if (selectedFile.type !== 'application/pdf') {
-        toast.error("Please upload a PDF file");
-        return;
-      }
       setFile(selectedFile);
     }
   };
@@ -163,8 +158,12 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
       
       const userId = session.user.id;
       
+      // Add timestamp to filename to avoid collisions
+      const timestamp = Date.now();
+      const safeFileName = `${timestamp}-${file.name}`;
+      
       // Set the file path to include the user ID as a folder
-      const filePath = `${userId}/${file.name}`;
+      const filePath = `${userId}/${safeFileName}`;
       
       // Upload the file
       const { data, error } = await supabase.storage
@@ -378,7 +377,6 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
                     file:bg-primary file:text-primary-foreground
                     hover:file:bg-primary/90"
                   onChange={handleFileChange}
-                  accept="application/pdf"
                   disabled={!bucketReady}
                 />
               </div>
