@@ -80,11 +80,11 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     try {
       setIsWithdrawing(applicationId);
       
-      // First, update the application status to 'withdrawn'
+      // First, update the application status to 'withdrawn' - use job_app_id instead of id
       const { error: applicationError } = await supabase
         .from('job_applications')
         .update({ status: 'withdrawn' })
-        .eq('id', applicationId);
+        .eq('job_app_id', applicationId);
 
       if (applicationError) {
         console.error("Error updating application:", applicationError);
@@ -99,7 +99,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
           status: 'open',
           task_status: 'open'
         })
-        .eq('id', taskId);
+        .eq('task_id', taskId);
         
       if (taskError) {
         console.error("Error updating task:", taskError);

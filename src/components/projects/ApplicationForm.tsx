@@ -108,6 +108,23 @@ export const ApplicationForm = ({
       
       const userId = session.user.id;
       
+      // Validate IDs are not empty before submission
+      if (!projectId || projectId.trim() === '') {
+        throw new Error("Project ID is missing or invalid");
+      }
+      
+      if (!taskId || taskId.trim() === '') {
+        throw new Error("Task ID is missing or invalid");
+      }
+      
+      console.log("Submitting application with:", {
+        projectId,
+        taskId,
+        userId,
+        message,
+        selectedCvUrl
+      });
+      
       // Submit the application - using the message field instead of notes
       const { error } = await supabase.from("job_applications").insert({
         project_id: projectId,
@@ -128,7 +145,7 @@ export const ApplicationForm = ({
           status: 'pending',
           task_status: 'pending'
         })
-        .eq("id", taskId);
+        .eq("task_id", taskId);
       
       toast.success("Application submitted successfully!");
       

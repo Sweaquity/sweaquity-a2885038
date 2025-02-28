@@ -5,7 +5,8 @@ import { TaskCard } from "./TaskCard";
 import { getProjectMatches } from "@/utils/skillMatching";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 interface OpportunitiesTabProps {
   projects: EquityProject[];
@@ -18,9 +19,40 @@ interface ExtendedSubTask extends SubTask {
 }
 
 export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps) => {
-  console.log("Opportunities tab projects:", projects);
-  console.log("User skills:", userSkills);
+  const [unavailableTaskIds, setUnavailableTaskIds] = useState<Set<string>>(new Set());
   
+  // Fetch user applications to filter out tasks that have already been applied for
+  useEffect(() => {
+    const fetchUserApplications = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        // Get user's existing applications
+        const { data: userApplications, error: applicationsError } = await supabase
+          .from('job_applications')
+          .select('task_id, status')
+          .eq('user_id', session.user.id);
+
+        if (applicationsError) throw applicationsError;
+
+        // Create set of task IDs that are not available (anything except withdrawn and rejected)
+        const unavailableIds = new Set(
+          userApplications
+            ?.filter(app => ['pending', 'in review', 'negotiation', 'accepted'].includes(app.status))
+            .map(app => app.task_id) || []
+        );
+        
+        setUnavailableTaskIds(unavailableIds);
+        console.log("Unavailable task IDs:", Array.from(unavailableIds));
+      } catch (error) {
+        console.error("Error fetching user applications:", error);
+      }
+    };
+
+    fetchUserApplications();
+  }, []);
+
   useEffect(() => {
     // Debug logging for project IDs
     console.log("All project IDs:", projects.map(p => p.id));
@@ -40,7 +72,13 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
     });
   }, [projects]);
 
-  const matchedProjects = getProjectMatches(projects, userSkills);
+  // Filter projects to remove tasks that have already been applied for
+  const filteredProjects = projects.map(project => ({
+    ...project,
+    sub_tasks: project.sub_tasks?.filter(task => !unavailableTaskIds.has(task.task_id)) || []
+  })).filter(project => project.sub_tasks && project.sub_tasks.length > 0);
+  
+  const matchedProjects = getProjectMatches(filteredProjects, userSkills);
   
   console.log("Matched projects after filtering:", matchedProjects);
 
@@ -113,8 +151,8 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                       // Convert MatchedTask to ExtendedSubTask with required properties and matched skills
                       const extendedTask: ExtendedSubTask = {
                         ...task,
-                        task_id: task.task_id || task.id, // Use task_id if available, otherwise id
-                        id: task.task_id || task.id, // Ensure id is also set
+                        task_id: task.task_id, 
+                        id: task.task_id, // Keep id for backward compatibility
                         project_id: project.projectId,
                         skill_requirements: task.matchedSkills?.map(skill => ({
                           skill,

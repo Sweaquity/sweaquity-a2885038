@@ -264,11 +264,12 @@ export const ProjectApplicationPage = () => {
         console.log("Unavailable task IDs:", Array.from(unavailableTaskIds));
 
         const processedTasks = taskData
-          .filter(task => task.status === 'open' && !unavailableTaskIds.has(task.id))
+          .filter(task => task.status === 'open' && !unavailableTaskIds.has(task.task_id))
           .map(task => {
             const { matchScore, matchedSkills } = calculateSkillMatch(task, extractedSkills);
             return {
               ...task,
+              id: task.task_id, // Ensure id is set to task_id for consistency
               matchScore,
               matchedSkills
             };
@@ -447,9 +448,28 @@ export const ProjectApplicationPage = () => {
                     <SelectContent>
                       {subTasks.map((task) => (
                         <SelectItem key={task.id} value={task.id}>
-                          <div>
-                            <span className="font-medium">{task.title}</span>
-                            <span className="ml-2 text-xs">{task.matchScore}% skill match</span>
+                          <div className="flex flex-col">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">{task.title}</span>
+                              <span className="ml-2 text-xs px-2 py-0.5 rounded bg-primary/10">{task.matchScore}% match</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              <span className="mr-2">{task.equity_allocation}% equity</span>
+                              <span className="mr-2">•</span>
+                              <span>{task.timeframe}</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {task.matchedSkills?.slice(0, 2).map((skill, idx) => (
+                                <span key={idx} className="text-xs bg-green-100 text-green-800 px-1 rounded">
+                                  {skill}
+                                </span>
+                              ))}
+                              {task.matchedSkills && task.matchedSkills.length > 2 && (
+                                <span className="text-xs text-muted-foreground">
+                                  +{task.matchedSkills.length - 2}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </SelectItem>
                       ))}
