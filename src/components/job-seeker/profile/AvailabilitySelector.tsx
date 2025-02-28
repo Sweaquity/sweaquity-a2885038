@@ -31,13 +31,13 @@ export const AvailabilitySelector = ({
   return (
     <div className="space-y-2">
       <Label htmlFor="availability">Availability *</Label>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {AVAILABILITY_OPTIONS.map((option) => (
           <Button
             key={option}
             type="button"
             variant={selected.includes(option) ? "default" : "outline"}
-            className="justify-start"
+            className="justify-start text-left whitespace-normal h-auto py-2"
             onClick={() => handleSelect(option)}
           >
             {option}

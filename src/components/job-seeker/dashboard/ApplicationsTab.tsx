@@ -2,19 +2,25 @@
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trash2, FileText, ExternalLink } from "lucide-react";
+import { Trash2, FileText } from "lucide-react";
 import { JobApplication } from "@/types/jobSeeker";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import { useState } from "react";
 
 interface ApplicationsTabProps {
   applications: JobApplication[];
+  onApplicationUpdated?: () => void;
 }
 
-export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
+export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} }: ApplicationsTabProps) => {
+  const [isWithdrawing, setIsWithdrawing] = useState<string | null>(null);
+
   const handleWithdraw = async (applicationId: string, taskId: string) => {
     try {
+      setIsWithdrawing(applicationId);
+      
       // First, update the application status to 'withdrawn'
       const { error: applicationError } = await supabase
         .from('job_applications')
@@ -41,19 +47,42 @@ export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
       }
       
       toast.success("Application withdrawn successfully");
-      
-      // Wait a moment to ensure the database updates are complete
-      setTimeout(() => {
-        window.location.href = "/seeker/dashboard?tab=applications";
-      }, 500);
+      onApplicationUpdated();
+
     } catch (error) {
       console.error('Error withdrawing application:', error);
       toast.error("Failed to withdraw application");
+    } finally {
+      setIsWithdrawing(null);
     }
   };
 
   const openCV = (cvUrl: string) => {
-    window.open(cvUrl, '_blank');
+    const url = new URL(cvUrl);
+    const bucketName = url.pathname.split('/')[2]; // Get the bucket name from the URL
+    const filePath = url.pathname.split('/').slice(3).join('/'); // Get the file path without the bucket name
+    
+    // Create a signed URL for the CV
+    const getSignedUrl = async () => {
+      try {
+        const { data, error } = await supabase.storage
+          .from(bucketName)
+          .createSignedUrl(filePath, 60);
+          
+        if (error) {
+          console.error("Error creating signed URL:", error);
+          toast.error("Could not access the CV file");
+          return;
+        }
+        
+        window.open(data.signedUrl, '_blank');
+      } catch (err) {
+        console.error("Error opening CV:", err);
+        toast.error("Failed to open CV");
+      }
+    };
+    
+    getSignedUrl();
   };
 
   return (
@@ -125,9 +154,11 @@ export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
                         variant="outline"
                         size="sm"
                         className="text-destructive"
+                        disabled={isWithdrawing === application.id}
                         onClick={() => handleWithdraw(application.id, application.task_id)}
                       >
                         <Trash2 className="h-4 w-4" />
+                        {isWithdrawing === application.id && <span className="ml-2">...</span>}
                       </Button>
                     )}
                   </div>
@@ -196,13 +227,15 @@ export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
                   )}
                   {application.status === 'pending' && (
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       onClick={() => handleWithdraw(application.id, application.task_id)}
+                      disabled={isWithdrawing === application.id}
                       title="Withdraw application"
                     >
                       <Trash2 className="h-4 w-4" />
+                      {isWithdrawing === application.id && <span className="ml-2">...</span>}
                     </Button>
                   )}
                 </div>

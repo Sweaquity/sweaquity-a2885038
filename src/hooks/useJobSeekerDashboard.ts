@@ -9,7 +9,7 @@ import { useEquityProjects } from "./job-seeker/useEquityProjects";
 import { useCVData } from "./job-seeker/useCVData";
 import { EquityProject } from "@/types/jobSeeker";
 
-export const useJobSeekerDashboard = () => {
+export const useJobSeekerDashboard = (refreshTrigger = 0) => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [availableOpportunities, setAvailableOpportunities] = useState<EquityProject[]>([]);
@@ -38,6 +38,8 @@ export const useJobSeekerDashboard = () => {
 
     const loadDashboardData = async () => {
       try {
+        setIsLoading(true);
+        
         // Initial session check
         const hasSession = await checkSession();
         if (!hasSession) return;
@@ -168,7 +170,7 @@ export const useJobSeekerDashboard = () => {
     return () => {
       clearInterval(sessionCheckInterval);
     };
-  }, [navigate]);
+  }, [navigate, refreshTrigger]);
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -176,6 +178,17 @@ export const useJobSeekerDashboard = () => {
       toast.error("Failed to sign out");
     } else {
       navigate('/auth/seeker');
+    }
+  };
+
+  const refreshApplications = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      await loadApplications(session.user.id);
+    } catch (error) {
+      console.error('Error refreshing applications:', error);
     }
   };
 
@@ -195,6 +208,7 @@ export const useJobSeekerDashboard = () => {
     setParsedCvData,
     setEquityProjects,
     handleSignOut,
-    handleSkillsUpdate
+    handleSkillsUpdate,
+    refreshApplications
   };
 };

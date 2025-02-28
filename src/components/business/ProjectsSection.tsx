@@ -3,11 +3,16 @@ import { useEffect, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, ChevronDown, ChevronRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ProjectList } from "./projects/ProjectList";
 import { ProjectForm } from "./projects/ProjectForm";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface SkillRequirement {
   skill: string;
@@ -42,6 +47,7 @@ interface Project {
 export const ProjectsSection = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [showProjectForm, setShowProjectForm] = useState(false);
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadProjects();
@@ -49,9 +55,13 @@ export const ProjectsSection = () => {
 
   const loadProjects = async () => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
       const { data: projectsData, error: projectsError } = await supabase
         .from('business_projects')
-        .select('*');
+        .select('*')
+        .eq('business_id', session.user.id);
 
       if (projectsError) throw projectsError;
 
@@ -88,6 +98,18 @@ export const ProjectsSection = () => {
     setProjects(projects.filter(project => project.id !== projectId));
   };
 
+  const toggleProjectExpanded = (projectId: string) => {
+    setExpandedProjects(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(projectId)) {
+        newExpanded.delete(projectId);
+      } else {
+        newExpanded.add(projectId);
+      }
+      return newExpanded;
+    });
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -116,11 +138,38 @@ export const ProjectsSection = () => {
                 <ProjectForm onProjectCreated={handleProjectCreated} />
               </div>
             ) : (
-              <ProjectList 
-                projects={projects}
-                onProjectUpdated={handleProjectUpdated}
-                onProjectDeleted={handleProjectDeleted}
-              />
+              <div className="space-y-4">
+                {projects.length === 0 ? (
+                  <p className="text-muted-foreground">No active projects found.</p>
+                ) : (
+                  projects.map((project) => (
+                    <Collapsible 
+                      key={project.id} 
+                      open={expandedProjects.has(project.id)}
+                      onOpenChange={() => toggleProjectExpanded(project.id)}
+                      className="border rounded-lg overflow-hidden"
+                    >
+                      <CollapsibleTrigger className="flex justify-between items-center w-full p-4 text-left hover:bg-muted/50">
+                        <div>
+                          <h3 className="text-lg font-medium">{project.title}</h3>
+                          <p className="text-sm text-muted-foreground">{project.description}</p>
+                        </div>
+                        {expandedProjects.has(project.id) ? 
+                          <ChevronDown className="h-5 w-5 flex-shrink-0" /> : 
+                          <ChevronRight className="h-5 w-5 flex-shrink-0" />
+                        }
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="px-4 pb-4">
+                        <ProjectList 
+                          projects={[project]}
+                          onProjectUpdated={handleProjectUpdated}
+                          onProjectDeleted={handleProjectDeleted}
+                        />
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))
+                )}
+              </div>
             )}
           </TabsContent>
 

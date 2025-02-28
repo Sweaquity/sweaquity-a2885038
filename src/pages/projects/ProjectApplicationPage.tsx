@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -69,6 +70,7 @@ export const ProjectApplicationPage = () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user?.id) {
           toast.error("Please sign in to view this page");
+          navigate('/auth/seeker');
           return;
         }
 
@@ -90,6 +92,7 @@ export const ProjectApplicationPage = () => {
 
         if (projectError) throw projectError;
 
+        // Fetch all tasks
         const { data: taskData, error: taskError } = await supabase
           .from('project_sub_tasks')
           .select('*')
@@ -97,6 +100,7 @@ export const ProjectApplicationPage = () => {
 
         if (taskError) throw taskError;
 
+        // Get user's profile
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -105,18 +109,52 @@ export const ProjectApplicationPage = () => {
 
         if (profileError) throw profileError;
 
+        // Check for existing applications by this user
+        const { data: userApplications, error: applicationError } = await supabase
+          .from('job_applications')
+          .select('task_id, status')
+          .eq('user_id', session.user.id);
+          
+        if (applicationError) throw applicationError;
+          
+        // Create set of task IDs that are not available to apply to
+        const unavailableTaskIds = new Set(
+          userApplications
+            .filter(app => ['pending', 'in review', 'negotiation', 'accepted'].includes(app.status))
+            .map(app => app.task_id)
+        );
+          
+        console.log("Unavailable task IDs:", Array.from(unavailableTaskIds));
+
+        // Filter available tasks
+        const availableTasks = taskData.filter(task => 
+          task.status === 'open' && !unavailableTaskIds.has(task.id)
+        );
+
         const { data: cvData } = await supabase
           .from('cv_parsed_data')
           .select('cv_url')
           .eq('user_id', session.user.id)
           .single();
 
+        // Get CV URL from profile if present
+        const { data: cvUrlData } = await supabase
+          .from('profiles')
+          .select('cv_url')
+          .eq('id', session.user.id)
+          .single();
+
         setBusinessDetails(projectData.businesses);
         setProjectDetails(projectData);
-        setSubTasks(taskData);
+        setSubTasks(availableTasks);
         setJobSeekerProfile(profileData);
-        setHasStoredCV(!!cvData?.cv_url);
-        setStoredCVUrl(cvData?.cv_url || null);
+        setHasStoredCV(!!cvData?.cv_url || !!cvUrlData?.cv_url);
+        setStoredCVUrl(cvData?.cv_url || cvUrlData?.cv_url || null);
+
+        // If available, automatically select the first task
+        if (availableTasks.length > 0) {
+          setSelectedTaskId(availableTasks[0].id);
+        }
 
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -129,7 +167,7 @@ export const ProjectApplicationPage = () => {
     if (id) {
       fetchData();
     }
-  }, [id]);
+  }, [id, navigate]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -201,7 +239,7 @@ export const ProjectApplicationPage = () => {
             </div>
           </div>
 
-          {subTasks.length > 0 && (
+          {subTasks.length > 0 ? (
             <div>
               <h4 className="font-medium mb-2">Available Tasks</h4>
               <div className="overflow-x-auto">
@@ -251,50 +289,56 @@ export const ProjectApplicationPage = () => {
                 </table>
               </div>
             </div>
+          ) : (
+            <div className="p-4 border rounded-md bg-muted/50">
+              <p className="text-center text-muted-foreground">No available tasks to apply for at this time.</p>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <h3 className="text-xl font-semibold">Submit Application</h3>
-        </CardHeader>
-        <CardContent>
-          {jobSeekerProfile && (
-            <div className="mb-6">
-              <h4 className="font-medium mb-2">Your Profile Information</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Name: </span>
-                  {jobSeekerProfile.first_name} {jobSeekerProfile.last_name}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Title: </span>
-                  {jobSeekerProfile.title}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Location: </span>
-                  {jobSeekerProfile.location}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Employment Preference: </span>
-                  {jobSeekerProfile.employment_preference}
+      {subTasks.length > 0 && (
+        <Card>
+          <CardHeader>
+            <h3 className="text-xl font-semibold">Submit Application</h3>
+          </CardHeader>
+          <CardContent>
+            {jobSeekerProfile && (
+              <div className="mb-6">
+                <h4 className="font-medium mb-2">Your Profile Information</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Name: </span>
+                    {jobSeekerProfile.first_name} {jobSeekerProfile.last_name}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Title: </span>
+                    {jobSeekerProfile.title}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Location: </span>
+                    {jobSeekerProfile.location}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Employment Preference: </span>
+                    {jobSeekerProfile.employment_preference}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-          <ApplicationForm
-            projectId={id || ''}
-            taskId={selectedTaskId || undefined}
-            hasStoredCV={hasStoredCV}
-            storedCVUrl={storedCVUrl}
-            onApplicationSubmitted={() => {
-              toast.success("Application submitted successfully");
-              navigate("/seeker/dashboard");
-            }}
-          />
-        </CardContent>
-      </Card>
+            )}
+            <ApplicationForm
+              projectId={id || ''}
+              taskId={selectedTaskId || undefined}
+              hasStoredCV={hasStoredCV}
+              storedCVUrl={storedCVUrl}
+              onApplicationSubmitted={() => {
+                toast.success("Application submitted successfully");
+                navigate("/seeker/dashboard?tab=applications");
+              }}
+            />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

@@ -23,6 +23,7 @@ const JobSeekerDashboard = () => {
   const [activeTab, setActiveTab] = useState<string>(tabFromUrl || "dashboard");
   const [isRedirecting, setIsRedirecting] = useState(true);
   const [profileComplete, setProfileComplete] = useState(false);
+  const [forceRefresh, setForceRefresh] = useState(0);
   
   const {
     isLoading,
@@ -35,13 +36,19 @@ const JobSeekerDashboard = () => {
     parsedCvData,
     skills,
     handleSignOut,
-    handleSkillsUpdate
-  } = useJobSeekerDashboard();
+    handleSkillsUpdate,
+    refreshApplications
+  } = useJobSeekerDashboard(forceRefresh);
 
   // Handle tab changes by updating the URL
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     navigate(`/seeker/dashboard?tab=${value}`, { replace: true });
+  };
+
+  // Handle application updates
+  const handleApplicationUpdated = () => {
+    setForceRefresh(prev => prev + 1);
   };
 
   useEffect(() => {
@@ -161,7 +168,10 @@ const JobSeekerDashboard = () => {
           </TabsContent>
 
           <TabsContent value="applications" className="space-y-6">
-            <ApplicationsTab applications={applications} />
+            <ApplicationsTab 
+              applications={applications} 
+              onApplicationUpdated={handleApplicationUpdated}
+            />
             <EquityTab equityProjects={equityProjects} />
           </TabsContent>
 

@@ -4,18 +4,13 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ProjectsSection } from "@/components/business/ProjectsSection";
 import { BusinessProfileCompletion } from "@/components/business/BusinessProfileCompletion";
-import { UserCircle2, ChevronDown } from "lucide-react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { UserCircle2 } from "lucide-react";
 import { ActiveRolesTable } from "@/components/business/roles/ActiveRolesTable";
+import { ProjectApplicationsSection } from "@/components/business/ProjectApplicationsSection";
 
 interface SubTask {
   id: string;
@@ -43,7 +38,6 @@ const BusinessDashboard = () => {
   const [businessData, setBusinessData] = useState<any>(null);
   const [hasJobSeekerProfile, setHasJobSeekerProfile] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [applications, setApplications] = useState<any[]>([]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -64,9 +58,6 @@ const BusinessDashboard = () => {
         if (businessError) throw businessError;
         setBusinessData(businessData);
 
-        console.log("Business ID:", session.user.id);
-        console.log("Business data:", businessData);
-
         // Load projects for this business
         const { data: projectsData, error: projectsError } = await supabase
           .from('business_projects')
@@ -75,100 +66,24 @@ const BusinessDashboard = () => {
 
         if (projectsError) throw projectsError;
         
-        console.log("Projects data:", projectsData);
+        if (projectsData && projectsData.length > 0) {
+          const projectIds = projectsData.map(p => p.id);
 
-        if (!projectsData || projectsData.length === 0) {
-          console.log("No projects found for this business");
-          setIsLoading(false);
-          return;
-        }
-
-        const projectIds = projectsData.map(p => p.id);
-        console.log("Project IDs:", projectIds);
-
-        // Get all tasks for these projects
-        const { data: tasksData, error: tasksError } = await supabase
-          .from('project_sub_tasks')
-          .select('*')
-          .in('project_id', projectIds);
-
-        if (tasksError) throw tasksError;
-        
-        console.log("Tasks data:", tasksData);
-
-        // Get all applications for these projects
-        const { data: rawApplicationsData, error: applicationsError } = await supabase
-          .from('job_applications')
-          .select('*, user:user_id(*)')
-          .in('project_id', projectIds);
-
-        if (applicationsError) {
-          console.error('Error fetching applications:', applicationsError);
-          throw applicationsError;
-        }
-        
-        console.log("Raw applications data:", rawApplicationsData);
-        
-        // Now fetch the profile data for each applicant
-        const applicationsWithProfiles = [];
-        
-        for (const app of rawApplicationsData) {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('first_name, last_name, title, location, employment_preference')
-            .eq('id', app.user_id)
-            .single();
-            
-          if (profileError) {
-            console.error('Error fetching profile for user:', app.user_id, profileError);
-            continue;
-          }
-          
-          // Get task details
-          const { data: taskData, error: taskError } = await supabase
+          // Get all tasks for these projects
+          const { data: tasksData, error: tasksError } = await supabase
             .from('project_sub_tasks')
             .select('*')
-            .eq('id', app.task_id)
-            .single();
-            
-          if (taskError) {
-            console.error('Error fetching task details:', taskError);
-            continue;
-          }
-          
-          // Get project details
-          const { data: projectData, error: projectError } = await supabase
-            .from('business_projects')
-            .select('title')
-            .eq('id', app.project_id)
-            .single();
-            
-          if (projectError) {
-            console.error('Error fetching project details:', projectError);
-            continue;
-          }
-          
-          applicationsWithProfiles.push({
-            ...app,
-            profile: profileData,
-            business_roles: {
-              ...taskData,
-              project: {
-                title: projectData.title
-              }
-            }
-          });
+            .in('project_id', projectIds);
+
+          if (tasksError) throw tasksError;
+
+          const projectsWithTasks = projectsData.map((project: any) => ({
+            ...project,
+            tasks: tasksData.filter((task: any) => task.project_id === project.id) || []
+          }));
+
+          setProjects(projectsWithTasks);
         }
-        
-        console.log("Applications with profiles:", applicationsWithProfiles);
-        setApplications(applicationsWithProfiles);
-
-        const projectsWithTasks = projectsData.map((project: any) => ({
-          ...project,
-          tasks: tasksData.filter((task: any) => task.project_id === project.id) || []
-        }));
-
-        setProjects(projectsWithTasks);
 
         // Check if user has a job seeker profile
         const { data: profileData } = await supabase
@@ -200,27 +115,6 @@ const BusinessDashboard = () => {
 
   const handleProfileSwitch = () => {
     navigate('/seeker/dashboard');
-  };
-
-  const handleStatusChange = async (applicationId: string, newStatus: string) => {
-    try {
-      const { error } = await supabase
-        .from('job_applications')
-        .update({ status: newStatus })
-        .eq('id', applicationId);
-      
-      if (error) throw error;
-      
-      // Update local state
-      setApplications(applications.map(app => 
-        app.id === applicationId ? { ...app, status: newStatus } : app
-      ));
-      
-      toast.success(`Application status updated to ${newStatus}`);
-    } catch (error) {
-      console.error('Error updating application status:', error);
-      toast.error("Failed to update application status");
-    }
   };
 
   if (isLoading) {
@@ -347,22 +241,14 @@ const BusinessDashboard = () => {
                   <p className="text-muted-foreground">No active projects found.</p>
                 ) : (
                   projects.map((project) => (
-                    <Collapsible key={project.id} className="mb-4">
-                      <CollapsibleTrigger className="flex justify-between items-center w-full p-4 rounded-lg bg-secondary">
-                        <div>
-                          <h3 className="text-lg font-medium">{project.title}</h3>
-                          <p className="text-sm text-muted-foreground">{project.description}</p>
-                        </div>
-                        <ChevronDown className="h-5 w-5" />
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-2">
-                        {project.tasks.length === 0 ? (
-                          <p className="text-sm text-muted-foreground p-4">No tasks available for this project.</p>
-                        ) : (
-                          <ActiveRolesTable project={project} />
-                        )}
-                      </CollapsibleContent>
-                    </Collapsible>
+                    <div key={project.id} className="mb-6">
+                      <h3 className="text-lg font-medium mb-2">{project.title}</h3>
+                      {project.tasks.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No tasks available for this project.</p>
+                      ) : (
+                        <ActiveRolesTable project={project} />
+                      )}
+                    </div>
                   ))
                 )}
               </CardContent>
@@ -370,64 +256,7 @@ const BusinessDashboard = () => {
           </TabsContent>
 
           <TabsContent value="applications">
-            <Card>
-              <CardHeader>
-                <h2 className="text-lg font-semibold">Applications</h2>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {applications.length > 0 ? (
-                    applications.map((application) => (
-                      <div key={application.id} className="border p-4 rounded-lg space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="font-medium text-sm text-muted-foreground">Applicant</p>
-                            <p className="font-medium">{application.profile?.first_name} {application.profile?.last_name}</p>
-                            <p className="text-sm text-muted-foreground">{application.profile?.title}</p>
-                            <p className="text-sm text-muted-foreground">{application.profile?.location}</p>
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm text-muted-foreground">Role Details</p>
-                            <p className="font-medium">{application.business_roles?.title}</p>
-                            <p className="text-sm text-muted-foreground">{application.business_roles?.project?.title}</p>
-                          </div>
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm text-muted-foreground">Application Message</p>
-                          <p className="text-sm">{application.message}</p>
-                        </div>
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                          <div className="space-x-2">
-                            <Badge>{application.status}</Badge>
-                            <Badge variant="outline">
-                              {application.profile?.employment_preference}
-                            </Badge>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <select 
-                              className="px-2 py-1 border rounded text-sm"
-                              value={application.status}
-                              onChange={(e) => handleStatusChange(application.id, e.target.value)}
-                            >
-                              <option value="pending">Pending</option>
-                              <option value="in review">In Review</option>
-                              <option value="negotiation">Negotiation</option>
-                              <option value="accepted">Accepted</option>
-                              <option value="rejected">Rejected</option>
-                            </select>
-                            <p className="text-sm text-muted-foreground">
-                              Applied {new Date(application.applied_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground">No applications found.</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <ProjectApplicationsSection />
           </TabsContent>
         </Tabs>
       </div>

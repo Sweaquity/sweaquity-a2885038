@@ -9,13 +9,50 @@ export const useCVData = () => {
 
   const loadCVData = async (userId: string) => {
     try {
-      const { data: cvData } = await supabase
+      // First, check if the cvs bucket exists, and if not, try to create it
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
+      
+      if (!cvsBucketExists) {
+        console.log("CV storage bucket doesn't exist, attempting to create it");
+        try {
+          const { error: bucketError } = await supabase.storage.createBucket('cvs', {
+            public: true
+          });
+          
+          if (bucketError) {
+            console.error("Error creating cvs bucket:", bucketError);
+          } else {
+            console.log("Successfully created cvs bucket");
+          }
+        } catch (bucketErr) {
+          console.error("Error creating storage bucket:", bucketErr);
+        }
+      }
+      
+      // Get user's profile data to check for CV URL
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('cv_url')
+        .eq('id', userId)
+        .single();
+        
+      if (profileError) {
+        console.error("Error fetching profile CV URL:", profileError);
+      } else if (profileData?.cv_url) {
+        setCvUrl(profileData.cv_url);
+      }
+
+      // Get parsed CV data if available
+      const { data: cvData, error: cvError } = await supabase
         .from('cv_parsed_data')
         .select('*')
         .eq('user_id', userId)
         .maybeSingle();
 
-      if (cvData) {
+      if (cvError) {
+        console.error("Error fetching CV data:", cvError);
+      } else if (cvData) {
         setParsedCvData(cvData);
       }
     } catch (error) {
