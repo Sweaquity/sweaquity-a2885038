@@ -98,7 +98,6 @@ export const TaskCard = ({
         <div className="pt-2">
           <Link 
             to={`/projects/apply/${task.project_id}/${task.task_id}`}
-            passHref
           >
             <Button className="w-full">
               Apply Now
