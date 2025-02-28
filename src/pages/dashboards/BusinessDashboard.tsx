@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -68,7 +67,7 @@ const BusinessDashboard = () => {
         console.log("Business ID:", session.user.id);
         console.log("Business data:", businessData);
 
-        // Load projects and their tasks
+        // Load projects for this business
         const { data: projectsData, error: projectsError } = await supabase
           .from('business_projects')
           .select('*')
@@ -80,6 +79,8 @@ const BusinessDashboard = () => {
 
         if (!projectsData || projectsData.length === 0) {
           console.log("No projects found for this business");
+          setIsLoading(false);
+          return;
         }
 
         const projectIds = projectsData.map(p => p.id);
@@ -89,41 +90,78 @@ const BusinessDashboard = () => {
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
           .select('*')
-          .in('project_id', projectIds.length > 0 ? projectIds : ['no-projects']);
+          .in('project_id', projectIds);
 
         if (tasksError) throw tasksError;
         
         console.log("Tasks data:", tasksData);
 
         // Get all applications for these projects
-        const { data: applicationsData, error: applicationsError } = await supabase
+        const { data: rawApplicationsData, error: applicationsError } = await supabase
           .from('job_applications')
-          .select(`
-            *,
-            profile:profiles (
-              first_name,
-              last_name,
-              title,
-              location,
-              employment_preference,
-              created_at
-            ),
-            business_roles:project_sub_tasks (
-              *,
-              project:business_projects (
-                title,
-                business:businesses (
-                  company_name
-                )
-              )
-            )
-          `)
-          .in('project_id', projectIds.length > 0 ? projectIds : ['no-projects']);
+          .select('*, user:user_id(*)')
+          .in('project_id', projectIds);
 
-        if (applicationsError) throw applicationsError;
+        if (applicationsError) {
+          console.error('Error fetching applications:', applicationsError);
+          throw applicationsError;
+        }
         
-        console.log("Applications data:", applicationsData);
-        setApplications(applicationsData || []);
+        console.log("Raw applications data:", rawApplicationsData);
+        
+        // Now fetch the profile data for each applicant
+        const applicationsWithProfiles = [];
+        
+        for (const app of rawApplicationsData) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, title, location, employment_preference')
+            .eq('id', app.user_id)
+            .single();
+            
+          if (profileError) {
+            console.error('Error fetching profile for user:', app.user_id, profileError);
+            continue;
+          }
+          
+          // Get task details
+          const { data: taskData, error: taskError } = await supabase
+            .from('project_sub_tasks')
+            .select('*')
+            .eq('id', app.task_id)
+            .single();
+            
+          if (taskError) {
+            console.error('Error fetching task details:', taskError);
+            continue;
+          }
+          
+          // Get project details
+          const { data: projectData, error: projectError } = await supabase
+            .from('business_projects')
+            .select('title')
+            .eq('id', app.project_id)
+            .single();
+            
+          if (projectError) {
+            console.error('Error fetching project details:', projectError);
+            continue;
+          }
+          
+          applicationsWithProfiles.push({
+            ...app,
+            profile: profileData,
+            business_roles: {
+              ...taskData,
+              project: {
+                title: projectData.title
+              }
+            }
+          });
+        }
+        
+        console.log("Applications with profiles:", applicationsWithProfiles);
+        setApplications(applicationsWithProfiles);
 
         const projectsWithTasks = projectsData.map((project: any) => ({
           ...project,

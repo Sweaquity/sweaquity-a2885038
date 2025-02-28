@@ -9,7 +9,7 @@ import { ApplicationsTab } from "@/components/job-seeker/dashboard/ApplicationsT
 import { EquityTab } from "@/components/job-seeker/dashboard/EquityTab";
 import { OpportunitiesTab } from "@/components/job-seeker/dashboard/OpportunitiesTab";
 import { ProjectsOverview } from "@/components/job-seeker/ProjectsOverview";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ProfileCompletionForm } from "@/components/job-seeker/ProfileCompletionForm";
@@ -17,7 +17,10 @@ import { ProfileCompletionForm } from "@/components/job-seeker/ProfileCompletion
 const JobSeekerDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [searchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  
+  const [activeTab, setActiveTab] = useState<string>(tabFromUrl || "dashboard");
   const [isRedirecting, setIsRedirecting] = useState(true);
   const [profileComplete, setProfileComplete] = useState(false);
   
@@ -34,6 +37,19 @@ const JobSeekerDashboard = () => {
     handleSignOut,
     handleSkillsUpdate
   } = useJobSeekerDashboard();
+
+  // Handle tab changes by updating the URL
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    navigate(`/seeker/dashboard?tab=${value}`, { replace: true });
+  };
+
+  useEffect(() => {
+    // Set the active tab based on URL params
+    if (tabFromUrl && ['dashboard', 'profile', 'applications', 'opportunities'].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
 
   useEffect(() => {
     // Check authentication and profile completion
@@ -68,6 +84,7 @@ const JobSeekerDashboard = () => {
         const { state } = location;
         if (state && state.activeTab) {
           setActiveTab(state.activeTab);
+          navigate(`/seeker/dashboard?tab=${state.activeTab}`, { replace: true });
         }
         
         setIsRedirecting(false);
@@ -107,7 +124,7 @@ const JobSeekerDashboard = () => {
 
         <Tabs 
           value={activeTab} 
-          onValueChange={setActiveTab}
+          onValueChange={handleTabChange}
           className="mt-6 space-y-6"
         >
           <TabsList className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -127,9 +144,9 @@ const JobSeekerDashboard = () => {
               profile={profile}
               applications={applications}
               equityProjects={equityProjects}
-              onViewProfile={() => setActiveTab("profile")}
-              onViewApplications={() => setActiveTab("applications")}
-              onViewOpportunities={() => setActiveTab("opportunities")}
+              onViewProfile={() => handleTabChange("profile")}
+              onViewApplications={() => handleTabChange("applications")}
+              onViewOpportunities={() => handleTabChange("opportunities")}
             />
           </TabsContent>
 

@@ -15,16 +15,18 @@ interface ApplicationsTabProps {
 export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
   const handleWithdraw = async (applicationId: string, taskId: string) => {
     try {
-      // Start a transaction to update both tables
-      // 1. Update the application status to 'withdrawn'
+      // First, update the application status to 'withdrawn'
       const { error: applicationError } = await supabase
         .from('job_applications')
         .update({ status: 'withdrawn' })
         .eq('id', applicationId);
 
-      if (applicationError) throw applicationError;
+      if (applicationError) {
+        console.error("Error updating application:", applicationError);
+        throw applicationError;
+      }
       
-      // 2. Update the task status to show it's available again
+      // Then, update the task status to 'open'
       const { error: taskError } = await supabase
         .from('project_sub_tasks')
         .update({ 
@@ -33,11 +35,17 @@ export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
         })
         .eq('id', taskId);
         
-      if (taskError) throw taskError;
+      if (taskError) {
+        console.error("Error updating task:", taskError);
+        throw taskError;
+      }
       
       toast.success("Application withdrawn successfully");
-      // Reload the page to refresh the applications list
-      window.location.reload();
+      
+      // Wait a moment to ensure the database updates are complete
+      setTimeout(() => {
+        window.location.href = "/seeker/dashboard?tab=applications";
+      }, 500);
     } catch (error) {
       console.error('Error withdrawing application:', error);
       toast.error("Failed to withdraw application");

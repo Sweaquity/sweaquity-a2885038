@@ -20,15 +20,29 @@ export const useJobSeekerDashboard = () => {
   const { cvUrl, setCvUrl, parsedCvData, setParsedCvData, loadCVData } = useCVData();
 
   useEffect(() => {
+    // Define a function to check authentication periodically (useful for mobile)
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log("No active session found, redirecting to login");
+        navigate('/auth/seeker');
+        return false;
+      }
+      return true;
+    };
+
+    // Set up periodic session checks (especially important for mobile devices)
+    const sessionCheckInterval = setInterval(async () => {
+      await checkSession();
+    }, 60000); // Check every minute
+
     const loadDashboardData = async () => {
       try {
-        // Check user session
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          navigate('/auth/seeker');
-          return;
-        }
+        // Initial session check
+        const hasSession = await checkSession();
+        if (!hasSession) return;
 
+        const { data: { session } } = await supabase.auth.getSession();
         console.log("Loading profile data for user:", session.user.id);
 
         // Load user's profile, applications, and CV data
@@ -149,6 +163,11 @@ export const useJobSeekerDashboard = () => {
     };
 
     loadDashboardData();
+
+    // Cleanup interval on component unmount
+    return () => {
+      clearInterval(sessionCheckInterval);
+    };
   }, [navigate]);
 
   const handleSignOut = async () => {

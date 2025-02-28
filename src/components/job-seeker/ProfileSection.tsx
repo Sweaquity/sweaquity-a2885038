@@ -2,6 +2,7 @@
 import { CVUploadCard } from "./cv/CVUploadCard";
 import { SkillsCard } from "./skills/SkillsCard";
 import { CareerHistoryCard } from "./career/CareerHistoryCard";
+import { ProfileEditor } from "./profile/ProfileEditor";
 import { Profile, Skill } from "@/types/jobSeeker";
 
 interface ProfileSectionProps {
@@ -21,6 +22,7 @@ export const ProfileSection = ({
 }: ProfileSectionProps) => {
   return (
     <div className="space-y-6">
+      <ProfileEditor profile={profile} />
       <CVUploadCard 
         cvUrl={cvUrl}
         parsedCvData={parsedCvData}
