@@ -69,16 +69,17 @@ export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
             )}
           </div>
 
-          {/* Responsive form for adding new skills - mobile first design */}
-          <div className="space-y-2">
-            <div className="grid grid-cols-1 gap-2">
+          {/* Single form for adding new skills */}
+          <div className="grid grid-cols-12 gap-2">
+            <div className="col-span-12 sm:col-span-5">
               <Input
                 placeholder="Add a new skill"
                 value={newSkill}
                 onChange={(e) => setNewSkill(e.target.value)}
                 className="w-full"
               />
-            
+            </div>
+            <div className="col-span-8 sm:col-span-4">
               <Select
                 value={skillLevel}
                 onValueChange={(value) => setSkillLevel(value as "Beginner" | "Intermediate" | "Expert")}
@@ -92,52 +93,15 @@ export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
                   <SelectItem value="Expert">Expert</SelectItem>
                 </SelectContent>
               </Select>
-            
+            </div>
+            <div className="col-span-4 sm:col-span-3">
               <Button 
                 onClick={addSkill} 
                 type="button" 
                 className="w-full"
               >
-                <PlusCircle className="h-4 w-4 mr-1" /> Add Skill
+                <PlusCircle className="h-4 w-4 mr-1" /> Add
               </Button>
-            </div>
-          </div>
-
-          {/* For larger screens - horizontal layout */}
-          <div className="hidden sm:block">
-            <div className="grid grid-cols-12 gap-2">
-              <div className="col-span-5">
-                <Input
-                  placeholder="Add a new skill"
-                  value={newSkill}
-                  onChange={(e) => setNewSkill(e.target.value)}
-                  className="w-full"
-                />
-              </div>
-              <div className="col-span-4">
-                <Select
-                  value={skillLevel}
-                  onValueChange={(value) => setSkillLevel(value as "Beginner" | "Intermediate" | "Expert")}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Skill level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Beginner">Beginner</SelectItem>
-                    <SelectItem value="Intermediate">Intermediate</SelectItem>
-                    <SelectItem value="Expert">Expert</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="col-span-3">
-                <Button 
-                  onClick={addSkill} 
-                  type="button" 
-                  className="w-full"
-                >
-                  <PlusCircle className="h-4 w-4 mr-1" /> Add
-                </Button>
-              </div>
             </div>
           </div>
         </div>

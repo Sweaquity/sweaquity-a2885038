@@ -1,7 +1,6 @@
 
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const AVAILABILITY_OPTIONS = [
   'Immediately available',
@@ -30,32 +29,19 @@ export const AvailabilitySelector = ({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <Label htmlFor="availability">Availability *</Label>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {AVAILABILITY_OPTIONS.map((option) => (
-          <div 
+          <Button
             key={option}
+            type="button"
+            variant={selected.includes(option) ? "default" : "outline"}
+            className="justify-start text-left whitespace-normal h-auto py-2"
             onClick={() => handleSelect(option)}
-            className={`
-              cursor-pointer rounded-md p-3 flex items-start gap-3
-              border transition-all
-              ${selected.includes(option) 
-                ? 'border-primary bg-primary/5' 
-                : 'border-border hover:border-primary/50'}
-            `}
           >
-            <div className={`
-              flex-shrink-0 w-5 h-5 rounded-sm mt-0.5
-              border flex items-center justify-center
-              ${selected.includes(option) 
-                ? 'bg-primary border-primary text-primary-foreground' 
-                : 'border-muted-foreground'}`
-            }>
-              {selected.includes(option) && <Check className="h-3.5 w-3.5" />}
-            </div>
-            <span className="text-sm">{option}</span>
-          </div>
+            {option}
+          </Button>
         ))}
       </div>
     </div>

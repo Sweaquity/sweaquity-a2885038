@@ -1,46 +1,15 @@
 
-import { Skill, SkillRequirement, EquityProject, SubTask } from "@/types/jobSeeker";
+import { EquityProject, Skill } from "@/types/jobSeeker";
 
-export const getSkillLevel = (level: string): number => {
-  const levels = {
-    'Beginner': 1,
-    'beginner': 1,
-    'Intermediate': 2,
-    'intermediate': 2,
-    'Expert': 3,
-    'expert': 3
-  };
-  return levels[level as keyof typeof levels] || 0;
-};
-
-export const hasRequiredSkillLevel = (userSkill: Skill, requiredSkill: SkillRequirement) => {
-  // Normalize skill names for comparison
-  const normalizedUserSkill = userSkill.skill.toLowerCase().trim();
-  const normalizedRequiredSkill = requiredSkill.skill.toLowerCase().trim();
-  
-  const userLevel = getSkillLevel(userSkill.level);
-  const requiredLevel = getSkillLevel(requiredSkill.level);
-  
-  console.log('Skill comparison:', {
-    userSkill: normalizedUserSkill,
-    userLevel: userSkill.level,
-    requiredSkill: normalizedRequiredSkill,
-    requiredLevel: requiredSkill.level,
-    userLevelNum: userLevel,
-    requiredLevelNum: requiredLevel
-  });
-  
-  const matches = normalizedUserSkill === normalizedRequiredSkill && userLevel >= requiredLevel;
-  console.log(`Match result for ${normalizedUserSkill}: ${matches}`);
-  
-  return matches;
-};
-
-interface MatchedTask extends SubTask {
+interface MatchedTask {
+  id: string;
+  title: string;
+  description: string;
+  equity_allocation: number;
   matchScore: number;
-  projectId: string;
-  projectTitle: string;
-  matchedSkills: SkillRequirement[];
+  matchedSkills: string[];
+  skills_required?: string[];
+  timeframe?: string;
 }
 
 interface ProjectMatch {
@@ -50,12 +19,59 @@ interface ProjectMatch {
   matchedTasks: MatchedTask[];
 }
 
+// Function to calculate detailed skill match between a task and user skills
+const calculateSkillMatch = (taskSkills: string[], userSkills: Skill[]): { 
+  matchScore: number;
+  matchedSkills: string[];
+} => {
+  if (!taskSkills || taskSkills.length === 0) {
+    return { matchScore: 0, matchedSkills: [] };
+  }
+
+  const userSkillNames = userSkills.map(skill => skill.skill.toLowerCase());
+  
+  // Find matching skills
+  const matchedSkills: string[] = [];
+  let totalWeightedScore = 0;
+  
+  taskSkills.forEach(requiredSkill => {
+    const lowerSkill = requiredSkill.toLowerCase();
+    const matchIndex = userSkillNames.indexOf(lowerSkill);
+    
+    if (matchIndex >= 0) {
+      matchedSkills.push(requiredSkill);
+      
+      // Add weighted score based on skill level
+      const userSkill = userSkills[matchIndex];
+      switch (userSkill.level) {
+        case 'Expert':
+          totalWeightedScore += 1.2;
+          break;
+        case 'Intermediate':
+          totalWeightedScore += 1.0;
+          break;
+        case 'Beginner':
+          totalWeightedScore += 0.8;
+          break;
+        default:
+          totalWeightedScore += 1.0;
+      }
+    }
+  });
+  
+  // Calculate percentage match
+  const matchScore = Math.round((totalWeightedScore / taskSkills.length) * 100);
+  
+  return { matchScore, matchedSkills };
+};
+
+// Main function to get project matches based on user skills
 export const getProjectMatches = (projects: EquityProject[], userSkills: Skill[]): ProjectMatch[] => {
-  console.log('Starting matching process with data:', {
+  console.log("Starting matching process with data:", {
     totalProjects: projects.length,
-    userSkills: userSkills,
-    projects: projects.map(p => ({
-      title: p.title || p.business_roles?.title,
+    userSkills,
+    projects: projects.map(p => ({ 
+      title: p.title, 
       id: p.project_id,
       tasks: p.sub_tasks?.map(t => ({
         title: t.title,
@@ -64,63 +80,78 @@ export const getProjectMatches = (projects: EquityProject[], userSkills: Skill[]
     }))
   });
 
-  const matchedProjects = projects.map(project => {
-    console.log('\nAnalyzing project:', {
-      title: project.title || project.business_roles?.title,
+  const projectMatches: ProjectMatch[] = [];
+
+  projects.forEach(project => {
+    console.log("\nAnalyzing project:", {
+      title: project.title,
       id: project.project_id,
       subTasks: project.sub_tasks?.length || 0
     });
-    
-    const tasksWithMatches = (project.sub_tasks || []).map(task => {
-      console.log('\nAnalyzing task:', {
-        title: task.title,
-        requirements: task.skill_requirements
-      });
-      
-      const matchedSkills = (task.skill_requirements || []).filter(required =>
-        userSkills.some(userSkill => hasRequiredSkillLevel(userSkill, required))
-      );
 
-      const matchScore = task.skill_requirements?.length 
-        ? (matchedSkills.length / task.skill_requirements.length) * 100 
-        : 0;
-      
-      console.log('Task match results:', {
+    // Skip projects with no sub-tasks
+    if (!project.sub_tasks || project.sub_tasks.length === 0) {
+      return;
+    }
+
+    const matchedTasks: MatchedTask[] = [];
+    let totalProjectScore = 0;
+
+    project.sub_tasks.forEach(task => {
+      console.log("\nAnalyzing task:", {
+        title: task.title,
+        requirements: task.skill_requirements || task.skills_required
+      });
+
+      // Use skill_requirements first, fall back to skills_required
+      const skillsToMatch = task.skill_requirements?.map(sr => sr.skill) || 
+                          task.skills_required || [];
+
+      // Calculate match for this task
+      const { matchScore, matchedSkills } = calculateSkillMatch(skillsToMatch, userSkills);
+      console.log("Task match results:", {
         title: task.title,
         matchedSkills,
-        totalRequired: task.skill_requirements?.length || 0,
+        totalRequired: skillsToMatch.length,
         matchScore
       });
 
-      return {
-        ...task,
-        matchedSkills,
-        matchScore,
-        projectTitle: project.business_roles?.title || project.title || 'Untitled Project',
-        projectId: project.project_id
-      };
+      // If there's any match at all (minimum threshold)
+      if (matchScore > 0) {
+        matchedTasks.push({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          equity_allocation: task.equity_allocation,
+          matchScore,
+          matchedSkills,
+          skills_required: task.skills_required,
+          timeframe: task.timeframe
+        });
+        totalProjectScore += matchScore;
+      }
     });
 
-    const matchedTasks = tasksWithMatches.filter(task => task.matchScore > 0);
-    const projectMatchScore = matchedTasks.length > 0 
-      ? matchedTasks.reduce((sum, task) => sum + task.matchScore, 0) / matchedTasks.length
-      : 0;
+    // If we found any matching tasks
+    if (matchedTasks.length > 0) {
+      // Calculate average match score for the project
+      const avgProjectScore = totalProjectScore / project.sub_tasks.length;
+      
+      console.log("Project match summary:", {
+        title: project.title,
+        matchedTasks: matchedTasks.length,
+        score: avgProjectScore
+      });
 
-    console.log('Project match summary:', {
-      title: project.title || project.business_roles?.title,
-      matchedTasks: matchedTasks.length,
-      score: projectMatchScore
-    });
-
-    return {
-      projectId: project.project_id,
-      projectTitle: project.business_roles?.title || project.title || 'Untitled Project',
-      matchScore: projectMatchScore,
-      matchedTasks
-    };
+      projectMatches.push({
+        projectId: project.project_id,
+        projectTitle: project.title || project.business_roles?.project_title || 'Unnamed Project',
+        matchScore: avgProjectScore,
+        matchedTasks
+      });
+    }
   });
 
-  return matchedProjects
-    .filter(project => project.matchedTasks.length > 0)
-    .sort((a, b) => b.matchScore - a.matchScore);
+  // Sort projects by match score
+  return projectMatches.sort((a, b) => b.matchScore - a.matchScore);
 };

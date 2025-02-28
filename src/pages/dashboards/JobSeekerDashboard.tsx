@@ -13,6 +13,14 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ProfileCompletionForm } from "@/components/job-seeker/ProfileCompletionForm";
+import { Button } from "@/components/ui/button";
+import { Building2, Menu } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const JobSeekerDashboard = () => {
   const location = useLocation();
@@ -24,6 +32,7 @@ const JobSeekerDashboard = () => {
   const [isRedirecting, setIsRedirecting] = useState(true);
   const [profileComplete, setProfileComplete] = useState(false);
   const [forceRefresh, setForceRefresh] = useState(0);
+  const [hasBusinessProfile, setHasBusinessProfile] = useState(false);
   
   const {
     isLoading,
@@ -51,6 +60,10 @@ const JobSeekerDashboard = () => {
     setForceRefresh(prev => prev + 1);
   };
 
+  const handleProfileSwitch = () => {
+    navigate('/business/dashboard');
+  };
+
   useEffect(() => {
     // Set the active tab based on URL params
     if (tabFromUrl && ['dashboard', 'profile', 'applications', 'opportunities'].includes(tabFromUrl)) {
@@ -68,6 +81,15 @@ const JobSeekerDashboard = () => {
           navigate('/auth/seeker');
           return;
         }
+
+        // Check if user has a business profile
+        const { data: businessData } = await supabase
+          .from('businesses')
+          .select('id')
+          .eq('id', session.user.id)
+          .maybeSingle();
+          
+        setHasBusinessProfile(!!businessData);
 
         // Check if profile is complete
         const { data: profileData, error: profileError } = await supabase
@@ -122,8 +144,48 @@ const JobSeekerDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-xl md:text-2xl font-bold">
+            Job Seeker Dashboard
+          </h1>
+          <div className="flex items-center gap-2">
+            {/* Desktop view */}
+            <div className="hidden md:flex items-center gap-4">
+              {hasBusinessProfile && (
+                <Button variant="outline" onClick={handleProfileSwitch}>
+                  <Building2 className="mr-2 h-4 w-4" />
+                  Switch to Business
+                </Button>
+              )}
+              <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
+            </div>
+            
+            {/* Mobile view */}
+            <div className="flex md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {hasBusinessProfile && (
+                    <DropdownMenuItem onClick={handleProfileSwitch}>
+                      <Building2 className="mr-2 h-4 w-4" />
+                      Switch to Business
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </div>
+
         <DashboardHeader
           profile={profile}
           onSignOut={handleSignOut}

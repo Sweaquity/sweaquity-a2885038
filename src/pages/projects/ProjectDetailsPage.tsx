@@ -3,9 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ActiveRolesTable } from "@/components/business/roles/ActiveRolesTable";
 import { ProjectHeader } from "@/components/projects/ProjectHeader";
 import { ProjectDetails } from "@/components/projects/ProjectDetails";
 import { SubTask } from "@/types/jobSeeker";
@@ -244,94 +242,110 @@ export const ProjectDetailsPage = () => {
             status={project.status}
           />
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="details" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="details">Project Details</TabsTrigger>
-              <TabsTrigger value="roles">Available Roles</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="details">
-              <ProjectDetails
-                description={project.description}
-                timeframe={project.project_timeframe}
-                equityAllocation={project.equity_allocation}
-                skillsRequired={project.skills_required}
-              />
-            </TabsContent>
-
-            <TabsContent value="roles">
-              <div className="space-y-4">
-                {project.tasks.map((task) => (
-                  <Collapsible 
-                    key={task.id} 
-                    open={expandedTasks.has(task.id)}
-                    onOpenChange={() => toggleTaskExpanded(task.id)}
-                    className="border rounded-lg overflow-hidden"
-                  >
-                    <CollapsibleTrigger className="flex justify-between items-center w-full p-4 text-left hover:bg-muted/50">
-                      <div>
-                        <div className="flex items-center">
-                          <h3 className="text-lg font-medium">{task.title}</h3>
-                          <Badge variant="outline" className="ml-2">
-                            {task.equity_allocation}% equity
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Timeframe: {task.timeframe}
-                        </p>
-                      </div>
-                      {expandedTasks.has(task.id) ? (
-                        <ArrowLeft className="h-5 w-5 transform rotate-90" />
-                      ) : (
-                        <ArrowLeft className="h-5 w-5 transform -rotate-90" />
-                      )}
-                    </CollapsibleTrigger>
-                    
-                    <CollapsibleContent className="px-4 pb-4">
-                      <div className="space-y-3 mt-2">
-                        <div>
-                          <h4 className="text-sm font-medium text-muted-foreground">Description</h4>
-                          <p className="text-sm mt-1">{task.description}</p>
-                        </div>
-                        
-                        <div>
-                          <h4 className="text-sm font-medium text-muted-foreground">Required Skills</h4>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {task.skills_required.map((skill, i) => (
-                              <Badge key={i} variant="secondary" className="text-xs">
-                                {skill}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <h4 className="text-sm font-medium text-muted-foreground">Status</h4>
-                          <Badge className="mt-1">{task.status}</Badge>
-                        </div>
-                        
-                        {isJobSeeker && (
-                          <div className="mt-3">
-                            <Button
-                              onClick={() => navigate(`/projects/${project.id}/apply`)}
-                              disabled={hasApplied}
-                            >
-                              {hasApplied ? "Already Applied" : "Apply for This Role"}
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ))}
-                
-                {project.tasks.length === 0 && (
-                  <p className="text-center text-muted-foreground">No available roles for this project.</p>
-                )}
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold">Project Details</h3>
+              <p className="mt-2">{project.description}</p>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground">Timeframe</h4>
+                <p>{project.project_timeframe}</p>
               </div>
-            </TabsContent>
-          </Tabs>
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground">Equity Allocation</h4>
+                <p>{project.equity_allocation}%</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground">Company Stage</h4>
+                <p>{project.business.project_stage}</p>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground">Skills Required</h4>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {project.skills_required.map((skill, index) => (
+                  <Badge key={index} variant="secondary">{skill}</Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <div className="pt-6 border-t">
+            <h3 className="text-lg font-semibold mb-4">Available Roles</h3>
+            <div className="space-y-4">
+              {project.tasks.map((task) => (
+                <Collapsible 
+                  key={task.id} 
+                  open={expandedTasks.has(task.id)}
+                  onOpenChange={() => toggleTaskExpanded(task.id)}
+                  className="border rounded-lg overflow-hidden"
+                >
+                  <CollapsibleTrigger className="flex justify-between items-center w-full p-4 text-left hover:bg-muted/50">
+                    <div>
+                      <div className="flex items-center">
+                        <h3 className="text-lg font-medium">{task.title}</h3>
+                        <Badge variant="outline" className="ml-2">
+                          {task.equity_allocation}% equity
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Timeframe: {task.timeframe}
+                      </p>
+                    </div>
+                    {expandedTasks.has(task.id) ? (
+                      <ArrowLeft className="h-5 w-5 transform rotate-90" />
+                    ) : (
+                      <ArrowLeft className="h-5 w-5 transform -rotate-90" />
+                    )}
+                  </CollapsibleTrigger>
+                  
+                  <CollapsibleContent className="px-4 pb-4">
+                    <div className="space-y-3 mt-2">
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground">Description</h4>
+                        <p className="text-sm mt-1">{task.description}</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground">Required Skills</h4>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {task.skills_required.map((skill, i) => (
+                            <Badge key={i} variant="secondary" className="text-xs">
+                              {skill}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground">Status</h4>
+                        <Badge className="mt-1">{task.status}</Badge>
+                      </div>
+                      
+                      {isJobSeeker && (
+                        <div className="mt-3">
+                          <Button
+                            onClick={() => navigate(`/projects/${project.id}/apply`)}
+                            disabled={hasApplied}
+                          >
+                            {hasApplied ? "Already Applied" : "Apply for This Role"}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ))}
+              
+              {project.tasks.length === 0 && (
+                <p className="text-center text-muted-foreground">No available roles for this project.</p>
+              )}
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

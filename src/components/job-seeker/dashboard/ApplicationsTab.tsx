@@ -64,14 +64,32 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
         return;
       }
       
-      // First, check if the bucket exists
+      // Check if storage bucket exists
       const { data: buckets } = await supabase.storage.listBuckets();
       const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
       
       if (!cvsBucketExists) {
         console.error("CV bucket does not exist");
         toast.error("CV storage is not properly configured");
-        return;
+        
+        // Attempt to create the bucket
+        try {
+          const { error: bucketError } = await supabase.storage.createBucket('cvs', {
+            public: true
+          });
+          
+          if (bucketError) {
+            console.error("Error creating cvs bucket:", bucketError);
+            toast.error("Failed to create CV storage bucket");
+            return;
+          } else {
+            console.log("Successfully created cvs bucket");
+          }
+        } catch (bucketErr) {
+          console.error("Error creating storage bucket:", bucketErr);
+          toast.error("Failed to create CV storage bucket");
+          return;
+        }
       }
       
       // Extract the file path from the URL
@@ -79,24 +97,35 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
       const pathSegments = urlObj.pathname.split('/');
       // Format should be /storage/v1/object/public/cvs/[userId]/[fileName]
       const bucketName = 'cvs';
-      const filePathArray = pathSegments.slice(pathSegments.indexOf('cvs') + 1);
-      const filePath = filePathArray.join('/');
+      
+      let filePath;
+      if (pathSegments.includes('cvs')) {
+        const filePathArray = pathSegments.slice(pathSegments.indexOf('cvs') + 1);
+        filePath = filePathArray.join('/');
+      } else {
+        // This is a fallback in case the URL format is different
+        const fileNameMatch = cvUrl.match(/\/([^\/]+)$/);
+        if (fileNameMatch) {
+          const fileName = fileNameMatch[1];
+          // Get user ID from auth
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user?.id) {
+            filePath = `${session.user.id}/${fileName}`;
+          } else {
+            toast.error("Could not determine file path");
+            return;
+          }
+        } else {
+          toast.error("Could not parse CV URL");
+          return;
+        }
+      }
       
       console.log("Attempting to access file:", bucketName, filePath);
 
-      // Create a signed URL for the file
-      const { data, error } = await supabase.storage
-        .from(bucketName)
-        .createSignedUrl(filePath, 60);
-        
-      if (error) {
-        console.error("Error creating signed URL:", error);
-        toast.error("Could not access the CV file");
-        return;
-      }
-      
-      // Open the signed URL in a new tab
-      window.open(data.signedUrl, '_blank');
+      // Try to download the file directly first
+      window.open(cvUrl, '_blank');
+
     } catch (err) {
       console.error("Error opening CV:", err);
       toast.error("Failed to open CV");
@@ -171,7 +200,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-destructive"
+                        className="text-destructive hover:bg-destructive/10"
                         disabled={isWithdrawing === application.id}
                         onClick={() => handleWithdraw(application.id, application.task_id)}
                       >
@@ -247,7 +276,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-destructive"
+                      className="text-destructive hover:bg-destructive/10"
                       onClick={() => handleWithdraw(application.id, application.task_id)}
                       disabled={isWithdrawing === application.id}
                       title="Withdraw application"
