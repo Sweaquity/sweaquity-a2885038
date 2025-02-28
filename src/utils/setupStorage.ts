@@ -101,21 +101,21 @@ export const deleteCV = async (userId: string, fileName: string) => {
 export const previewCV = async (userId: string, fileName: string) => {
   try {
     const filePath = `${userId}/${fileName}`;
-    const { data: urlData } = supabase.storage
+    const { data } = supabase.storage
       .from('cvs')
       .getPublicUrl(filePath);
       
-    if (urlData?.publicUrl) {
-      // Open the file in a new tab
-      window.open(urlData.publicUrl, '_blank', 'noopener,noreferrer');
-      return urlData.publicUrl;
+    if (data?.publicUrl) {
+      // Open the file directly in a new tab, ensuring it opens properly
+      window.open(data.publicUrl, '_blank', 'noopener,noreferrer');
+      return true;
     }
     
-    return null;
+    return false;
   } catch (error) {
     console.error("Error previewing CV:", error);
     toast.error("Failed to preview CV");
-    return null;
+    return false;
   }
 };
 

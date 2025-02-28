@@ -6,11 +6,11 @@ import { toast } from "sonner";
 export const useApplicationActions = (onApplicationUpdated?: () => void) => {
   const [isWithdrawing, setIsWithdrawing] = useState<string | null>(null);
 
-  const handleWithdraw = async (applicationId: string) => {
+  const handleWithdraw = async (applicationId: string, taskId: string) => {
     try {
       setIsWithdrawing(applicationId);
       
-      // Update the application status to "withdrawn"
+      // First try to update the application status to "withdrawn"
       const { error } = await supabase
         .from('job_applications')
         .update({ status: 'withdrawn' })
@@ -36,11 +36,7 @@ export const useApplicationActions = (onApplicationUpdated?: () => void) => {
   };
 
   const openCV = (cvUrl: string) => {
-    if (cvUrl) {
-      window.open(cvUrl, '_blank', 'noopener,noreferrer');
-    } else {
-      toast.error("CV URL is not available");
-    }
+    window.open(cvUrl, '_blank', 'noopener,noreferrer');
   };
 
   return {
