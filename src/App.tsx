@@ -1,16 +1,16 @@
 
 import { Route, Routes } from "react-router-dom";
-import { AuthPage } from "./pages/AuthPage";
-import { SeekerRegister } from "./pages/Register/Seeker";
-import { SeekerLogin } from "./pages/Login/Seeker";
-import { BusinessRegister } from "./pages/Register/Business";
-import { BusinessLogin } from "./pages/Login/Business";
-import { RecruiterRegister } from "./pages/Register/Recruiter";
-import { RecruiterLogin } from "./pages/Login/Recruiter";
+import AuthPage from "./pages/AuthPage";
+import SeekerRegister from "./pages/Register/Seeker";
+import SeekerLogin from "./pages/Login/Seeker";
+import BusinessRegister from "./pages/Register/Business";
+import BusinessLogin from "./pages/Login/Business";
+import RecruiterRegister from "./pages/Register/Recruiter";
+import RecruiterLogin from "./pages/Login/Recruiter";
 import JobSeekerDashboard from "./pages/dashboards/JobSeekerDashboard";
 import BusinessDashboard from "./pages/dashboards/BusinessDashboard";
 import RecruiterDashboard from "./pages/dashboards/RecruiterDashboard";
-import { Index } from "./pages/Index";
+import Index from "./pages/Index";
 import ProjectDetailsPage from "./pages/projects/ProjectDetailsPage";
 import ProjectApplicationPage from "./pages/projects/ProjectApplicationPage";
 import NotFound from "./pages/NotFound";
