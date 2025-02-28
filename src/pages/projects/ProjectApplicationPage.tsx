@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -30,6 +31,7 @@ interface BusinessDetails {
 }
 
 interface ProjectDetails {
+  project_id: string; // Updated from 'id' to 'project_id'
   title: string;
   description: string;
   project_stage: string;
@@ -186,6 +188,7 @@ export const ProjectApplicationPage = () => {
           return;
         }
 
+        // Updated query to use project_id instead of id
         const { data: projectData, error: projectError } = await supabase
           .from('business_projects')
           .select(`
@@ -199,7 +202,7 @@ export const ProjectApplicationPage = () => {
               organization_type
             )
           `)
-          .eq('id', id)
+          .eq('project_id', id)
           .single();
 
         if (projectError) throw projectError;
@@ -636,3 +639,5 @@ export const ProjectApplicationPage = () => {
     </div>
   );
 };
+
+export default ProjectApplicationPage;

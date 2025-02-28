@@ -68,7 +68,7 @@ export type Database = {
           description: string | null
           equity_allocated: number | null
           equity_allocation: number | null
-          id: string
+          project_id: string
           project_timeframe: string | null
           skills_required: string[] | null
           status: string | null
@@ -83,7 +83,7 @@ export type Database = {
           description?: string | null
           equity_allocated?: number | null
           equity_allocation?: number | null
-          id?: string
+          project_id?: string
           project_timeframe?: string | null
           skills_required?: string[] | null
           status?: string | null
@@ -98,7 +98,7 @@ export type Database = {
           description?: string | null
           equity_allocated?: number | null
           equity_allocation?: number | null
-          id?: string
+          project_id?: string
           project_timeframe?: string | null
           skills_required?: string[] | null
           status?: string | null
@@ -319,14 +319,14 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "business_projects"
-            referencedColumns: ["id"]
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "job_applications_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "business_projects"
-            referencedColumns: ["id"]
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "job_applications_task_id_fkey"
@@ -481,7 +481,7 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "business_projects"
-            referencedColumns: ["id"]
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "project_notifications_task_id_fkey"
@@ -553,7 +553,7 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "business_projects"
-            referencedColumns: ["id"]
+            referencedColumns: ["project_id"]
           },
         ]
       }
@@ -600,7 +600,7 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "business_projects"
-            referencedColumns: ["id"]
+            referencedColumns: ["project_id"]
           },
         ]
       }

@@ -100,7 +100,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
           .select(`
             *,
             project:business_projects (
-              id,
+              project_id,
               title,
               business:businesses (
                 company_name

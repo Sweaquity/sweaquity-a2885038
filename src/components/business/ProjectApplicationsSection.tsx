@@ -41,7 +41,7 @@ interface Application {
 }
 
 interface Project {
-  id: string;
+  project_id: string; // Updated from id to project_id
   title: string;
   description: string;
   skills_required?: string[];
@@ -64,7 +64,7 @@ export const ProjectApplicationsSection = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      // First, get all projects for this business
+      // First, get all projects for this business (updated to use project_id)
       const { data: projectsData, error: projectsError } = await supabase
         .from('business_projects')
         .select('*')
@@ -86,10 +86,10 @@ export const ProjectApplicationsSection = () => {
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
           .select('id, skills_required')
-          .eq('project_id', project.id);
+          .eq('project_id', project.project_id); // Changed from project.id to project.project_id
 
         if (tasksError) {
-          console.error('Error fetching tasks for project:', project.id, tasksError);
+          console.error('Error fetching tasks for project:', project.project_id, tasksError);
           continue;
         }
 
@@ -300,9 +300,9 @@ export const ProjectApplicationsSection = () => {
           <div className="space-y-4">
             {projects.map(project => (
               <Collapsible 
-                key={project.id} 
-                open={expandedProjects.has(project.id)}
-                onOpenChange={() => toggleProjectExpanded(project.id)}
+                key={project.project_id} // Updated from project.id to project.project_id
+                open={expandedProjects.has(project.project_id)} // Updated from project.id to project.project_id
+                onOpenChange={() => toggleProjectExpanded(project.project_id)} // Updated from project.id to project.project_id
                 className="border rounded-lg overflow-hidden"
               >
                 <CollapsibleTrigger className="flex justify-between items-center w-full p-4 text-left hover:bg-muted/50">
@@ -331,7 +331,7 @@ export const ProjectApplicationsSection = () => {
                       )}
                     </div>
                   </div>
-                  {expandedProjects.has(project.id) ? 
+                  {expandedProjects.has(project.project_id) ? // Updated from project.id to project.project_id
                     <ChevronDown className="h-5 w-5 flex-shrink-0" /> : 
                     <ChevronRight className="h-5 w-5 flex-shrink-0" />
                   }

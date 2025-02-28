@@ -108,12 +108,12 @@ export const ApplicationForm = ({
       
       const userId = session.user.id;
       
-      // Submit the application
+      // Submit the application - using the message field instead of notes
       const { error } = await supabase.from("job_applications").insert({
         project_id: projectId,
         task_id: taskId,
         user_id: userId,
-        notes: message,
+        message: message, // This is the correct field name
         cv_url: selectedCvUrl
       });
       
