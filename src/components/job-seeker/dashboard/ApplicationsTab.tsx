@@ -6,21 +6,34 @@ import { Trash2, FileText, ExternalLink } from "lucide-react";
 import { JobApplication } from "@/types/jobSeeker";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 interface ApplicationsTabProps {
   applications: JobApplication[];
 }
 
 export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
-  const handleWithdraw = async (applicationId: string) => {
+  const handleWithdraw = async (applicationId: string, taskId: string) => {
     try {
-      // Update the application status to 'withdrawn'
-      const { error: updateError } = await supabase
+      // Start a transaction to update both tables
+      // 1. Update the application status to 'withdrawn'
+      const { error: applicationError } = await supabase
         .from('job_applications')
         .update({ status: 'withdrawn' })
         .eq('id', applicationId);
 
-      if (updateError) throw updateError;
+      if (applicationError) throw applicationError;
+      
+      // 2. Update the task status to show it's available again
+      const { error: taskError } = await supabase
+        .from('project_sub_tasks')
+        .update({ 
+          status: 'open',
+          task_status: 'open'
+        })
+        .eq('id', taskId);
+        
+      if (taskError) throw taskError;
       
       toast.success("Application withdrawn successfully");
       // Reload the page to refresh the applications list
@@ -52,7 +65,12 @@ export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
               <div className="block md:hidden space-y-3">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-medium">{application.business_roles?.title || 'N/A'}</h3>
+                    <Link 
+                      to={`/projects/${application.project_id}`}
+                      className="font-medium hover:text-blue-600 hover:underline"
+                    >
+                      {application.business_roles?.title || 'N/A'}
+                    </Link>
                     <p className="text-sm text-muted-foreground">
                       {application.business_roles?.company_name || 'N/A'} • {application.business_roles?.project_title || 'N/A'}
                     </p>
@@ -99,7 +117,7 @@ export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
                         variant="outline"
                         size="sm"
                         className="text-destructive"
-                        onClick={() => handleWithdraw(application.id)}
+                        onClick={() => handleWithdraw(application.id, application.task_id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -121,7 +139,12 @@ export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
                   </div>
                   <div className="col-span-1">
                     <p className="text-sm font-medium text-muted-foreground">Task</p>
-                    <p className="truncate">{application.business_roles?.title || 'N/A'}</p>
+                    <Link 
+                      to={`/projects/${application.project_id}`}
+                      className="truncate hover:text-blue-600 hover:underline"
+                    >
+                      {application.business_roles?.title || 'N/A'}
+                    </Link>
                   </div>
                   <div className="col-span-1">
                     <p className="text-sm font-medium text-muted-foreground">Skills</p>
@@ -168,7 +191,7 @@ export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
                       variant="ghost"
                       size="sm"
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => handleWithdraw(application.id)}
+                      onClick={() => handleWithdraw(application.id, application.task_id)}
                       title="Withdraw application"
                     >
                       <Trash2 className="h-4 w-4" />

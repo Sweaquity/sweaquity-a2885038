@@ -22,30 +22,61 @@ export const useJobSeekerDashboard = () => {
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
+        // Check user session
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           navigate('/auth/seeker');
           return;
         }
 
+        console.log("Loading profile data for user:", session.user.id);
+
+        // Load user's profile, applications, and CV data
         await Promise.all([
           loadProfile(session.user.id),
           loadApplications(session.user.id),
           loadCVData(session.user.id)
         ]);
 
-        // First, get the user's applications to check what they've already applied for
+        // After loading profile, check if it's complete
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, terms_accepted')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profileError) {
+          console.error("Error checking profile:", profileError);
+        } else if (!profileData.first_name || !profileData.last_name || !profileData.terms_accepted) {
+          console.log("Profile incomplete, redirecting to completion page");
+          navigate('/seeker/profile/complete');
+          return;
+        }
+
+        // Get user's existing applications
         const { data: userApplications, error: applicationsError } = await supabase
           .from('job_applications')
-          .select('task_id')
+          .select('task_id, status')
           .eq('user_id', session.user.id);
 
         if (applicationsError) throw applicationsError;
 
-        // Get the IDs of tasks they've already applied for
-        const appliedTaskIds = new Set(userApplications.map(app => app.task_id));
+        // Create map of task IDs to application status
+        const applicationStatusMap = new Map();
+        userApplications.forEach(app => {
+          applicationStatusMap.set(app.task_id, app.status);
+        });
 
-        // Fetch ALL open tasks, not just from the user's projects
+        // Get task IDs that are not available (anything except withdrawn and rejected)
+        const unavailableTaskIds = new Set(
+          userApplications
+            .filter(app => ['pending', 'in review', 'negotiation', 'accepted'].includes(app.status))
+            .map(app => app.task_id)
+        );
+
+        console.log("Unavailable task IDs:", Array.from(unavailableTaskIds));
+
+        // Fetch ALL open tasks
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
           .select(`
@@ -62,9 +93,11 @@ export const useJobSeekerDashboard = () => {
 
         if (tasksError) throw tasksError;
         
-        // Filter out tasks that have already been applied for
+        console.log("All tasks:", tasksData);
+        
+        // Filter out tasks that have already been applied for and are not withdrawn/rejected
         const opportunities = tasksData
-          .filter(task => !appliedTaskIds.has(task.id))
+          .filter(task => !unavailableTaskIds.has(task.id))
           .map(task => ({
             id: task.id,
             project_id: task.project_id,
@@ -96,6 +129,7 @@ export const useJobSeekerDashboard = () => {
             }
           }));
 
+        console.log("Available opportunities:", opportunities);
         setAvailableOpportunities(opportunities);
 
         // Transform accepted applications to equity projects

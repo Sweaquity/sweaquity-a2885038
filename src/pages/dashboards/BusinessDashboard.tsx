@@ -65,22 +65,37 @@ const BusinessDashboard = () => {
         if (businessError) throw businessError;
         setBusinessData(businessData);
 
+        console.log("Business ID:", session.user.id);
+        console.log("Business data:", businessData);
+
         // Load projects and their tasks
         const { data: projectsData, error: projectsError } = await supabase
           .from('business_projects')
           .select('*')
-          .eq('business_id', session.user.id)
-          .eq('status', 'active');
+          .eq('business_id', session.user.id);
 
         if (projectsError) throw projectsError;
+        
+        console.log("Projects data:", projectsData);
 
+        if (!projectsData || projectsData.length === 0) {
+          console.log("No projects found for this business");
+        }
+
+        const projectIds = projectsData.map(p => p.id);
+        console.log("Project IDs:", projectIds);
+
+        // Get all tasks for these projects
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
-          .select('*');
+          .select('*')
+          .in('project_id', projectIds.length > 0 ? projectIds : ['no-projects']);
 
         if (tasksError) throw tasksError;
+        
+        console.log("Tasks data:", tasksData);
 
-        // Load applications for all projects
+        // Get all applications for these projects
         const { data: applicationsData, error: applicationsError } = await supabase
           .from('job_applications')
           .select(`
@@ -103,9 +118,11 @@ const BusinessDashboard = () => {
               )
             )
           `)
-          .in('project_id', projectsData.map(p => p.id));
+          .in('project_id', projectIds.length > 0 ? projectIds : ['no-projects']);
 
         if (applicationsError) throw applicationsError;
+        
+        console.log("Applications data:", applicationsData);
         setApplications(applicationsData || []);
 
         const projectsWithTasks = projectsData.map((project: any) => ({
@@ -145,6 +162,27 @@ const BusinessDashboard = () => {
 
   const handleProfileSwitch = () => {
     navigate('/seeker/dashboard');
+  };
+
+  const handleStatusChange = async (applicationId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('job_applications')
+        .update({ status: newStatus })
+        .eq('id', applicationId);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setApplications(applications.map(app => 
+        app.id === applicationId ? { ...app, status: newStatus } : app
+      ));
+      
+      toast.success(`Application status updated to ${newStatus}`);
+    } catch (error) {
+      console.error('Error updating application status:', error);
+      toast.error("Failed to update application status");
+    }
   };
 
   if (isLoading) {
@@ -306,30 +344,43 @@ const BusinessDashboard = () => {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <p className="font-medium text-sm text-muted-foreground">Applicant</p>
-                            <p className="font-medium">{application.profile.first_name} {application.profile.last_name}</p>
-                            <p className="text-sm text-muted-foreground">{application.profile.title}</p>
-                            <p className="text-sm text-muted-foreground">{application.profile.location}</p>
+                            <p className="font-medium">{application.profile?.first_name} {application.profile?.last_name}</p>
+                            <p className="text-sm text-muted-foreground">{application.profile?.title}</p>
+                            <p className="text-sm text-muted-foreground">{application.profile?.location}</p>
                           </div>
                           <div>
                             <p className="font-medium text-sm text-muted-foreground">Role Details</p>
-                            <p className="font-medium">{application.business_roles.title}</p>
-                            <p className="text-sm text-muted-foreground">{application.business_roles.project.title}</p>
+                            <p className="font-medium">{application.business_roles?.title}</p>
+                            <p className="text-sm text-muted-foreground">{application.business_roles?.project?.title}</p>
                           </div>
                         </div>
                         <div>
                           <p className="font-medium text-sm text-muted-foreground">Application Message</p>
                           <p className="text-sm">{application.message}</p>
                         </div>
-                        <div className="flex justify-between items-center">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                           <div className="space-x-2">
                             <Badge>{application.status}</Badge>
                             <Badge variant="outline">
-                              {application.profile.employment_preference}
+                              {application.profile?.employment_preference}
                             </Badge>
                           </div>
-                          <p className="text-sm text-muted-foreground">
-                            Applied {new Date(application.applied_at).toLocaleDateString()}
-                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <select 
+                              className="px-2 py-1 border rounded text-sm"
+                              value={application.status}
+                              onChange={(e) => handleStatusChange(application.id, e.target.value)}
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="in review">In Review</option>
+                              <option value="negotiation">Negotiation</option>
+                              <option value="accepted">Accepted</option>
+                              <option value="rejected">Rejected</option>
+                            </select>
+                            <p className="text-sm text-muted-foreground">
+                              Applied {new Date(application.applied_at).toLocaleDateString()}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     ))

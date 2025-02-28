@@ -1,17 +1,25 @@
 
-import { useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { ProfileCompletionForm } from "@/components/job-seeker/ProfileCompletionForm";
-import { DashboardHeader } from "@/components/job-seeker/dashboard/DashboardHeader";
+import { useState, useEffect } from "react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DashboardContent } from "@/components/job-seeker/dashboard/DashboardContent";
 import { useJobSeekerDashboard } from "@/hooks/useJobSeekerDashboard";
+import { DashboardHeader } from "@/components/job-seeker/dashboard/DashboardHeader";
+import { ProfileSection } from "@/components/job-seeker/ProfileSection";
+import { ApplicationsTab } from "@/components/job-seeker/dashboard/ApplicationsTab";
+import { EquityTab } from "@/components/job-seeker/dashboard/EquityTab";
+import { OpportunitiesTab } from "@/components/job-seeker/dashboard/OpportunitiesTab";
+import { ProjectsOverview } from "@/components/job-seeker/ProjectsOverview";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { ProfileCompletionForm } from "@/components/job-seeker/ProfileCompletionForm";
 
 const JobSeekerDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const activeTabFromState = location.state?.activeTab || "profile";
+  const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [isRedirecting, setIsRedirecting] = useState(true);
+  const [profileComplete, setProfileComplete] = useState(false);
   
   const {
     isLoading,
@@ -20,173 +28,121 @@ const JobSeekerDashboard = () => {
     applications,
     equityProjects,
     availableOpportunities,
+    pastApplications,
     parsedCvData,
     skills,
-    logEffort,
-    setLogEffort,
-    setCvUrl,
-    setParsedCvData,
-    setEquityProjects,
     handleSignOut,
     handleSkillsUpdate
   } = useJobSeekerDashboard();
 
-  // Check authentication on mount
   useEffect(() => {
+    // Check authentication and profile completion
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          navigate('/auth/seeker');
+          return;
+        }
+
+        // Check if profile is complete
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, title, location, terms_accepted')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profileError) {
+          throw profileError;
+        }
+
+        // Check if required fields are filled
+        const isComplete = !!profileData.first_name && 
+                         !!profileData.last_name && 
+                         !!profileData.terms_accepted;
+        
+        setProfileComplete(isComplete);
+        
+        // Normalize the state from location into activeTab
+        const { state } = location;
+        if (state && state.activeTab) {
+          setActiveTab(state.activeTab);
+        }
+        
+        setIsRedirecting(false);
+      } catch (error) {
+        console.error('Auth check error:', error);
+        toast.error("Authentication check failed");
         navigate('/auth/seeker');
       }
     };
 
     checkAuth();
+  }, [navigate, location]);
 
-    // Also listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        navigate('/auth/seeker');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [navigate]);
-
-  const handleLogEffort = async (projectId: string) => {
-    try {
-      const { error } = await supabase
-        .from('sweaquity_matched_live_projects')
-        .update({
-          effort_logs: [...(equityProjects.find(p => p.id === projectId)?.effort_logs || []), {
-            date: new Date().toISOString(),
-            hours: logEffort.hours,
-            description: logEffort.description
-          }],
-          total_hours_logged: (equityProjects.find(p => p.id === projectId)?.total_hours_logged || 0) + logEffort.hours
-        })
-        .eq('id', projectId);
-
-      if (error) throw error;
-
-      const { data: updatedProject } = await supabase
-        .from('sweaquity_matched_live_projects')
-        .select(`
-          *,
-          business_roles (
-            title,
-            description
-          )
-        `)
-        .eq('id', projectId)
-        .single();
-
-      if (updatedProject) {
-        setEquityProjects(prev => prev.map(p => p.id === projectId ? updatedProject : p));
-        setLogEffort({ projectId: '', hours: 0, description: '' });
-        toast.success("Effort logged successfully");
-      }
-    } catch (error) {
-      console.error('Error logging effort:', error);
-      toast.error("Failed to log effort");
-    }
-  };
-
-  const handleLogEffortChange = (projectId: string, field: 'hours' | 'description', value: string | number) => {
-    setLogEffort(prev => ({
-      ...prev,
-      projectId,
-      [field]: value
-    }));
-  };
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
-
-      const { error: uploadError, data: uploadData } = await supabase.storage
-        .from('cvs')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('cvs')
-        .getPublicUrl(fileName);
-
-      setCvUrl(publicUrl);
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('userId', session.user.id);
-
-      const { data: parseData, error: parseError } = await supabase.functions
-        .invoke('parse-cv', {
-          body: formData
-        });
-
-      if (parseError) throw parseError;
-
-      if (parseData) {
-        setParsedCvData({
-          ...parsedCvData,
-          skills: parseData.data.skills || [],
-          career_history: parseData.data.careerHistory || [],
-          cv_upload_date: new Date().toISOString()
-        });
-
-        const newSkills = parseData.data.skills || [];
-        await handleSkillsUpdate(newSkills);
-      }
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      toast.error("Failed to upload CV");
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Loading...</p>
-      </div>
-    );
+  // If user session is being checked or loading data, show loading state
+  if (isLoading || isRedirecting) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
-  if (!profile?.first_name || !profile?.last_name || !profile?.title) {
+  // If profile is incomplete, show the profile completion form
+  if (!profileComplete) {
     return <ProfileCompletionForm />;
   }
 
   return (
-    <div className="min-h-screen p-3 md:p-6">
+    <div className="min-h-screen p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="space-y-4 md:space-y-6">
-          <DashboardHeader profile={profile} onSignOut={handleSignOut} />
-          <DashboardContent
-            activeTab={activeTabFromState}
-            cvUrl={cvUrl}
-            parsedCvData={parsedCvData}
-            skills={skills}
-            applications={applications}
-            equityProjects={equityProjects}
-            availableOpportunities={availableOpportunities}
-            logEffort={logEffort}
-            handleFileUpload={handleFileUpload}
-            onSkillsUpdate={handleSkillsUpdate}
-            onLogEffort={handleLogEffort}
-            onLogEffortChange={handleLogEffortChange}
-          />
-        </div>
+        <DashboardHeader
+          firstName={profile?.first_name || ""}
+          profilePicture=""
+          onSignOut={handleSignOut}
+        />
+
+        <Tabs 
+          value={activeTab} 
+          onValueChange={setActiveTab}
+          className="mt-6 space-y-6"
+        >
+          <TabsList className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="applications">Applications</TabsTrigger>
+            <TabsTrigger value="opportunities">Opportunities</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard" className="space-y-6">
+            <ProjectsOverview equityProjects={equityProjects} />
+            <DashboardContent
+              profile={profile}
+              applications={applications}
+              equityProjects={equityProjects}
+              onViewProfile={() => setActiveTab("profile")}
+              onViewApplications={() => setActiveTab("applications")}
+              onViewOpportunities={() => setActiveTab("opportunities")}
+            />
+          </TabsContent>
+
+          <TabsContent value="profile" className="space-y-6">
+            <ProfileSection
+              profile={profile}
+              cvUrl={cvUrl}
+              skills={skills}
+              parsedCvData={parsedCvData}
+              onSkillsUpdate={handleSkillsUpdate}
+            />
+          </TabsContent>
+
+          <TabsContent value="applications" className="space-y-6">
+            <ApplicationsTab applications={applications} />
+            <EquityTab equityProjects={equityProjects} />
+          </TabsContent>
+
+          <TabsContent value="opportunities" className="space-y-6">
+            <OpportunitiesTab projects={availableOpportunities} userSkills={skills} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
