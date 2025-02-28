@@ -97,15 +97,21 @@ export const ProjectApplicationPage = () => {
     matchScore: number, 
     matchedSkills: string[] 
   } => {
-    if (!task.skills_required || task.skills_required.length === 0) {
+    const requiredSkills = task.skill_requirements?.map(sr => sr.skill) || task.skills_required;
+    
+    if (!requiredSkills || requiredSkills.length === 0) {
       return { matchScore: 0, matchedSkills: [] };
     }
     
-    const matchedSkills = task.skills_required.filter(skill => 
-      userSkills.some(userSkill => userSkill.skill.toLowerCase() === skill.toLowerCase())
+    const userSkillNames = userSkills.map(s => s.skill.toLowerCase());
+    
+    const matchedSkills = requiredSkills.filter(skill => 
+      userSkillNames.some(userSkill => userSkill === skill.toLowerCase())
     );
     
-    const matchScore = Math.round((matchedSkills.length / task.skills_required.length) * 100);
+    const matchScore = requiredSkills.length > 0 
+      ? Math.round((matchedSkills.length / requiredSkills.length) * 100) 
+      : 0;
     
     return { matchScore, matchedSkills };
   };
@@ -254,7 +260,7 @@ export const ProjectApplicationPage = () => {
           
         console.log("Unavailable task IDs:", Array.from(unavailableTaskIds));
 
-        const availableTasks = taskData
+        const processedTasks = taskData
           .filter(task => task.status === 'open' && !unavailableTaskIds.has(task.id))
           .map(task => {
             const { matchScore, matchedSkills } = calculateSkillMatch(task, extractedSkills);
@@ -263,9 +269,22 @@ export const ProjectApplicationPage = () => {
               matchScore,
               matchedSkills
             };
-          })
-          .filter(task => task.matchScore > 0)
+          });
+        
+        console.log("All processed tasks:", processedTasks.map(t => ({ 
+          id: t.id, 
+          title: t.title, 
+          score: t.matchScore 
+        })));
+        
+        const availableTasks = processedTasks
           .sort((a, b) => b.matchScore! - a.matchScore!);
+          
+        console.log("Matched tasks after filtering:", availableTasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          score: t.matchScore
+        })));
 
         const { data: cvData } = await supabase
           .from('cv_parsed_data')

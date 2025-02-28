@@ -66,7 +66,8 @@ export const getProjectMatches = (projects: EquityProject[], userSkills: Skill[]
     userSkills,
     projects: projects.map(p => ({ 
       title: p.title, 
-      id: p.project_id,
+      id: p.id,
+      project_id: p.project_id,
       tasks: p.sub_tasks?.map(t => ({
         title: t.title,
         requirements: t.skill_requirements
@@ -79,12 +80,14 @@ export const getProjectMatches = (projects: EquityProject[], userSkills: Skill[]
   projects.forEach(project => {
     console.log("\nAnalyzing project:", {
       title: project.title,
-      id: project.project_id,
+      id: project.id,
+      project_id: project.project_id,
       subTasks: project.sub_tasks?.length || 0
     });
 
     // Skip projects with no sub-tasks
     if (!project.sub_tasks || project.sub_tasks.length === 0) {
+      console.log("Skipping project with no subtasks:", project.id);
       return;
     }
 

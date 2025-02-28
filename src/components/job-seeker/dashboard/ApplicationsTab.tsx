@@ -91,7 +91,8 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
         throw applicationError;
       }
       
-      // Then, update the task status to 'open'
+      // Then, update the task status to 'open' - use .maybeSingle() to avoid PGRST116 error
+      // or don't use single() at all since we don't need the response data
       const { error: taskError } = await supabase
         .from('project_sub_tasks')
         .update({ 
