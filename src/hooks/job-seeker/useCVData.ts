@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { listUserCVs } from "@/utils/setupStorage";
@@ -19,45 +19,6 @@ export const useCVData = () => {
   const [parsedCvData, setParsedCvData] = useState<any>(null);
   const [userCVs, setUserCVs] = useState<CVFile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
-  const loadCVs = useCallback(async (userId: string) => {
-    try {
-      setIsLoading(true);
-      
-      // First, check if the cvs bucket exists, and if not, try to create it
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
-      
-      if (!cvsBucketExists) {
-        console.log("CV storage bucket doesn't exist, this is expected since it should be created by an admin");
-        return;
-      }
-      
-      // Get user's profile data to check for CV URL
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('cv_url')
-        .eq('id', userId)
-        .maybeSingle();
-        
-      const defaultCVUrl = profileData?.cv_url;
-      
-      // Get list of user's CVs
-      const cvFiles = await listUserCVs(userId);
-      
-      // Mark default CV
-      const filesWithDefault = cvFiles.map(file => ({
-        ...file,
-        isDefault: defaultCVUrl ? defaultCVUrl.includes(file.name) : false
-      }));
-      
-      setUserCVs(filesWithDefault);
-    } catch (error) {
-      console.error('Error loading CVs:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
 
   const loadCVData = async (userId: string) => {
     try {
@@ -101,9 +62,19 @@ export const useCVData = () => {
         setParsedCvData(cvData);
       }
       
-      // Load the list of CVs
-      await loadCVs(userId);
-      
+      // Get list of user's CVs
+      if (cvsBucketExists) {
+        const cvFiles = await listUserCVs(userId);
+        
+        // Mark default CV
+        const defaultCVUrl = profileData?.cv_url;
+        const filesWithDefault = cvFiles.map(file => ({
+          ...file,
+          isDefault: defaultCVUrl ? defaultCVUrl.includes(file.name) : false
+        }));
+        
+        setUserCVs(filesWithDefault);
+      }
     } catch (error) {
       console.error('Error loading CV data:', error);
       toast.error("Failed to load CV data");
@@ -120,7 +91,6 @@ export const useCVData = () => {
     loadCVData,
     userCVs,
     setUserCVs,
-    isLoading,
-    loadCVs
+    isLoading
   };
 };

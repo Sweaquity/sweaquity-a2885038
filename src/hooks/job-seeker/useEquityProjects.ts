@@ -1,7 +1,6 @@
 
 import { useState } from "react";
 import { EquityProject, JobApplication } from "@/types/jobSeeker";
-import { supabase } from "@/lib/supabase";
 
 export const useEquityProjects = () => {
   const [equityProjects, setEquityProjects] = useState<EquityProject[]>([]);
@@ -10,45 +9,6 @@ export const useEquityProjects = () => {
     hours: 0,
     description: ''
   });
-
-  const loadEquityProjects = async (userId: string) => {
-    try {
-      // First load accepted applications
-      const { data: acceptedApplications, error } = await supabase
-        .from('job_applications')
-        .select(`
-          *,
-          business_roles:project_sub_tasks(
-            id,
-            title,
-            description,
-            timeframe,
-            equity_allocation,
-            skills_required,
-            business_projects:project_id(
-              title,
-              business_id,
-              businesses:business_id(
-                company_name
-              )
-            )
-          )
-        `)
-        .eq('user_id', userId)
-        .eq('status', 'accepted');
-        
-      if (error) throw error;
-      
-      // Transform applications to equity projects
-      const projects = transformToEquityProjects(acceptedApplications || []);
-      setEquityProjects(projects);
-      
-      return projects;
-    } catch (error) {
-      console.error('Error loading equity projects:', error);
-      return [];
-    }
-  };
 
   const transformToEquityProjects = (acceptedApplications: JobApplication[]): EquityProject[] => {
     return acceptedApplications
@@ -84,7 +44,6 @@ export const useEquityProjects = () => {
     setEquityProjects,
     logEffort,
     setLogEffort,
-    transformToEquityProjects,
-    loadEquityProjects
+    transformToEquityProjects
   };
 };

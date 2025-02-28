@@ -44,11 +44,9 @@ const JobSeekerDashboard = () => {
     pastApplications,
     parsedCvData,
     skills,
-    userCVs,
     handleSignOut,
     handleSkillsUpdate,
-    refreshApplications,
-    refreshCVs
+    refreshApplications
   } = useJobSeekerDashboard(forceRefresh);
 
   // Handle tab changes by updating the URL
@@ -227,9 +225,7 @@ const JobSeekerDashboard = () => {
               cvUrl={cvUrl}
               skills={skills}
               parsedCvData={parsedCvData}
-              userCVs={userCVs}
               onSkillsUpdate={handleSkillsUpdate}
-              onCvListUpdated={refreshCVs}
             />
           </TabsContent>
 

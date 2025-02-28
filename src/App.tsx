@@ -11,7 +11,7 @@ import BusinessDashboard from "./pages/dashboards/BusinessDashboard";
 import RecruiterDashboard from "./pages/dashboards/RecruiterDashboard";
 import JobSeekerDashboard from "./pages/dashboards/JobSeekerDashboard";
 import { ProjectDetailsPage } from "./pages/projects/ProjectDetailsPage";
-import ProjectApplicationPage from "./pages/projects/ProjectApplicationPage";
+import { ProjectApplicationPage } from "./pages/projects/ProjectApplicationPage";
 
 const queryClient = new QueryClient();
 

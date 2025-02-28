@@ -277,7 +277,7 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
     }
   };
 
-  const handleSetDefault = async (fileName: string): Promise<void> => {
+  const handleSetDefault = async (fileName: string) => {
     setProcessingAction({ type: 'setting-default', fileName });
     try {
       const { data: { session } } = await supabase.auth.getSession();

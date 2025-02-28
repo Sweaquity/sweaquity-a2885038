@@ -1,196 +1,198 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
-import { JobApplication, EquityProject, Profile, Skill } from "@/types/jobSeeker";
-import { useCVData, CVFile } from "./job-seeker/useCVData";
 import { useProfile } from "./job-seeker/useProfile";
 import { useApplications } from "./job-seeker/useApplications";
 import { useEquityProjects } from "./job-seeker/useEquityProjects";
+import { useCVData } from "./job-seeker/useCVData";
+import { EquityProject } from "@/types/jobSeeker";
 
 export const useJobSeekerDashboard = (refreshTrigger = 0) => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [availableOpportunities, setAvailableOpportunities] = useState<any[]>([]);
-  const [pastApplications, setPastApplications] = useState<JobApplication[]>([]);
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [userCVs, setUserCVs] = useState<CVFile[]>([]);
+  const [availableOpportunities, setAvailableOpportunities] = useState<EquityProject[]>([]);
+  
+  const { profile, skills, loadProfile, handleSkillsUpdate } = useProfile();
+  const { applications, pastApplications, loadApplications } = useApplications();
+  const { equityProjects, setEquityProjects, logEffort, setLogEffort, transformToEquityProjects } = useEquityProjects();
+  const { cvUrl, setCvUrl, parsedCvData, setParsedCvData, loadCVData } = useCVData();
 
-  const { profile, loadProfile } = useProfile();
-  const { applications, loadApplications } = useApplications();
-  const { equityProjects, loadEquityProjects } = useEquityProjects();
-  const { cvUrl, parsedCvData, loadCVData, userCVs: cvFiles, loadCVs } = useCVData();
-
-  const refreshCVs = useCallback(async () => {
-    if (userId) {
-      await loadCVs(userId);
-    }
-  }, [userId, loadCVs]);
-
-  const loadData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      
-      // Check if user is authenticated
+  useEffect(() => {
+    // Define a function to check authentication periodically (useful for mobile)
+    const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
+      if (!session) {
+        console.log("No active session found, redirecting to login");
         navigate('/auth/seeker');
-        return;
+        return false;
       }
-      
-      const currentUserId = session.user.id;
-      setUserId(currentUserId);
-      
-      // Load profile data
-      await loadProfile(currentUserId);
-      
-      // Load CV data
-      await loadCVData(currentUserId);
-      
-      // Load user CVs
-      await loadCVs(currentUserId);
-      
-      // Load applications
-      await loadApplications(currentUserId);
-      
-      // Load equity projects
-      await loadEquityProjects(currentUserId);
-      
-      // Load available opportunities
-      await loadAvailableOpportunities(currentUserId);
-      
-      // Extract skills from CV data
-      if (parsedCvData?.skills) {
-        let extractedSkills: Skill[] = [];
-        try {
-          if (typeof parsedCvData.skills === 'string') {
-            extractedSkills = JSON.parse(parsedCvData.skills);
-          } else if (Array.isArray(parsedCvData.skills)) {
-            extractedSkills = parsedCvData.skills.map(s => 
-              typeof s === 'string' ? { skill: s, level: "Intermediate" } : s
-            );
-          }
-          setSkills(extractedSkills);
-        } catch (e) {
-          console.error("Error parsing skills:", e);
-        }
-      }
-      
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      toast.error("Failed to load dashboard data");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [loadProfile, loadCVData, loadApplications, loadEquityProjects, navigate, parsedCvData, loadCVs]);
+      return true;
+    };
 
-  // Helper function to load available opportunities
-  const loadAvailableOpportunities = async (userId: string) => {
-    try {
-      // First, get a list of tasks user has already applied to
-      const { data: userApplications, error: applicationError } = await supabase
-        .from('job_applications')
-        .select('task_id')
-        .eq('user_id', userId);
+    // Set up periodic session checks (especially important for mobile devices)
+    const sessionCheckInterval = setInterval(async () => {
+      await checkSession();
+    }, 60000); // Check every minute
+
+    const loadDashboardData = async () => {
+      try {
+        setIsLoading(true);
         
-      if (applicationError) throw applicationError;
-      
-      // Get all available tasks that are 'open'
-      const { data: availableTasks, error: taskError } = await supabase
-        .from('project_sub_tasks')
-        .select(`
-          *,
-          business_projects:project_id (
-            title, 
-            business_id,
-            businesses:business_id (
-              company_name
+        // Initial session check
+        const hasSession = await checkSession();
+        if (!hasSession) return;
+
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log("Loading profile data for user:", session.user.id);
+
+        // Load user's profile, applications, and CV data
+        await Promise.all([
+          loadProfile(session.user.id),
+          loadApplications(session.user.id),
+          loadCVData(session.user.id)
+        ]);
+
+        // After loading profile, check if it's complete
+        // Using maybeSingle() instead of single() to avoid PGRST116 error
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, terms_accepted')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        if (profileError) {
+          console.error("Error checking profile:", profileError);
+        } else if (!profileData?.first_name || !profileData?.last_name || !profileData?.terms_accepted) {
+          console.log("Profile incomplete, redirecting to completion page");
+          navigate('/seeker/profile/complete');
+          return;
+        }
+
+        // Get user's existing applications
+        const { data: userApplications, error: applicationsError } = await supabase
+          .from('job_applications')
+          .select('task_id, status')
+          .eq('user_id', session.user.id);
+
+        if (applicationsError) throw applicationsError;
+
+        // Create map of task IDs to application status
+        const applicationStatusMap = new Map();
+        userApplications?.forEach(app => {
+          applicationStatusMap.set(app.task_id, app.status);
+        });
+
+        // Get task IDs that are not available (anything except withdrawn and rejected)
+        const unavailableTaskIds = new Set(
+          userApplications
+            ?.filter(app => ['pending', 'in review', 'negotiation', 'accepted'].includes(app.status))
+            .map(app => app.task_id) || []
+        );
+
+        console.log("Unavailable task IDs:", Array.from(unavailableTaskIds));
+
+        // Fetch ALL open tasks from ALL businesses, not just the user's businesses
+        // Important: Don't filter by business_id to get ALL projects
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('project_sub_tasks')
+          .select(`
+            *,
+            project:business_projects (
+              id,
+              title,
+              business:businesses (
+                company_name
+              )
             )
-          )
-        `)
-        .eq('status', 'open');
+          `)
+          .eq('status', 'open');
+
+        if (tasksError) throw tasksError;
         
-      if (taskError) throw taskError;
-      
-      // Filter out tasks that user has already applied to
-      const appliedTaskIds = userApplications?.map(app => app.task_id) || [];
-      
-      const filteredTasks = availableTasks?.filter(task => 
-        !appliedTaskIds.includes(task.id)
-      ) || [];
-      
-      setAvailableOpportunities(filteredTasks);
-    } catch (error) {
-      console.error('Error loading opportunities:', error);
-    }
-  };
+        console.log("All tasks:", tasksData);
+        
+        // Filter out tasks that have already been applied for and are not withdrawn/rejected
+        const opportunities = tasksData
+          ?.filter(task => !unavailableTaskIds.has(task.id))
+          .map(task => ({
+            id: task.id,
+            project_id: task.project_id,
+            equity_amount: task.equity_allocation,
+            time_allocated: task.timeframe,
+            status: task.status,
+            start_date: task.created_at,
+            effort_logs: [],
+            total_hours_logged: 0,
+            title: task.title,
+            sub_tasks: [{
+              id: task.id,
+              project_id: task.project_id,
+              title: task.title,
+              description: task.description,
+              timeframe: task.timeframe,
+              status: task.status,
+              equity_allocation: task.equity_allocation,
+              skill_requirements: task.skill_requirements || [],
+              skills_required: task.skills_required || [],
+              task_status: task.task_status,
+              completion_percentage: task.completion_percentage
+            }],
+            business_roles: {
+              title: task.title,
+              description: task.description,
+              project_title: task.project?.title,
+              company_name: task.project?.business?.company_name
+            }
+          })) || [];
+
+        console.log("Available opportunities:", opportunities);
+        setAvailableOpportunities(opportunities);
+
+        // Transform accepted applications to equity projects
+        const acceptedProjects = transformToEquityProjects(
+          applications.filter(app => app.status === 'accepted')
+        );
+
+        // Set equity projects to ONLY accepted projects
+        setEquityProjects(acceptedProjects);
+
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        toast.error("Failed to load dashboard data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDashboardData();
+
+    // Cleanup interval on component unmount
+    return () => {
+      clearInterval(sessionCheckInterval);
+    };
+  }, [navigate, refreshTrigger]);
 
   const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      navigate('/auth/seeker');
-    } catch (error) {
-      console.error('Error signing out:', error);
+    const { error } = await supabase.auth.signOut();
+    if (error) {
       toast.error("Failed to sign out");
+    } else {
+      navigate('/auth/seeker');
     }
   };
 
-  const handleSkillsUpdate = async (updatedSkills: Skill[]) => {
+  const refreshApplications = async () => {
     try {
-      if (!userId) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
       
-      // Update skills in the database
-      const { error } = await supabase
-        .from('profiles')
-        .update({ skills: updatedSkills })
-        .eq('id', userId);
-        
-      if (error) throw error;
-      
-      // Also update in CV parsed data if it exists
-      const { error: cvError } = await supabase
-        .from('cv_parsed_data')
-        .update({ skills: updatedSkills })
-        .eq('user_id', userId);
-        
-      if (cvError && cvError.code !== 'PGRST116') {
-        console.warn("Error updating CV data:", cvError);
-      }
-      
-      // Update local state
-      setSkills(updatedSkills);
-      toast.success("Skills updated successfully");
+      await loadApplications(session.user.id);
     } catch (error) {
-      console.error('Error updating skills:', error);
-      toast.error("Failed to update skills");
+      console.error('Error refreshing applications:', error);
     }
   };
-
-  const refreshApplications = useCallback(async () => {
-    if (userId) {
-      await loadApplications(userId);
-    }
-  }, [userId, loadApplications]);
-
-  // Load data on component mount and when refresh trigger changes
-  useEffect(() => {
-    loadData();
-  }, [loadData, refreshTrigger]);
-
-  // Listen for auth state changes
-  useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
-        navigate('/auth/seeker');
-      }
-    });
-    
-    return () => {
-      data.subscription.unsubscribe();
-    };
-  }, [navigate]);
 
   return {
     isLoading,
@@ -199,13 +201,16 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     applications,
     equityProjects,
     availableOpportunities,
-    pastApplications, 
+    pastApplications,
     parsedCvData,
     skills,
-    userCVs: cvFiles,
+    logEffort,
+    setLogEffort,
+    setCvUrl,
+    setParsedCvData,
+    setEquityProjects,
     handleSignOut,
     handleSkillsUpdate,
-    refreshApplications,
-    refreshCVs
+    refreshApplications
   };
 };
