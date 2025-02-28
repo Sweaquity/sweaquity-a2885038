@@ -51,7 +51,7 @@ export const ApplicationForm = ({
 
         const userId = session.user.id;
 
-        // Get user's default CV URL
+        // Get user's default CV URL - using maybeSingle to prevent errors
         try {
           const { data: profileData } = await supabase
             .from('profiles')
@@ -118,14 +118,14 @@ export const ApplicationForm = ({
       
       const userId = session.user.id;
       
-      // Submit the application - now allowing null for cv_url
+      // Submit the application
       const { error } = await supabase.from("job_applications").insert({
         project_id: projectId,
         task_id: taskId,
         user_id: userId,
         notes: message,
-        cv_url: selectedCvUrl, // This can be null now
-        message: message // Save the message for displaying later
+        cv_url: selectedCvUrl,
+        message: message // Make sure to save the message for displaying later
       });
       
       if (error) {
