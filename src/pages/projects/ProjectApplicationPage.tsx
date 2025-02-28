@@ -81,11 +81,18 @@ const ProjectApplicationPage = () => {
             )
           `)
           .eq('id', id)
-          .single();
+          .maybeSingle();
 
         if (projectError) {
           console.error('Error fetching project details:', projectError);
           toast.error("Failed to load project details");
+          navigate('/seeker/dashboard?tab=opportunities');
+          return;
+        }
+
+        if (!projectData) {
+          console.error('Project not found:', id);
+          toast.error("Project not found");
           navigate('/seeker/dashboard?tab=opportunities');
           return;
         }
@@ -125,7 +132,7 @@ const ProjectApplicationPage = () => {
               .from('profiles')
               .select('skills')
               .eq('id', session.user.id)
-              .single();
+              .maybeSingle();
 
             if (!profileError && profileData && profileData.skills) {
               if (typeof profileData.skills === 'string') {
@@ -221,19 +228,28 @@ const ProjectApplicationPage = () => {
 
   // Get matching skills between user and task requirements
   const getMatchingSkills = (task: Task): string[] => {
-    if (!task.skills_required || !userSkills) return [];
+    if (!task.skills_required && !task.skill_requirements || !userSkills?.length) return [];
     
     const userSkillNames = userSkills.map(s => s.skill.toLowerCase());
-    return task.skills_required.filter(skill => 
+    
+    if (task.skill_requirements && task.skill_requirements.length > 0) {
+      return task.skill_requirements
+        .map(sr => sr.skill)
+        .filter(skill => userSkillNames.includes(skill.toLowerCase()));
+    }
+    
+    return (task.skills_required || []).filter(skill => 
       userSkillNames.includes(skill.toLowerCase())
     );
   };
 
   // Calculate skill match percentage
   const calculateMatchPercentage = (task: Task): number => {
-    if (!task.skills_required || task.skills_required.length === 0) return 0;
+    const skillsToMatch = task.skill_requirements?.map(sr => sr.skill) || task.skills_required || [];
+    if (skillsToMatch.length === 0) return 0;
+    
     const matchingCount = getMatchingSkills(task).length;
-    return Math.round((matchingCount / task.skills_required.length) * 100);
+    return Math.round((matchingCount / skillsToMatch.length) * 100);
   };
 
   if (isLoading) {

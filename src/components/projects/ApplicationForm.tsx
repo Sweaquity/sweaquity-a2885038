@@ -57,7 +57,7 @@ export const ApplicationForm = ({
             .from('profiles')
             .select('cv_url')
             .eq('id', userId)
-            .single();
+            .maybeSingle();
 
           const defaultCvUrl = profileData?.cv_url || null;
           
@@ -93,7 +93,7 @@ export const ApplicationForm = ({
             }
           }
         } catch (error) {
-          console.log("Error fetching profile data, this might be expected:", error);
+          console.error("Error fetching profile data:", error);
         }
       } catch (error) {
         console.error("Error loading CVs:", error);

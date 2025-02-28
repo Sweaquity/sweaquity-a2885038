@@ -365,7 +365,7 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
           )}
           
           <div>
-            <Label>Upload new CV</Label>
+            <Label htmlFor="cv-upload">Upload new CV</Label>
             <div className="mt-2 flex items-end gap-3">
               <div className="flex-1">
                 <input

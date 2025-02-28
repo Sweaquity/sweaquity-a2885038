@@ -59,7 +59,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
           .from('profiles')
           .select('first_name, last_name, terms_accepted')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
 
         if (profileError) {
           console.error("Error checking profile:", profileError);

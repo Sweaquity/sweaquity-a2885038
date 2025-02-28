@@ -38,11 +38,11 @@ export const useCVData = () => {
           .from('profiles')
           .select('cv_url')
           .eq('id', userId)
-          .single();
+          .maybeSingle();
           
         if (error) {
-          if (error.code !== 'PGRST116') {
-            // Only log errors that aren't "no rows returned"
+          if (error.code !== 'PGRST116' && error.code !== '42703') {
+            // Only log errors that aren't "no rows returned" or "column does not exist"
             console.error("Error fetching profile CV URL:", error);
           }
         } else if (profileData?.cv_url) {

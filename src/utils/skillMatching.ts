@@ -76,8 +76,14 @@ export const getProjectMatches = (projects: EquityProject[], userSkills: Skill[]
   });
 
   const projectMatches: ProjectMatch[] = [];
+  const processedProjectIds = new Set<string>();
 
   projects.forEach(project => {
+    // Skip if we've already processed this project (by projectId)
+    if (project.project_id && processedProjectIds.has(project.project_id)) {
+      return;
+    }
+    
     console.log("\nAnalyzing project:", {
       title: project.title,
       id: project.id,
@@ -135,8 +141,13 @@ export const getProjectMatches = (projects: EquityProject[], userSkills: Skill[]
         score: avgProjectScore
       });
 
+      // Mark this project as processed
+      if (project.project_id) {
+        processedProjectIds.add(project.project_id);
+      }
+
       projectMatches.push({
-        projectId: project.project_id,
+        projectId: project.project_id || project.id,
         projectTitle: project.title || project.business_roles?.project_title || 'Unnamed Project',
         matchScore: avgProjectScore,
         matchedTasks

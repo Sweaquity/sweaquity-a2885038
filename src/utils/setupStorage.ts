@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -97,7 +98,7 @@ export const deleteCV = async (userId: string, fileName: string) => {
       .from('profiles')
       .select('cv_url')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
       
     if (profileData?.cv_url) {
       const cvUrl = profileData.cv_url;
