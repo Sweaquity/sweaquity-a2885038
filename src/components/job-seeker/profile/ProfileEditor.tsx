@@ -79,10 +79,24 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
     }));
   };
 
-  const handleConsentChange = (field: string, value: boolean) => {
+  const handleTermsAcceptedChange = (checked: boolean) => {
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      terms_accepted: checked
+    }));
+  };
+
+  const handleMarketingConsentChange = (checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      marketing_consent: checked
+    }));
+  };
+
+  const handleProjectUpdatesConsentChange = (checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      project_updates_consent: checked
     }));
   };
 
@@ -228,7 +242,9 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
               termsAccepted={formData.terms_accepted}
               marketingConsent={formData.marketing_consent}
               projectUpdatesConsent={formData.project_updates_consent}
-              onConsentChange={handleConsentChange}
+              onTermsAcceptedChange={handleTermsAcceptedChange}
+              onMarketingConsentChange={handleMarketingConsentChange}
+              onProjectUpdatesConsentChange={handleProjectUpdatesConsentChange}
             />
           </form>
         ) : (

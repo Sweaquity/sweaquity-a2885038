@@ -3,11 +3,11 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Trash2, FileText, ChevronDown, MessageSquare } from "lucide-react";
-import { JobApplication } from "@/types/jobSeeker";
+import { JobApplication, Skill } from "@/types/jobSeeker";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -19,9 +19,55 @@ interface ApplicationsTabProps {
   onApplicationUpdated?: () => void;
 }
 
+// Extended type with optional user skills for matching
+interface ExtendedJobApplication extends JobApplication {
+  userSkills?: Array<string | Skill>;
+}
+
 export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} }: ApplicationsTabProps) => {
   const [isWithdrawing, setIsWithdrawing] = useState<string | null>(null);
   const [expandedApplications, setExpandedApplications] = useState<Set<string>>(new Set());
+  const [userSkills, setUserSkills] = useState<Skill[]>([]);
+
+  // Fetch user skills when component mounts
+  useEffect(() => {
+    const fetchUserSkills = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('skills')
+          .eq('id', session.user.id)
+          .single();
+
+        if (error) throw error;
+
+        if (data?.skills) {
+          let parsedSkills: Skill[] = [];
+          
+          if (typeof data.skills === 'string') {
+            try {
+              parsedSkills = JSON.parse(data.skills);
+            } catch (e) {
+              console.error("Error parsing skills:", e);
+            }
+          } else if (Array.isArray(data.skills)) {
+            parsedSkills = data.skills.map(skill => 
+              typeof skill === 'string' ? { skill, level: 'Intermediate' } : skill
+            );
+          }
+          
+          setUserSkills(parsedSkills);
+        }
+      } catch (error) {
+        console.error("Error fetching user skills:", error);
+      }
+    };
+    
+    fetchUserSkills();
+  }, []);
 
   const toggleApplicationExpanded = (applicationId: string) => {
     setExpandedApplications(prev => {
@@ -151,19 +197,15 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
   };
 
   // Get matched skills from application and task requirements
-  const getMatchedSkills = (application: JobApplication) => {
+  const getMatchedSkills = (application: JobApplication): string[] => {
     if (!application.business_roles?.skills_required) return [];
     
-    // Get user's skills from profile (assuming they're stored somewhere in the application)
-    const userSkills = application.userSkills || [];
+    // Get user skills from the state
+    const skillNames = userSkills.map(skill => skill.skill.toLowerCase());
     
     // Find the intersection of user skills and required skills
     return application.business_roles.skills_required.filter(skill => 
-      userSkills.some(userSkill => 
-        typeof userSkill === 'string' 
-          ? userSkill.toLowerCase() === skill.toLowerCase()
-          : userSkill.skill.toLowerCase() === skill.toLowerCase()
-      )
+      skillNames.includes(skill.toLowerCase())
     );
   };
 

@@ -87,7 +87,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                         project_id: project.projectId,
                         skill_requirements: task.matchedSkills?.map(skill => ({
                           skill,
-                          level: "Matched"
+                          level: "Intermediate" // Using an allowed level value from the enum
                         })) || [],
                         status: 'open',
                         task_status: 'open',

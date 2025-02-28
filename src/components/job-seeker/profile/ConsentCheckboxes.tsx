@@ -9,6 +9,8 @@ interface ConsentCheckboxesProps {
   onMarketingConsentChange: (checked: boolean) => void;
   onProjectUpdatesConsentChange: (checked: boolean) => void;
   onTermsAcceptedChange: (checked: boolean) => void;
+  // For backward compatibility with existing code
+  onConsentChange?: (field: string, value: boolean) => void;
 }
 
 export const ConsentCheckboxes = ({
@@ -17,8 +19,25 @@ export const ConsentCheckboxes = ({
   termsAccepted,
   onMarketingConsentChange,
   onProjectUpdatesConsentChange,
-  onTermsAcceptedChange
+  onTermsAcceptedChange,
+  onConsentChange
 }: ConsentCheckboxesProps) => {
+  // Handle both direct and field-based consent changes
+  const handleTermsChange = (checked: boolean) => {
+    onTermsAcceptedChange(checked);
+    if (onConsentChange) onConsentChange('terms_accepted', checked);
+  };
+
+  const handleMarketingChange = (checked: boolean) => {
+    onMarketingConsentChange(checked);
+    if (onConsentChange) onConsentChange('marketing_consent', checked);
+  };
+
+  const handleUpdatesChange = (checked: boolean) => {
+    onProjectUpdatesConsentChange(checked);
+    if (onConsentChange) onConsentChange('project_updates_consent', checked);
+  };
+
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -26,7 +45,7 @@ export const ConsentCheckboxes = ({
           <Checkbox 
             id="terms" 
             checked={termsAccepted}
-            onCheckedChange={onTermsAcceptedChange}
+            onCheckedChange={handleTermsChange}
           />
           <Label htmlFor="terms" className="text-sm font-normal">
             I accept the terms and conditions *
@@ -37,7 +56,7 @@ export const ConsentCheckboxes = ({
           <Checkbox 
             id="marketing" 
             checked={marketingConsent}
-            onCheckedChange={onMarketingConsentChange}
+            onCheckedChange={handleMarketingChange}
           />
           <Label htmlFor="marketing" className="text-sm font-normal">
             I agree to receive marketing emails
@@ -48,7 +67,7 @@ export const ConsentCheckboxes = ({
           <Checkbox 
             id="updates" 
             checked={projectUpdatesConsent}
-            onCheckedChange={onProjectUpdatesConsentChange}
+            onCheckedChange={handleUpdatesChange}
           />
           <Label htmlFor="updates" className="text-sm font-normal">
             I want project update notifications
