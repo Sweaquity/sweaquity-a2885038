@@ -1,5 +1,6 @@
 
-import { useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ProfileCompletionForm } from "@/components/job-seeker/ProfileCompletionForm";
 import { DashboardHeader } from "@/components/job-seeker/dashboard/DashboardHeader";
 import { DashboardContent } from "@/components/job-seeker/dashboard/DashboardContent";
@@ -9,6 +10,7 @@ import { toast } from "sonner";
 
 const JobSeekerDashboard = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const activeTabFromState = location.state?.activeTab || "profile";
   
   const {
@@ -28,6 +30,29 @@ const JobSeekerDashboard = () => {
     handleSignOut,
     handleSkillsUpdate
   } = useJobSeekerDashboard();
+
+  // Check authentication on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/auth/seeker');
+      }
+    };
+
+    checkAuth();
+
+    // Also listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        navigate('/auth/seeker');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
 
   const handleLogEffort = async (projectId: string) => {
     try {
@@ -143,9 +168,9 @@ const JobSeekerDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-3 md:p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           <DashboardHeader profile={profile} onSignOut={handleSignOut} />
           <DashboardContent
             activeTab={activeTabFromState}

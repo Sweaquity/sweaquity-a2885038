@@ -42,10 +42,17 @@ export const DashboardContent = ({
 }: DashboardContentProps) => {
   return (
     <Tabs defaultValue={activeTab} className="space-y-6">
-      <TabsList className="grid w-full grid-cols-5">
+      {/* Mobile-optimized tabs */}
+      <TabsList className="grid w-full grid-cols-3 mb-2 md:grid-cols-5">
         <TabsTrigger value="profile">Profile</TabsTrigger>
         <TabsTrigger value="opportunities">Opportunities</TabsTrigger>
         <TabsTrigger value="applications">Applications</TabsTrigger>
+        <TabsTrigger value="equity" className="hidden md:block">Current Projects</TabsTrigger>
+        <TabsTrigger value="activity" className="hidden md:block">Past Activity</TabsTrigger>
+      </TabsList>
+
+      {/* Secondary tabs for smaller screens */}
+      <TabsList className="grid w-full grid-cols-2 md:hidden">
         <TabsTrigger value="equity">Current Projects</TabsTrigger>
         <TabsTrigger value="activity">Past Activity</TabsTrigger>
       </TabsList>

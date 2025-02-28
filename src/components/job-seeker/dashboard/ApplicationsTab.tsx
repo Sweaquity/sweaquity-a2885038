@@ -2,7 +2,7 @@
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, FileText, ExternalLink } from "lucide-react";
 import { JobApplication } from "@/types/jobSeeker";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -31,6 +31,10 @@ export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
     }
   };
 
+  const openCV = (cvUrl: string) => {
+    window.open(cvUrl, '_blank');
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -38,9 +42,74 @@ export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
+          {applications.length === 0 && (
+            <p className="text-muted-foreground">No applications found.</p>
+          )}
+          
           {applications.map(application => (
             <div key={application.id} className="border p-4 rounded-lg hover:bg-secondary/50 transition-colors">
-              <div className="flex items-center justify-between gap-4">
+              {/* Mobile view */}
+              <div className="block md:hidden space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-medium">{application.business_roles?.title || 'N/A'}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {application.business_roles?.company_name || 'N/A'} • {application.business_roles?.project_title || 'N/A'}
+                    </p>
+                  </div>
+                  <Badge 
+                    variant={application.status === 'pending' ? 'secondary' : 
+                            application.status === 'accepted' ? 'default' : 'destructive'}
+                  >
+                    {application.status}
+                  </Badge>
+                </div>
+                
+                {application.business_roles?.skills_required && (
+                  <div className="flex flex-wrap gap-1">
+                    {application.business_roles.skills_required.slice(0, 3).map((skill, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {skill}
+                      </Badge>
+                    ))}
+                    {(application.business_roles.skills_required.length > 3) && (
+                      <span className="text-xs text-muted-foreground">
+                        +{application.business_roles.skills_required.length - 3}
+                      </span>
+                    )}
+                  </div>
+                )}
+                
+                <div className="flex justify-between items-center">
+                  <p className="text-sm text-muted-foreground">
+                    Applied: {new Date(application.applied_at).toLocaleDateString()}
+                  </p>
+                  <div className="flex gap-2">
+                    {application.cv_url && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openCV(application.cv_url!)}
+                      >
+                        <FileText className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {application.status === 'pending' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive"
+                        onClick={() => handleWithdraw(application.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop view */}
+              <div className="hidden md:flex items-center justify-between gap-4">
                 <div className="grid grid-cols-6 flex-1 gap-6">
                   <div className="col-span-1">
                     <p className="text-sm font-medium text-muted-foreground">Company</p>
@@ -83,13 +152,24 @@ export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
                     <p className="text-sm">{new Date(application.applied_at).toLocaleDateString()}</p>
                   </div>
                 </div>
-                <div className="flex items-center">
+                <div className="flex items-center gap-2">
+                  {application.cv_url && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      title="View CV"
+                      onClick={() => openCV(application.cv_url!)}
+                    >
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                  )}
                   {application.status === 'pending' && (
                     <Button
                       variant="ghost"
                       size="sm"
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       onClick={() => handleWithdraw(application.id)}
+                      title="Withdraw application"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -98,9 +178,6 @@ export const ApplicationsTab = ({ applications }: ApplicationsTabProps) => {
               </div>
             </div>
           ))}
-          {applications.length === 0 && (
-            <p className="text-muted-foreground">No applications found.</p>
-          )}
         </div>
       </CardContent>
     </Card>
