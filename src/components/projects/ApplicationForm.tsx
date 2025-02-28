@@ -1,180 +1,206 @@
 
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { useNavigate } from "react-router-dom";
+import { listUserCVs } from "@/utils/setupStorage";
 
 interface ApplicationFormProps {
   projectId: string;
-  taskId?: string;
-  hasStoredCV: boolean;
-  storedCVUrl: string | null;
-  onApplicationSubmitted: () => void;
+  taskId: string;
+  projectTitle: string;
+  taskTitle: string;
+  onCancel: () => void;
 }
 
 export const ApplicationForm = ({
   projectId,
   taskId,
-  hasStoredCV,
-  storedCVUrl,
-  onApplicationSubmitted,
+  projectTitle,
+  taskTitle,
+  onCancel,
 }: ApplicationFormProps) => {
-  const [applicationMessage, setApplicationMessage] = useState("");
-  const [newCV, setNewCV] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [useStoredCV, setUseStoredCV] = useState(hasStoredCV);
   const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
+  const [availableCvs, setAvailableCvs] = useState<Array<{name: string, url: string, isDefault: boolean}>>([]);
+  const [selectedCvUrl, setSelectedCvUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error("File size should be less than 10MB");
-        return;
+  useEffect(() => {
+    const loadUserCVs = async () => {
+      try {
+        setIsLoading(true);
+        // Get user session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          toast.error("You must be logged in to apply");
+          return;
+        }
+
+        const userId = session.user.id;
+
+        // Get user's default CV URL
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('cv_url')
+          .eq('id', userId)
+          .maybeSingle();
+
+        const defaultCvUrl = profileData?.cv_url || null;
+
+        // List all of the user's CVs
+        const cvFiles = await listUserCVs(userId);
+        
+        if (cvFiles.length > 0) {
+          const cvs = await Promise.all(cvFiles.map(async (file) => {
+            const { data } = supabase.storage
+              .from('cvs')
+              .getPublicUrl(`${userId}/${file.name}`);
+              
+            return {
+              name: file.name,
+              url: data.publicUrl,
+              isDefault: defaultCvUrl ? defaultCvUrl === data.publicUrl : false
+            };
+          }));
+          
+          setAvailableCvs(cvs);
+          
+          // Select the default CV if available
+          if (defaultCvUrl) {
+            setSelectedCvUrl(defaultCvUrl);
+          } else if (cvs.length > 0) {
+            setSelectedCvUrl(cvs[0].url);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading CVs:", error);
+      } finally {
+        setIsLoading(false);
       }
-      setNewCV(file);
-    }
-  };
+    };
 
-  const handleApply = async () => {
-    if (!applicationMessage.trim()) {
-      toast.error("Please provide an application message");
-      return;
-    }
+    loadUserCVs();
+  }, []);
 
-    if (!useStoredCV && !newCV && !storedCVUrl) {
-      toast.error("Please attach a CV");
-      return;
-    }
-
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsSubmitting(true);
-
+    
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user?.id) {
-        toast.error("Please sign in to apply");
+      if (!session?.user) {
+        toast.error("You must be logged in to apply");
         return;
       }
-
-      let cvUrl = useStoredCV ? storedCVUrl : null;
-
-      // Handle CV upload if there's a new CV
-      if (newCV) {
-        const fileName = `${session.user.id}/${Date.now()}-${newCV.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('cvs')
-          .upload(fileName, newCV);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('cvs')
-          .getPublicUrl(fileName);
-
-        cvUrl = publicUrl;
-
-        // Update cv_parsed_data with new CV URL
-        await supabase
-          .from('cv_parsed_data')
-          .upsert({
-            user_id: session.user.id,
-            cv_url: cvUrl
-          });
-      }
-
-      // Create the application record
-      const applicationData = {
-        user_id: session.user.id,
+      
+      const userId = session.user.id;
+      
+      // Submit the application
+      const { error } = await supabase.from("job_applications").insert({
         project_id: projectId,
         task_id: taskId,
-        message: applicationMessage,
-        cv_url: cvUrl || storedCVUrl,
-        status: 'pending'
-      };
-
-      console.log('Submitting application:', applicationData);
-
-      const { data: application, error: applicationError } = await supabase
-        .from('job_applications')
-        .insert(applicationData)
-        .select()
-        .single();
-
-      if (applicationError) throw applicationError;
-
-      toast.success("Application submitted successfully");
-      onApplicationSubmitted();
+        user_id: userId,
+        notes: message,
+        cv_url: selectedCvUrl
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Update the task status to 'pending'
+      await supabase
+        .from("project_sub_tasks")
+        .update({ 
+          status: 'pending',
+          task_status: 'pending'
+        })
+        .eq("id", taskId);
+      
+      toast.success("Application submitted successfully!");
       navigate("/seeker/dashboard");
-    } catch (error) {
-      console.error('Error submitting application:', error);
-      toast.error("Failed to submit application");
+    } catch (error: any) {
+      console.error("Error submitting application:", error);
+      toast.error(error.message || "Failed to submit application");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label>CV Upload</Label>
-        <div className="space-y-4">
-          {hasStoredCV && (
-            <div className="flex items-center gap-2">
-              <input
-                type="radio"
-                id="stored-cv"
-                name="cv-choice"
-                checked={useStoredCV}
-                onChange={() => {
-                  setUseStoredCV(true);
-                  setNewCV(null);
-                }}
-              />
-              <Label htmlFor="stored-cv">Use stored CV</Label>
-            </div>
-          )}
-          <div className="flex items-start gap-2">
-            <input
-              type="radio"
-              id="new-cv"
-              name="cv-choice"
-              checked={!useStoredCV}
-              onChange={() => setUseStoredCV(false)}
-            />
-            <div className="space-y-2">
-              <Label htmlFor="new-cv">Upload new CV</Label>
-              <Input
-                type="file"
-                accept=".pdf,.doc,.docx"
-                onChange={handleFileChange}
-                disabled={isSubmitting}
-              />
-            </div>
-          </div>
-        </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium">Apply for: {taskTitle}</h3>
+        <p className="text-sm text-muted-foreground mt-1">Project: {projectTitle}</p>
       </div>
-
+      
       <div className="space-y-2">
-        <Label>Application Message</Label>
+        <Label htmlFor="message">Message to Project Owner</Label>
         <Textarea
-          placeholder="Tell us why you're interested in this opportunity and how your skills match the requirements..."
-          value={applicationMessage}
-          onChange={(e) => setApplicationMessage(e.target.value)}
-          className="min-h-[200px]"
-          disabled={isSubmitting}
+          id="message"
+          placeholder="Introduce yourself and explain why you're a good fit for this role..."
+          rows={5}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          required
         />
       </div>
-
-      <Button 
-        onClick={handleApply}
-        disabled={isSubmitting || (!useStoredCV && !newCV && !storedCVUrl) || !applicationMessage.trim()}
-      >
-        {isSubmitting ? "Submitting..." : "Submit Application"}
-      </Button>
-    </div>
+      
+      <div className="space-y-2">
+        <Label>Select CV to Attach</Label>
+        {isLoading ? (
+          <div className="flex items-center space-x-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm text-muted-foreground">Loading CVs...</span>
+          </div>
+        ) : availableCvs.length > 0 ? (
+          <div className="space-y-2 border rounded-md p-3">
+            {availableCvs.map((cv) => (
+              <div key={cv.url} className="flex items-center space-x-2">
+                <Checkbox 
+                  id={`cv-${cv.name}`}
+                  checked={selectedCvUrl === cv.url}
+                  onCheckedChange={() => setSelectedCvUrl(cv.url)}
+                />
+                <Label htmlFor={`cv-${cv.name}`} className="text-sm">
+                  {cv.name}
+                  {cv.isDefault && <span className="text-xs text-muted-foreground ml-2">(Default)</span>}
+                </Label>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-sm text-amber-600 border border-amber-200 bg-amber-50 p-3 rounded">
+            You don't have any CVs uploaded. Please upload a CV in your profile before applying.
+          </div>
+        )}
+      </div>
+      
+      <div className="flex justify-end space-x-2">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button 
+          type="submit" 
+          disabled={isSubmitting || !selectedCvUrl || message.trim().length === 0}
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Submitting...
+            </>
+          ) : (
+            "Submit Application"
+          )}
+        </Button>
+      </div>
+    </form>
   );
 };
