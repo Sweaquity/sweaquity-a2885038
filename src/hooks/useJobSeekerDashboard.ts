@@ -17,7 +17,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
   const { profile, skills, loadProfile, handleSkillsUpdate } = useProfile();
   const { applications, pastApplications, loadApplications } = useApplications();
   const { equityProjects, setEquityProjects, logEffort, setLogEffort, transformToEquityProjects } = useEquityProjects();
-  const { cvUrl, setCvUrl, parsedCvData, setParsedCvData, loadCVData } = useCVData();
+  const { cvUrl, setCvUrl, parsedCvData, setParsedCvData, loadCVData, userCVs, setUserCVs } = useCVData();
 
   useEffect(() => {
     // Define a function to check authentication periodically (useful for mobile)
@@ -94,7 +94,6 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
         console.log("Unavailable task IDs:", Array.from(unavailableTaskIds));
 
         // Fetch ALL open tasks from ALL businesses, not just the user's businesses
-        // Important: Don't filter by business_id to get ALL projects
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
           .select(`
@@ -209,6 +208,8 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     setCvUrl,
     setParsedCvData,
     setEquityProjects,
+    userCVs,
+    setUserCVs,
     handleSignOut,
     handleSkillsUpdate,
     refreshApplications

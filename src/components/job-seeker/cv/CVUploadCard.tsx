@@ -43,6 +43,7 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
   const [bucketReady, setBucketReady] = useState(false);
   const [storageError, setStorageError] = useState<string | null>(null);
   const [processingAction, setProcessingAction] = useState<{type: string, fileName: string} | null>(null);
+  const [localUserCVs, setLocalUserCVs] = useState<CVFile[]>([]);
 
   useEffect(() => {
     if (cvUrl) {
@@ -57,6 +58,13 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
         if (!ready) {
           setStorageError("CV storage is not ready yet. Please try again later or contact support.");
           console.log("CV storage bucket not ready");
+        } else {
+          // Fetch user CVs if not provided via props
+          if (userCVs.length === 0) {
+            loadUserCVs();
+          } else {
+            setLocalUserCVs(userCVs);
+          }
         }
       } catch (error) {
         console.error("Error checking storage:", error);
@@ -65,7 +73,30 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
     };
     
     checkStorage();
-  }, [cvUrl]);
+  }, [cvUrl, userCVs]);
+
+  const loadUserCVs = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        toast.error("You must be logged in to view your CVs");
+        return;
+      }
+      
+      const cvFiles = await listUserCVs(session.user.id);
+      
+      // Mark default CV
+      const defaultCVUrl = cvUrl;
+      const filesWithDefault = cvFiles.map(file => ({
+        ...file,
+        isDefault: defaultCVUrl ? defaultCVUrl.includes(file.name) : false
+      }));
+      
+      setLocalUserCVs(filesWithDefault);
+    } catch (error) {
+      console.error("Error loading user CVs:", error);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -203,6 +234,9 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
       
       toast.success("CV uploaded successfully");
       
+      // Reload the list of CVs
+      await loadUserCVs();
+      
       if (onCvListUpdated) {
         onCvListUpdated();
       }
@@ -253,8 +287,11 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
         }
 
         const success = await deleteCV(session.user.id, fileName);
-        if (success && onCvListUpdated) {
-          onCvListUpdated();
+        if (success) {
+          await loadUserCVs();
+          if (onCvListUpdated) {
+            onCvListUpdated();
+          }
         }
       } finally {
         setProcessingAction(null);
@@ -289,6 +326,7 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
       const newUrl = await setDefaultCV(session.user.id, fileName);
       if (newUrl) {
         setDisplayUrl(newUrl);
+        await loadUserCVs();
         if (onCvListUpdated) {
           onCvListUpdated();
         }
@@ -372,11 +410,11 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
         </div>
         
         {/* Show list of user's CVs */}
-        {userCVs.length > 0 && (
+        {localUserCVs.length > 0 && (
           <div className="mt-6">
             <Label>My CV Library</Label>
             <div className="mt-2 border rounded-md divide-y">
-              {userCVs.map((cv) => (
+              {localUserCVs.map((cv) => (
                 <div key={cv.id} className="p-3 flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Checkbox 
@@ -445,11 +483,11 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
         {!bucketReady && (
           <div className="text-sm text-yellow-600 flex items-center gap-2 p-2 bg-yellow-50 rounded-md">
             <FileX className="h-4 w-4" />
-            <span>CV storage is not available yet. Please check back later or contact support.</span>
+            <span>CV storage is being set up. Please check back later or contact support.</span>
           </div>
         )}
         
-        {bucketReady && userCVs.length === 0 && !displayUrl && (
+        {bucketReady && localUserCVs.length === 0 && !displayUrl && (
           <div className="text-sm text-muted-foreground">
             <p>Upload your CV to help us understand your skills and experience. We'll automatically extract information to enhance your profile.</p>
           </div>
