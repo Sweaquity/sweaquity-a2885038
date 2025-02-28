@@ -4,6 +4,7 @@ import { SkillsCard } from "./skills/SkillsCard";
 import { CareerHistoryCard } from "./career/CareerHistoryCard";
 import { ProfileEditor } from "./profile/ProfileEditor";
 import { Profile, Skill } from "@/types/jobSeeker";
+import { CVFile } from "@/hooks/job-seeker/useCVData";
 
 interface ProfileSectionProps {
   profile?: Profile;
@@ -13,6 +14,8 @@ interface ProfileSectionProps {
   setParsedCvData?: (data: any) => void;
   skills?: Skill[];
   onSkillsUpdate?: (skills: Skill[]) => void;
+  userCVs?: CVFile[];
+  onCvListUpdated?: () => void;
 }
 
 export const ProfileSection = ({
@@ -22,7 +25,9 @@ export const ProfileSection = ({
   setCvUrl = () => {},
   setParsedCvData = () => {},
   skills = [],
-  onSkillsUpdate = () => {}
+  onSkillsUpdate = () => {},
+  userCVs = [],
+  onCvListUpdated = () => {}
 }: ProfileSectionProps) => {
   return (
     <div className="space-y-6">
@@ -30,6 +35,8 @@ export const ProfileSection = ({
       <CVUploadCard 
         cvUrl={cvUrl}
         parsedCvData={parsedCvData}
+        userCVs={userCVs}
+        onCvListUpdated={onCvListUpdated}
       />
       <SkillsCard 
         skills={skills}

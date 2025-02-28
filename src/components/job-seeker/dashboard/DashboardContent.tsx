@@ -29,6 +29,8 @@ export const DashboardContent = ({
             setParsedCvData={dashboardData.setParsedCvData}
             skills={dashboardData.skills}
             onSkillsUpdate={dashboardData.handleSkillsUpdate}
+            userCVs={dashboardData.userCVs}
+            onCvListUpdated={dashboardData.onCvListUpdated}
           />
         </TabsContent>
         

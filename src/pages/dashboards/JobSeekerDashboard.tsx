@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { ProfileCompletionForm } from "@/components/job-seeker/ProfileCompletionForm";
 import { Button } from "@/components/ui/button";
 import { Building2, Menu } from "lucide-react";
+import { useCVData } from "@/hooks/job-seeker/useCVData";
 import {
   DropdownMenu,
   DropdownMenuContent,
