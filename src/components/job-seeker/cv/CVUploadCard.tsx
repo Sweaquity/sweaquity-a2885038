@@ -21,7 +21,8 @@ import {
   downloadCV,
   deleteCV,
   previewCV,
-  setDefaultCV
+  setDefaultCV,
+  listUserCVs
 } from "@/utils/setupStorage";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
