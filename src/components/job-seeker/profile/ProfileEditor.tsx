@@ -1,8 +1,6 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Profile } from "@/types/jobSeeker";
@@ -11,6 +9,9 @@ import { toast } from "sonner";
 import { PersonalInfoFields } from "./PersonalInfoFields";
 import { AvailabilitySelector } from "./AvailabilitySelector";
 import { ConsentCheckboxes } from "./ConsentCheckboxes";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Check } from "lucide-react";
 
 interface ProfileEditorProps {
   profile: Profile | null;
@@ -47,17 +48,30 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
           
         if (error) throw error;
         
+        let availabilityArray = [];
+        
+        // Parse availability properly
+        if (data.availability) {
+          if (typeof data.availability === 'string') {
+            try {
+              // Try to parse JSON string
+              availabilityArray = JSON.parse(data.availability);
+            } catch (e) {
+              // If not valid JSON, treat as a single item
+              availabilityArray = [data.availability];
+            }
+          } else if (Array.isArray(data.availability)) {
+            availabilityArray = data.availability;
+          }
+        }
+        
         setFormData({
           first_name: data.first_name || '',
           last_name: data.last_name || '',
           title: data.title || '',
           email: data.email || '',
           location: data.location || '',
-          availability: data.availability ? 
-            (typeof data.availability === 'string' ? 
-              [data.availability] : 
-              Array.isArray(data.availability) ? 
-                data.availability : []) : [],
+          availability: availabilityArray,
           employment_preference: data.employment_preference || 'both',
           terms_accepted: !!data.terms_accepted,
           marketing_consent: !!data.marketing_consent,
@@ -158,17 +172,30 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
           
         if (error) throw error;
         
+        let availabilityArray = [];
+        
+        // Parse availability properly
+        if (data.availability) {
+          if (typeof data.availability === 'string') {
+            try {
+              // Try to parse JSON string
+              availabilityArray = JSON.parse(data.availability);
+            } catch (e) {
+              // If not valid JSON, treat as a single item
+              availabilityArray = [data.availability];
+            }
+          } else if (Array.isArray(data.availability)) {
+            availabilityArray = data.availability;
+          }
+        }
+        
         setFormData({
           first_name: data.first_name || '',
           last_name: data.last_name || '',
           title: data.title || '',
           email: data.email || '',
           location: data.location || '',
-          availability: data.availability ? 
-            (typeof data.availability === 'string' ? 
-              [data.availability] : 
-              Array.isArray(data.availability) ? 
-                data.availability : []) : [],
+          availability: availabilityArray,
           employment_preference: data.employment_preference || 'both',
           terms_accepted: !!data.terms_accepted,
           marketing_consent: !!data.marketing_consent,
@@ -283,11 +310,11 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
             <div>
               <Label className="text-muted-foreground">Availability</Label>
               <div className="flex flex-wrap gap-2 mt-1">
-                {formData.availability.length > 0 ? (
+                {formData.availability && formData.availability.length > 0 ? (
                   formData.availability.map((item, index) => (
-                    <span key={index} className="bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm">
+                    <Badge key={index} variant="secondary" className="px-2 py-1 text-sm">
                       {item}
-                    </span>
+                    </Badge>
                   ))
                 ) : (
                   <p className="text-muted-foreground text-sm">No availability specified</p>
@@ -297,34 +324,22 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
             
             <div>
               <Label className="text-muted-foreground">Consents</Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
+              <div className="grid grid-cols-3 gap-2 mt-1">
                 <div className="flex items-center gap-2">
-                  <div className={`w-4 h-4 rounded-sm border ${formData.terms_accepted ? 'bg-primary border-primary' : 'border-gray-300'}`}>
-                    {formData.terms_accepted && (
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
-                    )}
+                  <div className={`w-4 h-4 rounded-sm border flex items-center justify-center ${formData.terms_accepted ? 'bg-primary border-primary text-primary-foreground' : 'border-gray-300'}`}>
+                    {formData.terms_accepted && <Check className="h-3 w-3" />}
                   </div>
                   <span className="text-sm">Terms & Conditions</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className={`w-4 h-4 rounded-sm border ${formData.marketing_consent ? 'bg-primary border-primary' : 'border-gray-300'}`}>
-                    {formData.marketing_consent && (
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
-                    )}
+                  <div className={`w-4 h-4 rounded-sm border flex items-center justify-center ${formData.marketing_consent ? 'bg-primary border-primary text-primary-foreground' : 'border-gray-300'}`}>
+                    {formData.marketing_consent && <Check className="h-3 w-3" />}
                   </div>
                   <span className="text-sm">Marketing Communications</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className={`w-4 h-4 rounded-sm border ${formData.project_updates_consent ? 'bg-primary border-primary' : 'border-gray-300'}`}>
-                    {formData.project_updates_consent && (
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
-                    )}
+                  <div className={`w-4 h-4 rounded-sm border flex items-center justify-center ${formData.project_updates_consent ? 'bg-primary border-primary text-primary-foreground' : 'border-gray-300'}`}>
+                    {formData.project_updates_consent && <Check className="h-3 w-3" />}
                   </div>
                   <span className="text-sm">Project Updates</span>
                 </div>

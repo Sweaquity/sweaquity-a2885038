@@ -2,7 +2,7 @@
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trash2, FileText, ChevronDown, MessageSquare } from "lucide-react";
+import { Trash2, FileText, ChevronDown, MessageSquare, ArrowLeft } from "lucide-react";
 import { JobApplication, Skill } from "@/types/jobSeeker";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -17,11 +17,6 @@ import {
 interface ApplicationsTabProps {
   applications: JobApplication[];
   onApplicationUpdated?: () => void;
-}
-
-// Extended type with optional user skills for matching
-interface ExtendedJobApplication extends JobApplication {
-  userSkills?: Array<string | Skill>;
 }
 
 export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} }: ApplicationsTabProps) => {
@@ -156,38 +151,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
         }
       }
       
-      // Extract the file path from the URL
-      const urlObj = new URL(cvUrl);
-      const pathSegments = urlObj.pathname.split('/');
-      // Format should be /storage/v1/object/public/cvs/[userId]/[fileName]
-      const bucketName = 'cvs';
-      
-      let filePath;
-      if (pathSegments.includes('cvs')) {
-        const filePathArray = pathSegments.slice(pathSegments.indexOf('cvs') + 1);
-        filePath = filePathArray.join('/');
-      } else {
-        // This is a fallback in case the URL format is different
-        const fileNameMatch = cvUrl.match(/\/([^\/]+)$/);
-        if (fileNameMatch) {
-          const fileName = fileNameMatch[1];
-          // Get user ID from auth
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user?.id) {
-            filePath = `${session.user.id}/${fileName}`;
-          } else {
-            toast.error("Could not determine file path");
-            return;
-          }
-        } else {
-          toast.error("Could not parse CV URL");
-          return;
-        }
-      }
-      
-      console.log("Attempting to access file:", bucketName, filePath);
-
-      // Try to download the file directly first
+      // Open CV URL in new tab
       window.open(cvUrl, '_blank');
 
     } catch (err) {
@@ -402,11 +366,41 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
               </div>
               
               <CollapsibleContent className="mt-4 border-t pt-4">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Application Message:</p>
-                  <p className="text-sm bg-muted p-3 rounded-md">
-                    {application.notes || "No message provided"}
-                  </p>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Application Details</h3>
+                    <div className="bg-muted p-3 rounded-md">
+                      <div className="mb-3 pb-3 border-b">
+                        <h4 className="text-sm font-medium mb-1">Message:</h4>
+                        <p className="text-sm">{application.notes || "No message provided"}</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-sm font-medium mb-1">Task Description:</h4>
+                        <p className="text-sm">{application.business_roles?.description || "No description available"}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Required Skills:</h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {application.business_roles?.skills_required?.map((skill, index) => {
+                        const isMatched = getMatchedSkills(application).includes(skill);
+                        return (
+                          <Badge 
+                            key={index} 
+                            variant={isMatched ? "default" : "secondary"}
+                          >
+                            {skill} {isMatched && "✓"}
+                          </Badge>
+                        );
+                      })}
+                      {(!application.business_roles?.skills_required || application.business_roles.skills_required.length === 0) && (
+                        <p className="text-sm text-muted-foreground">No skills specified for this task</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </CollapsibleContent>
             </Collapsible>
