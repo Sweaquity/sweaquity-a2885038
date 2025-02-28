@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -105,8 +106,8 @@ export const previewCV = async (userId: string, fileName: string) => {
       .getPublicUrl(filePath);
       
     if (data?.publicUrl) {
-      // Open the file directly in a new tab
-      window.open(data.publicUrl, '_blank');
+      // Open the file directly in a new tab, ensuring it opens properly
+      window.open(data.publicUrl, '_blank', 'noopener,noreferrer');
       return true;
     }
     

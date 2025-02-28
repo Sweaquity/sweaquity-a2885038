@@ -107,6 +107,8 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
       }
       
       toast.success("Application withdrawn successfully");
+      
+      // Call the callback function to refresh the applications list
       if (onApplicationUpdated) {
         onApplicationUpdated();
       }
@@ -126,8 +128,9 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
         return;
       }
       
-      // Simply open the CV in a new tab
-      window.open(cvUrl, '_blank');
+      // Simply open the CV URL directly in a new tab
+      window.open(cvUrl, '_blank', 'noopener,noreferrer');
+      
     } catch (err) {
       console.error("Error opening CV:", err);
       toast.error("Failed to open CV");
