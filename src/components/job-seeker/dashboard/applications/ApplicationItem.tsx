@@ -11,11 +11,20 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 interface ApplicationItemProps {
   application: JobApplication;
+  isExpanded?: boolean;
+  toggleExpanded?: () => void;
+  getMatchedSkills?: (application: JobApplication) => string[];
   onApplicationUpdated: () => void;
 }
 
-export const ApplicationItem = ({ application, onApplicationUpdated }: ApplicationItemProps) => {
-  const [isOpen, setIsOpen] = useState(false);
+export const ApplicationItem = ({ 
+  application, 
+  isExpanded = false,
+  toggleExpanded = () => {},
+  getMatchedSkills = () => [],
+  onApplicationUpdated 
+}: ApplicationItemProps) => {
+  const [isOpen, setIsOpen] = useState(isExpanded);
   const { isWithdrawing, handleWithdraw, openCV } = useApplicationActions(onApplicationUpdated);
   
   const titleText = application.business_roles?.title || "Untitled Role";
@@ -39,10 +48,21 @@ export const ApplicationItem = ({ application, onApplicationUpdated }: Applicati
     ? format(new Date(application.applied_at), 'MMM d, yyyy')
     : 'Unknown date';
   
+  // Retrieve matched skills for this application
+  const matchedSkills = getMatchedSkills(application);
+  
+  // Handle open/close state and sync with parent's state
+  const handleToggle = (value: boolean) => {
+    setIsOpen(value);
+    if (value !== isExpanded) {
+      toggleExpanded();
+    }
+  };
+  
   return (
     <Collapsible
       open={isOpen}
-      onOpenChange={setIsOpen}
+      onOpenChange={handleToggle}
       className="border rounded-lg overflow-hidden bg-card"
     >
       <CollapsibleTrigger className="flex items-center justify-between w-full p-4 text-left hover:bg-accent/50 transition-colors">
@@ -80,9 +100,14 @@ export const ApplicationItem = ({ application, onApplicationUpdated }: Applicati
             </div>
           )}
           
-          <ApplicationSkills 
-            roleSkills={application.business_roles?.skills_required || []} 
-          />
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">Required Skills:</h4>
+            <ApplicationSkills 
+              roleSkills={application.business_roles?.skills_required || []}
+              matchedSkills={matchedSkills}
+              displayEmpty={true}
+            />
+          </div>
           
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
             <div className="flex space-x-2">
