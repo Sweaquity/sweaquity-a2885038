@@ -29,8 +29,16 @@ export const useApplications = () => {
 
       if (applicationsError) throw applicationsError;
 
-      const currentApps = applicationsData?.filter(app => app.status !== 'withdrawn') || [];
-      const pastApps = applicationsData?.filter(app => app.status === 'withdrawn') || [];
+      // Map job_app_id to id for backward compatibility
+      const transformedData = applicationsData?.map(app => ({
+        ...app,
+        // Ensure both job_app_id and id are set
+        id: app.job_app_id,
+        job_app_id: app.job_app_id
+      }));
+
+      const currentApps = transformedData?.filter(app => app.status !== 'withdrawn') || [];
+      const pastApps = transformedData?.filter(app => app.status === 'withdrawn') || [];
 
       const transformApplications = (apps: any[]) => apps.map(app => ({
         ...app,

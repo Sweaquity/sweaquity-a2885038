@@ -79,7 +79,9 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
   const handleWithdraw = async (applicationId: string, taskId: string) => {
     try {
       setIsWithdrawing(applicationId);
-      console.log("Withdrawing application:", applicationId, taskId);
+      // Log the separate values for debugging
+      console.log("Withdrawing application with ID:", applicationId);
+      console.log("Associated task ID:", taskId);
       
       // First, verify the application exists
       const { data: verifyData, error: verifyError } = await supabase
