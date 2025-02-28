@@ -7,6 +7,7 @@ export interface JobApplication {
   task_id: string;
   project_id: string;
   notes: string;
+  cv_url: string | null;
   business_roles?: {
     title: string;
     description: string;
