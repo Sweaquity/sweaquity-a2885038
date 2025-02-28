@@ -14,20 +14,7 @@ export const useCVData = () => {
       const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
       
       if (!cvsBucketExists) {
-        console.log("CV storage bucket doesn't exist, attempting to create it");
-        try {
-          const { error: bucketError } = await supabase.storage.createBucket('cvs', {
-            public: true
-          });
-          
-          if (bucketError) {
-            console.error("Error creating cvs bucket:", bucketError);
-          } else {
-            console.log("Successfully created cvs bucket");
-          }
-        } catch (bucketErr) {
-          console.error("Error creating storage bucket:", bucketErr);
-        }
+        console.log("CV storage bucket doesn't exist, this is expected since it should be created by an admin");
       }
       
       // Get user's profile data to check for CV URL
@@ -35,7 +22,7 @@ export const useCVData = () => {
         .from('profiles')
         .select('cv_url')
         .eq('id', userId)
-        .single();
+        .maybeSingle(); // Use maybeSingle instead of single
         
       if (profileError) {
         console.error("Error fetching profile CV URL:", profileError);

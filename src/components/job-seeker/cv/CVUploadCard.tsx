@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { FileUp, Loader2, FileX, ExternalLink } from "lucide-react";
+import { FileUp, Loader2, FileX, ExternalLink, AlertCircle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { setupCvStorageBucket } from "@/utils/setupStorage";
 import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CVUploadCardProps {
   cvUrl: string | null;
@@ -20,19 +21,29 @@ export const CVUploadCard = ({ cvUrl, parsedCvData }: CVUploadCardProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [displayUrl, setDisplayUrl] = useState<string | null>(null);
   const [bucketReady, setBucketReady] = useState(false);
+  const [storageError, setStorageError] = useState<string | null>(null);
 
   useEffect(() => {
     if (cvUrl) {
       setDisplayUrl(cvUrl);
     }
     
-    // Check and setup the CV storage bucket when component mounts
-    setupCvStorageBucket().then(ready => {
-      setBucketReady(ready);
-      if (!ready) {
-        console.error("CV storage bucket setup failed");
+    // Check if the CV storage bucket exists
+    const checkStorage = async () => {
+      try {
+        const ready = await setupCvStorageBucket();
+        setBucketReady(ready);
+        if (!ready) {
+          setStorageError("CV storage is not ready yet. Please try again later or contact support.");
+          console.log("CV storage bucket not ready");
+        }
+      } catch (error) {
+        console.error("Error checking storage:", error);
+        setStorageError("Error checking CV storage availability.");
       }
-    });
+    };
+    
+    checkStorage();
   }, [cvUrl]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,12 +90,8 @@ export const CVUploadCard = ({ cvUrl, parsedCvData }: CVUploadCardProps) => {
     }
     
     if (!bucketReady) {
-      const ready = await setupCvStorageBucket();
-      if (!ready) {
-        toast.error("Storage setup failed. Please try again or contact support.");
-        return;
-      }
-      setBucketReady(true);
+      toast.error("CV storage is not available yet. Please try again later or contact support.");
+      return;
     }
     
     try {
@@ -202,6 +209,13 @@ export const CVUploadCard = ({ cvUrl, parsedCvData }: CVUploadCardProps) => {
         <CardTitle>CV / Resume</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {storageError && (
+          <Alert variant="warning" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{storageError}</AlertDescription>
+          </Alert>
+        )}
+        
         {displayUrl ? (
           <div className="space-y-4">
             <div>
@@ -230,11 +244,12 @@ export const CVUploadCard = ({ cvUrl, parsedCvData }: CVUploadCardProps) => {
                       hover:file:bg-primary/90"
                     onChange={handleFileChange}
                     accept="application/pdf"
+                    disabled={!bucketReady}
                   />
                 </div>
                 <Button 
                   onClick={uploadCV} 
-                  disabled={!file || isUploading}
+                  disabled={!file || isUploading || !bucketReady}
                   variant="secondary"
                 >
                   {isUploading ? (
@@ -278,11 +293,12 @@ export const CVUploadCard = ({ cvUrl, parsedCvData }: CVUploadCardProps) => {
                     hover:file:bg-primary/90"
                   onChange={handleFileChange}
                   accept="application/pdf"
+                  disabled={!bucketReady}
                 />
               </div>
               <Button 
                 onClick={uploadCV} 
-                disabled={!file || isUploading}
+                disabled={!file || isUploading || !bucketReady}
                 variant="secondary"
               >
                 {isUploading ? (
@@ -309,7 +325,7 @@ export const CVUploadCard = ({ cvUrl, parsedCvData }: CVUploadCardProps) => {
             {!bucketReady && (
               <div className="text-sm text-yellow-600 flex items-center gap-2 p-2 bg-yellow-50 rounded-md">
                 <FileX className="h-4 w-4" />
-                <span>Storage setup in progress. Try again in a moment if upload fails.</span>
+                <span>CV storage is not available yet. Please check back later or contact support.</span>
               </div>
             )}
           </div>

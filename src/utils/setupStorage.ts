@@ -4,26 +4,21 @@ import { supabase } from "@/lib/supabase";
 export const setupCvStorageBucket = async () => {
   try {
     // Check if the cvs bucket already exists
-    const { data: buckets } = await supabase.storage.listBuckets();
+    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+    
+    if (bucketsError) {
+      console.error("Error listing buckets:", bucketsError);
+      return false;
+    }
+    
     const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
     
     if (!cvsBucketExists) {
-      console.log("Creating cvs bucket");
-      // Create the bucket with public access
-      const { error: createError } = await supabase.storage.createBucket('cvs', {
-        public: true
-      });
-      
-      if (createError) {
-        console.error("Error creating cvs bucket:", createError);
-        return false;
-      }
-      
-      console.log("CV bucket created successfully");
+      console.log("CV bucket doesn't exist. Will need to use or create it on the server side.");
+      // We won't try to create the bucket from the client side as it will fail due to RLS
+      // Instead, we should inform the user that they need to create the bucket or their admin needs to
+      toast.info("CV storage is being set up. Some features may be unavailable until setup is complete.");
     }
-    
-    // Set up appropriate RLS policies for the bucket
-    // This will allow users to manage their own files
     
     // Retrieve the current user's ID
     const { data: { session } } = await supabase.auth.getSession();
@@ -34,16 +29,24 @@ export const setupCvStorageBucket = async () => {
     
     const userId = session.user.id;
     
-    // Try to create user's folder if it doesn't exist
+    // Check if user's folder exists in the bucket
+    // Note: We're not trying to create it, just checking if it exists
+    let folderExists = false;
+    
     try {
-      await supabase.storage.from('cvs').upload(`${userId}/.folder`, new Blob(['']));
+      const { data: folderData } = await supabase.storage
+        .from('cvs')
+        .list(userId);
+        
+      folderExists = Array.isArray(folderData) && folderData.length > 0;
     } catch (error) {
-      // Folder might already exist, which is fine
-      console.log("Folder creation attempt:", error);
+      console.log("Error checking folder existence:", error);
+      // Folder might not exist yet, which is fine
     }
     
-    console.log("CV storage bucket setup completed");
-    return true;
+    console.log("CV storage setup check completed");
+    return cvsBucketExists;
+    
   } catch (error) {
     console.error("Error setting up CV bucket:", error);
     return false;

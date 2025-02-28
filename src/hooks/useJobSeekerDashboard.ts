@@ -55,15 +55,16 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
         ]);
 
         // After loading profile, check if it's complete
+        // Using maybeSingle() instead of single() to avoid PGRST116 error
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('first_name, last_name, terms_accepted')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
 
         if (profileError) {
           console.error("Error checking profile:", profileError);
-        } else if (!profileData.first_name || !profileData.last_name || !profileData.terms_accepted) {
+        } else if (!profileData?.first_name || !profileData?.last_name || !profileData?.terms_accepted) {
           console.log("Profile incomplete, redirecting to completion page");
           navigate('/seeker/profile/complete');
           return;
@@ -79,15 +80,15 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
 
         // Create map of task IDs to application status
         const applicationStatusMap = new Map();
-        userApplications.forEach(app => {
+        userApplications?.forEach(app => {
           applicationStatusMap.set(app.task_id, app.status);
         });
 
         // Get task IDs that are not available (anything except withdrawn and rejected)
         const unavailableTaskIds = new Set(
           userApplications
-            .filter(app => ['pending', 'in review', 'negotiation', 'accepted'].includes(app.status))
-            .map(app => app.task_id)
+            ?.filter(app => ['pending', 'in review', 'negotiation', 'accepted'].includes(app.status))
+            .map(app => app.task_id) || []
         );
 
         console.log("Unavailable task IDs:", Array.from(unavailableTaskIds));
@@ -114,7 +115,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
         
         // Filter out tasks that have already been applied for and are not withdrawn/rejected
         const opportunities = tasksData
-          .filter(task => !unavailableTaskIds.has(task.id))
+          ?.filter(task => !unavailableTaskIds.has(task.id))
           .map(task => ({
             id: task.id,
             project_id: task.project_id,
@@ -144,7 +145,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
               project_title: task.project?.title,
               company_name: task.project?.business?.company_name
             }
-          }));
+          })) || [];
 
         console.log("Available opportunities:", opportunities);
         setAvailableOpportunities(opportunities);
