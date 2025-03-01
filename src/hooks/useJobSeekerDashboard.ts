@@ -93,8 +93,11 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
 
         console.log("Unavailable task IDs:", Array.from(unavailableTaskIds));
 
+        // Enhanced logging: Show what we're fetching
+        console.log("Fetching ALL open tasks from ALL businesses");
+        
         // Fetch ALL open tasks from ALL businesses, not just the user's businesses
-        // Important: Don't filter by business_id to get ALL projects
+        // IMPORTANT: Not filtering by user ID or business_id to get ALL projects
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
           .select(`
@@ -103,15 +106,40 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
               project_id,
               title,
               business:businesses (
-                company_name
+                company_name,
+                businesses_id
               )
             )
           `)
           .eq('status', 'open');
 
-        if (tasksError) throw tasksError;
+        if (tasksError) {
+          console.error("Error fetching tasks:", tasksError);
+          throw tasksError;
+        }
         
-        console.log("All tasks:", tasksData);
+        // Enhanced logging: Log all fetched tasks and their businesses
+        console.log(`Fetched ${tasksData?.length || 0} open tasks from all businesses`);
+        if (tasksData) {
+          console.log("Tasks by business:");
+          const businessTasks = {};
+          tasksData.forEach(task => {
+            const businessId = task.project?.business?.businesses_id;
+            const businessName = task.project?.business?.company_name;
+            if (!businessTasks[businessId]) {
+              businessTasks[businessId] = {
+                name: businessName || 'Unknown',
+                tasks: []
+              };
+            }
+            businessTasks[businessId].tasks.push({
+              id: task.task_id, 
+              title: task.title,
+              created_by: task.created_by
+            });
+          });
+          console.log(JSON.stringify(businessTasks, null, 2));
+        }
         
         // Filter out tasks that have already been applied for and are not withdrawn/rejected
         const opportunities = tasksData
@@ -148,7 +176,19 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
             }
           })) || [];
 
-        console.log("Available opportunities:", opportunities);
+        // Enhanced logging: Log the filtered opportunities
+        console.log(`Available opportunities after filtering: ${opportunities.length}`);
+        if (opportunities.length > 0) {
+          console.log("Filtered opportunities preview:", 
+            opportunities.map(o => ({
+              id: o.id,
+              title: o.title,
+              project_id: o.project_id,
+              company: o.business_roles.company_name
+            }))
+          );
+        }
+        
         setAvailableOpportunities(opportunities);
 
         // Transform accepted applications to equity projects

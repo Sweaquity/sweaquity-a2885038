@@ -35,6 +35,17 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
   const [unavailableTaskIds, setUnavailableTaskIds] = useState<Set<string>>(new Set());
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   
+  // Enhanced logging: Log projects received by this component
+  useEffect(() => {
+    console.log("OpportunitiesTab received projects:", projects.length);
+    console.log("Project sources:", projects.map(p => ({
+      id: p.id,
+      project_id: p.project_id,
+      title: p.title || "No title",
+      company: p.business_roles?.company_name || "No company"
+    })));
+  }, [projects]);
+  
   // Fetch user applications to filter out tasks that have already been applied for
   useEffect(() => {
     const fetchUserApplications = async () => {
@@ -58,7 +69,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
         );
         
         setUnavailableTaskIds(unavailableIds);
-        console.log("Unavailable task IDs:", Array.from(unavailableIds));
+        console.log("OpportunitiesTab - Unavailable task IDs:", Array.from(unavailableIds));
       } catch (error) {
         console.error("Error fetching user applications:", error);
       }
@@ -73,15 +84,26 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
     sub_tasks: project.sub_tasks?.filter(task => !unavailableTaskIds.has(task.task_id)) || []
   })).filter(project => project.sub_tasks && project.sub_tasks.length > 0);
   
+  // Enhanced logging: Log filtered projects
+  console.log("OpportunitiesTab - After filtering unavailable tasks:", 
+    filteredProjects.length, 
+    "projects remain with", 
+    filteredProjects.reduce((acc, proj) => acc + (proj.sub_tasks?.length || 0), 0), 
+    "total tasks"
+  );
+  
   const matchedProjects = getProjectMatches(filteredProjects, userSkills);
 
-  // Debug log to check project and task IDs
-  console.log("Matched projects:", matchedProjects.map(p => ({
-    projectId: p.projectId,
-    projectTitle: p.projectTitle,
-    taskCount: p.matchedTasks.length,
-    tasks: p.matchedTasks.map(t => ({ taskId: t.task_id, taskTitle: t.title }))
-  })));
+  // Enhanced logging: Log matched projects
+  console.log("OpportunitiesTab - After skill matching:", 
+    matchedProjects.length, 
+    "matched projects with scores:", 
+    matchedProjects.map(p => ({ 
+      projectId: p.projectId, 
+      score: Math.round(p.matchScore), 
+      tasks: p.matchedTasks.length 
+    }))
+  );
 
   const handleProjectToggle = (projectId: string) => {
     if (expandedProjectId === projectId) {
@@ -183,7 +205,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                       };
                       
                       // Debug log to check task data
-                      console.log("Task data for card:", {
+                      console.log("OpportunitiesTab - Task data for card:", {
                         taskId: projectSubTask.task_id,
                         projectId: projectSubTask.project_id,
                         taskTitle: projectSubTask.title
