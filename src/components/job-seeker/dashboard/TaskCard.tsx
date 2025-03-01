@@ -82,7 +82,8 @@ export function TaskCard({
         return;
       }
       
-      console.log("Navigating to apply page with projectId:", taskProjectId, "and taskId:", taskId);
+      // Navigate to the correct URL format: /projects/[projectId]/apply
+      console.log("Navigating to apply page with projectId:", taskProjectId);
       navigate(`/projects/${taskProjectId}/apply`, { 
         state: { taskId: taskId }
       });
