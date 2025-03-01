@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -72,6 +72,7 @@ interface JobSeekerProfile {
 
 export const ProjectApplicationPage = () => {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [businessDetails, setBusinessDetails] = useState<BusinessDetails | null>(null);
@@ -85,6 +86,13 @@ export const ProjectApplicationPage = () => {
   const [selectedTask, setSelectedTask] = useState<SubTask | null>(null);
   const [newSkill, setNewSkill] = useState("");
   const [skillLevel, setSkillLevel] = useState<"Beginner" | "Intermediate" | "Expert">("Intermediate");
+
+  // Get the task ID from location state
+  const initialTaskId = location.state?.taskId;
+  
+  console.log("Location state:", location.state);
+  console.log("Project ID from params:", id);
+  console.log("Initial task ID from location:", initialTaskId);
 
   const handleGoBack = () => {
     navigate(-1); // Navigate back to the previous page
@@ -306,8 +314,8 @@ export const ProjectApplicationPage = () => {
           .single();
 
         // Check if CV storage bucket exists
-        const { data: buckets } = await supabase.storage.listBuckets();
-        const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
+        const buckets = await supabase.storage.listBuckets();
+        const cvsBucketExists = buckets.data?.some(bucket => bucket.name === 'cvs');
         
         if (!cvsBucketExists) {
           console.log("CV storage bucket doesn't exist, attempting to create it");
@@ -333,8 +341,18 @@ export const ProjectApplicationPage = () => {
         setHasStoredCV(!!cvData?.cv_url || !!cvUrlData?.cv_url);
         setStoredCVUrl(cvData?.cv_url || cvUrlData?.cv_url || null);
 
-        // Select first task by default if any are available
-        if (availableTasks.length > 0) {
+        // Use the task ID from location state if available, otherwise select first task
+        if (initialTaskId) {
+          console.log("Setting initial task from location state:", initialTaskId);
+          const initialTask = availableTasks.find(task => task.task_id === initialTaskId);
+          if (initialTask) {
+            setSelectedTaskId(initialTask.task_id);
+            setSelectedTask(initialTask);
+          } else if (availableTasks.length > 0) {
+            setSelectedTaskId(availableTasks[0].task_id);
+            setSelectedTask(availableTasks[0]);
+          }
+        } else if (availableTasks.length > 0) {
           setSelectedTaskId(availableTasks[0].task_id);
           setSelectedTask(availableTasks[0]);
         }
@@ -350,7 +368,7 @@ export const ProjectApplicationPage = () => {
     if (id) {
       fetchData();
     }
-  }, [id, navigate]);
+  }, [id, navigate, initialTaskId]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
