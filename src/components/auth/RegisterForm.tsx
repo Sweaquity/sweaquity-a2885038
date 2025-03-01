@@ -35,6 +35,7 @@ export const RegisterForm = ({ type }: RegisterFormProps) => {
 
       if (existingUser) {
         toast.error("An account with this email already exists. Please try logging in or reset your password.");
+        setIsLoading(false);
         return;
       }
 
@@ -75,6 +76,7 @@ export const RegisterForm = ({ type }: RegisterFormProps) => {
         } else {
           throw error;
         }
+        setIsLoading(false);
         return;
       }
 
