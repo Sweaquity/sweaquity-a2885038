@@ -15,11 +15,23 @@ export const useApplicationActions = (onApplicationUpdated?: () => void) => {
       
       console.log(`Attempting to withdraw application with ID: ${applicationId}`);
       
+      // Get the current user's session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        const msg = "You must be logged in to withdraw an application";
+        console.error(msg);
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
+      
       // Update the application status to "withdrawn"
       const { data, error } = await supabase
         .from('job_applications')
         .update({ status: 'withdrawn' })
         .eq('job_app_id', applicationId)
+        .eq('user_id', session.user.id) // Ensure the user can only withdraw their own applications
         .select();
       
       if (error) {
@@ -60,7 +72,19 @@ export const useApplicationActions = (onApplicationUpdated?: () => void) => {
       
       console.log(`Attempting to update application ${applicationId} to status: ${newStatus}`);
       
-      // Update the application status
+      // Get the current user's session for user context
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        const msg = "You must be logged in to update an application";
+        console.error(msg);
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
+      
+      // For business users updating others' applications, there's already a policy
+      // For job seekers updating their own, the policy requires user_id match
       const { data, error } = await supabase
         .from('job_applications')
         .update({ status: newStatus })
