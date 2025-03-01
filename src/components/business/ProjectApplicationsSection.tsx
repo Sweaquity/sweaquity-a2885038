@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight, FileText } from "lucide-react";
+import { ChevronDown, ChevronRight, FileText, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Skill } from "@/types/jobSeeker";
+import { useApplicationActions } from "@/components/job-seeker/dashboard/applications/hooks/useApplicationActions";
 
 interface Application {
-  job_app_id: string; // Changed from id to job_app_id
+  job_app_id: string;
   task_id: string;
   user_id: string;
   applied_at: string;
@@ -41,7 +42,7 @@ interface Application {
 }
 
 interface Project {
-  project_id: string; // Changed from id to project_id
+  project_id: string;
   title: string;
   description: string;
   skills_required?: string[];
@@ -53,6 +54,9 @@ export const ProjectApplicationsSection = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [expandedApplications, setExpandedApplications] = useState<Set<string>>(new Set());
+  const { isUpdatingStatus, updateApplicationStatus } = useApplicationActions(() => {
+    loadProjectsWithApplications();
+  });
 
   useEffect(() => {
     loadProjectsWithApplications();
@@ -85,15 +89,15 @@ export const ProjectApplicationsSection = () => {
         // Get all tasks for this project
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
-          .select('task_id, skills_required') // Changed from id to task_id
-          .eq('project_id', project.project_id); // Changed from project.id to project.project_id
+          .select('task_id, skills_required')
+          .eq('project_id', project.project_id);
 
         if (tasksError) {
           console.error('Error fetching tasks for project:', project.project_id, tasksError);
           continue;
         }
 
-        const taskIds = tasksData.map(task => task.task_id); // Changed from task.id to task.task_id
+        const taskIds = tasksData.map(task => task.task_id);
 
         if (taskIds.length === 0) {
           projectsWithApplications.push({
@@ -106,7 +110,7 @@ export const ProjectApplicationsSection = () => {
         // Create a map of task IDs to their skills required
         const taskSkillsMap = new Map<string, string[]>();
         tasksData.forEach(task => {
-          taskSkillsMap.set(task.task_id, task.skills_required || []); // Changed from task.id to task.task_id
+          taskSkillsMap.set(task.task_id, task.skills_required || []);
         });
 
         // Get all applications for these tasks
@@ -148,7 +152,7 @@ export const ProjectApplicationsSection = () => {
           const { data: taskData, error: taskError } = await supabase
             .from('project_sub_tasks')
             .select('title, description, skills_required')
-            .eq('task_id', app.task_id) // Changed from 'id' to 'task_id'
+            .eq('task_id', app.task_id)
             .single();
 
           if (taskError) {
@@ -226,27 +230,7 @@ export const ProjectApplicationsSection = () => {
   };
 
   const handleStatusChange = async (applicationId: string, newStatus: string) => {
-    try {
-      const { error } = await supabase
-        .from('job_applications')
-        .update({ status: newStatus })
-        .eq('job_app_id', applicationId); // Changed from 'id' to 'job_app_id'
-      
-      if (error) throw error;
-      
-      // Update local state
-      setProjects(projects.map(project => ({
-        ...project,
-        applications: project.applications.map(app => 
-          app.job_app_id === applicationId ? { ...app, status: newStatus } : app // Changed from app.id to app.job_app_id
-        )
-      })));
-      
-      toast.success(`Application status updated to ${newStatus}`);
-    } catch (error) {
-      console.error('Error updating application status:', error);
-      toast.error("Failed to update application status");
-    }
+    await updateApplicationStatus(applicationId, newStatus);
   };
 
   const toggleProjectExpanded = (projectId: string) => {
@@ -300,9 +284,9 @@ export const ProjectApplicationsSection = () => {
           <div className="space-y-4">
             {projects.map(project => (
               <Collapsible 
-                key={project.project_id} // Changed from project.id to project.project_id
-                open={expandedProjects.has(project.project_id)} // Changed from project.id to project.project_id
-                onOpenChange={() => toggleProjectExpanded(project.project_id)} // Changed from project.id to project.project_id
+                key={project.project_id}
+                open={expandedProjects.has(project.project_id)}
+                onOpenChange={() => toggleProjectExpanded(project.project_id)}
                 className="border rounded-lg overflow-hidden"
               >
                 <CollapsibleTrigger className="flex justify-between items-center w-full p-4 text-left hover:bg-muted/50">
@@ -331,7 +315,7 @@ export const ProjectApplicationsSection = () => {
                       )}
                     </div>
                   </div>
-                  {expandedProjects.has(project.project_id) ? // Changed from project.id to project.project_id
+                  {expandedProjects.has(project.project_id) ? 
                     <ChevronDown className="h-5 w-5 flex-shrink-0" /> : 
                     <ChevronRight className="h-5 w-5 flex-shrink-0" />
                   }
@@ -343,9 +327,9 @@ export const ProjectApplicationsSection = () => {
                     <div className="space-y-2">
                       {project.applications.map(application => (
                         <Collapsible
-                          key={application.job_app_id} // Changed from application.id to application.job_app_id
-                          open={expandedApplications.has(application.job_app_id)} // Changed from application.id to application.job_app_id
-                          onOpenChange={() => toggleApplicationExpanded(application.job_app_id)} // Changed from application.id to application.job_app_id
+                          key={application.job_app_id}
+                          open={expandedApplications.has(application.job_app_id)}
+                          onOpenChange={() => toggleApplicationExpanded(application.job_app_id)}
                           className="border rounded-lg overflow-hidden"
                         >
                           <CollapsibleTrigger className="flex justify-between items-center w-full p-3 text-left hover:bg-muted/50">
@@ -370,17 +354,22 @@ export const ProjectApplicationsSection = () => {
                                 <select 
                                   className="px-2 py-1 border rounded text-xs"
                                   value={application.status}
-                                  onChange={(e) => handleStatusChange(application.job_app_id, e.target.value)} // Changed from application.id to application.job_app_id
+                                  onChange={(e) => handleStatusChange(application.job_app_id, e.target.value)}
+                                  disabled={isUpdatingStatus === application.job_app_id}
                                 >
                                   <option value="pending">Pending</option>
                                   <option value="in review">In Review</option>
                                   <option value="negotiation">Negotiation</option>
                                   <option value="accepted">Accepted</option>
                                   <option value="rejected">Rejected</option>
+                                  <option value="withdrawn">Withdrawn</option>
                                 </select>
+                                {isUpdatingStatus === application.job_app_id && (
+                                  <Loader2 className="animate-spin ml-2 h-4 w-4" />
+                                )}
                               </div>
                             </div>
-                            {expandedApplications.has(application.job_app_id) ? // Changed from application.id to application.job_app_id 
+                            {expandedApplications.has(application.job_app_id) ? 
                               <ChevronDown className="h-4 w-4 flex-shrink-0 ml-2" /> : 
                               <ChevronRight className="h-4 w-4 flex-shrink-0 ml-2" />
                             }
