@@ -61,7 +61,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
           .select(`
             project_id,
             title,
-            businesses!inner (
+            businesses (
               company_name
             )
           `)
@@ -72,12 +72,19 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
         if (data) {
           const details: Record<string, {title: string, company: string}> = {};
           data.forEach(item => {
-            // Fix: Properly access company_name from the businesses object
-            const companyName = item.businesses?.company_name || 'Unknown Company';
-            details[item.project_id] = {
-              title: item.title || 'Unnamed Project',
-              company: companyName
-            };
+            // Fix: Properly type and access businesses data
+            if (item.businesses && typeof item.businesses === 'object') {
+              const companyName = item.businesses.company_name || 'Unknown Company';
+              details[item.project_id] = {
+                title: item.title || 'Unnamed Project',
+                company: companyName
+              };
+            } else {
+              details[item.project_id] = {
+                title: item.title || 'Unnamed Project',
+                company: 'Unknown Company'
+              };
+            }
           });
           setProjectDetails(details);
           console.log("Fetched additional project details:", details);
