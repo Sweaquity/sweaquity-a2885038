@@ -154,7 +154,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
             effort_logs: [],
             total_hours_logged: 0,
             title: task.project?.title || "Untitled Project",
-            created_by: task.created_by,
+            created_by: task.created_by, // Ensure created_by is set
             sub_tasks: [{
               id: task.task_id,
               task_id: task.task_id, // Ensure task_id is set

@@ -1,4 +1,3 @@
-
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { EquityProject, Skill } from "@/types/jobSeeker";
 import { TaskCard } from "./TaskCard";

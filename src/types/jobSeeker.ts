@@ -69,6 +69,7 @@ export interface EquityProject {
       status?: string;
     };
   };
+  created_by?: string; // Added missing property
 }
 
 export interface Profile {

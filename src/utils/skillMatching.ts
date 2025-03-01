@@ -9,6 +9,7 @@ interface MatchedTask extends Omit<SubTask, 'skill_requirements'> {
 interface ProjectMatch {
   projectId: string;
   projectTitle: string;
+  projectCompany?: string; // Added missing property
   matchScore: number;
   matchedTasks: MatchedTask[];
 }
@@ -138,6 +139,7 @@ export const getProjectMatches = (projects: EquityProject[], userSkills: Skill[]
       projectMatches.push({
         projectId: project.project_id,
         projectTitle: project.title || project.business_roles?.project_title || 'Unnamed Project',
+        projectCompany: project.business_roles?.company_name, // Added missing property
         matchScore: avgProjectScore,
         matchedTasks
       });
