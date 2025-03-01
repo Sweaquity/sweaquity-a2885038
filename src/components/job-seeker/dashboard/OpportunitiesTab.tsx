@@ -1,3 +1,4 @@
+
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { EquityProject, Skill } from "@/types/jobSeeker";
 import { TaskCard } from "./TaskCard";
@@ -75,15 +76,15 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
             const businessData = item.businesses;
             let companyName = 'Unknown Company';
             
-            // Check if businessData exists and has the company_name property
+            // Carefully check the structure and type of businessData
             if (businessData && 
                 typeof businessData === 'object' && 
-                businessData !== null && 
-                'company_name' in businessData) {
-              // Use type assertion to tell TypeScript this is a string (or null/undefined)
-              const rawCompanyName = (businessData as { company_name?: string | null }).company_name;
-              // Then ensure it's a string with fallback
-              companyName = typeof rawCompanyName === 'string' ? rawCompanyName : 'Unknown Company';
+                businessData !== null) {
+              if ('company_name' in businessData) {
+                // It's a single object with company_name property
+                const rawCompanyName = (businessData as { company_name?: string | null }).company_name;
+                companyName = typeof rawCompanyName === 'string' ? rawCompanyName : 'Unknown Company';
+              }
             }
             
             details[item.project_id] = {

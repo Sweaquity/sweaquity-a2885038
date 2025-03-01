@@ -108,13 +108,15 @@ const ProjectApplicationPage = () => {
         const businessData = projectData.businesses;
         let companyName = "Unknown Company";
         
+        // Carefully check the structure and type of businessData
         if (businessData && 
             typeof businessData === 'object' && 
-            businessData !== null && 
-            'company_name' in businessData) {
-          // Use type assertion and ensure the value is a string
-          const rawCompanyName = (businessData as { company_name?: string | null }).company_name;
-          companyName = typeof rawCompanyName === 'string' ? rawCompanyName : "Unknown Company";
+            businessData !== null) {
+          if ('company_name' in businessData) {
+            // It's a single object with company_name property
+            const rawCompanyName = (businessData as { company_name?: string | null }).company_name;
+            companyName = typeof rawCompanyName === 'string' ? rawCompanyName : "Unknown Company";
+          }
         }
           
         setProjectDetails({
