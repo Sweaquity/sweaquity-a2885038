@@ -103,6 +103,11 @@ const JobSeekerDashboard = () => {
         
         setProfileComplete(isComplete);
         
+        if (!isComplete) {
+          navigate('/seeker/profile/complete');
+          return;
+        }
+        
         const { state } = location;
         if (state && state.activeTab) {
           setActiveTab(state.activeTab);
@@ -122,10 +127,6 @@ const JobSeekerDashboard = () => {
 
   if (isLoading || isRedirecting) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-  }
-
-  if (!profileComplete) {
-    return <ProfileCompletionForm />;
   }
 
   const handleDocumentAction = (projectId: string, action: 'edit' | 'approve') => {

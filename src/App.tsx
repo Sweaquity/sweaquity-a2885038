@@ -12,6 +12,7 @@ import RecruiterDashboard from "./pages/dashboards/RecruiterDashboard";
 import JobSeekerDashboard from "./pages/dashboards/JobSeekerDashboard";
 import { ProjectDetailsPage } from "./pages/projects/ProjectDetailsPage";
 import ProjectApplicationPage from "./pages/projects/ProjectApplicationPage";
+import ProfileCompletePage from "./pages/ProfileCompletePage";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/business/dashboard" element={<BusinessDashboard />} />
             <Route path="/recruiter/dashboard" element={<RecruiterDashboard />} />
             <Route path="/seeker/dashboard" element={<JobSeekerDashboard />} />
+            <Route path="/seeker/profile/complete" element={<ProfileCompletePage />} />
             <Route path="/projects/:id" element={<ProjectDetailsPage />} />
             <Route path="/projects/:id/apply" element={<ProjectApplicationPage />} />
             <Route path="*" element={<NotFound />} />
