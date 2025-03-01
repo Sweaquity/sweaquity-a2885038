@@ -123,15 +123,25 @@ export const ProfileCompletionForm = () => {
         throw new Error("No authenticated session");
       }
 
+      // Convert availability array to string format if needed
+      const availabilityData = 
+        Array.isArray(formData.availability) 
+          ? JSON.stringify(formData.availability) 
+          : formData.availability;
+
       const { error } = await supabase
         .from('profiles')
         .update({
           ...formData,
+          availability: availabilityData,
           updated_at: new Date().toISOString()
         })
         .eq('id', session.user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating profile:", error);
+        throw error;
+      }
 
       toast.success("Profile updated successfully");
       navigate("/seeker/dashboard", { state: { activeTab: "profile" } });
@@ -169,7 +179,7 @@ export const ProfileCompletionForm = () => {
           />
 
           <div className="space-y-2">
-            <Label htmlFor="employment_preference">Sweaquity options or Employment too? *</Label>
+            <Label htmlFor="employment_preference">Employment Preference *</Label>
             <Select
               value={formData.employment_preference}
               onValueChange={(value: 'full_time' | 'equity' | 'both') => 
@@ -180,8 +190,8 @@ export const ProfileCompletionForm = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="equity">Sweaquity options only</SelectItem>
-                <SelectItem value="both">Both Sweaquity and Employment</SelectItem>
+                <SelectItem value="equity">Equity only</SelectItem>
+                <SelectItem value="both">Both Equity and Employment</SelectItem>
                 <SelectItem value="full_time">Employment only</SelectItem>
               </SelectContent>
             </Select>
