@@ -1,5 +1,6 @@
+
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -71,7 +72,6 @@ interface JobSeekerProfile {
 
 export const ProjectApplicationPage = () => {
   const { id } = useParams<{ id: string }>();
-  const location = useLocation();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [businessDetails, setBusinessDetails] = useState<BusinessDetails | null>(null);
@@ -81,9 +81,7 @@ export const ProjectApplicationPage = () => {
   const [storedCVUrl, setStoredCVUrl] = useState<string | null>(null);
   const [userSkills, setUserSkills] = useState<Skill[]>([]);
   const [jobSeekerProfile, setJobSeekerProfile] = useState<JobSeekerProfile | null>(null);
-  
-  const initialTaskId = location.state?.selectedTaskId || null;
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(initialTaskId);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<SubTask | null>(null);
   const [newSkill, setNewSkill] = useState("");
   const [skillLevel, setSkillLevel] = useState<"Beginner" | "Intermediate" | "Expert">("Intermediate");
@@ -193,12 +191,14 @@ export const ProjectApplicationPage = () => {
           return;
         }
 
+        // Validate project ID
         if (!id) {
           toast.error("Invalid project ID");
           navigate('/seeker/dashboard');
           return;
         }
 
+        // Get project details
         const { data: projectData, error: projectError } = await supabase
           .from('business_projects')
           .select(`
@@ -217,6 +217,7 @@ export const ProjectApplicationPage = () => {
 
         if (projectError) throw projectError;
 
+        // Get tasks for this project
         const { data: taskData, error: taskError } = await supabase
           .from('project_sub_tasks')
           .select('*')
@@ -224,6 +225,7 @@ export const ProjectApplicationPage = () => {
 
         if (taskError) throw taskError;
 
+        // Get user profile
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -232,6 +234,7 @@ export const ProjectApplicationPage = () => {
 
         if (profileError) throw profileError;
 
+        // Parse user skills
         let extractedSkills: Skill[] = [];
         if (profileData.skills) {
           try {
@@ -258,6 +261,7 @@ export const ProjectApplicationPage = () => {
           skills: extractedSkills
         });
 
+        // Get user applications to filter out tasks that are already applied for
         const { data: userApplications, error: applicationError } = await supabase
           .from('job_applications')
           .select('task_id, status')
@@ -271,21 +275,24 @@ export const ProjectApplicationPage = () => {
             .map(app => app.task_id)
         );
 
+        // Process and filter tasks
         const processedTasks = taskData
           .filter(task => task.status === 'open' && !unavailableTaskIds.has(task.task_id))
           .map(task => {
             const { matchScore, matchedSkills } = calculateSkillMatch(task, extractedSkills);
             return {
               ...task,
-              id: task.task_id,
+              id: task.task_id, // Ensure id is set to task_id for consistency
               matchScore,
               matchedSkills
             };
           });
         
+        // Sort tasks by match score
         const availableTasks = processedTasks
           .sort((a, b) => b.matchScore! - a.matchScore!);
 
+        // Get CV data
         const { data: cvData } = await supabase
           .from('cv_parsed_data')
           .select('cv_url')
@@ -298,7 +305,8 @@ export const ProjectApplicationPage = () => {
           .eq('id', session.user.id)
           .single();
 
-        const buckets = await supabase.storage.listBuckets();
+        // Check if CV storage bucket exists
+        const { data: buckets } = await supabase.storage.listBuckets();
         const cvsBucketExists = buckets?.some(bucket => bucket.name === 'cvs');
         
         if (!cvsBucketExists) {
@@ -318,18 +326,17 @@ export const ProjectApplicationPage = () => {
           }
         }
 
+        // Set state values
         setBusinessDetails(projectData.businesses);
         setProjectDetails(projectData);
         setSubTasks(availableTasks);
         setHasStoredCV(!!cvData?.cv_url || !!cvUrlData?.cv_url);
         setStoredCVUrl(cvData?.cv_url || cvUrlData?.cv_url || null);
 
-        if (!selectedTaskId && availableTasks.length > 0) {
+        // Select first task by default if any are available
+        if (availableTasks.length > 0) {
           setSelectedTaskId(availableTasks[0].task_id);
           setSelectedTask(availableTasks[0]);
-        } else if (selectedTaskId) {
-          const task = availableTasks.find(t => t.task_id === selectedTaskId) || null;
-          setSelectedTask(task);
         }
 
       } catch (error) {
@@ -343,7 +350,7 @@ export const ProjectApplicationPage = () => {
     if (id) {
       fetchData();
     }
-  }, [id, selectedTaskId, navigate]);
+  }, [id, navigate]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
