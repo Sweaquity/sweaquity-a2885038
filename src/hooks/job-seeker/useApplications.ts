@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { JobApplication } from "@/types/jobSeeker";
@@ -30,8 +30,7 @@ export const useApplications = () => {
               project_id,
               title,
               business:businesses (
-                company_name,
-                businesses_id
+                company_name
               )
             )
           )
@@ -42,20 +41,24 @@ export const useApplications = () => {
       if (error) throw error;
       
       // Process the data to make it fit our JobApplication type
-      const processedApplications = data.map((app: any) => ({
-        ...app,
-        id: app.job_app_id, // Ensuring id property is set
-        business_roles: {
-          title: app.business_roles?.title || "Unknown Role",
-          description: app.business_roles?.description || "",
-          timeframe: app.business_roles?.timeframe || "",
-          skills_required: app.business_roles?.skills_required || [],
-          skill_requirements: app.business_roles?.skill_requirements || [],
-          equity_allocation: app.business_roles?.equity_allocation,
-          company_name: app.business_roles?.project?.business?.company_name,
-          project_title: app.business_roles?.project?.title
-        }
-      }));
+      const processedApplications = data.map((app: any) => {
+        const companyName = app.business_roles?.project?.business?.company_name || "Unknown Company";
+        
+        return {
+          ...app,
+          id: app.job_app_id, // Ensuring id property is set
+          business_roles: {
+            title: app.business_roles?.title || "Unknown Role",
+            description: app.business_roles?.description || "",
+            timeframe: app.business_roles?.timeframe || "",
+            skills_required: app.business_roles?.skills_required || [],
+            skill_requirements: app.business_roles?.skill_requirements || [],
+            equity_allocation: app.business_roles?.equity_allocation,
+            company_name: companyName,
+            project_title: app.business_roles?.project?.title
+          }
+        };
+      });
       
       // Separate current from past applications (those that are rejected or withdrawn)
       const current = processedApplications.filter((app: JobApplication) => 

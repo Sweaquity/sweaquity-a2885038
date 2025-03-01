@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -107,9 +108,9 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
             project:business_projects (
               project_id,
               title,
+              business_id,
               business:businesses (
-                company_name,
-                businesses_id
+                company_name
               )
             )
           `)
@@ -126,14 +127,16 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
             // Skip tasks that have already been applied for
             if (unavailableTaskIds.has(task.task_id)) return false;
             
+            // If userSkills is empty, include all tasks, otherwise check for matching skills
+            if (userSkills.length === 0) return true;
+            
             // Check if the user has any matching skills for this task
             const taskSkills = (task.skills_required || []).map(s => s.toLowerCase());
             const hasMatchingSkill = userSkills.some(skill => 
               taskSkills.includes(skill.toLowerCase())
             );
             
-            // Include tasks with matching skills, or if user has no skills, include all tasks
-            return userSkills.length === 0 || hasMatchingSkill;
+            return hasMatchingSkill;
           })
           .map(task => {
             // Calculate how many skills match
@@ -146,6 +149,9 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
             const matchPercentage = taskSkills.length > 0 
               ? Math.round((matchingSkills.length / taskSkills.length) * 100) 
               : 0;
+
+            // Get company name from businesses relation
+            const companyName = task.project?.business?.company_name || "Unknown Company";
             
             return {
               id: task.task_id,
@@ -177,7 +183,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
                 title: task.title,
                 description: task.description,
                 project_title: task.project?.title,
-                company_name: task.project?.business?.company_name
+                company_name: companyName
               }
             };
           }) || [];
@@ -207,7 +213,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     return () => {
       clearInterval(sessionCheckInterval);
     };
-  }, [navigate, refreshTrigger]);
+  }, [navigate, refreshTrigger, skills]);
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();

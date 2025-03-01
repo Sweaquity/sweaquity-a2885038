@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from "react";
 import { EquityProject, Skill } from "@/types/jobSeeker";
-import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import {
   Table,
@@ -58,8 +57,7 @@ export const OpportunitiesTab = ({
   const handleApply = (projectId: string, taskId: string) => {
     navigate(`/projects/${projectId}/apply`, { 
       state: { 
-        taskId: taskId,
-        projectId: projectId
+        taskId: taskId
       } 
     });
   };
@@ -117,7 +115,7 @@ export const OpportunitiesTab = ({
                   <TableCell onClick={() => toggleProject(project.id)}>
                     <div className="flex flex-wrap gap-1 max-w-xs">
                       <ApplicationSkills 
-                        requiredSkills={task.skill_requirements || []}
+                        requiredSkills={task.skill_requirements || task.skills_required || []}
                         matchedSkills={matchedSkills}
                       />
                     </div>
@@ -142,6 +140,11 @@ export const OpportunitiesTab = ({
                             <p className="text-sm text-gray-600">
                               {project.business_roles?.company_name} • {project.title}
                             </p>
+                            {task.description && (
+                              <p className="mt-2 text-sm text-gray-600">
+                                {task.description}
+                              </p>
+                            )}
                           </div>
                           
                           <div className="flex flex-col justify-center items-end">
@@ -152,11 +155,6 @@ export const OpportunitiesTab = ({
                               Apply for This Role
                             </Button>
                           </div>
-                        </div>
-                        
-                        <div className="mb-4">
-                          <h4 className="font-medium mb-1">Description</h4>
-                          <p className="text-sm">{task.description || "No description provided."}</p>
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
