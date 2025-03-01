@@ -82,14 +82,21 @@ export function TaskCard({
         return;
       }
       
-      // Log the values to help with debugging
+      // Log all details to help with debugging
       console.log("Apply Now clicked with:", {
         taskId,
         taskProjectId, 
         navigatingTo: `/projects/${taskProjectId}/apply`
       });
       
-      // Navigate to the correct URL format: /projects/[projectId]/apply
+      if (!taskProjectId) {
+        console.error("Error: Project ID is missing");
+        toast.error("Cannot apply - Project ID is missing");
+        return;
+      }
+      
+      // Ensure we're using the correct URL format: /projects/[projectId]/apply
+      // Stop any event propagation to prevent other click handlers
       navigate(`/projects/${taskProjectId}/apply`, { 
         state: { taskId: taskId }
       });

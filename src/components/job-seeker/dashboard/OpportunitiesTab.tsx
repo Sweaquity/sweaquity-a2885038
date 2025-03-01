@@ -75,6 +75,14 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
   
   const matchedProjects = getProjectMatches(filteredProjects, userSkills);
 
+  // Debug log to check project and task IDs
+  console.log("Matched projects:", matchedProjects.map(p => ({
+    projectId: p.projectId,
+    projectTitle: p.projectTitle,
+    taskCount: p.matchedTasks.length,
+    tasks: p.matchedTasks.map(t => ({ taskId: t.task_id, taskTitle: t.title }))
+  })));
+
   const handleProjectToggle = (projectId: string) => {
     if (expandedProjectId === projectId) {
       setExpandedProjectId(null);
@@ -173,6 +181,13 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                         matchScore: task.matchScore,
                         matchedSkills: task.matchedSkills
                       };
+                      
+                      // Debug log to check task data
+                      console.log("Task data for card:", {
+                        taskId: projectSubTask.task_id,
+                        projectId: projectSubTask.project_id,
+                        taskTitle: projectSubTask.title
+                      });
                       
                       return (
                         <TaskCard 

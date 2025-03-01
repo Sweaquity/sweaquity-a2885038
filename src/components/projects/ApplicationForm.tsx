@@ -38,6 +38,9 @@ export const ApplicationForm = ({
   const [selectedCvUrl, setSelectedCvUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Debug log for props
+  console.log("ApplicationForm received props:", { projectId, taskId, projectTitle, taskTitle });
+
   useEffect(() => {
     const loadUserCVs = async () => {
       try {
