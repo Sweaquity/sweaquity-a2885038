@@ -7,16 +7,28 @@ import { Badge } from "@/components/ui/badge";
 import { Briefcase, Calendar, BarChart } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { Skill, SubTask } from "@/types/jobSeeker";
+import { Skill } from "@/types/jobSeeker";
 
-// Define an extended SubTask type that includes the matching properties
-interface ExtendedSubTask extends SubTask {
+// Define a project sub task type that includes all the properties we need
+interface ProjectSubTask {
+  task_id: string;
+  project_id: string;
+  title: string;
+  description: string;
+  skills_required: string[];
+  skill_requirements: Array<{skill: string, level: string}>;
+  equity_allocation: number;
+  timeframe: string;
+  status: string;
+  task_status: string;
+  completion_percentage: number;
   matchedSkills?: string[];
   matchScore?: number;
+  id?: string; // For backward compatibility
 }
 
 interface TaskCardProps {
-  task?: ExtendedSubTask;
+  task?: ProjectSubTask;
   userSkills?: Skill[];
   showMatchedSkills?: boolean;
   id?: string;

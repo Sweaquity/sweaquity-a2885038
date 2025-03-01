@@ -1,6 +1,6 @@
 
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { EquityProject, Skill, SubTask } from "@/types/jobSeeker";
+import { EquityProject, Skill } from "@/types/jobSeeker";
 import { TaskCard } from "./TaskCard";
 import { getProjectMatches } from "@/utils/skillMatching";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -13,9 +13,22 @@ interface OpportunitiesTabProps {
   userSkills: Skill[];
 }
 
-interface ExtendedSubTask extends SubTask {
-  matchScore?: number;
+// ProjectSubTask type that matches the TaskCard component
+interface ProjectSubTask {
+  task_id: string;
+  project_id: string;
+  title: string;
+  description: string;
+  skills_required: string[];
+  skill_requirements: Array<{skill: string, level: string}>;
+  equity_allocation: number;
+  timeframe: string;
+  status: string;
+  task_status: string;
+  completion_percentage: number;
   matchedSkills?: string[];
+  matchScore?: number;
+  id?: string;
 }
 
 export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps) => {
@@ -141,14 +154,18 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                   {project.matchedTasks
                     .sort((a, b) => b.matchScore - a.matchScore)
                     .map((task) => {
-                      // Convert MatchedTask to ExtendedSubTask with required properties and matched skills
-                      const extendedTask: ExtendedSubTask = {
-                        ...task,
+                      // Convert MatchedTask to ProjectSubTask with required properties
+                      const projectSubTask: ProjectSubTask = {
                         task_id: task.task_id, 
                         project_id: project.projectId,
-                        skill_requirements: task.matchedSkills?.map(skill => ({
+                        title: task.title,
+                        description: task.description,
+                        equity_allocation: task.equity_allocation,
+                        timeframe: task.timeframe,
+                        skills_required: task.skills_required || [],
+                        skill_requirements: task.skills_required?.map(skill => ({
                           skill,
-                          level: "Intermediate" // Using an allowed level value from the enum
+                          level: "Intermediate" // Using an allowed level value
                         })) || [],
                         status: 'open',
                         task_status: 'open',
@@ -159,8 +176,8 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                       
                       return (
                         <TaskCard 
-                          key={extendedTask.task_id}
-                          task={extendedTask}
+                          key={projectSubTask.task_id}
+                          task={projectSubTask}
                           userSkills={userSkills}
                           showMatchedSkills={true}
                         />
