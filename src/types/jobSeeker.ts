@@ -16,6 +16,7 @@ export interface JobApplication {
     project_title?: string;
     timeframe?: string;
     skills_required?: string[];
+    skill_requirements?: { skill: string; level: string }[];
     equity_allocation?: number;
   };
   id: string; // Adding this for backward compatibility

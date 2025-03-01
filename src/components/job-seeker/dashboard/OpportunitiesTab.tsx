@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { EquityProject, Skill } from "@/types/jobSeeker";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -102,10 +102,10 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                   </TableCell>
                 </TableRow>
                 
-                <TableRow className={!isExpanded ? "hidden" : ""}>
-                  <TableCell colSpan={6} className="p-0">
-                    <Collapsible open={isExpanded}>
-                      <CollapsibleContent className="p-4 border-t bg-muted/20">
+                {isExpanded && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="p-0">
+                      <div className="p-4 border-t bg-muted/20">
                         <div className="space-y-4">
                           <div>
                             <h4 className="text-sm font-medium mb-1">Description</h4>
@@ -130,10 +130,10 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                             </Button>
                           </div>
                         </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </TableCell>
-                </TableRow>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
               </React.Fragment>
             );
           })}

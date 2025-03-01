@@ -54,7 +54,7 @@ export const ApplicationItem = ({
   const matchedSkills = getMatchedSkills(application);
   const showExpanded = isExpanded !== undefined ? isExpanded : expanded;
   
-  // Extract skills from business_roles for display
+  // Use skill_requirements if available, otherwise fallback to skills_required
   const roleSkills = application.business_roles?.skills_required || [];
   const skillRequirements = application.business_roles?.skill_requirements || [];
 
