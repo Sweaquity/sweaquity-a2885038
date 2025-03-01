@@ -23,7 +23,17 @@ export const ApplicationSkills = ({
         level: 'Intermediate' as 'Beginner' | 'Intermediate' | 'Expert'
       };
     }
-    return skill as SkillRequirement;
+    // Ensure skill.level is one of the allowed values
+    const level = typeof skill.level === 'string' 
+      ? ((['Beginner', 'Intermediate', 'Expert'].includes(skill.level) 
+        ? skill.level 
+        : 'Intermediate') as 'Beginner' | 'Intermediate' | 'Expert')
+      : 'Intermediate';
+      
+    return { 
+      skill: skill.skill,
+      level
+    };
   });
 
   return (

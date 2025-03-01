@@ -88,12 +88,12 @@ export const BusinessProfileCompletion = () => {
                     <SelectItem value="idea">Idea Stage</SelectItem>
                     <SelectItem value="mvp">MVP</SelectItem>
                     <SelectItem value="live">Live</SelectItem>
-                    <SelectItem value="scaling">Scaling</SelectItem>
+                    <SelectItem value="scaling_up">Scaling Up</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="organization_type">Organization Type *</Label>
+                <Label htmlFor="organization_type">Organisation Type *</Label>
                 <Select
                   value={formData.organization_type}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, organization_type: value }))}
@@ -102,8 +102,8 @@ export const BusinessProfileCompletion = () => {
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="startup">Startup</SelectItem>
-                    <SelectItem value="scaleup">Scale-up</SelectItem>
+                    <SelectItem value="startup">Start Up</SelectItem>
+                    <SelectItem value="scaleup">Scale Up</SelectItem>
                     <SelectItem value="enterprise">Enterprise</SelectItem>
                   </SelectContent>
                 </Select>

@@ -54,7 +54,7 @@ const ProjectApplicationPage = () => {
         const isAuthenticated = await checkAuth();
         if (!isAuthenticated) return;
         
-        // Try to use data from location state first (passed from TaskCard)
+        // Try to use data from location state first (passed from OpportunitiesTab)
         if (state && state.taskId) {
           console.log("Using task data from navigation state:", state);
           setTaskDetails({
@@ -62,71 +62,115 @@ const ProjectApplicationPage = () => {
             title: state.taskTitle || "Unknown Task"
           });
           
-          // Set project details from state if available
-          if (state.projectTitle || state.companyName) {
-            setProjectDetails({
-              title: state.projectTitle || "Unknown Project",
-              companyName: state.companyName || "Unknown Company",
-              status: "open"
-            });
+          // If we have a projectId either from URL params or state
+          const activeProjectId = projectId || state.projectId;
+          
+          if (!activeProjectId) {
+            toast.error("Project ID is missing");
+            navigate("/seeker/dashboard");
+            return;
+          }
+          
+          // Fetch project details
+          const { data: projectData, error: projectError } = await supabase
+            .from('business_projects')
+            .select(`
+              title,
+              status,
+              business_id,
+              businesses!business_projects_business_id_fkey (
+                company_name
+              )
+            `)
+            .eq('project_id', activeProjectId)
+            .single();
+          
+          if (projectError) {
+            console.error("Error fetching project:", projectError);
+            toast.error("Failed to load project details");
+            navigate("/seeker/dashboard");
+            return;
+          }
+          
+          // Set project details
+          const businessData = projectData.businesses;
+          let companyName = "Unknown Company";
+          
+          if (businessData && 
+              typeof businessData === 'object' && 
+              businessData !== null) {
+            companyName = businessData.company_name || "Unknown Company";
+          }
             
-            // If we have all required info, we can skip the database query
-            if (state.taskId && state.taskTitle && state.projectTitle && state.companyName) {
-              await loadUserCVData();
-              return;
+          setProjectDetails({
+            title: projectData.title || "Untitled Project",
+            companyName: companyName,
+            status: projectData.status || "unknown"
+          });
+          
+          // If task title isn't in state, fetch it
+          if (!state.taskTitle && state.taskId) {
+            const { data: taskData, error: taskError } = await supabase
+              .from('project_sub_tasks')
+              .select('title')
+              .eq('task_id', state.taskId)
+              .single();
+            
+            if (!taskError && taskData) {
+              setTaskDetails(prev => ({
+                ...prev,
+                title: taskData.title
+              }));
             }
           }
-        }
-        
-        if (!projectId) {
-          toast.error("Project ID is missing");
-          navigate("/seeker/dashboard");
-          return;
-        }
-        
-        // Fetch project details
-        const { data: projectData, error: projectError } = await supabase
-          .from('business_projects')
-          .select(`
-            title,
-            status,
-            businesses (
-              company_name
-            )
-          `)
-          .eq('project_id', projectId)
-          .single();
-        
-        if (projectError) {
-          console.error("Error fetching project:", projectError);
-          toast.error("Failed to load project details");
-          navigate("/seeker/dashboard");
-          return;
-        }
-        
-        // Set project details - Fix: Properly access company_name
-        const businessData = projectData.businesses;
-        let companyName = "Unknown Company";
-        
-        // Carefully check the structure and type of businessData
-        if (businessData && 
-            typeof businessData === 'object' && 
-            businessData !== null) {
-          if ('company_name' in businessData) {
-            // It's a single object with company_name property
-            const rawCompanyName = (businessData as { company_name?: string | null }).company_name;
-            companyName = typeof rawCompanyName === 'string' ? rawCompanyName : "Unknown Company";
+        } else {
+          // No task ID in state, so we need to load from URL parameters
+          if (!projectId) {
+            toast.error("Project ID is missing");
+            navigate("/seeker/dashboard");
+            return;
           }
-        }
           
-        setProjectDetails({
-          title: projectData.title,
-          companyName: companyName,
-          status: projectData.status
-        });
-        
-        // If task ID not provided in state, get the first available task
-        if (!state?.taskId) {
+          // Fetch project details
+          const { data: projectData, error: projectError } = await supabase
+            .from('business_projects')
+            .select(`
+              title,
+              status,
+              businesses (
+                company_name
+              )
+            `)
+            .eq('project_id', projectId)
+            .single();
+          
+          if (projectError) {
+            console.error("Error fetching project:", projectError);
+            toast.error("Failed to load project details");
+            navigate("/seeker/dashboard");
+            return;
+          }
+          
+          // Set project details
+          const businessData = projectData.businesses;
+          let companyName = "Unknown Company";
+          
+          if (businessData && 
+              typeof businessData === 'object' && 
+              businessData !== null) {
+            if ('company_name' in businessData) {
+              const rawCompanyName = (businessData as { company_name?: string | null }).company_name;
+              companyName = typeof rawCompanyName === 'string' ? rawCompanyName : "Unknown Company";
+            }
+          }
+            
+          setProjectDetails({
+            title: projectData.title,
+            companyName: companyName,
+            status: projectData.status
+          });
+          
+          // If task ID not provided in state, get the first available task
           const { data: taskData, error: taskError } = await supabase
             .from('project_sub_tasks')
             .select('task_id, title')
