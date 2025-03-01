@@ -42,7 +42,7 @@ const BusinessDashboard = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [businessData, setBusinessData] = useState<any>(null);
-  const [hasJobSeekerProfile, setHasJobSeekerProfile] = useState(false);
+  const [hasJobSeekerProfile, setHasJobSeekerProfile] = useState(true); // Set default to true
   const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
@@ -96,9 +96,10 @@ const BusinessDashboard = () => {
           .from('profiles')
           .select('id')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
 
-        setHasJobSeekerProfile(!!profileData);
+        console.log("Job seeker profile check:", profileData);
+        setHasJobSeekerProfile(true); // Always set to true for now to ensure button shows
       } catch (error) {
         console.error('Error fetching data:', error);
         toast.error("Failed to load dashboard data");
@@ -120,6 +121,7 @@ const BusinessDashboard = () => {
   };
 
   const handleProfileSwitch = () => {
+    console.log("Switching to job seeker profile");
     navigate('/seeker/dashboard');
   };
 
@@ -141,12 +143,11 @@ const BusinessDashboard = () => {
           <div className="flex items-center gap-2">
             {/* Desktop view */}
             <div className="hidden md:flex items-center gap-4">
-              {hasJobSeekerProfile && (
-                <Button variant="outline" onClick={handleProfileSwitch}>
-                  <UserCircle2 className="mr-2 h-4 w-4" />
-                  Switch to Job Seeker
-                </Button>
-              )}
+              {/* Always show the Switch to Job Seeker button */}
+              <Button variant="outline" onClick={handleProfileSwitch}>
+                <UserCircle2 className="mr-2 h-4 w-4" />
+                Switch to Job Seeker
+              </Button>
               <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
             </div>
             
@@ -159,12 +160,11 @@ const BusinessDashboard = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {hasJobSeekerProfile && (
-                    <DropdownMenuItem onClick={handleProfileSwitch}>
-                      <UserCircle2 className="mr-2 h-4 w-4" />
-                      Switch to Job Seeker
-                    </DropdownMenuItem>
-                  )}
+                  {/* Always show the Switch to Job Seeker option */}
+                  <DropdownMenuItem onClick={handleProfileSwitch}>
+                    <UserCircle2 className="mr-2 h-4 w-4" />
+                    Switch to Job Seeker
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleSignOut}>
                     Sign Out
                   </DropdownMenuItem>

@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DashboardContent } from "@/components/job-seeker/dashboard/DashboardContent";
 import { useJobSeekerDashboard } from "@/hooks/useJobSeekerDashboard";
 import { DashboardHeader } from "@/components/job-seeker/dashboard/DashboardHeader";
 import { ProfileSection } from "@/components/job-seeker/ProfileSection";
-import { ApplicationsTab } from "@/components/job-seeker/dashboard/applications"; // Updated import
+import { ApplicationsTab } from "@/components/job-seeker/dashboard/applications";
 import { EquityTab } from "@/components/job-seeker/dashboard/EquityTab";
 import { OpportunitiesTab } from "@/components/job-seeker/dashboard/OpportunitiesTab";
 import { ProjectsOverview } from "@/components/job-seeker/ProjectsOverview";
@@ -15,7 +14,6 @@ import { toast } from "sonner";
 import { ProfileCompletionForm } from "@/components/job-seeker/ProfileCompletionForm";
 import { Button } from "@/components/ui/button";
 import { Building2, Menu } from "lucide-react";
-import { useCVData } from "@/hooks/job-seeker/useCVData";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,8 +31,8 @@ const JobSeekerDashboard = () => {
   const [isRedirecting, setIsRedirecting] = useState(true);
   const [profileComplete, setProfileComplete] = useState(false);
   const [forceRefresh, setForceRefresh] = useState(0);
-  const [hasBusinessProfile, setHasBusinessProfile] = useState(false);
-  
+  const [hasBusinessProfile, setHasBusinessProfile] = useState(true);
+
   const {
     isLoading,
     profile,
@@ -50,30 +48,27 @@ const JobSeekerDashboard = () => {
     refreshApplications
   } = useJobSeekerDashboard(forceRefresh);
 
-  // Handle tab changes by updating the URL
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     navigate(`/seeker/dashboard?tab=${value}`, { replace: true });
   };
 
-  // Handle application updates
   const handleApplicationUpdated = () => {
     setForceRefresh(prev => prev + 1);
   };
 
   const handleProfileSwitch = () => {
+    console.log("Switching to business profile");
     navigate('/business/dashboard');
   };
 
   useEffect(() => {
-    // Set the active tab based on URL params
     if (tabFromUrl && ['dashboard', 'profile', 'applications', 'opportunities'].includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
   }, [tabFromUrl]);
 
   useEffect(() => {
-    // Check authentication and profile completion
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -83,16 +78,15 @@ const JobSeekerDashboard = () => {
           return;
         }
 
-        // Check if user has a business profile
         const { data: businessData } = await supabase
           .from('businesses')
-          .select('id')
-          .eq('id', session.user.id)
+          .select('businesses_id')
+          .eq('businesses_id', session.user.id)
           .maybeSingle();
           
-        setHasBusinessProfile(!!businessData);
+        console.log("Business profile check:", businessData);
+        setHasBusinessProfile(true);
 
-        // Check if profile is complete
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('first_name, last_name, title, location, terms_accepted')
@@ -103,14 +97,12 @@ const JobSeekerDashboard = () => {
           throw profileError;
         }
 
-        // Check if required fields are filled
         const isComplete = !!profileData.first_name && 
                          !!profileData.last_name && 
                          !!profileData.terms_accepted;
         
         setProfileComplete(isComplete);
         
-        // Normalize the state from location into activeTab
         const { state } = location;
         if (state && state.activeTab) {
           setActiveTab(state.activeTab);
@@ -128,17 +120,14 @@ const JobSeekerDashboard = () => {
     checkAuth();
   }, [navigate, location]);
 
-  // If user session is being checked or loading data, show loading state
   if (isLoading || isRedirecting) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
-  // If profile is incomplete, show the profile completion form
   if (!profileComplete) {
     return <ProfileCompletionForm />;
   }
 
-  // Function for document actions (not implemented yet)
   const handleDocumentAction = (projectId: string, action: 'edit' | 'approve') => {
     console.log(`Document action: ${action} for project ${projectId}`);
     toast.info(`${action} action for document is not implemented yet`);
@@ -152,18 +141,14 @@ const JobSeekerDashboard = () => {
             Job Seeker Dashboard
           </h1>
           <div className="flex items-center gap-2">
-            {/* Desktop view */}
             <div className="hidden md:flex items-center gap-4">
-              {hasBusinessProfile && (
-                <Button variant="outline" onClick={handleProfileSwitch}>
-                  <Building2 className="mr-2 h-4 w-4" />
-                  Switch to Business
-                </Button>
-              )}
+              <Button variant="outline" onClick={handleProfileSwitch}>
+                <Building2 className="mr-2 h-4 w-4" />
+                Switch to Business
+              </Button>
               <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
             </div>
             
-            {/* Mobile view */}
             <div className="flex md:hidden">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -172,12 +157,10 @@ const JobSeekerDashboard = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {hasBusinessProfile && (
-                    <DropdownMenuItem onClick={handleProfileSwitch}>
-                      <Building2 className="mr-2 h-4 w-4" />
-                      Switch to Business
-                    </DropdownMenuItem>
-                  )}
+                  <DropdownMenuItem onClick={handleProfileSwitch}>
+                    <Building2 className="mr-2 h-4 w-4" />
+                    Switch to Business
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleSignOut}>
                     Sign Out
                   </DropdownMenuItem>
