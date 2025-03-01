@@ -73,18 +73,18 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
           const details: Record<string, {title: string, company: string}> = {};
           data.forEach(item => {
             // Fix: Properly type and access businesses data
-            if (item.businesses && typeof item.businesses === 'object') {
-              const companyName = item.businesses.company_name || 'Unknown Company';
-              details[item.project_id] = {
-                title: item.title || 'Unnamed Project',
-                company: companyName
-              };
-            } else {
-              details[item.project_id] = {
-                title: item.title || 'Unnamed Project',
-                company: 'Unknown Company'
-              };
+            const businessData = item.businesses;
+            let companyName = 'Unknown Company';
+            
+            // Check if businessData exists and has the company_name property
+            if (businessData && typeof businessData === 'object' && 'company_name' in businessData) {
+              companyName = businessData.company_name || 'Unknown Company';
             }
+            
+            details[item.project_id] = {
+              title: item.title || 'Unnamed Project',
+              company: companyName
+            };
           });
           setProjectDetails(details);
           console.log("Fetched additional project details:", details);

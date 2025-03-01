@@ -106,9 +106,11 @@ const ProjectApplicationPage = () => {
         
         // Set project details - Fix: Properly access company_name
         const businessData = projectData.businesses;
-        const companyName = businessData && typeof businessData === 'object' 
-          ? businessData.company_name || "Unknown Company" 
-          : "Unknown Company";
+        let companyName = "Unknown Company";
+        
+        if (businessData && typeof businessData === 'object' && 'company_name' in businessData) {
+          companyName = businessData.company_name || "Unknown Company";
+        }
           
         setProjectDetails({
           title: projectData.title,
