@@ -5,20 +5,36 @@ import { toast } from "sonner";
 
 export const useApplicationActions = (onApplicationUpdated?: () => void) => {
   const [isWithdrawing, setIsWithdrawing] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleWithdraw = async (applicationId: string) => {
     try {
       setIsWithdrawing(applicationId);
+      setError(null);
+      
+      console.log(`Attempting to withdraw application with ID: ${applicationId}`);
       
       // Update the application status to "withdrawn"
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('job_applications')
         .update({ status: 'withdrawn' })
-        .eq('job_app_id', applicationId);
+        .eq('job_app_id', applicationId)
+        .select();
       
       if (error) {
         console.error("Error withdrawing application:", error);
-        toast.error("Failed to withdraw application");
+        setError(error.message);
+        toast.error(`Failed to withdraw application: ${error.message}`);
+        return;
+      }
+      
+      console.log("Application withdrawal response:", data);
+      
+      if (!data || data.length === 0) {
+        const msg = "No changes were made. You may not have permission to withdraw this application.";
+        console.error(msg);
+        setError(msg);
+        toast.error(msg);
         return;
       }
       
@@ -27,9 +43,10 @@ export const useApplicationActions = (onApplicationUpdated?: () => void) => {
       if (onApplicationUpdated) {
         onApplicationUpdated();
       }
-    } catch (error) {
-      console.error("Error withdrawing application:", error);
-      toast.error("Failed to withdraw application");
+    } catch (error: any) {
+      console.error("Exception withdrawing application:", error);
+      setError(error.message || "An unexpected error occurred");
+      toast.error(`Failed to withdraw application: ${error.message || "Unknown error"}`);
     } finally {
       setIsWithdrawing(null);
     }
@@ -41,6 +58,7 @@ export const useApplicationActions = (onApplicationUpdated?: () => void) => {
 
   return {
     isWithdrawing,
+    error,
     handleWithdraw,
     openCV
   };
