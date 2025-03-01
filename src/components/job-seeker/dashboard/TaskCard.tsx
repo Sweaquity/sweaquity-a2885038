@@ -1,159 +1,148 @@
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Briefcase, Calendar, BarChart } from "lucide-react";
-import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
 import { Skill } from "@/types/jobSeeker";
+import { SkillBadge } from "./SkillBadge";
+import { useNavigate } from "react-router-dom";
 
-// Define a project sub task type that includes all the properties we need
-interface ProjectSubTask {
+interface Task {
   task_id: string;
   project_id: string;
   title: string;
   description: string;
-  skills_required: string[];
-  skill_requirements: Array<{skill: string, level: string}>;
   equity_allocation: number;
   timeframe: string;
+  skills_required: string[];
+  skill_requirements: Array<{skill: string, level: string}>;
   status: string;
   task_status: string;
   completion_percentage: number;
   matchedSkills?: string[];
   matchScore?: number;
-  id?: string; // For backward compatibility
 }
 
 interface TaskCardProps {
-  task?: ProjectSubTask;
-  userSkills?: Skill[];
+  task: Task;
+  userSkills: Skill[];
   showMatchedSkills?: boolean;
-  id?: string;
-  projectId?: string;
-  title?: string;
-  description?: string;
-  equity?: number;
-  timeframe?: string;
-  skills?: string[];
-  matchedSkills?: string[];
-  matchScore?: number;
-  className?: string;
+  companyName?: string;
+  projectTitle?: string;
 }
 
-export function TaskCard({
-  task,
-  userSkills,
-  showMatchedSkills,
-  id,
-  projectId,
-  title,
-  description,
-  equity,
-  timeframe,
-  skills,
-  matchedSkills,
-  matchScore,
-  className,
-}: TaskCardProps) {
+export const TaskCard = ({ 
+  task, 
+  userSkills, 
+  showMatchedSkills = false, 
+  companyName,
+  projectTitle
+}: TaskCardProps) => {
   const navigate = useNavigate();
-  const [isApplying, setIsApplying] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  const taskId = task?.task_id || id;
-  const taskProjectId = task?.project_id || projectId;
-  const taskTitle = task?.title || title;
-  const taskDescription = task?.description || description;
-  const taskEquity = task?.equity_allocation || equity;
-  const taskTimeframe = task?.timeframe || timeframe;
-  const taskSkills = task?.skills_required || skills || [];
-  const taskMatchedSkills = task?.matchedSkills || matchedSkills || [];
-  const taskMatchScore = task?.matchScore || matchScore || 0;
-
-  const handleApply = async () => {
-    try {
-      setIsApplying(true);
-      const { data } = await supabase.auth.getSession();
-      
-      if (!data.session) {
-        toast.error("Please sign in to apply for this task");
-        navigate("/auth/seeker");
-        return;
-      }
-      
-      // Log all details to help with debugging
-      console.log("Apply Now clicked with:", {
-        taskId,
-        taskProjectId, 
-        navigatingTo: `/projects/${taskProjectId}/apply`
-      });
-      
-      if (!taskProjectId) {
-        console.error("Error: Project ID is missing");
-        toast.error("Cannot apply - Project ID is missing");
-        return;
-      }
-      
-      // Ensure we're using the correct URL format: /projects/[projectId]/apply
-      // Stop any event propagation to prevent other click handlers
-      navigate(`/projects/${taskProjectId}/apply`, { 
-        state: { taskId: taskId }
-      });
-    } catch (error) {
-      console.error("Error navigating to application page:", error);
-      toast.error("Failed to open application page");
-    } finally {
-      setIsApplying(false);
-    }
+  const handleApply = () => {
+    navigate(`/projects/${task.project_id}/apply`, { 
+      state: { 
+        taskId: task.task_id,
+        taskTitle: task.title,
+        projectTitle: projectTitle,
+        companyName: companyName
+      } 
+    });
   };
 
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  // Find if the skills match with user skills
+  const matchingSkills = userSkills.filter(
+    userSkill => task.skills_required.some(
+      requiredSkill => requiredSkill.toLowerCase() === userSkill.skill.toLowerCase()
+    )
+  );
+
+  // Calculate match percentage
+  const matchPercentage = task.skills_required.length > 0 
+    ? Math.round((matchingSkills.length / task.skills_required.length) * 100) 
+    : 0;
+
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle className="flex justify-between items-start">
-          <div>
-            <span className="text-xl">{taskTitle}</span>
-            <div className="flex items-center mt-1 text-sm text-muted-foreground">
-              <Briefcase className="h-4 w-4 mr-1" />
-              <span>{taskEquity}% equity</span>
-              <Calendar className="h-4 w-4 ml-3 mr-1" />
-              <span>{taskTimeframe}</span>
-            </div>
+    <Card className="h-full flex flex-col">
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start gap-2">
+          <CardTitle className="text-base">{task.title}</CardTitle>
+          <Badge 
+            variant={
+              task.status === 'completed' ? 'outline' :
+              task.status === 'in-progress' ? 'secondary' : 'default'
+            }
+          >
+            {task.status}
+          </Badge>
+        </div>
+        {(projectTitle || companyName) && (
+          <div className="text-sm text-muted-foreground">
+            {projectTitle && <div>Project: {projectTitle}</div>}
+            {companyName && <div>Company: {companyName}</div>}
           </div>
-          <div className="flex flex-col items-end">
-            <div className="flex items-center">
-              <BarChart className="h-4 w-4 mr-1 text-primary" />
-              <span className="font-semibold">{taskMatchScore}% match</span>
-            </div>
-          </div>
-        </CardTitle>
+        )}
       </CardHeader>
-      <CardContent>
-        <p className="text-sm mb-4">{taskDescription}</p>
-        <div>
-          <p className="text-sm font-medium mb-2">Skills needed:</p>
-          <div className="flex flex-wrap gap-2">
-            {taskSkills.map((skill, index) => {
-              const isMatch = taskMatchedSkills.includes(skill);
-              return (
-                <Badge key={index} variant={isMatch ? "default" : "secondary"}>
-                  {skill} {isMatch && "✓"}
-                </Badge>
-              );
-            })}
+      <CardContent className="pb-2 flex-grow">
+        <div className="space-y-2">
+          <p className={`text-sm ${isExpanded ? '' : 'line-clamp-2'}`}>
+            {task.description || "No description provided"}
+          </p>
+          {task.description && task.description.length > 100 && (
+            <Button variant="link" size="sm" className="p-0 h-auto" onClick={toggleExpand}>
+              {isExpanded ? 'Show less' : 'Show more'}
+            </Button>
+          )}
+          
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            <div className="text-muted-foreground">Equity:</div>
+            <div>{task.equity_allocation}%</div>
+            <div className="text-muted-foreground">Timeframe:</div>
+            <div>{task.timeframe}</div>
           </div>
+          
+          <div className="mt-2">
+            <p className="text-sm font-medium mb-1">Skills Required:</p>
+            <div className="flex flex-wrap gap-1">
+              {task.skills_required.map((skill, index) => (
+                <SkillBadge 
+                  key={`${skill}-${index}`} 
+                  skill={skill} 
+                  isMatched={showMatchedSkills ? task.matchedSkills?.includes(skill) : undefined}
+                />
+              ))}
+            </div>
+          </div>
+          
+          {showMatchedSkills && task.matchScore !== undefined && (
+            <div className="mt-2">
+              <Badge 
+                variant="outline" 
+                className={
+                  task.matchScore >= 75 ? 'bg-green-50 text-green-700' : 
+                  task.matchScore >= 50 ? 'bg-yellow-50 text-yellow-700' : 
+                  'bg-orange-50 text-orange-700'
+                }>
+                {Math.round(task.matchScore)}% skills match
+              </Badge>
+            </div>
+          )}
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="pt-2">
         <Button 
           onClick={handleApply} 
           className="w-full"
-          disabled={isApplying}
         >
-          {isApplying ? "Loading..." : "Apply Now"}
+          Apply for this Role
         </Button>
       </CardFooter>
     </Card>
   );
-}
+};

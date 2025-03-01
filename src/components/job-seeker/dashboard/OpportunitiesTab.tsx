@@ -1,3 +1,4 @@
+
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { EquityProject, Skill } from "@/types/jobSeeker";
 import { TaskCard } from "./TaskCard";
@@ -33,6 +34,7 @@ interface ProjectSubTask {
 export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps) => {
   const [unavailableTaskIds, setUnavailableTaskIds] = useState<Set<string>>(new Set());
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
+  const [projectDetails, setProjectDetails] = useState<Record<string, {title: string, company: string}>>({}); 
   
   // Enhanced logging: Log projects received by this component with source information
   useEffect(() => {
@@ -45,6 +47,45 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
       created_by: p.created_by || "Unknown creator",
       sub_tasks_count: p.sub_tasks?.length || 0
     })));
+    
+    // Fetch additional project details if needed
+    const fetchProjectDetails = async () => {
+      // Get all unique project IDs
+      const projectIds = [...new Set(projects.map(p => p.project_id))];
+      
+      if (projectIds.length === 0) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('business_projects')
+          .select(`
+            project_id,
+            title,
+            businesses (
+              company_name
+            )
+          `)
+          .in('project_id', projectIds);
+          
+        if (error) throw error;
+        
+        if (data) {
+          const details: Record<string, {title: string, company: string}> = {};
+          data.forEach(item => {
+            details[item.project_id] = {
+              title: item.title || 'Unnamed Project',
+              company: item.businesses?.company_name || 'Unknown Company'
+            };
+          });
+          setProjectDetails(details);
+          console.log("Fetched additional project details:", details);
+        }
+      } catch (err) {
+        console.error("Error fetching project details:", err);
+      }
+    };
+    
+    fetchProjectDetails();
     
     // Log all sub-tasks for debugging
     if (projects.length > 0) {
@@ -146,6 +187,19 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
     }
   };
 
+  // Get project details from either state or fallback to matched project data
+  const getProjectInfo = (projectId: string, fallbackTitle: string) => {
+    if (projectDetails[projectId]) {
+      return projectDetails[projectId];
+    }
+    
+    const matchedProject = matchedProjects.find(p => p.projectId === projectId);
+    return {
+      title: fallbackTitle,
+      company: matchedProject?.projectCompany || 'Unknown Company'
+    };
+  };
+
   if (matchedProjects.length === 0) {
     return (
       <Card>
@@ -180,91 +234,95 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
           value={expandedProjectId || undefined}
           onValueChange={setExpandedProjectId}
         >
-          {matchedProjects.map((project) => (
-            <AccordionItem 
-              key={project.projectId} 
-              value={project.projectId}
-              className="border rounded-lg p-2"
-            >
-              <AccordionTrigger 
-                className="hover:no-underline"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleProjectToggle(project.projectId);
-                }}
+          {matchedProjects.map((project) => {
+            const projectInfo = getProjectInfo(project.projectId, project.projectTitle);
+            
+            return (
+              <AccordionItem 
+                key={project.projectId} 
+                value={project.projectId}
+                className="border rounded-lg p-2"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full">
-                  <span className="font-medium">{project.projectTitle}</span>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge 
-                      variant="secondary"
-                      className={
-                        project.matchScore >= 75 
-                          ? 'bg-green-100 text-green-800' 
-                          : project.matchScore >= 50 
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-orange-100 text-orange-800'
-                      }
-                    >
-                      {Math.round(project.matchScore)}% Match
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">
-                      {project.matchedTasks.length} matching tasks
-                    </span>
-                    {project.projectCompany && (
-                      <Badge variant="outline" className="ml-auto">
-                        {project.projectCompany}
+                <AccordionTrigger 
+                  className="hover:no-underline"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleProjectToggle(project.projectId);
+                  }}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full">
+                    <span className="font-medium">{projectInfo.title}</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge 
+                        variant="secondary"
+                        className={
+                          project.matchScore >= 75 
+                            ? 'bg-green-100 text-green-800' 
+                            : project.matchScore >= 50 
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-orange-100 text-orange-800'
+                        }
+                      >
+                        {Math.round(project.matchScore)}% Match
                       </Badge>
-                    )}
+                      <span className="text-sm text-muted-foreground">
+                        {project.matchedTasks.length} matching tasks
+                      </span>
+                      <Badge variant="outline" className="ml-auto">
+                        {projectInfo.company}
+                      </Badge>
+                    </div>
                   </div>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-4 mt-4">
-                  {project.matchedTasks
-                    .sort((a, b) => b.matchScore - a.matchScore)
-                    .map((task) => {
-                      // Convert MatchedTask to ProjectSubTask with required properties
-                      const projectSubTask: ProjectSubTask = {
-                        task_id: task.task_id, 
-                        project_id: project.projectId,
-                        title: task.title,
-                        description: task.description,
-                        equity_allocation: task.equity_allocation,
-                        timeframe: task.timeframe,
-                        skills_required: task.skills_required || [],
-                        skill_requirements: task.skills_required?.map(skill => ({
-                          skill,
-                          level: "Intermediate" // Using an allowed level value
-                        })) || [],
-                        status: 'open',
-                        task_status: 'open',
-                        completion_percentage: 0,
-                        matchScore: task.matchScore,
-                        matchedSkills: task.matchedSkills
-                      };
-                      
-                      // Debug log to check task data
-                      console.log("OpportunitiesTab - Task data for card:", {
-                        taskId: projectSubTask.task_id,
-                        projectId: projectSubTask.project_id,
-                        taskTitle: projectSubTask.title,
-                        company: project.projectCompany
-                      });
-                      
-                      return (
-                        <TaskCard 
-                          key={projectSubTask.task_id}
-                          task={projectSubTask}
-                          userSkills={userSkills}
-                          showMatchedSkills={true}
-                        />
-                      );
-                    })}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4 mt-4">
+                    {project.matchedTasks
+                      .sort((a, b) => b.matchScore - a.matchScore)
+                      .map((task) => {
+                        // Convert MatchedTask to ProjectSubTask with required properties
+                        const projectSubTask: ProjectSubTask = {
+                          task_id: task.task_id, 
+                          project_id: project.projectId,
+                          title: task.title,
+                          description: task.description,
+                          equity_allocation: task.equity_allocation,
+                          timeframe: task.timeframe,
+                          skills_required: task.skills_required || [],
+                          skill_requirements: task.skills_required?.map(skill => ({
+                            skill,
+                            level: "Intermediate" // Using an allowed level value
+                          })) || [],
+                          status: 'open',
+                          task_status: 'open',
+                          completion_percentage: 0,
+                          matchScore: task.matchScore,
+                          matchedSkills: task.matchedSkills
+                        };
+                        
+                        // Debug log to check task data
+                        console.log("OpportunitiesTab - Task data for card:", {
+                          taskId: projectSubTask.task_id,
+                          projectId: projectSubTask.project_id,
+                          taskTitle: projectSubTask.title,
+                          company: projectInfo.company
+                        });
+                        
+                        return (
+                          <TaskCard 
+                            key={projectSubTask.task_id}
+                            task={projectSubTask}
+                            userSkills={userSkills}
+                            showMatchedSkills={true}
+                            companyName={projectInfo.company}
+                            projectTitle={projectInfo.title}
+                          />
+                        );
+                      })}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
         </Accordion>
       </CardContent>
     </Card>
