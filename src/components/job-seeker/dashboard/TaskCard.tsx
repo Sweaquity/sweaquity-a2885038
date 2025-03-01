@@ -112,11 +112,13 @@ export const TaskCard = ({
             <p className="text-sm font-medium mb-1">Skills Required:</p>
             <div className="flex flex-wrap gap-1">
               {task.skills_required.map((skill, index) => (
-                <SkillBadge 
+                <Badge 
                   key={`${skill}-${index}`} 
-                  skill={skill} 
-                  isMatched={showMatchedSkills ? task.matchedSkills?.includes(skill) : undefined}
-                />
+                  variant={showMatchedSkills && task.matchedSkills?.includes(skill) ? "secondary" : "outline"}
+                  className={showMatchedSkills && task.matchedSkills?.includes(skill) ? "bg-green-100 text-green-800" : ""}
+                >
+                  {skill}
+                </Badge>
               ))}
             </div>
           </div>
