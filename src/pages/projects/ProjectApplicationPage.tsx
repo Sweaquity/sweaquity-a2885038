@@ -104,7 +104,7 @@ const ProjectApplicationPage = () => {
           return;
         }
         
-        // Set project details
+        // Set project details - Fix: Properly access company_name
         setProjectDetails({
           title: projectData.title,
           companyName: projectData.businesses?.company_name || "Unknown Company",

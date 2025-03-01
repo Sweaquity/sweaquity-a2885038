@@ -61,7 +61,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
           .select(`
             project_id,
             title,
-            businesses (
+            businesses!inner (
               company_name
             )
           `)
@@ -72,9 +72,11 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
         if (data) {
           const details: Record<string, {title: string, company: string}> = {};
           data.forEach(item => {
+            // Fix: Properly access company_name from the businesses object
+            const companyName = item.businesses?.company_name || 'Unknown Company';
             details[item.project_id] = {
               title: item.title || 'Unnamed Project',
-              company: item.businesses?.company_name || 'Unknown Company'
+              company: companyName
             };
           });
           setProjectDetails(details);
