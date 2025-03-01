@@ -35,6 +35,7 @@ interface Project {
   status: string;
   tasks: SubTask[];
   equity_allocation: number;
+  equity_allocated: number;
   skills_required: string[];
 }
 
@@ -54,14 +55,16 @@ const BusinessDashboard = () => {
       }
 
       try {
-        // Check business profile - fixing the query to use businesses_id instead of id
+        // Check business profile using businesses_id field
         const { data: businessData, error: businessError } = await supabase
           .from('businesses')
           .select('*')
           .eq('businesses_id', session.user.id)
-          .single();
+          .maybeSingle();
 
         if (businessError) throw businessError;
+        
+        console.log("Business profile check:", businessData);
         setBusinessData(businessData);
 
         // Load projects for this business
@@ -73,7 +76,7 @@ const BusinessDashboard = () => {
         if (projectsError) throw projectsError;
         
         if (projectsData && projectsData.length > 0) {
-          const projectIds = projectsData.map(p => p.id);
+          const projectIds = projectsData.map(p => p.project_id);
 
           // Get all tasks for these projects
           const { data: tasksData, error: tasksError } = await supabase
@@ -85,7 +88,7 @@ const BusinessDashboard = () => {
 
           const projectsWithTasks = projectsData.map((project: any) => ({
             ...project,
-            tasks: tasksData.filter((task: any) => task.project_id === project.id) || []
+            tasks: tasksData.filter((task: any) => task.project_id === project.project_id) || []
           }));
 
           setProjects(projectsWithTasks);

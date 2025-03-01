@@ -35,7 +35,7 @@ export const BusinessProfileCompletion = () => {
           ...formData,
           updated_at: new Date().toISOString()
         })
-        .eq('id', session.user.id);
+        .eq('businesses_id', session.user.id);
 
       if (error) throw error;
       
