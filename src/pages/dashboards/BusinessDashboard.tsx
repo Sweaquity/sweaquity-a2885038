@@ -54,11 +54,11 @@ const BusinessDashboard = () => {
       }
 
       try {
-        // Check business profile
+        // Check business profile - fixing the query to use businesses_id instead of id
         const { data: businessData, error: businessError } = await supabase
           .from('businesses')
           .select('*')
-          .eq('id', session.user.id)
+          .eq('businesses_id', session.user.id)
           .single();
 
         if (businessError) throw businessError;
