@@ -23,11 +23,13 @@ export const ApplicationSkills = ({
         level: 'Intermediate' as 'Beginner' | 'Intermediate' | 'Expert'
       };
     }
+    
     // Ensure skill.level is one of the allowed values
+    const validLevels = ['Beginner', 'Intermediate', 'Expert'] as const;
     const level = typeof skill.level === 'string' 
-      ? ((['Beginner', 'Intermediate', 'Expert'].includes(skill.level) 
+      ? (validLevels.includes(skill.level as any) 
         ? skill.level 
-        : 'Intermediate') as 'Beginner' | 'Intermediate' | 'Expert')
+        : 'Intermediate') as 'Beginner' | 'Intermediate' | 'Expert'
       : 'Intermediate';
       
     return { 

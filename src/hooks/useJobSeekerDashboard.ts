@@ -6,7 +6,7 @@ import { useProfile } from "./job-seeker/useProfile";
 import { useApplications } from "./job-seeker/useApplications";
 import { useEquityProjects } from "./job-seeker/useEquityProjects";
 import { useCVData } from "./job-seeker/useCVData";
-import { EquityProject, SubTask } from "@/types/jobSeeker";
+import { EquityProject, SubTask, Skill } from "@/types/jobSeeker";
 
 export const useJobSeekerDashboard = (refreshTrigger = 0) => {
   const navigate = useNavigate();
@@ -92,11 +92,14 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
 
         console.log("Unavailable task IDs:", Array.from(unavailableTaskIds));
 
-        // Enhanced logging: Show what we're fetching
-        console.log("Fetching ALL open tasks from ALL businesses");
+        // Get user skills
+        const userSkills = Array.isArray(skills) 
+          ? skills.map(s => typeof s === 'string' ? s : s.skill.toLowerCase())
+          : [];
+
+        console.log("User skills:", userSkills);
         
         // Fetch ALL open tasks from ALL businesses, not just the user's businesses
-        // IMPORTANT: Not filtering by user ID or business_id to get ALL projects
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
           .select(`
@@ -117,79 +120,69 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
           throw tasksError;
         }
         
-        // Enhanced logging: Log all fetched tasks and their businesses
-        console.log(`Fetched ${tasksData?.length || 0} open tasks from all businesses`);
-        if (tasksData) {
-          console.log("Tasks by business:");
-          const businessTasks = {};
-          tasksData.forEach(task => {
-            const businessId = task.project?.business?.businesses_id;
-            const businessName = task.project?.business?.company_name || 'Unknown';
-            if (!businessTasks[businessId]) {
-              businessTasks[businessId] = {
-                name: businessName,
-                tasks: []
-              };
-            }
-            businessTasks[businessId].tasks.push({
-              id: task.task_id, 
-              title: task.title,
-              created_by: task.created_by
-            });
-          });
-          console.log(JSON.stringify(businessTasks, null, 2));
-        }
-        
-        // Filter out tasks that have already been applied for and are not withdrawn/rejected
+        // Filter opportunities based on skill match and previous applications
         const opportunities = tasksData
-          ?.filter(task => !unavailableTaskIds.has(task.task_id))
-          .map(task => ({
-            id: task.task_id,
-            project_id: task.project_id,
-            equity_amount: task.equity_allocation,
-            time_allocated: task.timeframe,
-            status: task.status,
-            start_date: task.created_at,
-            effort_logs: [],
-            total_hours_logged: 0,
-            title: task.project?.title || "Untitled Project",
-            created_by: task.created_by, // Ensure created_by is set
-            sub_tasks: [{
+          ?.filter(task => {
+            // Skip tasks that have already been applied for
+            if (unavailableTaskIds.has(task.task_id)) return false;
+            
+            // Check if the user has any matching skills for this task
+            const taskSkills = (task.skills_required || []).map(s => s.toLowerCase());
+            const hasMatchingSkill = userSkills.some(skill => 
+              taskSkills.includes(skill.toLowerCase())
+            );
+            
+            // Include tasks with matching skills, or if user has no skills, include all tasks
+            return userSkills.length === 0 || hasMatchingSkill;
+          })
+          .map(task => {
+            // Calculate how many skills match
+            const taskSkills = (task.skills_required || []).map(s => s.toLowerCase());
+            const matchingSkills = userSkills.filter(skill => 
+              taskSkills.includes(skill.toLowerCase())
+            );
+            
+            // Calculate skill match percentage
+            const matchPercentage = taskSkills.length > 0 
+              ? Math.round((matchingSkills.length / taskSkills.length) * 100) 
+              : 0;
+            
+            return {
               id: task.task_id,
-              task_id: task.task_id, // Ensure task_id is set
               project_id: task.project_id,
-              title: task.title,
-              description: task.description,
-              timeframe: task.timeframe,
+              equity_amount: task.equity_allocation,
+              time_allocated: task.timeframe,
               status: task.status,
-              equity_allocation: task.equity_allocation,
-              skill_requirements: task.skill_requirements || [],
-              skills_required: task.skills_required || [],
-              task_status: task.task_status,
-              completion_percentage: task.completion_percentage
-            }],
-            business_roles: {
-              title: task.title,
-              description: task.description,
-              project_title: task.project?.title,
-              company_name: task.project?.business?.company_name
-            }
-          })) || [];
+              start_date: task.created_at,
+              effort_logs: [],
+              total_hours_logged: 0,
+              title: task.project?.title || "Untitled Project",
+              created_by: task.created_by,
+              skill_match: matchPercentage,
+              sub_tasks: [{
+                id: task.task_id,
+                task_id: task.task_id,
+                project_id: task.project_id,
+                title: task.title,
+                description: task.description,
+                timeframe: task.timeframe,
+                status: task.status,
+                equity_allocation: task.equity_allocation,
+                skill_requirements: task.skill_requirements || [],
+                skills_required: task.skills_required || [],
+                task_status: task.task_status,
+                completion_percentage: task.completion_percentage
+              }],
+              business_roles: {
+                title: task.title,
+                description: task.description,
+                project_title: task.project?.title,
+                company_name: task.project?.business?.company_name
+              }
+            };
+          }) || [];
 
-        // Enhanced logging: Log the filtered opportunities
-        console.log(`Available opportunities after filtering: ${opportunities.length}`);
-        if (opportunities.length > 0) {
-          console.log("Filtered opportunities preview:", 
-            opportunities.map(o => ({
-              id: o.id,
-              title: o.title,
-              project_id: o.project_id,
-              company: o.business_roles.company_name,
-              created_by: o.created_by
-            }))
-          );
-        }
-        
+        console.log(`Available opportunities after filtering by skills: ${opportunities.length}`);
         setAvailableOpportunities(opportunities);
 
         // Transform accepted applications to equity projects

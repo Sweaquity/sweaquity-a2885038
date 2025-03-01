@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/collapsible";
 
 interface Business {
-  id?: string;
   company_name: string;
   project_stage: string;
   contact_email: string;
@@ -83,11 +82,17 @@ export const ProjectDetailsPage = () => {
 
         setIsJobSeeker(!!profileData);
 
-        // Fetch project details including project_id for tasks
+        if (!id) {
+          console.error('No project ID provided');
+          toast.error("Project ID is missing");
+          return;
+        }
+
+        // Fetch project details including business data
         const { data: projectData, error: projectError } = await supabase
           .from('business_projects')
           .select(`
-            id,
+            project_id,
             title,
             description,
             status,
@@ -95,32 +100,17 @@ export const ProjectDetailsPage = () => {
             skills_required,
             project_timeframe,
             business_id,
-            business:businesses!business_projects_business_id_fkey (
-              id,
+            businesses!business_projects_business_id_fkey (
               company_name,
               project_stage,
               contact_email,
               industry,
               website,
               location
-            ),
-            tasks:project_sub_tasks (
-              task_id,
-              project_id,
-              title,
-              description,
-              status,
-              equity_allocation,
-              skills_required,
-              timeframe,
-              skill_requirements,
-              task_status,
-              completion_percentage,
-              created_at
             )
           `)
-          .eq('id', id)
-          .maybeSingle();
+          .eq('project_id', id)
+          .single();
 
         if (projectError) {
           console.error('Project error:', projectError);
@@ -134,6 +124,29 @@ export const ProjectDetailsPage = () => {
         }
 
         console.log('Project data:', projectData);
+
+        // Fetch tasks for this project
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('project_sub_tasks')
+          .select(`
+            task_id,
+            project_id,
+            title,
+            description,
+            status,
+            equity_allocation,
+            skills_required,
+            timeframe,
+            skill_requirements,
+            task_status,
+            completion_percentage
+          `)
+          .eq('project_id', id);
+
+        if (tasksError) {
+          console.error('Tasks error:', tasksError);
+          throw tasksError;
+        }
 
         // Check if user has already applied
         const { data: applicationData } = await supabase
@@ -166,15 +179,13 @@ export const ProjectDetailsPage = () => {
           location: ""
         };
 
-        // Extract business data, ensuring it's a single object
-        const businessData = Array.isArray(projectData.business) 
-          ? projectData.business[0] || defaultBusiness
-          : projectData.business || defaultBusiness;
+        // Extract business data
+        const businessData = projectData.businesses || defaultBusiness;
 
         // Map task data to match SubTask interface
-        const mappedTasks: SubTask[] = (projectData.tasks || []).map(task => ({
+        const mappedTasks: SubTask[] = (tasksData || []).map(task => ({
           id: task.task_id, // Keep id for backward compatibility
-          task_id: task.task_id, // Ensure task_id is set
+          task_id: task.task_id,
           project_id: task.project_id,
           title: task.title,
           description: task.description,
@@ -188,7 +199,7 @@ export const ProjectDetailsPage = () => {
         }));
 
         setProject({
-          id: projectData.id,
+          id: projectData.project_id,
           title: projectData.title,
           description: projectData.description,
           status: projectData.status,
@@ -307,7 +318,7 @@ export const ProjectDetailsPage = () => {
                     <div className="space-y-3 mt-2">
                       <div>
                         <h4 className="text-sm font-medium text-muted-foreground">Description</h4>
-                        <p className="text-sm mt-1">{task.description}</p>
+                        <p className="text-sm mt-1">{task.description || "No description provided"}</p>
                       </div>
                       
                       <div>
@@ -326,7 +337,14 @@ export const ProjectDetailsPage = () => {
                         <Badge className="mt-1">{task.status}</Badge>
                       </div>
                       
-                      {/* Apply button removed as requested */}
+                      <div className="pt-2">
+                        <Button
+                          onClick={() => navigate(`/projects/${project.id}/apply/${task.task_id}`)}
+                          className="w-full sm:w-auto"
+                        >
+                          Apply for this Role
+                        </Button>
+                      </div>
                     </div>
                   </CollapsibleContent>
                 </Collapsible>

@@ -26,6 +26,9 @@ interface Project {
   skills_required: string[];
   project_timeframe: string;
   tasks: Task[];
+  business?: {
+    company_name: string;
+  };
 }
 
 export const loadProjects = async (): Promise<Project[]> => {
@@ -35,7 +38,12 @@ export const loadProjects = async (): Promise<Project[]> => {
     
     const { data: projectsData, error: projectsError } = await supabase
       .from('business_projects')
-      .select('*')
+      .select(`
+        *,
+        businesses (
+          company_name
+        )
+      `)
       .eq('business_id', session.user.id);
 
     if (projectsError) throw projectsError;
