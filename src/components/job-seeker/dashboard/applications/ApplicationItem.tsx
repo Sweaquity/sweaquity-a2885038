@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { useApplicationActions } from "./hooks/useApplicationActions";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState } from "react";
+import { Table, TableCell, TableRow } from "@/components/ui/table";
 
 interface ApplicationItemProps {
   application: JobApplication;
@@ -55,34 +56,39 @@ export const ApplicationItem = ({
   
   // Extract skills from business_roles for display
   const roleSkills = application.business_roles?.skills_required || [];
+  const skillRequirements = application.business_roles?.skill_requirements || [];
 
   return (
     <Collapsible 
       open={showExpanded} 
       onOpenChange={handleToggle}
-      className="border rounded-md overflow-hidden"
+      className="border rounded-md overflow-hidden mb-4"
     >
       <CollapsibleTrigger asChild>
-        <div className="flex justify-between items-center p-4 hover:bg-muted/50 cursor-pointer">
-          <div className="flex-1 mr-4">
-            <div className="flex items-center space-x-2">
-              <h3 className="font-medium">{application.business_roles?.title || 'Untitled Role'}</h3>
-              <Badge variant={getStatusBadgeVariant(application.status)}>
-                {application.status}
-              </Badge>
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {application.business_roles?.company_name || 'Unknown Company'}
-              {application.business_roles?.project_title && ` • ${application.business_roles.project_title}`}
-            </p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-muted-foreground">
-              {format(new Date(application.applied_at), 'MMM d, yyyy')}
-            </span>
-            {showExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </div>
-        </div>
+        <TableRow className="cursor-pointer hover:bg-muted/50">
+          <TableCell className="font-medium">
+            {application.business_roles?.title || 'Untitled Role'}
+          </TableCell>
+          <TableCell>
+            {application.business_roles?.company_name || 'Unknown Company'}
+            {application.business_roles?.project_title && <span className="text-muted-foreground"> • {application.business_roles.project_title}</span>}
+          </TableCell>
+          <TableCell>
+            {application.business_roles?.timeframe || 'Not specified'}
+          </TableCell>
+          <TableCell>
+            {application.business_roles?.equity_allocation ? `${application.business_roles.equity_allocation}%` : 'Not specified'}
+          </TableCell>
+          <TableCell>
+            <Badge variant={getStatusBadgeVariant(application.status)}>
+              {application.status}
+            </Badge>
+          </TableCell>
+          <TableCell className="text-right">
+            {format(new Date(application.applied_at), 'MMM d, yyyy')}
+            {showExpanded ? <ChevronDown className="inline ml-2 h-4 w-4" /> : <ChevronRight className="inline ml-2 h-4 w-4" />}
+          </TableCell>
+        </TableRow>
       </CollapsibleTrigger>
       
       <CollapsibleContent className="p-4 border-t bg-muted/20">
@@ -130,6 +136,7 @@ export const ApplicationItem = ({
             <h4 className="text-sm font-medium mb-1">Required Skills</h4>
             <ApplicationSkills
               roleSkills={roleSkills}
+              skillRequirements={skillRequirements}
               matchedSkills={matchedSkills}
               displayEmpty={true}
             />

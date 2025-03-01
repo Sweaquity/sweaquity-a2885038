@@ -3,6 +3,7 @@ import { useState } from "react";
 import { JobApplication, Skill } from "@/types/jobSeeker";
 import { ApplicationItem } from "./ApplicationItem";
 import { useUserSkills } from "./hooks/useUserSkills";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 // Create an EmptyState component since it's missing
 const EmptyState = ({ message }: { message: string }) => (
@@ -42,23 +43,37 @@ export const ApplicationsList = ({
   }
   
   return (
-    <div className="space-y-4">
-      {applications.map(application => (
-        <ApplicationItem 
-          key={application.job_app_id} 
-          application={application}
-          isExpanded={expandedApplicationId === application.job_app_id}
-          toggleExpanded={() => {
-            setExpandedApplicationId(
-              expandedApplicationId === application.job_app_id 
-                ? null 
-                : application.job_app_id
-            );
-          }}
-          getMatchedSkills={getMatchedSkillsForApplication}
-          onApplicationUpdated={onApplicationUpdated}
-        />
-      ))}
+    <div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Role</TableHead>
+            <TableHead>Company</TableHead>
+            <TableHead>Timeframe</TableHead>
+            <TableHead>Equity</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Applied</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {applications.map(application => (
+            <ApplicationItem 
+              key={application.job_app_id} 
+              application={application}
+              isExpanded={expandedApplicationId === application.job_app_id}
+              toggleExpanded={() => {
+                setExpandedApplicationId(
+                  expandedApplicationId === application.job_app_id 
+                    ? null 
+                    : application.job_app_id
+                );
+              }}
+              getMatchedSkills={getMatchedSkillsForApplication}
+              onApplicationUpdated={onApplicationUpdated}
+            />
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 };

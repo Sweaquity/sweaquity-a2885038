@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Skill } from "@/types/jobSeeker";
 import { useApplicationActions } from "@/components/job-seeker/dashboard/applications/hooks/useApplicationActions";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 
 interface Application {
   job_app_id: string;
@@ -35,6 +36,9 @@ interface Application {
     title: string;
     description: string;
     skills_required?: string[];
+    skill_requirements?: { skill: string; level: string }[];
+    equity_allocation?: number;
+    timeframe?: string;
     project: {
       title: string;
     }
@@ -68,13 +72,20 @@ export const ProjectApplicationsSection = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      // First, get all projects for this business (updated to use project_id)
+      console.log("Loading projects for business ID:", session.user.id);
+
+      // Get all projects for this business by business_id
       const { data: projectsData, error: projectsError } = await supabase
         .from('business_projects')
         .select('*')
         .eq('business_id', session.user.id);
 
-      if (projectsError) throw projectsError;
+      if (projectsError) {
+        console.error("Error fetching projects:", projectsError);
+        throw projectsError;
+      }
+
+      console.log("Projects fetched:", projectsData?.length || 0);
 
       if (!projectsData || projectsData.length === 0) {
         setIsLoading(false);
@@ -89,7 +100,7 @@ export const ProjectApplicationsSection = () => {
         // Get all tasks for this project
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
-          .select('task_id, skills_required')
+          .select('task_id, skills_required, skill_requirements, equity_allocation, timeframe')
           .eq('project_id', project.project_id);
 
         if (tasksError) {
@@ -97,6 +108,8 @@ export const ProjectApplicationsSection = () => {
           continue;
         }
 
+        console.log(`Fetched ${tasksData?.length || 0} tasks for project ${project.project_id}`);
+        
         const taskIds = tasksData.map(task => task.task_id);
 
         if (taskIds.length === 0) {
@@ -108,9 +121,14 @@ export const ProjectApplicationsSection = () => {
         }
 
         // Create a map of task IDs to their skills required
-        const taskSkillsMap = new Map<string, string[]>();
+        const taskSkillsMap = new Map<string, any>();
         tasksData.forEach(task => {
-          taskSkillsMap.set(task.task_id, task.skills_required || []);
+          taskSkillsMap.set(task.task_id, {
+            skills_required: task.skills_required || [],
+            skill_requirements: task.skill_requirements || [],
+            equity_allocation: task.equity_allocation,
+            timeframe: task.timeframe
+          });
         });
 
         // Get all applications for these tasks
@@ -123,6 +141,8 @@ export const ProjectApplicationsSection = () => {
           console.error('Error fetching applications:', applicationsError);
           continue;
         }
+
+        console.log(`Fetched ${applicationsData?.length || 0} applications for project ${project.project_id}`);
 
         if (!applicationsData || applicationsData.length === 0) {
           projectsWithApplications.push({
@@ -141,7 +161,7 @@ export const ProjectApplicationsSection = () => {
             .from('profiles')
             .select('first_name, last_name, title, location, employment_preference, skills')
             .eq('id', app.user_id)
-            .single();
+            .maybeSingle();
 
           if (profileError) {
             console.error('Error fetching profile for user:', app.user_id, profileError);
@@ -151,9 +171,9 @@ export const ProjectApplicationsSection = () => {
           // Get task details
           const { data: taskData, error: taskError } = await supabase
             .from('project_sub_tasks')
-            .select('title, description, skills_required')
+            .select('title, description, skills_required, skill_requirements, equity_allocation, timeframe')
             .eq('task_id', app.task_id)
-            .single();
+            .maybeSingle();
 
           if (taskError) {
             console.error('Error fetching task details:', taskError);
@@ -162,7 +182,7 @@ export const ProjectApplicationsSection = () => {
 
           // Parse user skills
           let userSkills: Skill[] = [];
-          if (profileData.skills) {
+          if (profileData?.skills) {
             try {
               if (typeof profileData.skills === 'string') {
                 // Try to parse if it's a JSON string
@@ -185,7 +205,7 @@ export const ProjectApplicationsSection = () => {
 
           // Calculate skill match
           const userSkillNames = userSkills.map(s => s.skill.toLowerCase());
-          const taskRequiredSkills = taskData.skills_required || [];
+          const taskRequiredSkills = taskData?.skills_required || [];
           
           let matchedSkills = 0;
           taskRequiredSkills.forEach(skill => {
@@ -205,7 +225,7 @@ export const ProjectApplicationsSection = () => {
               skills: userSkills
             },
             business_roles: {
-              ...taskData,
+              ...(taskData || {}),
               project: {
                 title: project.title
               }
@@ -220,6 +240,7 @@ export const ProjectApplicationsSection = () => {
         });
       }
 
+      console.log("Final projects with applications:", projectsWithApplications.length);
       setProjects(projectsWithApplications);
     } catch (error) {
       console.error('Error loading projects with applications:', error);
@@ -325,36 +346,56 @@ export const ProjectApplicationsSection = () => {
                     <p className="text-muted-foreground text-center p-4">No applications for this project.</p>
                   ) : (
                     <div className="space-y-2">
-                      {project.applications.map(application => (
-                        <Collapsible
-                          key={application.job_app_id}
-                          open={expandedApplications.has(application.job_app_id)}
-                          onOpenChange={() => toggleApplicationExpanded(application.job_app_id)}
-                          className="border rounded-lg overflow-hidden"
-                        >
-                          <CollapsibleTrigger className="flex justify-between items-center w-full p-3 text-left hover:bg-muted/50">
-                            <div className="grid grid-cols-6 flex-1 gap-2">
-                              <div className="col-span-2">
-                                <p className="font-medium">{application.profile?.first_name} {application.profile?.last_name}</p>
-                                <p className="text-xs text-muted-foreground truncate">{application.profile?.title}</p>
-                              </div>
-                              <div className="col-span-2">
-                                <p className="text-sm font-medium truncate">{application.business_roles?.title}</p>
-                                <div className="flex items-center gap-1">
-                                  <Badge variant={
-                                    application.skillMatch && application.skillMatch > 70 ? "default" :
-                                    application.skillMatch && application.skillMatch > 40 ? "secondary" : 
-                                    "outline"
-                                  }>
-                                    {application.skillMatch || 0}% match
-                                  </Badge>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[200px]">Applicant</TableHead>
+                            <TableHead>Role</TableHead>
+                            <TableHead className="text-center">Skills Match</TableHead>
+                            <TableHead className="text-center">Status</TableHead>
+                            <TableHead className="w-[80px]"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {project.applications.map(application => (
+                            <TableRow 
+                              key={application.job_app_id}
+                              className="cursor-pointer hover:bg-muted/50"
+                              onClick={() => toggleApplicationExpanded(application.job_app_id)}
+                            >
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{application.profile?.first_name} {application.profile?.last_name}</p>
+                                  <p className="text-xs text-muted-foreground">{application.profile?.title || "No title"}</p>
                                 </div>
-                              </div>
-                              <div className="col-span-2 flex items-center justify-end">
+                              </TableCell>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{application.business_roles?.title || "Untitled"}</p>
+                                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                    {application.business_roles?.timeframe && `${application.business_roles.timeframe} • `}
+                                    {application.business_roles?.equity_allocation && `${application.business_roles.equity_allocation}% equity`}
+                                  </p>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={
+                                  application.skillMatch && application.skillMatch > 70 ? "default" :
+                                  application.skillMatch && application.skillMatch > 40 ? "secondary" : 
+                                  "outline"
+                                }>
+                                  {application.skillMatch || 0}% match
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
                                 <select 
-                                  className="px-2 py-1 border rounded text-xs"
+                                  className="w-full px-2 py-1 border rounded text-xs"
                                   value={application.status}
-                                  onChange={(e) => handleStatusChange(application.job_app_id, e.target.value)}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    handleStatusChange(application.job_app_id, e.target.value);
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
                                   disabled={isUpdatingStatus === application.job_app_id}
                                 >
                                   <option value="pending">Pending</option>
@@ -367,53 +408,108 @@ export const ProjectApplicationsSection = () => {
                                 {isUpdatingStatus === application.job_app_id && (
                                   <Loader2 className="animate-spin ml-2 h-4 w-4" />
                                 )}
-                              </div>
-                            </div>
-                            {expandedApplications.has(application.job_app_id) ? 
-                              <ChevronDown className="h-4 w-4 flex-shrink-0 ml-2" /> : 
-                              <ChevronRight className="h-4 w-4 flex-shrink-0 ml-2" />
-                            }
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="p-3">
-                            <div className="space-y-3">
+                              </TableCell>
+                              <TableCell>
+                                {expandedApplications.has(application.job_app_id) ? 
+                                  <ChevronDown className="h-4 w-4 mx-auto" /> : 
+                                  <ChevronRight className="h-4 w-4 mx-auto" />
+                                }
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      
+                      {project.applications.map(application => (
+                        <Collapsible
+                          key={`${application.job_app_id}-details`}
+                          open={expandedApplications.has(application.job_app_id)}
+                          className="border rounded-lg overflow-hidden mt-2"
+                        >
+                          <CollapsibleContent className="p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
-                                <p className="text-sm font-medium">Application Message</p>
-                                <p className="text-sm mt-1">{application.message}</p>
+                                <h4 className="font-medium mb-2">Application Details</h4>
+                                <div className="space-y-2">
+                                  <div>
+                                    <p className="text-sm font-medium">Message</p>
+                                    <p className="text-sm">{application.message || "No message provided"}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">Applied</p>
+                                    <p className="text-sm">{new Date(application.applied_at).toLocaleDateString()}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">Location</p>
+                                    <p className="text-sm">{application.profile?.location || "Not specified"}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">Preference</p>
+                                    <p className="text-sm">{application.profile?.employment_preference || "Not specified"}</p>
+                                  </div>
+                                  {application.cv_url && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        window.open(application.cv_url!, '_blank');
+                                      }}
+                                    >
+                                      <FileText className="mr-1 h-4 w-4" />
+                                      View CV
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
                               
                               <div>
-                                <p className="text-sm font-medium">Skills Match</p>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {application.business_roles?.skills_required?.map((skill, index) => {
-                                    const hasSkill = application.profile?.skills?.some(
-                                      s => s.skill.toLowerCase() === skill.toLowerCase()
-                                    );
-                                    return (
-                                      <Badge key={index} variant={hasSkill ? "default" : "outline"} className="text-xs">
-                                        {skill} {hasSkill && "✓"}
-                                      </Badge>
-                                    );
-                                  })}
+                                <h4 className="font-medium mb-2">Skills Match</h4>
+                                <div className="space-y-2">
+                                  <div>
+                                    <p className="text-sm font-medium">Required Skills</p>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {application.business_roles?.skill_requirements?.map((skillReq, index) => {
+                                        const hasSkill = application.profile?.skills?.some(
+                                          s => s.skill.toLowerCase() === skillReq.skill.toLowerCase()
+                                        );
+                                        return (
+                                          <Badge key={index} variant={hasSkill ? "default" : "outline"} className="text-xs">
+                                            {skillReq.skill} ({skillReq.level}) {hasSkill && "✓"}
+                                          </Badge>
+                                        );
+                                      })}
+                                      
+                                      {(!application.business_roles?.skill_requirements || application.business_roles.skill_requirements.length === 0) && 
+                                        application.business_roles?.skills_required?.map((skill, index) => {
+                                          const hasSkill = application.profile?.skills?.some(
+                                            s => s.skill.toLowerCase() === skill.toLowerCase()
+                                          );
+                                          return (
+                                            <Badge key={index} variant={hasSkill ? "default" : "outline"} className="text-xs">
+                                              {skill} {hasSkill && "✓"}
+                                            </Badge>
+                                          );
+                                        })
+                                      }
+                                    </div>
+                                  </div>
+                                  
+                                  <div>
+                                    <p className="text-sm font-medium">Description</p>
+                                    <p className="text-sm mt-1">{application.business_roles?.description || "No description provided"}</p>
+                                  </div>
+                                  
+                                  <div>
+                                    <p className="text-sm font-medium">Timeframe</p>
+                                    <p className="text-sm">{application.business_roles?.timeframe || "Not specified"}</p>
+                                  </div>
+                                  
+                                  <div>
+                                    <p className="text-sm font-medium">Equity Allocation</p>
+                                    <p className="text-sm">{application.business_roles?.equity_allocation ? `${application.business_roles.equity_allocation}%` : "Not specified"}</p>
+                                  </div>
                                 </div>
-                              </div>
-                            
-                              <div className="flex flex-wrap justify-between items-center gap-2">
-                                <p className="text-xs text-muted-foreground">
-                                  Applied {new Date(application.applied_at).toLocaleDateString()} • 
-                                  {application.profile?.location && ` ${application.profile.location} • `}
-                                  {application.profile?.employment_preference}
-                                </p>
-                                
-                                {application.cv_url && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => window.open(application.cv_url!, '_blank')}
-                                  >
-                                    <FileText className="mr-1 h-4 w-4" />
-                                    View CV
-                                  </Button>
-                                )}
                               </div>
                             </div>
                           </CollapsibleContent>
