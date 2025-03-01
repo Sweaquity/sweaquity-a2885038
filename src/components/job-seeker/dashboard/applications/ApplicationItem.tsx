@@ -1,168 +1,162 @@
 
+import { useState } from "react";
 import { JobApplication } from "@/types/jobSeeker";
+import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, ChevronDown, ChevronRight, FileText, Loader2, X } from "lucide-react";
-import { ApplicationSkills } from "./ApplicationSkills";
-import { format } from "date-fns";
 import { useApplicationActions } from "./hooks/useApplicationActions";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useState } from "react";
-import { Table, TableCell, TableRow } from "@/components/ui/table";
+import { Loader2, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { TableCell, TableRow } from "@/components/ui/table";
+import { ApplicationSkills } from "./ApplicationSkills";
 
 interface ApplicationItemProps {
   application: JobApplication;
+  isExpanded: boolean;
+  toggleExpanded: () => void;
   getMatchedSkills?: (application: JobApplication) => string[];
   onApplicationUpdated?: () => void;
-  isExpanded?: boolean;
-  toggleExpanded?: () => void;
 }
 
-export const ApplicationItem = ({ 
-  application, 
-  getMatchedSkills = () => [],
+export const ApplicationItem = ({
+  application,
+  isExpanded,
+  toggleExpanded,
+  getMatchedSkills,
   onApplicationUpdated,
-  isExpanded = false,
-  toggleExpanded = () => {},
 }: ApplicationItemProps) => {
   const { isWithdrawing, handleWithdraw, openCV } = useApplicationActions(onApplicationUpdated);
-  const [expanded, setExpanded] = useState(isExpanded);
   
-  const handleToggle = () => {
-    if (toggleExpanded) {
-      toggleExpanded();
-    } else {
-      setExpanded(!expanded);
-    }
-  };
-  
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'accepted':
-        return 'success';
-      case 'in review':
-      case 'negotiation':
-        return 'secondary';
-      case 'rejected':
-      case 'withdrawn':
-        return 'destructive';
-      default:
-        return 'outline';
-    }
-  };
-  
-  const matchedSkills = getMatchedSkills(application);
-  const showExpanded = isExpanded !== undefined ? isExpanded : expanded;
-  
-  // Use skill_requirements if available, otherwise fallback to skills_required
-  const roleSkills = application.business_roles?.skills_required || [];
-  const skillRequirements = application.business_roles?.skill_requirements || [];
+  // Format the date in a human-readable format
+  const formattedDate = application.applied_at
+    ? formatDistanceToNow(new Date(application.applied_at), { addSuffix: true })
+    : "Unknown date";
 
   return (
-    <Collapsible 
-      open={showExpanded} 
-      onOpenChange={handleToggle}
-      className="border rounded-md overflow-hidden mb-4"
-    >
-      <CollapsibleTrigger asChild>
-        <TableRow className="cursor-pointer hover:bg-muted/50">
-          <TableCell className="font-medium">
-            {application.business_roles?.title || 'Untitled Role'}
-          </TableCell>
-          <TableCell>
-            {application.business_roles?.company_name || 'Unknown Company'}
-            {application.business_roles?.project_title && <span className="text-muted-foreground"> • {application.business_roles.project_title}</span>}
-          </TableCell>
-          <TableCell>
-            {application.business_roles?.timeframe || 'Not specified'}
-          </TableCell>
-          <TableCell>
-            {application.business_roles?.equity_allocation ? `${application.business_roles.equity_allocation}%` : 'Not specified'}
-          </TableCell>
-          <TableCell>
-            <Badge variant={getStatusBadgeVariant(application.status)}>
-              {application.status}
-            </Badge>
-          </TableCell>
-          <TableCell className="text-right">
-            {format(new Date(application.applied_at), 'MMM d, yyyy')}
-            {showExpanded ? <ChevronDown className="inline ml-2 h-4 w-4" /> : <ChevronRight className="inline ml-2 h-4 w-4" />}
+    <>
+      <TableRow 
+        className="cursor-pointer hover:bg-gray-50"
+        onClick={toggleExpanded}
+      >
+        <TableCell>
+          <div className="font-medium">{application.business_roles?.title || "Unknown Role"}</div>
+        </TableCell>
+        <TableCell>{application.business_roles?.company_name || "Unknown Company"}</TableCell>
+        <TableCell>{application.business_roles?.timeframe || "N/A"}</TableCell>
+        <TableCell>{application.business_roles?.equity_allocation || 0}%</TableCell>
+        <TableCell>
+          <Badge
+            className={
+              application.status === "accepted"
+                ? "bg-green-100 text-green-800"
+                : application.status === "rejected" || application.status === "withdrawn"
+                ? "bg-red-100 text-red-800"
+                : application.status === "in review" || application.status === "negotiation"
+                ? "bg-blue-100 text-blue-800"
+                : "bg-yellow-100 text-yellow-800"
+            }
+          >
+            {application.status}
+          </Badge>
+        </TableCell>
+        <TableCell className="text-right">{formattedDate}</TableCell>
+      </TableRow>
+      
+      {isExpanded && (
+        <TableRow>
+          <TableCell colSpan={6} className="p-0 border-t-0">
+            <div className="p-4 bg-gray-50 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-semibold text-lg">{application.business_roles?.title}</h3>
+                  <p className="text-sm text-gray-600">
+                    {application.business_roles?.company_name} • {application.business_roles?.project_title}
+                  </p>
+                  
+                  <div className="mt-4">
+                    <h4 className="font-medium mb-1">Description</h4>
+                    <p className="text-sm">{application.business_roles?.description}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div>
+                      <h4 className="font-medium mb-1">Timeframe</h4>
+                      <p className="text-sm">{application.business_roles?.timeframe || "Not specified"}</p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-1">Equity</h4>
+                      <p className="text-sm">{application.business_roles?.equity_allocation || 0}%</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium mb-2">Your Application</h4>
+                  <p className="text-sm">
+                    Status: <Badge>{application.status}</Badge>
+                  </p>
+                  <p className="text-sm mt-2">Applied: {formattedDate}</p>
+                  
+                  {application.message && (
+                    <div className="mt-4">
+                      <h4 className="font-medium mb-1">Your Message</h4>
+                      <p className="text-sm bg-white p-3 rounded border">{application.message}</p>
+                    </div>
+                  )}
+                  
+                  <div className="flex space-x-2 mt-4">
+                    {application.cv_url && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openCV(application.cv_url || "");
+                        }}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View CV
+                      </Button>
+                    )}
+                    
+                    {application.status !== "withdrawn" && application.status !== "rejected" && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={isWithdrawing === application.job_app_id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleWithdraw(application.job_app_id);
+                        }}
+                      >
+                        {isWithdrawing === application.job_app_id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Withdrawing...
+                          </>
+                        ) : (
+                          "Withdraw Application"
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-4">
+                <h4 className="font-medium mb-2">Required Skills</h4>
+                {application.business_roles?.skill_requirements && application.business_roles.skill_requirements.length > 0 ? (
+                  <ApplicationSkills
+                    requiredSkills={application.business_roles.skill_requirements || []}
+                    matchedSkills={getMatchedSkills ? getMatchedSkills(application) : []}
+                  />
+                ) : (
+                  <p className="text-sm text-gray-500">No specific skills required</p>
+                )}
+              </div>
+            </div>
           </TableCell>
         </TableRow>
-      </CollapsibleTrigger>
-      
-      <CollapsibleContent className="p-4 border-t bg-muted/20">
-        <div className="space-y-4">
-          {/* Application details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="text-sm font-medium mb-1">Role Details</h4>
-              <p className="text-sm">{application.business_roles?.description || 'No description provided.'}</p>
-              
-              {application.business_roles?.timeframe && (
-                <div className="flex items-center text-sm text-muted-foreground mt-2">
-                  <CalendarIcon className="h-3.5 w-3.5 mr-1" />
-                  <span>Timeframe: {application.business_roles.timeframe}</span>
-                </div>
-              )}
-              
-              {application.business_roles?.equity_allocation && (
-                <p className="text-sm font-medium mt-2">
-                  {application.business_roles.equity_allocation}% Equity
-                </p>
-              )}
-            </div>
-            
-            <div>
-              <h4 className="text-sm font-medium mb-1">Your Application</h4>
-              <p className="text-sm">{application.message || 'No cover message provided.'}</p>
-              
-              {application.cv_url && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => openCV(application.cv_url!)}
-                >
-                  <FileText className="h-3.5 w-3.5 mr-1.5" />
-                  View Submitted CV
-                </Button>
-              )}
-            </div>
-          </div>
-          
-          {/* Skills section */}
-          <div>
-            <h4 className="text-sm font-medium mb-1">Required Skills</h4>
-            <ApplicationSkills
-              roleSkills={roleSkills}
-              skillRequirements={skillRequirements}
-              matchedSkills={matchedSkills}
-              displayEmpty={true}
-            />
-          </div>
-          
-          {/* Actions */}
-          {application.status !== 'withdrawn' && application.status !== 'rejected' && (
-            <div className="flex justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-destructive hover:text-destructive border-destructive/30 hover:border-destructive"
-                disabled={isWithdrawing === application.job_app_id}
-                onClick={() => handleWithdraw(application.job_app_id)}
-              >
-                {isWithdrawing === application.job_app_id ? (
-                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                ) : (
-                  <X className="h-3.5 w-3.5 mr-1.5" />
-                )}
-                Withdraw Application
-              </Button>
-            </div>
-          )}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+      )}
+    </>
   );
 };

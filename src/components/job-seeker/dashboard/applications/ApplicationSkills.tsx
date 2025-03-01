@@ -1,82 +1,52 @@
 
 import { Badge } from "@/components/ui/badge";
-
-interface SkillRequirement {
-  skill: string;
-  level: string;
-}
+import { SkillRequirement } from "@/types/jobSeeker";
 
 interface ApplicationSkillsProps {
-  skills?: string[];
+  requiredSkills: Array<SkillRequirement | string>;
   matchedSkills?: string[];
-  roleSkills?: string[];
-  skillRequirements?: SkillRequirement[];
-  totalSkills?: number;
-  limit?: number;
-  small?: boolean;
-  displayEmpty?: boolean;
 }
 
-export const ApplicationSkills = ({ 
-  skills = [], 
+export const ApplicationSkills = ({
+  requiredSkills,
   matchedSkills = [],
-  roleSkills = [],
-  skillRequirements = [],
-  totalSkills = 0,
-  limit,
-  small = false,
-  displayEmpty = false
 }: ApplicationSkillsProps) => {
-  // Use skillRequirements if provided, otherwise fallback to roleSkills and skills
-  const hasSkillRequirements = skillRequirements && skillRequirements.length > 0;
-  const displaySkillsArray = hasSkillRequirements ? [] : roleSkills.length > 0 ? roleSkills : skills;
-  
-  if (!hasSkillRequirements && displaySkillsArray.length === 0 && displayEmpty) {
-    return <p className="text-sm text-muted-foreground">No skills specified for this task</p>;
+  if (!requiredSkills || requiredSkills.length === 0) {
+    return <p className="text-gray-500 text-sm">No skills required for this role.</p>;
   }
-  
-  const displaySkills = limit ? displaySkillsArray.slice(0, limit) : displaySkillsArray;
-  const displaySkillReqs = limit ? skillRequirements.slice(0, limit) : skillRequirements;
-  
-  const remainingCount = totalSkills > displaySkills.length ? totalSkills - displaySkills.length : 0;
-  
+
+  // Transform skills to a consistent format
+  const normalizedSkills = requiredSkills.map(skill => {
+    if (typeof skill === 'string') {
+      return { 
+        skill, 
+        level: 'Intermediate' as 'Beginner' | 'Intermediate' | 'Expert'
+      };
+    }
+    return skill as SkillRequirement;
+  });
+
   return (
-    <div className={`flex flex-wrap ${small ? 'gap-1' : 'gap-1.5'}`}>
-      {hasSkillRequirements ? (
-        // Display skill requirements with level
-        displaySkillReqs.map((skillReq, index) => {
-          const isMatched = matchedSkills.includes(skillReq.skill);
-          return (
-            <Badge 
-              key={index} 
-              variant={isMatched ? "default" : "secondary"} 
-              className={small ? "text-xs" : ""}
-            >
-              {skillReq.skill} ({skillReq.level}) {isMatched && "✓"}
-            </Badge>
-          );
-        })
-      ) : (
-        // Display simple skills
-        displaySkills.map((skill, index) => {
-          const isMatched = matchedSkills.includes(skill);
-          return (
-            <Badge 
-              key={index} 
-              variant={isMatched ? "default" : "secondary"} 
-              className={small ? "text-xs" : ""}
-            >
-              {skill} {isMatched && "✓"}
-            </Badge>
-          );
-        })
-      )}
-      
-      {remainingCount > 0 && (
-        <span className="text-xs text-muted-foreground">
-          +{remainingCount}
-        </span>
-      )}
+    <div className="flex flex-wrap gap-2">
+      {normalizedSkills.map((skillReq, index) => {
+        const isMatched = matchedSkills.some(
+          match => match.toLowerCase() === skillReq.skill.toLowerCase()
+        );
+        
+        return (
+          <Badge
+            key={index}
+            variant={isMatched ? "default" : "outline"}
+            className={
+              isMatched
+                ? "bg-green-100 text-green-800 hover:bg-green-200"
+                : "text-gray-600 hover:bg-gray-100"
+            }
+          >
+            {skillReq.skill} {skillReq.level && `(${skillReq.level})`}
+          </Badge>
+        );
+      })}
     </div>
   );
 };
