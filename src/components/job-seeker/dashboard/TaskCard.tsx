@@ -57,6 +57,7 @@ export const TaskCard = ({
   };
 
   // Find if the skills match with user skills
+  // Convert the string skills to Skill objects for proper comparison
   const matchingSkills = userSkills.filter(
     userSkill => task.skills_required.some(
       requiredSkill => requiredSkill.toLowerCase() === userSkill.skill.toLowerCase()

@@ -108,8 +108,13 @@ const ProjectApplicationPage = () => {
         const businessData = projectData.businesses;
         let companyName = "Unknown Company";
         
-        if (businessData && typeof businessData === 'object' && 'company_name' in businessData) {
-          companyName = businessData.company_name || "Unknown Company";
+        if (businessData && 
+            typeof businessData === 'object' && 
+            businessData !== null && 
+            'company_name' in businessData) {
+          // Use type assertion and ensure the value is a string
+          const rawCompanyName = (businessData as { company_name?: string | null }).company_name;
+          companyName = typeof rawCompanyName === 'string' ? rawCompanyName : "Unknown Company";
         }
           
         setProjectDetails({
