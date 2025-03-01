@@ -125,10 +125,10 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
           const businessTasks = {};
           tasksData.forEach(task => {
             const businessId = task.project?.business?.businesses_id;
-            const businessName = task.project?.business?.company_name;
+            const businessName = task.project?.business?.company_name || 'Unknown';
             if (!businessTasks[businessId]) {
               businessTasks[businessId] = {
-                name: businessName || 'Unknown',
+                name: businessName,
                 tasks: []
               };
             }
@@ -153,7 +153,8 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
             start_date: task.created_at,
             effort_logs: [],
             total_hours_logged: 0,
-            title: task.title,
+            title: task.project?.title || "Untitled Project",
+            created_by: task.created_by,
             sub_tasks: [{
               id: task.task_id,
               task_id: task.task_id, // Ensure task_id is set
@@ -184,7 +185,8 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
               id: o.id,
               title: o.title,
               project_id: o.project_id,
-              company: o.business_roles.company_name
+              company: o.business_roles.company_name,
+              created_by: o.created_by
             }))
           );
         }

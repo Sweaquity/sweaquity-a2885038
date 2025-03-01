@@ -35,15 +35,29 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
   const [unavailableTaskIds, setUnavailableTaskIds] = useState<Set<string>>(new Set());
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   
-  // Enhanced logging: Log projects received by this component
+  // Enhanced logging: Log projects received by this component with source information
   useEffect(() => {
     console.log("OpportunitiesTab received projects:", projects.length);
     console.log("Project sources:", projects.map(p => ({
       id: p.id,
       project_id: p.project_id,
       title: p.title || "No title",
-      company: p.business_roles?.company_name || "No company"
+      company: p.business_roles?.company_name || "No company",
+      created_by: p.created_by || "Unknown creator",
+      sub_tasks_count: p.sub_tasks?.length || 0
     })));
+    
+    // Log all sub-tasks for debugging
+    if (projects.length > 0) {
+      const allSubTasks = projects.flatMap(p => p.sub_tasks || []);
+      console.log(`Total sub-tasks across all projects: ${allSubTasks.length}`);
+      console.log("Sample of sub-tasks:", allSubTasks.slice(0, 5).map(t => ({
+        task_id: t.task_id,
+        project_id: t.project_id,
+        title: t.title,
+        skills_required: t.skills_required
+      })));
+    }
   }, [projects]);
   
   // Fetch user applications to filter out tasks that have already been applied for
@@ -92,6 +106,24 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
     "total tasks"
   );
   
+  // Group tasks by business for better visualization
+  const projectsByBusiness = filteredProjects.reduce((acc, project) => {
+    const businessName = project.business_roles?.company_name || "Unknown Business";
+    if (!acc[businessName]) {
+      acc[businessName] = [];
+    }
+    acc[businessName].push(project);
+    return acc;
+  }, {} as Record<string, EquityProject[]>);
+  
+  console.log("Projects grouped by business:", Object.keys(projectsByBusiness).map(business => ({
+    business,
+    projectCount: projectsByBusiness[business].length,
+    taskCount: projectsByBusiness[business].reduce(
+      (acc, proj) => acc + (proj.sub_tasks?.length || 0), 0
+    )
+  })));
+  
   const matchedProjects = getProjectMatches(filteredProjects, userSkills);
 
   // Enhanced logging: Log matched projects
@@ -100,6 +132,8 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
     "matched projects with scores:", 
     matchedProjects.map(p => ({ 
       projectId: p.projectId, 
+      title: p.projectTitle,
+      businessName: p.projectCompany || "Unknown Business",
       score: Math.round(p.matchScore), 
       tasks: p.matchedTasks.length 
     }))
@@ -136,7 +170,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
       <CardHeader>
         <h2 className="text-lg font-semibold">Matched Opportunities</h2>
         <p className="text-sm text-muted-foreground">
-          Projects and tasks that match your skills
+          Projects and tasks that match your skills from all businesses
         </p>
       </CardHeader>
       <CardContent>
@@ -160,23 +194,30 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                   handleProjectToggle(project.projectId);
                 }}
               >
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 w-full">
                   <span className="font-medium">{project.projectTitle}</span>
-                  <Badge 
-                    variant="secondary"
-                    className={
-                      project.matchScore >= 75 
-                        ? 'bg-green-100 text-green-800' 
-                        : project.matchScore >= 50 
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-orange-100 text-orange-800'
-                    }
-                  >
-                    {Math.round(project.matchScore)}% Match
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {project.matchedTasks.length} matching tasks
-                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge 
+                      variant="secondary"
+                      className={
+                        project.matchScore >= 75 
+                          ? 'bg-green-100 text-green-800' 
+                          : project.matchScore >= 50 
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-orange-100 text-orange-800'
+                      }
+                    >
+                      {Math.round(project.matchScore)}% Match
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      {project.matchedTasks.length} matching tasks
+                    </span>
+                    {project.projectCompany && (
+                      <Badge variant="outline" className="ml-auto">
+                        {project.projectCompany}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </AccordionTrigger>
               <AccordionContent>
@@ -208,7 +249,8 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                       console.log("OpportunitiesTab - Task data for card:", {
                         taskId: projectSubTask.task_id,
                         projectId: projectSubTask.project_id,
-                        taskTitle: projectSubTask.title
+                        taskTitle: projectSubTask.title,
+                        company: project.projectCompany
                       });
                       
                       return (
