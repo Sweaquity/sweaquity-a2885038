@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,8 +9,14 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Skill, SubTask } from "@/types/jobSeeker";
 
+// Define an extended SubTask type that includes the matching properties
+interface ExtendedSubTask extends SubTask {
+  matchedSkills?: string[];
+  matchScore?: number;
+}
+
 interface TaskCardProps {
-  task?: SubTask;
+  task?: ExtendedSubTask;
   userSkills?: Skill[];
   showMatchedSkills?: boolean;
   id?: string;
