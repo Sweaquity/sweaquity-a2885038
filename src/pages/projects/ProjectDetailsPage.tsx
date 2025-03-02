@@ -179,8 +179,18 @@ export const ProjectDetailsPage = () => {
           location: ""
         };
 
-        // Extract business data
+        // Extract business data as a single object, not an array
         const businessData = projectData.businesses || defaultBusiness;
+        
+        // Ensure businessData is a proper Business object
+        const businessInfo: Business = {
+          company_name: typeof businessData === 'object' && businessData !== null ? businessData.company_name || defaultBusiness.company_name : defaultBusiness.company_name,
+          project_stage: typeof businessData === 'object' && businessData !== null ? businessData.project_stage || defaultBusiness.project_stage : defaultBusiness.project_stage,
+          contact_email: typeof businessData === 'object' && businessData !== null ? businessData.contact_email || defaultBusiness.contact_email : defaultBusiness.contact_email,
+          industry: typeof businessData === 'object' && businessData !== null ? businessData.industry || defaultBusiness.industry : defaultBusiness.industry,
+          website: typeof businessData === 'object' && businessData !== null ? businessData.website || defaultBusiness.website : defaultBusiness.website,
+          location: typeof businessData === 'object' && businessData !== null ? businessData.location || defaultBusiness.location : defaultBusiness.location
+        };
 
         // Map task data to match SubTask interface
         const mappedTasks: SubTask[] = (tasksData || []).map(task => ({
@@ -208,7 +218,7 @@ export const ProjectDetailsPage = () => {
           project_timeframe: projectData.project_timeframe,
           business_id: projectData.business_id,
           tasks: mappedTasks,
-          business: businessData
+          business: businessInfo
         });
       } catch (error) {
         console.error('Error fetching project details:', error);

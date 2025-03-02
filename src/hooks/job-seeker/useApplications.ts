@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { JobApplication } from "@/types/jobSeeker";
+import { JobApplication, SkillRequirement } from "@/types/jobSeeker";
 
 export const useApplications = () => {
   const [applications, setApplications] = useState<JobApplication[]>([]);
@@ -44,6 +44,19 @@ export const useApplications = () => {
       const processedApplications = data.map((app: any) => {
         const companyName = app.business_roles?.project?.business?.company_name || "Unknown Company";
         
+        // Properly format skill_requirements to match SkillRequirement type
+        const skillRequirements = app.business_roles?.skill_requirements || [];
+        const formattedSkillRequirements = skillRequirements.map((req: any) => {
+          if (typeof req === 'string') {
+            return req;
+          }
+          // Ensure level is one of the allowed values
+          const level = ['Beginner', 'Intermediate', 'Expert'].includes(req.level) 
+            ? req.level 
+            : 'Intermediate';
+          return { skill: req.skill, level };
+        });
+        
         return {
           ...app,
           id: app.job_app_id, // Ensuring id property is set
@@ -52,7 +65,7 @@ export const useApplications = () => {
             description: app.business_roles?.description || "",
             timeframe: app.business_roles?.timeframe || "",
             skills_required: app.business_roles?.skills_required || [],
-            skill_requirements: app.business_roles?.skill_requirements || [],
+            skill_requirements: formattedSkillRequirements,
             equity_allocation: app.business_roles?.equity_allocation,
             company_name: companyName,
             project_title: app.business_roles?.project?.title

@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { JobApplication } from "@/types/jobSeeker";
+import { JobApplication, SkillRequirement } from "@/types/jobSeeker";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -146,7 +146,18 @@ export const ApplicationItem = ({
                 <h4 className="font-medium mb-2">Required Skills</h4>
                 {application.business_roles?.skill_requirements && application.business_roles.skill_requirements.length > 0 ? (
                   <ApplicationSkills
-                    requiredSkills={application.business_roles.skill_requirements || []}
+                    requiredSkills={
+                      application.business_roles.skill_requirements.map(req => {
+                        if (typeof req === 'string') {
+                          return req;
+                        }
+                        // Ensure we're using a valid level value that matches the SkillRequirement type
+                        const level = ['Beginner', 'Intermediate', 'Expert'].includes(req.level) 
+                          ? req.level as 'Beginner' | 'Intermediate' | 'Expert'
+                          : 'Intermediate';
+                        return { skill: req.skill, level };
+                      })
+                    }
                     matchedSkills={getMatchedSkills ? getMatchedSkills(application) : []}
                   />
                 ) : (
