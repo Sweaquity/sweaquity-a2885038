@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -81,7 +82,7 @@ export const useApplicationActions = (onSuccess?: () => void) => {
         .from('job_applications')
         .select(`
           task_id,
-          project_sub_tasks (equity_allocation)
+          project_sub_tasks!inner (equity_allocation)
         `)
         .eq('job_app_id', applicationId)
         .single();

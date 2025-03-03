@@ -43,6 +43,7 @@ export const ApplicationItem = ({
     updateApplicationStatus 
   } = useApplicationActions(onApplicationUpdated);
 
+  // Change the handler to accept no arguments
   const handleToggle = () => {
     setIsExpanded(!isExpanded);
   };
@@ -54,6 +55,11 @@ export const ApplicationItem = ({
   const isAccepted = application.status === "accepted";
   const isPending = ["pending", "in review", "negotiation"].includes(application.status.toLowerCase());
   const bothPartiesAccepted = application.accepted_jobseeker && application.accepted_business;
+
+  // Create a void returning withdraw handler
+  const handleWithdraw = async (reason: string): Promise<void> => {
+    await handleWithdrawApplication(application.job_app_id, reason);
+  };
 
   return (
     <Card className={`overflow-hidden transition-all duration-200 ${isExpanded ? "shadow-md" : ""}`}>
@@ -206,7 +212,7 @@ export const ApplicationItem = ({
         <WithdrawDialog
           isOpen={isWithdrawDialogOpen}
           onOpenChange={setIsWithdrawDialogOpen}
-          onWithdraw={(reason) => handleWithdrawApplication(application.job_app_id, reason)}
+          onWithdraw={handleWithdraw}
           isWithdrawing={isWithdrawing}
         />
       )}

@@ -1,44 +1,30 @@
 
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
+import { Link } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
-import { ArrowRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface FeaturedProject {
   project_id: string;
   title: string;
   description: string;
-  equity_allocation: number;
-  skills_required: string[];
-  company_name?: string;
-  businesses?: {
+  equity_allocation?: number;
+  skills_required?: string[];
+  project_timeframe?: string;
+  business?: {
     company_name: string;
   };
-  sub_tasks?: {
-    task_id: string;
-    title: string;
-    description: string;
-    equity_allocation: number;
-    skill_requirements: any[];
-  }[];
 }
 
-const Index = () => {
+export default function IndexPage() {
   const [featuredProjects, setFeaturedProjects] = useState<FeaturedProject[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchFeaturedProjects = async () => {
+      setLoading(true);
       try {
         const { data, error } = await supabase
           .from('business_projects')
@@ -48,38 +34,21 @@ const Index = () => {
             description,
             equity_allocation,
             skills_required,
-            businesses (
+            project_timeframe,
+            business:businesses (
               company_name
-            ),
-            project_sub_tasks (
-              task_id,
-              title,
-              description,
-              equity_allocation,
-              skill_requirements
             )
           `)
           .eq('status', 'active')
           .limit(3);
 
         if (error) throw error;
-
-        // Transform data to match FeaturedProject interface
-        const projects: FeaturedProject[] = data.map(project => ({
-          project_id: project.project_id,
-          title: project.title,
-          description: project.description,
-          equity_allocation: project.equity_allocation,
-          skills_required: project.skills_required || [],
-          company_name: project.businesses?.company_name,
-          sub_tasks: project.project_sub_tasks || []
-        }));
-
-        setFeaturedProjects(projects);
+        
+        setFeaturedProjects(data || []);
       } catch (error) {
-        console.error("Error fetching featured projects:", error);
+        console.error('Error fetching featured projects:', error);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
@@ -87,171 +56,209 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-        <div className="container mx-auto px-4 py-16 md:py-24">
-          <div className="max-w-3xl">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">
-              Find Equity Opportunities in Exciting Projects
-            </h1>
-            <p className="text-xl mb-8">
-              Connect with businesses looking for your skills and earn equity in innovative projects.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <Button asChild size="lg" className="bg-white text-blue-600 hover:bg-blue-50">
-                <Link to="/seeker/register">Join as Job Seeker</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
-                <Link to="/business/register">Post a Project</Link>
-              </Button>
-            </div>
+    <div className="flex flex-col min-h-screen">
+      <header className="bg-background border-b py-6">
+        <div className="container flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Sweaquity</h1>
+          <div className="space-x-4">
+            <Button asChild variant="ghost">
+              <Link to="/business/login">Business Login</Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link to="/seeker/login">Job Seeker Login</Link>
+            </Button>
+            <Button asChild>
+              <Link to="/seeker/register">Sign Up</Link>
+            </Button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto px-4 py-12">
-        <section className="mb-16">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold">Featured Equity Projects</h2>
-            <Button asChild variant="ghost" className="gap-1">
-              <Link to="/seeker/login">
-                View All <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+      <main className="flex-1">
+        <section className="py-12 md:py-24 bg-muted/50">
+          <div className="container text-center space-y-4">
+            <h1 className="text-3xl md:text-5xl font-bold tracking-tighter">
+              Connect with Equity Projects
+            </h1>
+            <p className="text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed mx-auto max-w-[700px]">
+              Use your skills to earn equity in exciting projects. Find the perfect project and build your portfolio.
+            </p>
+            <div className="space-x-4">
+              <Button asChild size="lg">
+                <Link to="/seeker/register">Find Projects</Link>
+              </Button>
+              <Button asChild variant="outline" size="lg">
+                <Link to="/business/register">Post a Project</Link>
+              </Button>
+            </div>
           </div>
-
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map(i => (
-                <Card key={i} className="animate-pulse">
-                  <CardHeader className="pb-2">
-                    <div className="h-6 bg-muted rounded-md mb-2 w-3/4"></div>
-                    <div className="h-4 bg-muted rounded-md w-1/2"></div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-24 bg-muted rounded-md mb-4"></div>
-                    <div className="flex gap-2">
-                      {[1, 2, 3].map(j => (
-                        <div key={j} className="h-6 w-16 bg-muted rounded-full"></div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featuredProjects.map(project => (
-                <Card key={project.project_id} className="flex flex-col h-full">
-                  <CardHeader>
-                    <CardTitle>{project.title}</CardTitle>
-                    <CardDescription>{project.company_name}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1">
-                    <p className="line-clamp-3 mb-4">{project.description}</p>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {project.skills_required.slice(0, 3).map((skill, i) => (
-                        <Badge key={i} variant="outline">{skill}</Badge>
-                      ))}
-                      {project.skills_required.length > 3 && (
-                        <Badge variant="outline">+{project.skills_required.length - 3} more</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm font-medium">
-                      Up to {project.equity_allocation}% equity available
-                    </p>
-                  </CardContent>
-                  <CardFooter>
-                    <Button asChild className="w-full">
-                      <Link to="/seeker/login">Apply Now</Link>
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-
-              {featuredProjects.length === 0 && (
-                <div className="col-span-full text-center py-12">
-                  <p className="text-muted-foreground">No featured projects available at the moment.</p>
-                </div>
-              )}
-            </div>
-          )}
         </section>
 
-        <section className="grid md:grid-cols-2 gap-12 mb-16">
-          <div>
-            <h2 className="text-2xl font-bold mb-4">For Job Seekers</h2>
-            <p className="mb-6 text-muted-foreground">
-              Find exciting projects that match your skills and earn equity instead of just a salary.
-              Build your portfolio while becoming a part-owner in innovative businesses.
-            </p>
-            <ul className="space-y-3 mb-6">
-              <li className="flex gap-2">
-                <Badge className="h-6">1</Badge>
-                <span>Upload your CV and showcase your skills</span>
-              </li>
-              <li className="flex gap-2">
-                <Badge className="h-6">2</Badge>
-                <span>Get matched with projects seeking your expertise</span>
-              </li>
-              <li className="flex gap-2">
-                <Badge className="h-6">3</Badge>
-                <span>Negotiate equity and join exciting ventures</span>
-              </li>
-            </ul>
-            <Button asChild>
-              <Link to="/seeker/register">Sign Up as Job Seeker</Link>
-            </Button>
+        <section className="py-12 md:py-24">
+          <div className="container">
+            <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center">Featured Projects</h2>
+            {loading ? (
+              <div className="text-center py-12">Loading featured projects...</div>
+            ) : (
+              <div className="grid md:grid-cols-3 gap-6">
+                {featuredProjects.map((project) => (
+                  <Card key={project.project_id}>
+                    <CardHeader>
+                      <CardTitle>{project.title}</CardTitle>
+                      <CardDescription>
+                        {project.business?.company_name || "Anonymous Company"}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="line-clamp-3 mb-4">{project.description}</p>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {project.skills_required?.slice(0, 3).map((skill, i) => (
+                          <Badge key={i} variant="outline">{skill}</Badge>
+                        ))}
+                        {project.skills_required && project.skills_required.length > 3 && (
+                          <Badge variant="outline">+{project.skills_required.length - 3} more</Badge>
+                        )}
+                      </div>
+                      <div className="text-sm space-y-1">
+                        {project.equity_allocation && (
+                          <p><span className="font-medium">Equity:</span> {project.equity_allocation}%</p>
+                        )}
+                        {project.project_timeframe && (
+                          <p><span className="font-medium">Timeframe:</span> {project.project_timeframe}</p>
+                        )}
+                      </div>
+                    </CardContent>
+                    <CardFooter>
+                      <Button asChild className="w-full">
+                        <Link to={`/projects/${project.project_id}`}>View Project</Link>
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+                {featuredProjects.length === 0 && (
+                  <div className="col-span-3 text-center py-12 text-muted-foreground">
+                    No featured projects available at the moment.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-          
-          <div>
-            <h2 className="text-2xl font-bold mb-4">For Businesses</h2>
-            <p className="mb-6 text-muted-foreground">
-              Find talented professionals willing to work for equity in your venture.
-              Break down your project into tasks and allocate equity for each contribution.
-            </p>
-            <ul className="space-y-3 mb-6">
-              <li className="flex gap-2">
-                <Badge className="h-6">1</Badge>
-                <span>Post your project and define required skills</span>
-              </li>
-              <li className="flex gap-2">
-                <Badge className="h-6">2</Badge>
-                <span>Review applications from skilled professionals</span>
-              </li>
-              <li className="flex gap-2">
-                <Badge className="h-6">3</Badge>
-                <span>Collaborate with equity partners to grow your business</span>
-              </li>
-            </ul>
-            <Button asChild>
-              <Link to="/business/register">Post Your Project</Link>
-            </Button>
+        </section>
+
+        <section className="py-12 md:py-24 bg-muted/50">
+          <div className="container">
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold mb-4">Why Choose Sweaquity?</h2>
+                <ul className="space-y-4">
+                  <li className="flex gap-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="shrink-0 text-primary"
+                    >
+                      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
+                      <path d="m9 12 2 2 4-4"></path>
+                    </svg>
+                    <div>
+                      <h3 className="font-medium">Earn Equity</h3>
+                      <p className="text-muted-foreground">
+                        Use your skills to earn a stake in promising projects.
+                      </p>
+                    </div>
+                  </li>
+                  <li className="flex gap-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="shrink-0 text-primary"
+                    >
+                      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
+                      <path d="m9 12 2 2 4-4"></path>
+                    </svg>
+                    <div>
+                      <h3 className="font-medium">Find Talent</h3>
+                      <p className="text-muted-foreground">
+                        Connect with skilled professionals who believe in your project.
+                      </p>
+                    </div>
+                  </li>
+                  <li className="flex gap-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="shrink-0 text-primary"
+                    >
+                      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
+                      <path d="m9 12 2 2 4-4"></path>
+                    </svg>
+                    <div>
+                      <h3 className="font-medium">Secure Agreements</h3>
+                      <p className="text-muted-foreground">
+                        All equity agreements are formalized and secure.
+                      </p>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+              <div className="rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 p-12 text-white shadow-lg">
+                <h3 className="text-xl font-bold mb-4">Ready to get started?</h3>
+                <p className="mb-6">
+                  Whether you're looking for opportunities or seeking talent, Sweaquity is the platform for you.
+                </p>
+                <div className="space-x-2">
+                  <Button asChild variant="secondary">
+                    <Link to="/seeker/register">Find Projects</Link>
+                  </Button>
+                  <Button asChild variant="outline" className="text-white hover:text-black border-white">
+                    <Link to="/business/register">Post a Project</Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       </main>
 
-      <footer className="bg-muted py-12">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="mb-6 md:mb-0">
-              <h2 className="text-xl font-bold">SweaQuity</h2>
-              <p className="text-muted-foreground">Connect talent with equity opportunities</p>
-            </div>
-            <div className="flex gap-8">
-              <Link to="/about" className="text-muted-foreground hover:text-foreground">About</Link>
-              <Link to="/terms" className="text-muted-foreground hover:text-foreground">Terms</Link>
-              <Link to="/privacy" className="text-muted-foreground hover:text-foreground">Privacy</Link>
-              <Link to="/contact" className="text-muted-foreground hover:text-foreground">Contact</Link>
-            </div>
-          </div>
-          <div className="mt-8 text-center text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} SweaQuity. All rights reserved.
-          </div>
+      <footer className="border-t py-6 bg-muted/30">
+        <div className="container flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-center md:text-left text-sm text-muted-foreground">
+            © {new Date().getFullYear()} Sweaquity. All rights reserved.
+          </p>
+          <nav className="flex gap-4 text-sm">
+            <Link to="/" className="text-muted-foreground hover:underline">
+              Terms
+            </Link>
+            <Link to="/" className="text-muted-foreground hover:underline">
+              Privacy
+            </Link>
+            <Link to="/" className="text-muted-foreground hover:underline">
+              Contact
+            </Link>
+          </nav>
         </div>
       </footer>
     </div>
   );
-};
-
-export default Index;
+}
