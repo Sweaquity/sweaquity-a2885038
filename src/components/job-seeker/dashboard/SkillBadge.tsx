@@ -1,21 +1,23 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Skill } from "@/types/jobSeeker";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
-import { X, ChevronDown } from "lucide-react";
 
 interface SkillBadgeProps {
   skill: Skill;
-  onRemove: () => void;
-  onLevelChange: (level: "Beginner" | "Intermediate" | "Expert") => void;
+  onRemove?: () => void;
+  onLevelChange?: (level: "Beginner" | "Intermediate" | "Expert") => void;
+  isUserSkill?: boolean;
 }
 
-export const SkillBadge = ({ skill, onRemove, onLevelChange }: SkillBadgeProps) => {
+export const SkillBadge = ({ skill, onRemove, onLevelChange, isUserSkill }: SkillBadgeProps) => {
+  // Import these only if they are needed for the editable version
+  const DropdownMenu = onLevelChange ? require("@/components/ui/dropdown-menu").DropdownMenu : null;
+  const DropdownMenuContent = onLevelChange ? require("@/components/ui/dropdown-menu").DropdownMenuContent : null;
+  const DropdownMenuItem = onLevelChange ? require("@/components/ui/dropdown-menu").DropdownMenuItem : null;
+  const DropdownMenuTrigger = onLevelChange ? require("@/components/ui/dropdown-menu").DropdownMenuTrigger : null;
+  const ChevronDown = onLevelChange ? require("lucide-react").ChevronDown : null;
+  const X = onRemove ? require("lucide-react").X : null;
+
   const getColorByLevel = () => {
     switch (skill.level) {
       case "Beginner":
@@ -29,6 +31,19 @@ export const SkillBadge = ({ skill, onRemove, onLevelChange }: SkillBadgeProps) 
     }
   };
 
+  // If we're just displaying the skill (no edit functionality)
+  if (!onRemove && !onLevelChange) {
+    return (
+      <Badge
+        variant="outline"
+        className={`${isUserSkill ? getColorByLevel() : "bg-gray-100 text-gray-800 border-gray-200"}`}
+      >
+        {skill.skill}{isUserSkill ? ` (${skill.level})` : ""}
+      </Badge>
+    );
+  }
+
+  // If we're displaying an editable skill
   return (
     <div className="inline-flex items-center gap-1">
       <DropdownMenu>
@@ -53,13 +68,15 @@ export const SkillBadge = ({ skill, onRemove, onLevelChange }: SkillBadgeProps) 
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <button
-        onClick={onRemove}
-        className="rounded-full p-1 hover:bg-gray-200 transition-colors"
-        title="Remove skill"
-      >
-        <X className="h-3 w-3" />
-      </button>
+      {onRemove && (
+        <button
+          onClick={onRemove}
+          className="rounded-full p-1 hover:bg-gray-200 transition-colors"
+          title="Remove skill"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
     </div>
   );
 };

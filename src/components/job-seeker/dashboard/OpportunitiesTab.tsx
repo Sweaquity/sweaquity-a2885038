@@ -206,7 +206,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                   </div>
                   <Badge variant="secondary" className="flex items-center">
                     <Star className="h-4 w-4 mr-1 text-amber-500" />
-                    {/* Add a default value or calculate skill match */}
+                    {/* Add a default value for skill match */}
                     {(project as any).skill_match || 0}% Match
                   </Badge>
                 </div>
@@ -235,19 +235,19 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                         <h4 className="text-sm font-medium">Required Skills:</h4>
                         <div className="flex flex-wrap gap-2">
                           {(task.skill_requirements || []).map((req, idx) => {
-                            const skill = typeof req === 'string' ? req : 
+                            const skillName = typeof req === 'string' ? req : 
                                         (req && typeof req === 'object' && 'skill' in req) ? 
                                         req.skill : '';
                                         
-                            if (!skill) return null;
+                            if (!skillName) return null;
                             
-                            const skillLower = String(skill).toLowerCase();
+                            const skillLower = String(skillName).toLowerCase();
                             const isUserSkill = userSkillStrings.includes(skillLower);
                             
                             return (
                               <SkillBadge 
                                 key={idx} 
-                                skill={skill} 
+                                skill={{ skill: skillName, level: "Intermediate" }} 
                                 isUserSkill={isUserSkill} 
                               />
                             );

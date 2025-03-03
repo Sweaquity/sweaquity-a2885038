@@ -1,9 +1,10 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Briefcase, Calendar, Clock, FileText, MoreHorizontal, X, Check, AlertCircle } from "lucide-react";
-import { JobApplication } from "@/types/jobSeeker";
+import { JobApplication, Skill } from "@/types/jobSeeker";
 import { formatDistanceToNow } from "date-fns";
 import { SkillBadge } from "../SkillBadge";
 import { supabase } from "@/lib/supabase";
@@ -181,7 +182,11 @@ export const ApplicationItem = ({
               <h4 className="text-sm font-medium mb-1">Your Matching Skills:</h4>
               <div className="flex flex-wrap gap-2">
                 {matchedSkills.map((skill, index) => (
-                  <SkillBadge key={index} skill={skill} isUserSkill={true} />
+                  <SkillBadge 
+                    key={index} 
+                    skill={{ skill, level: "Intermediate" }} 
+                    isUserSkill={true} 
+                  />
                 ))}
               </div>
             </div>
