@@ -1,70 +1,89 @@
 
 import { useState } from "react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { PendingApplicationsList } from "./PendingApplicationsList";
-import { PastApplicationsList } from "./PastApplicationsList";
+import { ApplicationItem } from "./ApplicationItem";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 import { JobApplication } from "@/types/jobSeeker";
+import { useUserSkills } from "./hooks/useUserSkills";
 
 interface ApplicationsListProps {
   applications: JobApplication[];
-  pastApplications?: JobApplication[];
   onApplicationUpdated?: () => void;
 }
 
 export const ApplicationsList = ({ 
-  applications = [], 
-  pastApplications = [],
-  onApplicationUpdated 
+  applications = [],
+  onApplicationUpdated
 }: ApplicationsListProps) => {
-  const [activeTab, setActiveTab] = useState<string>("current");
-  
-  // Get all applications that are not rejected or withdrawn
-  const currentApplications = applications.filter(app => 
-    !['rejected', 'withdrawn'].includes(app.status.toLowerCase())
-  );
-  
-  // Check if we have existing past applications passed in, if not, filter from all applications
-  const allPastApplications = pastApplications.length > 0 
-    ? pastApplications 
-    : applications.filter(app => 
-        ['rejected', 'withdrawn'].includes(app.status.toLowerCase())
-      );
+  const [searchTerm, setSearchTerm] = useState("");
+  const { userSkills, getMatchedSkills } = useUserSkills();
+
+  const filteredApplications = applications.filter((application) => {
+    if (!searchTerm) return true;
+    
+    const term = searchTerm.toLowerCase();
+    
+    // Check project title
+    if (application.business_roles?.project_title && 
+        String(application.business_roles.project_title).toLowerCase().includes(term)) {
+      return true;
+    }
+    
+    // Check company name
+    if (application.business_roles?.company_name && 
+        String(application.business_roles.company_name).toLowerCase().includes(term)) {
+      return true;
+    }
+    
+    // Check role title
+    if (application.business_roles?.title && 
+        String(application.business_roles.title).toLowerCase().includes(term)) {
+      return true;
+    }
+    
+    // Check skills
+    const skills = application.business_roles?.skill_requirements || [];
+    return skills.some(skill => {
+      if (typeof skill === 'string') {
+        return String(skill).toLowerCase().includes(term);
+      }
+      if (skill && typeof skill === 'object' && 'skill' in skill && typeof skill.skill === 'string') {
+        return String(skill.skill).toLowerCase().includes(term);
+      }
+      return false;
+    });
+  });
+
+  if (applications.length === 0) {
+    return (
+      <div className="text-center p-6">
+        <p className="text-muted-foreground">No applications found</p>
+      </div>
+    );
+  }
 
   return (
-    <Tabs 
-      defaultValue="current" 
-      value={activeTab} 
-      onValueChange={setActiveTab}
-      className="w-full"
-    >
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-semibold text-lg">Your Applications</h3>
-        <TabsList>
-          <TabsTrigger value="current">
-            Current 
-            <span className="ml-1.5 text-xs px-1.5 py-0.5 bg-primary/10 rounded-full">
-              {currentApplications.length}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="past">
-            Past
-            <span className="ml-1.5 text-xs px-1.5 py-0.5 bg-primary/10 rounded-full">
-              {allPastApplications.length}
-            </span>
-          </TabsTrigger>
-        </TabsList>
-      </div>
-      
-      <TabsContent value="current" className="mt-2">
-        <PendingApplicationsList 
-          applications={currentApplications}
-          onApplicationUpdated={onApplicationUpdated}
+    <div className="space-y-4">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search applications..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-9"
         />
-      </TabsContent>
-      
-      <TabsContent value="past" className="mt-2">
-        <PastApplicationsList applications={allPastApplications} />
-      </TabsContent>
-    </Tabs>
+      </div>
+
+      <div className="space-y-4">
+        {filteredApplications.map((application) => (
+          <ApplicationItem
+            key={application.job_app_id}
+            application={application}
+            getMatchedSkills={() => getMatchedSkills(application)}
+            onApplicationUpdated={onApplicationUpdated}
+          />
+        ))}
+      </div>
+    </div>
   );
 };

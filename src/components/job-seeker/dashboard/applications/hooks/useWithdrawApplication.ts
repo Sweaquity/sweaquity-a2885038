@@ -7,21 +7,15 @@ export const useWithdrawApplication = (onApplicationUpdated?: () => void) => {
   const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
-  const handleWithdrawApplication = async (applicationId: string, reason: string): Promise<void> => {
-    if (!applicationId || !reason) {
-      toast.error("Application ID and withdrawal reason are required");
-      return;
-    }
-    
-    setIsWithdrawing(true);
-    
+  const handleWithdrawApplication = async (applicationId: string, reason: string) => {
     try {
-      // Update the application with the withdrawal reason
+      setIsWithdrawing(true);
+      
+      // We store the withdrawal reason in the notes field, not in task_discourse
       const { error } = await supabase
         .from('job_applications')
         .update({ 
           status: 'withdrawn',
-          // Store the withdrawal reason in notes instead of task_discourse
           notes: reason
         })
         .eq('job_app_id', applicationId);
@@ -33,15 +27,15 @@ export const useWithdrawApplication = (onApplicationUpdated?: () => void) => {
       if (onApplicationUpdated) {
         onApplicationUpdated();
       }
-    } catch (error: any) {
-      console.error("Error withdrawing application:", error);
-      toast.error(error.message || "Failed to withdraw application");
+    } catch (error) {
+      console.error('Error withdrawing application:', error);
+      toast.error("Failed to withdraw application");
     } finally {
       setIsWithdrawing(false);
       setIsWithdrawDialogOpen(false);
     }
   };
-  
+
   return {
     isWithdrawDialogOpen,
     setIsWithdrawDialogOpen,

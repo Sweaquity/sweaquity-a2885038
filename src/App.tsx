@@ -1,46 +1,54 @@
 
-import { Routes, Route } from 'react-router-dom';
-import Index from './pages/Index';
-import AuthPage from './pages/AuthPage';
-import NotFound from './pages/NotFound';
-import ProfileCompletePage from './pages/ProfileCompletePage';
-import JobSeekerDashboard from './pages/dashboards/JobSeekerDashboard';
-import BusinessDashboard from './pages/dashboards/BusinessDashboard';
-import RecruiterDashboard from './pages/dashboards/RecruiterDashboard';
-import AdminDashboard from './pages/dashboards/AdminDashboard';
-import ProjectDetailsPage from './pages/projects/ProjectDetailsPage';
-import ProjectApplicationPage from './pages/projects/ProjectApplicationPage';
-import SweaquityDashboard from './pages/dashboards/SweaquityDashboard';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import Index from "./pages/Index";
+import AuthPage from "./pages/AuthPage";
+import NotFound from "./pages/NotFound";
+import BusinessDashboard from "./pages/dashboards/BusinessDashboard";
+import RecruiterDashboard from "./pages/dashboards/RecruiterDashboard";
+import JobSeekerDashboard from "./pages/dashboards/JobSeekerDashboard";
+import AdminDashboard from "./pages/dashboards/AdminDashboard";
+import ProjectDetailsPage from "./pages/projects/ProjectDetailsPage";
+import ProjectApplicationPage from "./pages/projects/ProjectApplicationPage";
+import ProfileCompletePage from "./pages/ProfileCompletePage";
+
+const queryClient = new QueryClient();
+
+// Redirect component to handle project redirect with proper typing
+const ProjectRedirect = () => {
+  const { id } = useParams();
+  return <Navigate to={`/projects/${id}`} replace />;
+};
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Index />} />
-      
-      <Route path="/auth/:type" element={<AuthPage />} />
-      <Route path="/auth/:type/:action" element={<AuthPage />} />
-      
-      <Route path="/seeker/register" element={<AuthPage />} />
-      <Route path="/seeker/login" element={<AuthPage />} />
-      <Route path="/seeker/dashboard" element={<JobSeekerDashboard />} />
-      <Route path="/seeker/profile/complete" element={<ProfileCompletePage />} />
-      
-      <Route path="/business/register" element={<AuthPage />} />
-      <Route path="/business/login" element={<AuthPage />} />
-      <Route path="/business/dashboard" element={<BusinessDashboard />} />
-      
-      <Route path="/recruiter/register" element={<AuthPage />} />
-      <Route path="/recruiter/login" element={<AuthPage />} />
-      <Route path="/recruiter/dashboard" element={<RecruiterDashboard />} />
-      
-      <Route path="/admin/dashboard" element={<AdminDashboard />} />
-      <Route path="/sweaquity" element={<SweaquityDashboard />} />
-      
-      <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
-      <Route path="/projects/:projectId/apply/:taskId" element={<ProjectApplicationPage />} />
-      
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <div className="min-h-screen bg-background">
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth/:type" element={<AuthPage />} />
+              <Route path="/business/dashboard" element={<BusinessDashboard />} />
+              <Route path="/recruiter/dashboard" element={<RecruiterDashboard />} />
+              <Route path="/seeker/dashboard" element={<JobSeekerDashboard />} />
+              <Route path="/seeker/profile/complete" element={<ProfileCompletePage />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/projects/:id" element={<ProjectDetailsPage />} />
+              <Route path="/projects/:id/apply" element={<ProjectApplicationPage />} />
+              {/* Add redirect route to support /project/ links using the ProjectRedirect component */}
+              <Route path="/project/:id" element={<ProjectRedirect />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </div>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 }
 

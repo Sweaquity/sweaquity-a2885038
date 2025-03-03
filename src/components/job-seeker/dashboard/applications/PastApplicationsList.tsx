@@ -3,43 +3,53 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { JobApplication } from "@/types/jobSeeker";
+import { useUserSkills } from "./hooks/useUserSkills";
 import { PastApplicationItem } from "./PastApplicationItem";
+import { Card } from "@/components/ui/card"; 
 
 interface PastApplicationsListProps {
   applications: JobApplication[];
+  onApplicationUpdated?: () => void;
 }
 
-export const PastApplicationsList = ({ applications = [] }: PastApplicationsListProps) => {
+export const PastApplicationsList = ({ 
+  applications = [],
+  onApplicationUpdated
+}: PastApplicationsListProps) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const { userSkills, getMatchedSkills } = useUserSkills();
 
-  const filteredApplications = applications.filter((application) => {
-    const statusesToInclude = ['rejected', 'withdrawn'];
-    
-    // First, check if the application status is one we want to include
-    if (!statusesToInclude.includes(application.status.toLowerCase())) {
-      return false;
-    }
-    
-    // If there's no search term, include all applications with the correct status
+  // Filter to only include rejected or withdrawn applications
+  const pastApplications = applications.filter(
+    app => app.status === 'rejected' || app.status === 'withdrawn'
+  );
+
+  const filteredApplications = pastApplications.filter((application) => {
     if (!searchTerm) return true;
     
     const term = searchTerm.toLowerCase();
     
-    // Check company name
-    if (application.business_roles?.company_name && 
-        application.business_roles.company_name.toLowerCase().includes(term)) {
+    // Check project title
+    if (application.business_roles?.project_title && 
+        String(application.business_roles.project_title).toLowerCase().includes(term)) {
       return true;
     }
     
-    // Check project title
-    if (application.business_roles?.project_title && 
-        application.business_roles.project_title.toLowerCase().includes(term)) {
+    // Check company name
+    if (application.business_roles?.company_name && 
+        String(application.business_roles.company_name).toLowerCase().includes(term)) {
       return true;
     }
     
     // Check role title
     if (application.business_roles?.title && 
-        application.business_roles.title.toLowerCase().includes(term)) {
+        String(application.business_roles.title).toLowerCase().includes(term)) {
+      return true;
+    }
+    
+    // Check notes (withdrawal reason)
+    if (application.notes && 
+        String(application.notes).toLowerCase().includes(term)) {
       return true;
     }
     
@@ -47,19 +57,19 @@ export const PastApplicationsList = ({ applications = [] }: PastApplicationsList
     const skills = application.business_roles?.skill_requirements || [];
     return skills.some(skill => {
       if (typeof skill === 'string') {
-        return skill.toLowerCase().includes(term);
+        return String(skill).toLowerCase().includes(term);
       }
-      if (typeof skill === 'object' && skill && 'skill' in skill && typeof skill.skill === 'string') {
-        return skill.skill.toLowerCase().includes(term);
+      if (skill && typeof skill === 'object' && 'skill' in skill && typeof skill.skill === 'string') {
+        return String(skill.skill).toLowerCase().includes(term);
       }
       return false;
     });
   });
 
-  if (applications.length === 0) {
+  if (pastApplications.length === 0) {
     return (
       <div className="text-center p-6">
-        <p className="text-muted-foreground">No past applications found</p>
+        <p className="text-muted-foreground">No rejected or withdrawn applications found</p>
       </div>
     );
   }
@@ -77,17 +87,18 @@ export const PastApplicationsList = ({ applications = [] }: PastApplicationsList
       </div>
 
       <div className="space-y-4">
-        {filteredApplications.map((application) => (
-          <PastApplicationItem
-            key={application.job_app_id}
-            application={application}
-          />
-        ))}
-        
-        {filteredApplications.length === 0 && (
-          <div className="text-center p-4">
-            <p className="text-muted-foreground">No past applications match your search</p>
-          </div>
+        {filteredApplications.length === 0 ? (
+          <Card className="p-4 text-center text-muted-foreground">
+            No matches found for "{searchTerm}"
+          </Card>
+        ) : (
+          filteredApplications.map((application) => (
+            <PastApplicationItem
+              key={application.job_app_id}
+              application={application}
+              getMatchedSkills={() => getMatchedSkills(application)}
+            />
+          ))
         )}
       </div>
     </div>

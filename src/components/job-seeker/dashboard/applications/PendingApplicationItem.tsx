@@ -11,8 +11,6 @@ import { useWithdrawApplication } from "./hooks/useWithdrawApplication";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
 import { StatusBadge } from "./StatusBadge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useApplicationActions } from "./hooks/useApplicationActions";
 
 interface PendingApplicationItemProps {
   application: JobApplication;
@@ -33,21 +31,12 @@ export const PendingApplicationItem = ({
     handleWithdrawApplication
   } = useWithdrawApplication(onApplicationUpdated);
 
-  const { 
-    isUpdatingStatus, 
-    updateApplicationStatus 
-  } = useApplicationActions(onApplicationUpdated);
-
   const matchedSkills = getMatchedSkills();
   const appliedDate = new Date(application.applied_at);
   const timeAgo = formatDistanceToNow(appliedDate, { addSuffix: true });
 
   const onWithdraw = async (reason: string) => {
     await handleWithdrawApplication(application.job_app_id, reason);
-  };
-
-  const handleStatusChange = (newStatus: string) => {
-    updateApplicationStatus(application.job_app_id, newStatus);
   };
 
   return (
@@ -120,38 +109,6 @@ export const PendingApplicationItem = ({
             </div>
             
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <h4 className="font-medium">Application Status</h4>
-                {isUpdatingStatus === application.job_app_id ? (
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
-                    <span className="text-sm">Updating...</span>
-                  </div>
-                ) : (
-                  <Select 
-                    value={application.status} 
-                    onValueChange={handleStatusChange}
-                    disabled={isUpdatingStatus === application.job_app_id}
-                  >
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in review">In Review</SelectItem>
-                      <SelectItem value="negotiation">Negotiation</SelectItem>
-                      <SelectItem value="accepted">Accepted</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                      <SelectItem value="withdrawn">Withdrawn</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-                <div className="flex items-center flex-wrap gap-2 mt-1">
-                  {application.accepted_business && <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">Business accepted</span>}
-                  {application.accepted_jobseeker && <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">You have accepted</span>}
-                </div>
-              </div>
-              
               <div className="flex flex-wrap gap-2">
                 {application.cv_url && (
                   <Button 

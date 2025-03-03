@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { JobApplication, SkillRequirement } from "@/types/jobSeeker";
+import { JobApplication } from "@/types/jobSeeker";
 import { useUserSkills } from "./hooks/useUserSkills";
 import { PendingApplicationItem } from "./PendingApplicationItem";
 
