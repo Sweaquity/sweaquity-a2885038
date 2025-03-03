@@ -62,35 +62,23 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
       typeof skill === 'string' ? skill.toLowerCase() : skill.skill.toLowerCase()
     );
     
-    // Convert skill_requirements to an array we can work with
-    const requiredSkills: Array<string | { skill: string }> = [];
-    
-    if (Array.isArray(application.business_roles.skill_requirements)) {
-      // Safely copy the array while ensuring proper typing
-      application.business_roles.skill_requirements.forEach(skill => {
-        if (typeof skill === 'string' || (typeof skill === 'object' && skill !== null && 'skill' in skill)) {
-          requiredSkills.push(skill);
-        }
-      });
-    }
+    // Safely handle the skill_requirements array
+    const skillRequirements = Array.isArray(application.business_roles.skill_requirements) 
+      ? application.business_roles.skill_requirements 
+      : [];
     
     // Find the intersection of user skills and required skills
-    return requiredSkills.filter(skillRequired => {
-      if (typeof skillRequired === 'string') {
-        return skillNames.includes(skillRequired.toLowerCase());
-      } else if (skillRequired && typeof skillRequired === 'object' && 'skill' in skillRequired) {
-        const skillName = String(skillRequired.skill).toLowerCase();
-        return skillNames.includes(skillName);
-      }
-      return false;
-    }).map(skill => {
-      if (typeof skill === 'string') {
-        return skill;
-      } else if (skill && typeof skill === 'object' && 'skill' in skill) {
-        return skill.skill;
-      }
-      return '';
-    }).filter(skill => skill !== ''); // Remove any empty strings
+    return skillRequirements
+      .map(req => {
+        if (typeof req === 'string') {
+          return skillNames.includes(req.toLowerCase()) ? req : null;
+        } else if (req && typeof req === 'object' && 'skill' in req) {
+          const skillName = req.skill.toLowerCase();
+          return skillNames.includes(skillName) ? req.skill : null;
+        }
+        return null;
+      })
+      .filter((skill): skill is string => skill !== null);
   };
 
   return { userSkills, getMatchedSkills };

@@ -1,3 +1,4 @@
+
 export interface JobApplication {
   job_app_id: string;
   role_id: string;

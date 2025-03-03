@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +34,6 @@ interface Application {
   business_roles: {
     title: string;
     description: string;
-    skills_required?: string[];
     skill_requirements?: { skill: string; level: string }[];
     equity_allocation?: number;
     timeframe?: string;
@@ -74,7 +72,6 @@ export const ProjectApplicationsSection = () => {
 
       console.log("Loading projects for business ID:", session.user.id);
 
-      // Get all projects for this business by business_id
       const { data: projectsData, error: projectsError } = await supabase
         .from('business_projects')
         .select('*')
@@ -95,12 +92,10 @@ export const ProjectApplicationsSection = () => {
 
       const projectsWithApplications: Project[] = [];
 
-      // For each project, get its applications
       for (const project of projectsData) {
-        // Get all tasks for this project
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
-          .select('task_id, skills_required, skill_requirements, equity_allocation, timeframe')
+          .select('task_id, skill_requirements, equity_allocation, timeframe')
           .eq('project_id', project.project_id);
 
         if (tasksError) {
@@ -120,18 +115,15 @@ export const ProjectApplicationsSection = () => {
           continue;
         }
 
-        // Create a map of task IDs to their skills required
         const taskSkillsMap = new Map<string, any>();
         tasksData.forEach(task => {
           taskSkillsMap.set(task.task_id, {
-            skills_required: task.skills_required || [],
             skill_requirements: task.skill_requirements || [],
             equity_allocation: task.equity_allocation,
             timeframe: task.timeframe
           });
         });
 
-        // Get all applications for these tasks
         const { data: applicationsData, error: applicationsError } = await supabase
           .from('job_applications')
           .select('*')
@@ -152,11 +144,9 @@ export const ProjectApplicationsSection = () => {
           continue;
         }
 
-        // Now fetch profile data for each applicant
         const applicationsWithProfiles = [];
 
         for (const app of applicationsData) {
-          // Get profile data
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('first_name, last_name, title, location, employment_preference, skills')
@@ -168,7 +158,6 @@ export const ProjectApplicationsSection = () => {
             continue;
           }
 
-          // Get task details
           const { data: taskData, error: taskError } = await supabase
             .from('project_sub_tasks')
             .select('title, description, skills_required, skill_requirements, equity_allocation, timeframe')
@@ -180,12 +169,10 @@ export const ProjectApplicationsSection = () => {
             continue;
           }
 
-          // Parse user skills
           let userSkills: Skill[] = [];
           if (profileData?.skills) {
             try {
               if (typeof profileData.skills === 'string') {
-                // Try to parse if it's a JSON string
                 const parsedSkills = JSON.parse(profileData.skills);
                 if (Array.isArray(parsedSkills)) {
                   userSkills = parsedSkills.map(s => 
@@ -193,7 +180,6 @@ export const ProjectApplicationsSection = () => {
                   );
                 }
               } else if (Array.isArray(profileData.skills)) {
-                // If it's already an array
                 userSkills = profileData.skills.map(s => 
                   typeof s === 'string' ? { skill: s, level: "Intermediate" } : s
                 );
@@ -203,16 +189,21 @@ export const ProjectApplicationsSection = () => {
             }
           }
 
-          // Calculate skill match
           const userSkillNames = userSkills.map(s => s.skill.toLowerCase());
-          const taskRequiredSkills = taskData?.skills_required || [];
+          const taskRequiredSkills = taskData?.skill_requirements || [];
           
           let matchedSkills = 0;
-          taskRequiredSkills.forEach(skill => {
-            if (userSkillNames.includes(skill.toLowerCase())) {
-              matchedSkills++;
-            }
-          });
+          if (Array.isArray(taskRequiredSkills)) {
+            taskRequiredSkills.forEach(skillObj => {
+              const skillName = typeof skillObj === 'string' ? 
+                skillObj.toLowerCase() : 
+                (skillObj.skill ? skillObj.skill.toLowerCase() : '');
+                
+              if (skillName && userSkillNames.includes(skillName)) {
+                matchedSkills++;
+              }
+            });
+          }
           
           const skillMatch = taskRequiredSkills.length > 0 
             ? Math.round((matchedSkills / taskRequiredSkills.length) * 100) 
