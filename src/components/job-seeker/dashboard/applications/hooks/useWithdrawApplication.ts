@@ -7,17 +7,21 @@ export const useWithdrawApplication = (onApplicationUpdated?: () => void) => {
   const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
-  const handleWithdrawApplication = async (applicationId: string, reason: string) => {
+  const handleWithdrawApplication = async (applicationId: string, reason?: string) => {
     try {
       setIsWithdrawing(true);
       
-      // Update the status to withdrawn and store the reason in notes, not in task_discourse
+      // Update only the status to withdrawn, reason is optional
+      const updateData: any = { status: 'withdrawn' };
+      
+      // Only store the reason in notes if provided
+      if (reason) {
+        updateData.notes = reason;
+      }
+      
       const { error } = await supabase
         .from('job_applications')
-        .update({ 
-          status: 'withdrawn',
-          notes: reason
-        })
+        .update(updateData)
         .eq('job_app_id', applicationId);
       
       if (error) throw error;

@@ -8,7 +8,7 @@ import { Loader2 } from "lucide-react";
 export interface WithdrawDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onWithdraw: (reason: string) => Promise<void>;
+  onWithdraw: (reason?: string) => Promise<void>;
   isWithdrawing?: boolean;
 }
 
@@ -22,11 +22,9 @@ export const WithdrawDialog = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleWithdraw = async () => {
-    if (!reason.trim()) return;
-    
     try {
       setIsSubmitting(true);
-      await onWithdraw(reason);
+      await onWithdraw(reason || undefined);
       onOpenChange(false);
     } catch (error) {
       console.error('Error withdrawing application:', error);
@@ -43,13 +41,13 @@ export const WithdrawDialog = ({
         <DialogHeader>
           <DialogTitle>Withdraw Application</DialogTitle>
           <DialogDescription>
-            Please provide a reason for withdrawing your application. This will be visible to the project owner.
+            You can provide an optional reason for withdrawing your application. This will be visible to the project owner.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
           <Textarea
-            placeholder="Reason for withdrawal..."
+            placeholder="Optional reason for withdrawal..."
             className="min-h-[100px]"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -64,7 +62,7 @@ export const WithdrawDialog = ({
             type="button"
             variant="destructive"
             onClick={handleWithdraw} 
-            disabled={!reason.trim() || isLoading}
+            disabled={isLoading}
           >
             {isLoading ? (
               <>

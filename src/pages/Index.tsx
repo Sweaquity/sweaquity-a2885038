@@ -34,6 +34,7 @@ const Index = () => {
   useEffect(() => {
     const fetchFeaturedProjects = async () => {
       try {
+        setIsLoading(true);
         const { data, error } = await supabase
           .from('business_projects')
           .select(`
@@ -56,13 +57,36 @@ const Index = () => {
 
         if (error) throw error;
 
-        const projects = data.map(project => ({
-          ...project,
-          company_name: project.businesses?.company_name || 'Unknown Company',
-          sub_tasks: project.project_sub_tasks || []
-        }));
+        // Process the data to match our interface
+        const processedData: FeaturedProject[] = data.map(project => {
+          // Get the company name
+          let companyName = "Unknown Company";
+          if (project.businesses) {
+            if (Array.isArray(project.businesses)) {
+              companyName = project.businesses[0]?.company_name || "Unknown Company";
+            } else {
+              companyName = project.businesses.company_name || "Unknown Company";
+            }
+          }
 
-        setFeaturedProjects(projects);
+          return {
+            project_id: project.project_id,
+            title: project.title,
+            description: project.description,
+            equity_allocation: project.equity_allocation,
+            skills_required: project.skills_required || [],
+            company_name: companyName,
+            sub_tasks: (project.project_sub_tasks || []).map((task: any) => ({
+              task_id: task.task_id,
+              title: task.title,
+              description: task.description,
+              equity_allocation: task.equity_allocation,
+              skill_requirements: task.skill_requirements || []
+            }))
+          };
+        });
+
+        setFeaturedProjects(processedData);
       } catch (error) {
         console.error("Error fetching featured projects:", error);
       } finally {
