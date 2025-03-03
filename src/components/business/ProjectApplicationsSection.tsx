@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +25,7 @@ interface Application {
   message: string;
   cv_url: string | null;
   skillMatch?: number;
-  task_discourse?: string; // Added this missing property
+  task_discourse?: string;
   profile: {
     first_name: string;
     last_name: string;
@@ -286,7 +285,6 @@ export const ProjectApplicationsSection = () => {
       console.log("Final projects with applications:", projectsWithApplications.length);
       setProjects(projectsWithApplications);
       
-      // Count new applications (those that are less than 24 hours old)
       const oneDayAgo = new Date();
       oneDayAgo.setDate(oneDayAgo.getDate() - 1);
       
@@ -300,7 +298,6 @@ export const ProjectApplicationsSection = () => {
             newApps++;
           }
           
-          // Check for recent messages in task_discourse
           if (app.task_discourse) {
             const lastMessageMatch = app.task_discourse.match(/\[([^\]]+)\]/);
             if (lastMessageMatch) {
@@ -411,7 +408,6 @@ export const ProjectApplicationsSection = () => {
     );
   }
 
-  // Filter applications by status
   const getPendingApplications = () => {
     const pendingApps: Application[] = [];
     projects.forEach(project => {
@@ -568,7 +564,6 @@ export const ProjectApplicationsSection = () => {
   );
 };
 
-// Table component for pending applications
 const PendingApplicationsTable = ({ 
   applications, 
   expandedApplications, 
@@ -746,7 +741,6 @@ const PendingApplicationsTable = ({
   );
 };
 
-// Table component for active applications
 const ActiveApplicationsTable = ({ 
   applications, 
   expandedApplications, 
@@ -760,6 +754,56 @@ const ActiveApplicationsTable = ({
   handleStatusChange: (id: string, status: string) => void,
   isUpdatingStatus: string | null
 }) => {
+  const [message, setMessage] = useState("");
+  const [sendingMessage, setSendingMessage] = useState<string | null>(null);
+
+  const handleSendMessage = async (applicationId: string) => {
+    if (!message.trim()) return;
+    
+    try {
+      setSendingMessage(applicationId);
+      const { data: application, error: fetchError } = await supabase
+        .from('job_applications')
+        .select('task_discourse')
+        .eq('job_app_id', applicationId)
+        .single();
+        
+      if (fetchError) throw fetchError;
+      
+      const timestamp = new Date().toLocaleString();
+      const newMessage = `[${timestamp}] Business: ${message}`;
+      
+      const updatedDiscourse = application.task_discourse 
+        ? `${application.task_discourse}\n\n${newMessage}`
+        : newMessage;
+        
+      const { error: updateError } = await supabase
+        .from('job_applications')
+        .update({ task_discourse: updatedDiscourse })
+        .eq('job_app_id', applicationId);
+        
+      if (updateError) throw updateError;
+      
+      setMessage("");
+      toast.success("Message sent successfully");
+      
+      const { data: updatedApplication, error: refreshError } = await supabase
+        .from('job_applications')
+        .select('*')
+        .eq('job_app_id', applicationId)
+        .single();
+      
+      if (!refreshError) {
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error("Failed to send message");
+    } finally {
+      setSendingMessage(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {applications.map(application => (
@@ -856,19 +900,38 @@ const ActiveApplicationsTable = ({
                   </div>
                 )}
                 
-                <div className="flex flex-wrap gap-2 mt-4">
-                  <Button 
-                    variant="default" 
-                    size="sm" 
-                    onClick={() => {
-                      // Implement message functionality
-                      toast.info("Message functionality coming soon");
-                    }}
-                  >
-                    <MessageCircle className="mr-1.5 h-4 w-4" />
-                    Send Message
-                  </Button>
-                  
+                <div className="mt-4 space-y-2">
+                  <div className="flex flex-col space-y-2">
+                    <h4 className="text-sm font-medium">Send Message</h4>
+                    <textarea 
+                      className="min-h-[100px] p-2 border rounded-md text-sm w-full"
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder="Type your message here..."
+                    />
+                    <div className="flex justify-end">
+                      <Button 
+                        size="sm"
+                        onClick={() => handleSendMessage(application.job_app_id)} 
+                        disabled={!message.trim() || sendingMessage === application.job_app_id}
+                      >
+                        {sendingMessage === application.job_app_id ? (
+                          <>
+                            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <MessageCircle className="mr-1.5 h-4 w-4" />
+                            Send Message
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex flex-wrap gap-2 mt-2">
                   {application.cv_url && (
                     <Button
                       variant="outline"
@@ -889,7 +952,6 @@ const ActiveApplicationsTable = ({
   );
 };
 
-// Table component for withdrawn applications
 const WithdrawnApplicationsTable = ({ 
   applications, 
   expandedApplications, 
@@ -978,7 +1040,6 @@ const WithdrawnApplicationsTable = ({
   );
 };
 
-// Table component for rejected applications
 const RejectedApplicationsTable = ({ 
   applications, 
   expandedApplications, 
