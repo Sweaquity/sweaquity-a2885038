@@ -113,9 +113,18 @@ const ProjectApplicationPage = () => {
       }
       
       setProjectTitle(projectData.title);
-      // Correctly access business data from the join
-      const businessData = projectData.businesses as Business;
-      setCompanyName(businessData.company_name || "Unknown Company");
+      
+      // Fix: Correctly access the company_name from the businesses join
+      if (projectData.businesses && Array.isArray(projectData.businesses)) {
+        // If businesses is an array, take the first item
+        setCompanyName(projectData.businesses[0]?.company_name || "Unknown Company");
+      } else if (projectData.businesses) {
+        // If businesses is an object
+        setCompanyName((projectData.businesses as any).company_name || "Unknown Company");
+      } else {
+        setCompanyName("Unknown Company");
+      }
+      
       setBusinessId(projectData.business_id);
       
       // Then, load tasks for this project
@@ -272,12 +281,10 @@ const ProjectApplicationPage = () => {
             
             {selectedTaskId && (
               <ApplicationForm 
-                task={tasks.find(t => t.task_id === selectedTaskId)}
-                companyName={companyName}
+                projectId={projectId || ""}
+                taskId={selectedTaskId}
                 projectTitle={projectTitle}
-                onSubmit={handleSubmit}
-                isSubmitting={isSubmitting}
-                userSkills={userSkills}
+                taskTitle={tasks.find(t => t.task_id === selectedTaskId)?.title}
               />
             )}
           </CardContent>
