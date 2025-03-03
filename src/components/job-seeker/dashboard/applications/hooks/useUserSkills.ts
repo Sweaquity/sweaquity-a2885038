@@ -62,20 +62,26 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
       typeof skill === 'string' ? skill.toLowerCase() : skill.skill.toLowerCase()
     );
     
-    // Safely cast skills_required to an array type we can work with
-    const requiredSkills = Array.isArray(application.business_roles.skills_required) 
-      ? application.business_roles.skills_required 
-      : [];
+    // Convert skills_required to an array we can work with
+    let requiredSkills: any[] = [];
+    
+    if (Array.isArray(application.business_roles.skills_required)) {
+      requiredSkills = application.business_roles.skills_required;
+    }
     
     // Find the intersection of user skills and required skills
     return requiredSkills.filter(skillRequired => {
+      // Handle string skills
       if (typeof skillRequired === 'string') {
         return skillNames.includes(skillRequired.toLowerCase());
-      } else if (skillRequired && typeof skillRequired === 'object' && 'skill' in skillRequired) {
-        return skillNames.includes((skillRequired as { skill: string }).skill.toLowerCase());
+      } 
+      // Handle object skills with a 'skill' property
+      else if (skillRequired && typeof skillRequired === 'object' && 'skill' in skillRequired) {
+        const skillName = String(skillRequired.skill).toLowerCase();
+        return skillNames.includes(skillName);
       }
       return false;
-    });
+    }).map(skill => typeof skill === 'string' ? skill : skill.skill);
   };
 
   return { userSkills, getMatchedSkills };
