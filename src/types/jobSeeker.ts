@@ -7,7 +7,7 @@ export interface JobApplication {
   task_id: string;
   project_id: string;
   notes: string;
-  message: string; // Added message property
+  message: string; 
   cv_url: string | null;
   business_roles?: {
     title: string;
@@ -16,7 +16,7 @@ export interface JobApplication {
     project_title?: string;
     timeframe?: string;
     skills_required?: string[];
-    skill_requirements?: { skill: string; level: string }[];
+    skill_requirements?: (string | SkillRequirement)[];
     equity_allocation?: number;
   };
   id: string; // Adding this for backward compatibility

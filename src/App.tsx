@@ -32,6 +32,7 @@ const App = () => (
             <Route path="/seeker/profile/complete" element={<ProfileCompletePage />} />
             <Route path="/projects/:id" element={<ProjectDetailsPage />} />
             <Route path="/projects/:id/apply" element={<ProjectApplicationPage />} />
+            <Route path="/projects/:id/apply/:taskId" element={<ProjectApplicationPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -8,7 +7,7 @@ import { ProjectHeader } from "@/components/projects/ProjectHeader";
 import { SubTask } from "@/types/jobSeeker";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -67,6 +66,8 @@ export const ProjectDetailsPage = () => {
   useEffect(() => {
     const fetchProjectDetails = async () => {
       try {
+        setIsLoading(true);
+        
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user?.id) {
           toast.error("Please sign in to view project details");
@@ -100,7 +101,7 @@ export const ProjectDetailsPage = () => {
             skills_required,
             project_timeframe,
             business_id,
-            businesses!business_projects_business_id_fkey (
+            businesses (
               company_name,
               project_stage,
               contact_email,
@@ -179,19 +180,20 @@ export const ProjectDetailsPage = () => {
           location: ""
         };
 
-        // Extract business data as a single object, not an array
-        const businessData = projectData.businesses || defaultBusiness;
+        // Extract business data and ensure it's a single object
+        let businessData = defaultBusiness;
         
-        // Ensure businessData is a proper Business object
-        const businessInfo: Business = {
-          company_name: typeof businessData === 'object' && businessData !== null ? businessData.company_name || defaultBusiness.company_name : defaultBusiness.company_name,
-          project_stage: typeof businessData === 'object' && businessData !== null ? businessData.project_stage || defaultBusiness.project_stage : defaultBusiness.project_stage,
-          contact_email: typeof businessData === 'object' && businessData !== null ? businessData.contact_email || defaultBusiness.contact_email : defaultBusiness.contact_email,
-          industry: typeof businessData === 'object' && businessData !== null ? businessData.industry || defaultBusiness.industry : defaultBusiness.industry,
-          website: typeof businessData === 'object' && businessData !== null ? businessData.website || defaultBusiness.website : defaultBusiness.website,
-          location: typeof businessData === 'object' && businessData !== null ? businessData.location || defaultBusiness.location : defaultBusiness.location
-        };
-
+        if (projectData.businesses) {
+          // Handle case where businesses might be an array or object
+          if (Array.isArray(projectData.businesses)) {
+            // If it's an array (shouldn't happen with single()), take the first item
+            businessData = projectData.businesses[0] || defaultBusiness;
+          } else {
+            // It's an object, use as is
+            businessData = projectData.businesses;
+          }
+        }
+        
         // Map task data to match SubTask interface
         const mappedTasks: SubTask[] = (tasksData || []).map(task => ({
           id: task.task_id, // Keep id for backward compatibility
@@ -218,7 +220,7 @@ export const ProjectDetailsPage = () => {
           project_timeframe: projectData.project_timeframe,
           business_id: projectData.business_id,
           tasks: mappedTasks,
-          business: businessInfo
+          business: businessData
         });
       } catch (error) {
         console.error('Error fetching project details:', error);
@@ -234,11 +236,16 @@ export const ProjectDetailsPage = () => {
   }, [id]);
 
   if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return (
+      <div className="container mx-auto flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
+        <span>Loading project details...</span>
+      </div>
+    );
   }
 
   if (!project) {
-    return <div>Project not found</div>;
+    return <div className="container mx-auto py-8 px-4 text-center">Project not found</div>;
   }
 
   return (

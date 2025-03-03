@@ -151,11 +151,13 @@ export const ApplicationItem = ({
                         if (typeof req === 'string') {
                           return req;
                         }
-                        // Ensure we're using a valid level value that matches the SkillRequirement type
-                        const level = ['Beginner', 'Intermediate', 'Expert'].includes(req.level) 
-                          ? req.level as 'Beginner' | 'Intermediate' | 'Expert'
-                          : 'Intermediate';
-                        return { skill: req.skill, level };
+                        // Ensure we're only passing valid SkillRequirement values
+                        return {
+                          skill: req.skill,
+                          level: (req.level === 'Beginner' || req.level === 'Intermediate' || req.level === 'Expert') 
+                            ? req.level 
+                            : 'Intermediate' 
+                        } as SkillRequirement;
                       })
                     }
                     matchedSkills={getMatchedSkills ? getMatchedSkills(application) : []}

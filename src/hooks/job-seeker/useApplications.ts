@@ -50,11 +50,16 @@ export const useApplications = () => {
           if (typeof req === 'string') {
             return req;
           }
+          
           // Ensure level is one of the allowed values
           const level = ['Beginner', 'Intermediate', 'Expert'].includes(req.level) 
-            ? req.level 
+            ? req.level as 'Beginner' | 'Intermediate' | 'Expert'
             : 'Intermediate';
-          return { skill: req.skill, level };
+            
+          return { 
+            skill: req.skill, 
+            level 
+          } as SkillRequirement;
         });
         
         return {

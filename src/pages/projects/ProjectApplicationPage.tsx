@@ -106,11 +106,14 @@ const ProjectApplicationPage = () => {
         }
         
         // Set project details
-        const businessData = projectData.businesses;
         let companyName = "Unknown Company";
         
-        if (businessData && typeof businessData === 'object' && businessData !== null) {
-          companyName = businessData.company_name || "Unknown Company";
+        if (projectData.businesses) {
+          // Handle case where businesses might be received in different formats
+          if (typeof projectData.businesses === 'object' && projectData.businesses !== null) {
+            // If it's a direct object reference
+            companyName = projectData.businesses.company_name || "Unknown Company";
+          }
         }
           
         setProjectDetails({
