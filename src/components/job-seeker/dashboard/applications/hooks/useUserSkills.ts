@@ -71,17 +71,21 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
     
     // Find the intersection of user skills and required skills
     return requiredSkills.filter(skillRequired => {
-      // Handle string skills
       if (typeof skillRequired === 'string') {
         return skillNames.includes(skillRequired.toLowerCase());
-      } 
-      // Handle object skills with a 'skill' property
-      else if (skillRequired && typeof skillRequired === 'object' && 'skill' in skillRequired) {
+      } else if (skillRequired && typeof skillRequired === 'object' && 'skill' in skillRequired) {
         const skillName = String(skillRequired.skill).toLowerCase();
         return skillNames.includes(skillName);
       }
       return false;
-    }).map(skill => typeof skill === 'string' ? skill : skill.skill);
+    }).map(skill => {
+      if (typeof skill === 'string') {
+        return skill;
+      } else if (skill && typeof skill === 'object' && 'skill' in skill) {
+        return skill.skill;
+      }
+      return '';
+    }).filter(skill => skill !== ''); // Remove any empty strings
   };
 
   return { userSkills, getMatchedSkills };
