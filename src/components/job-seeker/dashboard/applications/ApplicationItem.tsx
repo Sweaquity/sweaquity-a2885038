@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp, MessageSquare, ExternalLink, Clock, XCircle } from 'lucide-react';
@@ -10,6 +11,8 @@ import { CreateMessageDialog } from './CreateMessageDialog';
 import { WithdrawDialog } from './WithdrawDialog';
 import { useWithdrawApplication } from './hooks/useWithdrawApplication';
 import { useApplicationActions } from './hooks/useApplicationActions';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 import { 
   Dialog, 
   DialogContent,
@@ -138,7 +141,14 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
     <div className="border rounded-md overflow-hidden bg-card">
       <div className="p-4">
         <div className="flex items-start justify-between">
-          <ApplicationHeader application={application} />
+          {application.business_roles && (
+            <ApplicationHeader 
+              title={application.business_roles.title || "Untitled Role"}
+              company={application.business_roles.company_name || "Unknown Company"}
+              project={application.business_roles.project_title || ""}
+              status={application.status}
+            />
+          )}
           
           <div className="flex items-center space-x-2">
             {compact ? (
@@ -196,17 +206,26 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
         </div>
 
         <div className="mt-2">
-          <ApplicationSkills
-            skills={application.business_roles?.skill_requirements || []}
-            equity={application.business_roles?.equity_allocation}
-            timeframe={application.business_roles?.timeframe}
-          />
+          {application.business_roles && (
+            <ApplicationSkills
+              skillRequirements={application.business_roles.skill_requirements || []}
+              equityAllocation={application.business_roles.equity_allocation}
+              timeframe={application.business_roles.timeframe}
+            />
+          )}
         </div>
       </div>
 
       {isExpanded && (
         <div className="border-t p-4">
-          <ApplicationContent application={application} />
+          {application.business_roles && (
+            <ApplicationContent 
+              description={application.business_roles.description || ""}
+              message={application.message || ""}
+              discourse={application.task_discourse}
+              appliedAt={application.applied_at}
+            />
+          )}
 
           <div className="mt-4 flex flex-wrap gap-2">
             <Button 
@@ -243,7 +262,9 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
       <CreateMessageDialog
         isOpen={isCreateMessageOpen}
         onOpenChange={setIsCreateMessageOpen}
-        onSubmit={handleMessageSubmit}
+        applicationId={application.job_app_id}
+        existingMessage={application.task_discourse}
+        onMessageSent={onApplicationUpdated}
       />
 
       <WithdrawDialog

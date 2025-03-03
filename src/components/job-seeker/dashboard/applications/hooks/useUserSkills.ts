@@ -1,24 +1,23 @@
 
-import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
-import { Skill } from "@/types/jobSeeker";
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { Skill, JobApplication } from '@/types/jobSeeker';
 
 export const useUserSkills = () => {
   const [userSkills, setUserSkills] = useState<Skill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
+  
   useEffect(() => {
-    const fetchUserSkills = async () => {
+    const loadUserSkills = async () => {
       try {
         setIsLoading(true);
         
-        // Get current user's ID
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
+          console.error('User not authenticated');
           return;
         }
         
-        // Fetch user's skills from profiles table
         const { data, error } = await supabase
           .from('profiles')
           .select('skills')
@@ -26,72 +25,79 @@ export const useUserSkills = () => {
           .single();
           
         if (error) {
-          console.error("Error fetching user skills:", error);
+          console.error('Error loading user skills:', error);
           return;
         }
         
-        // If skills are found, format them
         if (data && data.skills) {
-          let formattedSkills: Skill[] = [];
+          let parsedSkills: Skill[] = [];
           
-          // Handle different formats of skills data
-          if (Array.isArray(data.skills)) {
-            formattedSkills = data.skills.map((skill: any) => {
-              if (typeof skill === 'string') {
-                return { skill, level: 'Intermediate' } as Skill;
-              } else if (typeof skill === 'object' && skill.skill) {
-                return {
-                  skill: skill.skill,
-                  level: skill.level || 'Intermediate'
-                } as Skill;
-              }
-              return null;
-            }).filter(Boolean) as Skill[];
-          } else if (typeof data.skills === 'object') {
-            // Handle object format (unlikely but possible)
-            const skills = data.skills as Record<string, any>;
-            formattedSkills = Object.keys(skills).map(key => ({
-              skill: key,
-              level: skills[key] || 'Intermediate'
-            } as Skill));
+          if (typeof data.skills === 'string') {
+            try {
+              parsedSkills = JSON.parse(data.skills);
+            } catch (e) {
+              console.error('Error parsing skills:', e);
+            }
+          } else if (Array.isArray(data.skills)) {
+            parsedSkills = data.skills;
           }
           
-          setUserSkills(formattedSkills);
+          setUserSkills(parsedSkills.map(skill => {
+            if (typeof skill === 'string') {
+              return { skill, level: 'Intermediate' };
+            }
+            return skill;
+          }));
         }
       } catch (error) {
-        console.error("Error in useUserSkills:", error);
+        console.error('Error in loadUserSkills:', error);
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchUserSkills();
+    loadUserSkills();
   }, []);
   
-  // Helper function to normalize skill name for comparison
-  const normalizeSkill = (skill: string): string => {
-    if (typeof skill === 'string') {
-      return skill.toLowerCase().trim();
-    }
-    return '';
-  };
-  
-  // Check if the user has a specific skill
   const hasSkill = (skillName: string): boolean => {
-    if (!skillName) return false;
+    if (!userSkills || userSkills.length === 0) return false;
     
-    const normalizedName = normalizeSkill(skillName);
-    return userSkills.some(userSkill => {
-      const normalizedUserSkill = typeof userSkill === 'string' 
-        ? normalizeSkill(userSkill)
-        : normalizeSkill(userSkill.skill);
-      return normalizedUserSkill === normalizedName;
+    const lowerSkillName = skillName.toLowerCase();
+    return userSkills.some(skill => {
+      const skillToCheck = typeof skill === 'string' 
+        ? skill.toLowerCase()
+        : skill.skill.toLowerCase();
+      return skillToCheck === lowerSkillName;
     });
   };
-
-  return {
-    userSkills,
-    isLoading,
-    hasSkill
+  
+  const getMatchedSkills = (application: JobApplication): string[] => {
+    if (!application.business_roles?.skill_requirements || !userSkills || userSkills.length === 0) {
+      return [];
+    }
+    
+    const userSkillNames = userSkills.map(skill => {
+      return typeof skill === 'string' ? skill.toLowerCase() : skill.skill.toLowerCase();
+    });
+    
+    const matchedSkills: string[] = [];
+    
+    application.business_roles.skill_requirements.forEach(requirement => {
+      let skillName = '';
+      
+      if (typeof requirement === 'string') {
+        skillName = requirement.toLowerCase();
+      } else if (requirement && typeof requirement === 'object' && 'skill' in requirement) {
+        skillName = requirement.skill.toLowerCase();
+      }
+      
+      if (skillName && userSkillNames.includes(skillName)) {
+        matchedSkills.push(skillName);
+      }
+    });
+    
+    return matchedSkills;
   };
+  
+  return { userSkills, isLoading, hasSkill, getMatchedSkills };
 };

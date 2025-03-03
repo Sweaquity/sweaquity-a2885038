@@ -16,7 +16,7 @@ export const ApplicationsList = ({
   onApplicationUpdated
 }: ApplicationsListProps) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const { userSkills, getMatchedSkills } = useUserSkills();
+  const { userSkills } = useUserSkills();
 
   const filteredApplications = applications.filter((application) => {
     if (!searchTerm) return true;
@@ -79,7 +79,6 @@ export const ApplicationsList = ({
           <ApplicationItem
             key={application.job_app_id}
             application={application}
-            getMatchedSkills={() => getMatchedSkills(application)}
             onApplicationUpdated={onApplicationUpdated}
           />
         ))}

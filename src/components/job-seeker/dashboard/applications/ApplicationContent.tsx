@@ -1,54 +1,41 @@
 
-import { Progress } from "@/components/ui/progress";
+import React from 'react';
+import { formatDistanceToNow } from 'date-fns';
 
-interface ApplicationContentProps {
+export interface ApplicationContentProps {
   description: string;
-  timeframe: string;
-  equityAllocation?: number;
-  taskStatus: string;
-  completionPercentage: number;
+  message: string;
+  discourse?: string;
+  appliedAt: string;
 }
 
-export const ApplicationContent = ({
-  description,
-  timeframe,
-  equityAllocation,
-  taskStatus,
-  completionPercentage
-}: ApplicationContentProps) => {
+export const ApplicationContent = ({ description, message, discourse, appliedAt }: ApplicationContentProps) => {
+  const timeAgo = formatDistanceToNow(new Date(appliedAt), { addSuffix: true });
+
   return (
     <div className="space-y-4">
       <div>
-        <h4 className="text-sm font-medium mb-2">Description</h4>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <h4 className="text-sm font-medium mb-1">Role Description</h4>
+        <p className="text-sm text-muted-foreground">{description || "No description provided."}</p>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-        <div>
-          <p className="text-muted-foreground">Timeframe</p>
-          <p className="font-medium">{timeframe || "Not specified"}</p>
-        </div>
-        
-        <div>
-          <p className="text-muted-foreground">Equity Allocation</p>
-          <p className="font-medium">{equityAllocation ? `${equityAllocation}%` : "Not specified"}</p>
-        </div>
-        
-        <div>
-          <p className="text-muted-foreground">Task Status</p>
-          <p className="font-medium capitalize">{taskStatus || "Not started"}</p>
-        </div>
+      <div>
+        <h4 className="text-sm font-medium mb-1">Your Application Message</h4>
+        <p className="text-sm text-muted-foreground">{message || "No message provided."}</p>
       </div>
       
-      {completionPercentage > 0 && (
+      {discourse && (
         <div>
-          <div className="flex justify-between text-xs mb-1">
-            <span>Completion</span>
-            <span>{completionPercentage}%</span>
+          <h4 className="text-sm font-medium mb-1">Message History</h4>
+          <div className="bg-muted/30 p-3 rounded-md text-sm whitespace-pre-wrap">
+            {discourse}
           </div>
-          <Progress value={completionPercentage} className="h-2" />
         </div>
       )}
+      
+      <div className="text-xs text-muted-foreground">
+        Applied {timeAgo}
+      </div>
     </div>
   );
 };
