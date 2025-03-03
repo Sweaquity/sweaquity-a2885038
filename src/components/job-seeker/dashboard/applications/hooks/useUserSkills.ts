@@ -59,12 +59,12 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
         : (skill && typeof skill.skill === 'string' ? skill.skill.toLowerCase() : '');
     }).filter(Boolean); // Filter out empty strings
     
-    // Look for skill requirements in application object, avoiding business_roles
+    // Extract skill requirements from application's business_roles
     let requiredSkills: Array<string | SkillRequirement> = [];
     
-    // Check if there are direct skill requirements on the application
-    if (application.skill_requirements && Array.isArray(application.skill_requirements)) {
-      requiredSkills = application.skill_requirements;
+    // Check if business_roles exists and contains skill_requirements
+    if (application.business_roles && application.business_roles.skill_requirements) {
+      requiredSkills = application.business_roles.skill_requirements;
     }
     
     // Find matching skills from the required skills array

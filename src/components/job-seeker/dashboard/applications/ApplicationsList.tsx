@@ -28,10 +28,10 @@ export const ApplicationsList = ({
   const { userSkills: hookUserSkills, getMatchedSkills } = useUserSkills();
   const [expandedApplicationId, setExpandedApplicationId] = useState<string | null>(null);
   
-  // Function to get matched skills for an application - without using business_roles
+  // Function to get matched skills for an application
   const getMatchedSkillsForApplication = (application: JobApplication) => {
-    // Use application.skill_requirements if available, otherwise use an empty array
-    const requiredSkills = application.skill_requirements || [];
+    // Extract skill requirements from business_roles if available
+    const requiredSkills = application.business_roles?.skill_requirements || [];
     const skillNames = (userSkills || hookUserSkills).map(skill => skill.skill.toLowerCase());
     
     return requiredSkills.filter(skill => 
