@@ -54,18 +54,13 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
   const getMatchedSkills = (application: JobApplication): string[] => {
     // Get user skills from the state as lowercase strings for comparison
     const userSkillNames = userSkills.map(skill => {
-      return typeof skill === 'string' 
-        ? skill.toLowerCase() 
-        : (skill && typeof skill.skill === 'string' ? skill.skill.toLowerCase() : '');
+      if (typeof skill === 'string') return skill.toLowerCase();
+      if (skill && typeof skill.skill === 'string') return skill.skill.toLowerCase();
+      return '';
     }).filter(Boolean); // Filter out empty strings
     
     // Extract skill requirements from application's business_roles
-    let requiredSkills: Array<string | SkillRequirement> = [];
-    
-    // Check if business_roles exists and contains skill_requirements
-    if (application.business_roles && application.business_roles.skill_requirements) {
-      requiredSkills = application.business_roles.skill_requirements;
-    }
+    const requiredSkills = application.business_roles?.skill_requirements || [];
     
     // Find matching skills from the required skills array
     return requiredSkills

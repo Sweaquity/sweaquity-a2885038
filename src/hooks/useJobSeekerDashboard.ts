@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -14,6 +15,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
   const [availableOpportunities, setAvailableOpportunities] = useState<EquityProject[]>([]);
   const [isSessionChecked, setIsSessionChecked] = useState(false);
   const [isProfileComplete, setIsProfileComplete] = useState(false);
+  const [hasBusinessProfile, setHasBusinessProfile] = useState(false);
   const loadingRef = useRef(false);
 
   const { profile, skills, loadProfile, handleSkillsUpdate } = useProfile();
@@ -61,6 +63,23 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     }
   }, []);
 
+  const checkBusinessProfile = useCallback(async (userId) => {
+    try {
+      const { data: businessData } = await supabase
+        .from('businesses')
+        .select('businesses_id')
+        .eq('businesses_id', userId)
+        .maybeSingle();
+        
+      const hasProfile = !!businessData;
+      setHasBusinessProfile(hasProfile);
+      return hasProfile;
+    } catch (error) {
+      console.error('Business profile check error:', error);
+      return false;
+    }
+  }, []);
+
   const loadOpportunities = useCallback(async (userId, userSkills) => {
     try {
       const { data: userApplications, error: applicationsError } = await supabase
@@ -76,13 +95,9 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
           .map(app => app.task_id) || []
       );
 
-      console.log("Unavailable task IDs:", Array.from(unavailableTaskIds));
-
       const formattedUserSkills = Array.isArray(userSkills) 
         ? userSkills.map(s => typeof s === 'string' ? s : s.skill.toLowerCase())
         : [];
-
-      console.log("User skills:", formattedUserSkills);
       
       const { data: tasksData, error: tasksError } = await supabase
         .from('project_sub_tasks')
@@ -183,7 +198,6 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
           };
         }) || [];
 
-      console.log(`Available opportunities after filtering by skills: ${opportunities.length}`);
       return opportunities;
     } catch (error) {
       console.error("Error loading opportunities:", error);
@@ -215,6 +229,9 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
         return;
       }
 
+      // Check if user has a business profile (only log once)
+      await checkBusinessProfile(session.user.id);
+
       await Promise.all([
         loadProfile(session.user.id),
         loadApplications(session.user.id),
@@ -238,16 +255,14 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
       setIsLoading(false);
       loadingRef.current = false;
     }
-  }, [checkSession, checkProfileCompletion, loadProfile, loadApplications, loadCVData, loadOpportunities, skills, applications, navigate, transformToEquityProjects]);
+  }, [checkSession, checkProfileCompletion, checkBusinessProfile, loadProfile, loadApplications, loadCVData, loadOpportunities, skills, applications, navigate, transformToEquityProjects]);
 
   useEffect(() => {
-    if (!loadingRef.current) {
-      loadDashboardData();
-    }
+    loadDashboardData();
     
     const sessionCheckInterval = setInterval(async () => {
       await checkSession();
-    }, 300000);
+    }, 300000); // 5 minute interval
 
     return () => {
       clearInterval(sessionCheckInterval);
@@ -296,6 +311,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     setEquityProjects,
     handleSignOut,
     handleSkillsUpdate,
-    refreshApplications
+    refreshApplications,
+    hasBusinessProfile
   };
 };

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { EquityProject, Skill } from "@/types/jobSeeker";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { ApplicationSkills } from "./applications/ApplicationSkills";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 
 interface OpportunitiesTabProps {
   projects: EquityProject[];
@@ -24,7 +27,62 @@ export const OpportunitiesTab = ({
 }: OpportunitiesTabProps) => {
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [filteredProjects, setFilteredProjects] = useState<EquityProject[]>([]);
+  const [companyNames, setCompanyNames] = useState<Record<string, string>>({});
+  const [projectTitles, setProjectTitles] = useState<Record<string, string>>({});
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Fetch project and business details for all projects
+    const fetchProjectDetails = async () => {
+      const projectIds = projects.map(project => project.project_id).filter(Boolean);
+      if (projectIds.length === 0) return;
+
+      try {
+        // Fetch project titles
+        const { data: projectsData, error: projectsError } = await supabase
+          .from('business_projects')
+          .select('project_id, title, business_id')
+          .in('project_id', projectIds);
+
+        if (projectsError) throw projectsError;
+
+        const newProjectTitles: Record<string, string> = {};
+        const businessIds: string[] = [];
+
+        if (projectsData) {
+          projectsData.forEach(project => {
+            newProjectTitles[project.project_id] = project.title || 'Untitled Project';
+            if (project.business_id) businessIds.push(project.business_id);
+          });
+        }
+
+        setProjectTitles(newProjectTitles);
+
+        // Fetch business names if we have business IDs
+        if (businessIds.length > 0) {
+          const { data: businessesData, error: businessesError } = await supabase
+            .from('businesses')
+            .select('businesses_id, company_name')
+            .in('businesses_id', businessIds);
+
+          if (businessesError) throw businessesError;
+
+          const newCompanyNames: Record<string, string> = {};
+          if (businessesData) {
+            businessesData.forEach(business => {
+              newCompanyNames[business.businesses_id] = business.company_name || 'Unnamed Company';
+            });
+          }
+
+          setCompanyNames(newCompanyNames);
+        }
+      } catch (error) {
+        console.error("Error fetching project details:", error);
+      }
+    };
+
+    fetchProjectDetails();
+  }, [projects]);
 
   useEffect(() => {
     // Filter projects that match user skills
@@ -36,7 +94,9 @@ export const OpportunitiesTab = ({
         if (!task) return false;
         
         // Check if any required skills match user skills
-        const requiredSkills = task.skill_requirements?.map(req => req.skill.toLowerCase()) || [];
+        const requiredSkills = task.skill_requirements?.map(req => 
+          typeof req === 'string' ? req.toLowerCase() : req.skill.toLowerCase()
+        ) || [];
         
         return requiredSkills.some(skill => userSkillNames.includes(skill));
       });
@@ -52,9 +112,67 @@ export const OpportunitiesTab = ({
     setExpandedProjectId(expandedProjectId === projectId ? null : projectId);
   };
 
-  const handleApply = (projectId: string, taskId: string) => {
-    // Updated to use query parameters instead of state
-    navigate(`/projects/${projectId}/apply?taskId=${taskId}`);
+  const handleApply = async (projectId: string, taskId: string) => {
+    try {
+      // First check if the project exists
+      const { data: projectData, error: projectError } = await supabase
+        .from('business_projects')
+        .select('project_id')
+        .eq('project_id', projectId)
+        .single();
+
+      if (projectError || !projectData) {
+        console.error("Project not found:", projectId);
+        toast.error("Project not found. Please try again.");
+        return;
+      }
+
+      // Check if the task exists
+      const { data: taskData, error: taskError } = await supabase
+        .from('project_sub_tasks')
+        .select('task_id')
+        .eq('task_id', taskId)
+        .single();
+
+      if (taskError || !taskData) {
+        console.error("Task not found:", taskId);
+        toast.error("Task not found. Please try again.");
+        return;
+      }
+
+      // If both exist, navigate to application page
+      navigate(`/projects/${projectId}/apply?taskId=${taskId}`);
+    } catch (error) {
+      console.error("Error checking project/task:", error);
+      toast.error("Something went wrong. Please try again.");
+    }
+  };
+
+  const getCompanyName = (project: EquityProject): string => {
+    // First try to get from project's business_roles
+    if (project.business_roles?.company_name) return project.business_roles.company_name;
+    
+    // Try to get from cached company names if we have a business_id
+    if (project.created_by && companyNames[project.created_by]) {
+      return companyNames[project.created_by];
+    }
+    
+    return "Unknown Company";
+  };
+
+  const getProjectTitle = (project: EquityProject): string => {
+    // First try to get from project itself
+    if (project.title) return project.title;
+    
+    // Try to get from business_roles
+    if (project.business_roles?.project_title) return project.business_roles.project_title;
+    
+    // Try to get from cached project titles
+    if (project.project_id && projectTitles[project.project_id]) {
+      return projectTitles[project.project_id];
+    }
+    
+    return "Untitled Project";
   };
 
   if (filteredProjects.length === 0) {
@@ -92,8 +210,14 @@ export const OpportunitiesTab = ({
             
             // Get user matched skills
             const userSkillNames = userSkills.map(skill => skill.skill.toLowerCase());
-            const requiredSkillNames = task.skill_requirements?.map(req => req.skill.toLowerCase()) || [];
+            const requiredSkillNames = task.skill_requirements?.map(req => 
+              typeof req === 'string' ? req.toLowerCase() : req.skill.toLowerCase()
+            ) || [];
             const matchedSkills = requiredSkillNames.filter(skill => userSkillNames.includes(skill));
+            
+            // Get company name and project title
+            const companyName = getCompanyName(project);
+            const projectTitle = getProjectTitle(project);
 
             return (
               <>
@@ -102,7 +226,7 @@ export const OpportunitiesTab = ({
                     <div className="font-medium">{task.title}</div>
                   </TableCell>
                   <TableCell onClick={() => toggleProject(project.id)}>
-                    {project.business_roles?.company_name || "Unknown Company"}
+                    {companyName}
                   </TableCell>
                   <TableCell onClick={() => toggleProject(project.id)}>{task.timeframe}</TableCell>
                   <TableCell onClick={() => toggleProject(project.id)}>{task.equity_allocation}%</TableCell>
@@ -132,7 +256,7 @@ export const OpportunitiesTab = ({
                           <div>
                             <h3 className="font-semibold text-lg">{task.title}</h3>
                             <p className="text-sm text-gray-600">
-                              {project.business_roles?.company_name} • {project.title}
+                              {companyName} • {projectTitle}
                             </p>
                             {task.description && (
                               <p className="mt-2 text-sm text-gray-600">

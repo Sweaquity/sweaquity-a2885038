@@ -10,9 +10,7 @@ import { EquityTab } from "@/components/job-seeker/dashboard/EquityTab";
 import { OpportunitiesTab } from "@/components/job-seeker/dashboard/OpportunitiesTab";
 import { ProjectsOverview } from "@/components/job-seeker/ProjectsOverview";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { ProfileCompletionForm } from "@/components/job-seeker/ProfileCompletionForm";
 import { Button } from "@/components/ui/button";
 import { Building2, Menu } from "lucide-react";
 import {
@@ -32,7 +30,6 @@ const JobSeekerDashboard = () => {
   const [activeTab, setActiveTab] = useState<string>(tabFromUrl || "dashboard");
   const [localLoading, setLocalLoading] = useState(true);
   const [forceRefresh, setForceRefresh] = useState(0);
-  const [hasBusinessProfile, setHasBusinessProfile] = useState(false);
 
   const {
     isLoading,
@@ -46,7 +43,8 @@ const JobSeekerDashboard = () => {
     skills,
     handleSignOut,
     handleSkillsUpdate,
-    refreshApplications
+    refreshApplications,
+    hasBusinessProfile
   } = useJobSeekerDashboard(forceRefresh);
 
   const handleTabChange = (value: string) => {
@@ -68,38 +66,6 @@ const JobSeekerDashboard = () => {
       setActiveTab(tabFromUrl);
     }
   }, [tabFromUrl]);
-
-  useEffect(() => {
-    const checkBusinessProfile = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) return;
-
-        const { data: businessData } = await supabase
-          .from('businesses')
-          .select('businesses_id')
-          .eq('businesses_id', session.user.id)
-          .maybeSingle();
-          
-        console.log("Business profile check:", businessData);
-        setHasBusinessProfile(!!businessData);
-        
-        // If we've reached this point and data has loaded, turn off loading state
-        if (!isLoading) {
-          setLocalLoading(false);
-        }
-      } catch (error) {
-        console.error('Business profile check error:', error);
-        // Still turn off loading if there's an error
-        if (!isLoading) {
-          setLocalLoading(false);
-        }
-      }
-    };
-
-    checkBusinessProfile();
-  }, [isLoading]);
 
   // Update local loading state when the main loading state changes
   useEffect(() => {

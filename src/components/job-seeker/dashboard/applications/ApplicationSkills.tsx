@@ -1,64 +1,79 @@
 
 import { Badge } from "@/components/ui/badge";
-import { SkillRequirement } from "@/types/jobSeeker";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ApplicationSkillsProps {
-  requiredSkills: Array<SkillRequirement | string>;
+  requiredSkills: Array<string | { skill: string; level: string }>;
   matchedSkills?: string[];
 }
 
-export const ApplicationSkills = ({
-  requiredSkills,
-  matchedSkills = [],
+export const ApplicationSkills = ({ 
+  requiredSkills, 
+  matchedSkills = [] 
 }: ApplicationSkillsProps) => {
   if (!requiredSkills || requiredSkills.length === 0) {
-    return <p className="text-gray-500 text-sm">No skills required for this role.</p>;
+    return <span className="text-xs text-muted-foreground">No required skills</span>;
   }
 
-  // Transform skills to a consistent format
-  const normalizedSkills = requiredSkills.map(skill => {
-    if (typeof skill === 'string') {
-      return { 
-        skill, 
-        level: 'Intermediate' as 'Beginner' | 'Intermediate' | 'Expert'
-      };
-    }
+  // Format skills for display
+  const displaySkills = requiredSkills.map(skill => {
+    const skillName = typeof skill === 'string' ? skill : skill.skill;
+    const skillLevel = typeof skill === 'string' ? undefined : skill.level;
     
-    // Ensure skill.level is one of the allowed values
-    const validLevels = ['Beginner', 'Intermediate', 'Expert'] as const;
-    const level = typeof skill.level === 'string' 
-      ? (validLevels.includes(skill.level as any) 
-        ? skill.level 
-        : 'Intermediate') as 'Beginner' | 'Intermediate' | 'Expert'
-      : 'Intermediate';
-      
-    return { 
-      skill: skill.skill,
-      level
+    const isMatched = matchedSkills.some(
+      matched => matched.toLowerCase() === skillName.toLowerCase()
+    );
+
+    return {
+      name: skillName,
+      level: skillLevel,
+      isMatched
     };
   });
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {normalizedSkills.map((skillReq, index) => {
-        const isMatched = matchedSkills.some(
-          match => match.toLowerCase() === skillReq.skill.toLowerCase()
-        );
-        
-        return (
-          <Badge
-            key={index}
-            variant={isMatched ? "default" : "outline"}
-            className={
-              isMatched
-                ? "bg-green-100 text-green-800 hover:bg-green-200"
-                : "text-gray-600 hover:bg-gray-100"
-            }
-          >
-            {skillReq.skill} {skillReq.level && `(${skillReq.level})`}
-          </Badge>
-        );
-      })}
+    <div className="flex flex-wrap gap-1">
+      {displaySkills.slice(0, 3).map((skill, index) => (
+        <TooltipProvider key={index}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge 
+                variant={skill.isMatched ? "default" : "outline"} 
+                className="text-xs"
+              >
+                {skill.name}
+                {skill.isMatched && " ✓"}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{skill.name} {skill.level ? `(${skill.level})` : ''}</p>
+              {skill.isMatched && <p className="text-xs">Matches your skills</p>}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ))}
+      
+      {displaySkills.length > 3 && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="secondary" className="text-xs">
+                +{displaySkills.length - 3} more
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="space-y-1">
+                {displaySkills.slice(3).map((skill, index) => (
+                  <p key={index}>
+                    {skill.name} {skill.level ? `(${skill.level})` : ''}
+                    {skill.isMatched && " ✓"}
+                  </p>
+                ))}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
     </div>
   );
 };
