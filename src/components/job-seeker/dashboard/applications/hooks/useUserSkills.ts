@@ -55,10 +55,9 @@ export const useUserSkills = () => {
         return skill.toLowerCase();
       }
       
-      if (typeof skill === 'object' && skill !== null && 'skill' in skill) {
-        const skillName = skill.skill;
-        if (typeof skillName === 'string') {
-          return skillName.toLowerCase();
+      if (typeof skill === 'object' && skill !== null) {
+        if ('skill' in skill && typeof skill.skill === 'string') {
+          return skill.skill.toLowerCase();
         }
       }
       
@@ -71,10 +70,9 @@ export const useUserSkills = () => {
         return skill.toLowerCase();
       }
       
-      if (typeof skill === 'object' && skill !== null && 'skill' in skill) {
-        const skillName = skill.skill;
-        if (typeof skillName === 'string') {
-          return skillName.toLowerCase();
+      if (typeof skill === 'object' && skill !== null) {
+        if ('skill' in skill && typeof skill.skill === 'string') {
+          return skill.skill.toLowerCase();
         }
       }
       

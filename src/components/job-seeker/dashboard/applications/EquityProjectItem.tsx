@@ -13,11 +13,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 interface EquityProjectItemProps {
   application: JobApplication;
   onMessageSent?: () => void;
+  onApplicationUpdated?: () => void;
 }
 
 export const EquityProjectItem = ({ 
   application,
-  onMessageSent 
+  onMessageSent,
+  onApplicationUpdated
 }: EquityProjectItemProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
