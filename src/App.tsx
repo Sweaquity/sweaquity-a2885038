@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
@@ -15,6 +15,12 @@ import ProjectApplicationPage from "./pages/projects/ProjectApplicationPage";
 import ProfileCompletePage from "./pages/ProfileCompletePage";
 
 const queryClient = new QueryClient();
+
+// Redirect component to handle project redirect with proper typing
+const ProjectRedirect = () => {
+  const { id } = useParams();
+  return <Navigate to={`/projects/${id}`} replace />;
+};
 
 function App() {
   return (
@@ -33,11 +39,8 @@ function App() {
               <Route path="/seeker/profile/complete" element={<ProfileCompletePage />} />
               <Route path="/projects/:id" element={<ProjectDetailsPage />} />
               <Route path="/projects/:id/apply" element={<ProjectApplicationPage />} />
-              {/* Add redirect route to support /project/ links */}
-              <Route 
-                path="/project/:id" 
-                element={<Navigate to={params => `/projects/${params.id}`} replace />} 
-              />
+              {/* Add redirect route to support /project/ links using the ProjectRedirect component */}
+              <Route path="/project/:id" element={<ProjectRedirect />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

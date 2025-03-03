@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react";
 
 const ProjectDetailsPage = () => {
   const { id: projectId } = useParams();
+  const navigate = useNavigate();
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -19,6 +20,14 @@ const ProjectDetailsPage = () => {
     const fetchProjectDetails = async () => {
       if (!projectId) {
         setError("No project ID provided");
+        setIsLoading(false);
+        return;
+      }
+
+      // Basic UUID validation to prevent database errors
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(projectId)) {
+        setError("Invalid project ID format");
         setIsLoading(false);
         return;
       }
@@ -77,6 +86,13 @@ const ProjectDetailsPage = () => {
           <div className="text-center text-destructive">
             <h2 className="text-lg font-semibold mb-2">Error</h2>
             <p>{error}</p>
+            <Button 
+              variant="outline" 
+              className="mt-4" 
+              onClick={() => navigate(-1)}
+            >
+              Go Back
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -90,6 +106,13 @@ const ProjectDetailsPage = () => {
           <div className="text-center">
             <h2 className="text-lg font-semibold mb-2">Project Not Found</h2>
             <p>The project you're looking for doesn't exist or has been removed.</p>
+            <Button 
+              variant="outline" 
+              className="mt-4" 
+              onClick={() => navigate(-1)}
+            >
+              Go Back
+            </Button>
           </div>
         </CardContent>
       </Card>
