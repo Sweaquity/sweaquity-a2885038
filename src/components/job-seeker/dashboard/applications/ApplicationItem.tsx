@@ -12,7 +12,9 @@ import { ApplicationHeader } from "./ApplicationHeader";
 import { ApplicationContent } from "./ApplicationContent";
 import { ApplicationSkills } from "./ApplicationSkills";
 import { useWithdrawApplication } from "./hooks/useWithdrawApplication";
+import { useApplicationActions } from "./hooks/useApplicationActions";
 import { AcceptJobDialog } from "./AcceptJobDialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ApplicationItemProps {
   application: JobApplication;
@@ -32,15 +34,25 @@ export const ApplicationItem = ({
   const {
     isWithdrawDialogOpen,
     setIsWithdrawDialogOpen,
+    isWithdrawing,
     handleWithdrawApplication
   } = useWithdrawApplication(onApplicationUpdated);
+
+  const { 
+    isUpdatingStatus, 
+    updateApplicationStatus 
+  } = useApplicationActions(onApplicationUpdated);
 
   const handleToggle = () => {
     setIsExpanded(!isExpanded);
   };
   
+  const handleStatusChange = (newStatus: string) => {
+    updateApplicationStatus(application.job_app_id, newStatus);
+  };
+  
   const isAccepted = application.status === "accepted";
-  const isPending = ["pending", "in review", "negotiation"].includes(application.status);
+  const isPending = ["pending", "in review", "negotiation"].includes(application.status.toLowerCase());
   const bothPartiesAccepted = application.accepted_jobseeker && application.accepted_business;
 
   return (
@@ -51,7 +63,10 @@ export const ApplicationItem = ({
           company={application.business_roles?.company_name || ""}
           project={application.business_roles?.project_title || ""}
           status={application.status}
-          onWithdrawClick={() => setIsWithdrawDialogOpen(true)}
+          onWithdrawClick={(e) => {
+            e.stopPropagation();
+            setIsWithdrawDialogOpen(true);
+          }}
         />
       </div>
       
@@ -77,10 +92,35 @@ export const ApplicationItem = ({
             
             <div className="mt-4">
               <h4 className="text-sm font-medium mb-2">Application Status</h4>
-              <div className="flex items-center gap-2">
-                <StatusBadge status={application.status} />
-                {application.accepted_business && <span className="text-xs text-muted-foreground">Business has accepted</span>}
-                {application.accepted_jobseeker && <span className="text-xs text-muted-foreground">You have accepted</span>}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                {isUpdatingStatus === application.job_app_id ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
+                    <span className="text-sm">Updating...</span>
+                  </div>
+                ) : (
+                  <Select 
+                    value={application.status} 
+                    onValueChange={handleStatusChange}
+                    disabled={isUpdatingStatus === application.job_app_id}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="in review">In Review</SelectItem>
+                      <SelectItem value="negotiation">Negotiation</SelectItem>
+                      <SelectItem value="accepted">Accepted</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                      <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+                <div className="flex items-center flex-wrap gap-2">
+                  {application.accepted_business && <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">Business accepted</span>}
+                  {application.accepted_jobseeker && <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">You have accepted</span>}
+                </div>
               </div>
             </div>
             
@@ -167,6 +207,7 @@ export const ApplicationItem = ({
           isOpen={isWithdrawDialogOpen}
           onOpenChange={setIsWithdrawDialogOpen}
           onWithdraw={(reason) => handleWithdrawApplication(application.job_app_id, reason)}
+          isWithdrawing={isWithdrawing}
         />
       )}
       

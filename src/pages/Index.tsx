@@ -1,11 +1,18 @@
 
-import { Card } from "@/components/ui/card";
-import { Building2, User, Briefcase, BarChart2 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { supabase } from "@/lib/supabase";
+import { ArrowRight } from "lucide-react";
 
 interface FeaturedProject {
   project_id: string;
@@ -13,21 +20,20 @@ interface FeaturedProject {
   description: string;
   equity_allocation: number;
   skills_required: string[];
-  sub_tasks: {
+  company_name?: string;
+  businesses?: {
+    company_name: string;
+  };
+  sub_tasks?: {
     task_id: string;
     title: string;
     description: string;
     equity_allocation: number;
     skill_requirements: any[];
   }[];
-  company_name?: string;
-  businesses?: {
-    company_name?: string;
-  };
 }
 
 const Index = () => {
-  const navigate = useNavigate();
   const [featuredProjects, setFeaturedProjects] = useState<FeaturedProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -42,8 +48,10 @@ const Index = () => {
             description,
             equity_allocation,
             skills_required,
-            businesses(company_name),
-            project_sub_tasks:project_sub_tasks(
+            businesses (
+              company_name
+            ),
+            project_sub_tasks (
               task_id,
               title,
               description,
@@ -52,13 +60,18 @@ const Index = () => {
             )
           `)
           .eq('status', 'active')
-          .limit(4);
+          .limit(3);
 
         if (error) throw error;
 
-        const projects = data.map(project => ({
-          ...project,
-          company_name: project.businesses?.company_name || 'Unknown Company',
+        // Transform data to match FeaturedProject interface
+        const projects: FeaturedProject[] = data.map(project => ({
+          project_id: project.project_id,
+          title: project.title,
+          description: project.description,
+          equity_allocation: project.equity_allocation,
+          skills_required: project.skills_required || [],
+          company_name: project.businesses?.company_name,
           sub_tasks: project.project_sub_tasks || []
         }));
 
@@ -73,127 +86,170 @@ const Index = () => {
     fetchFeaturedProjects();
   }, []);
 
-  const userTypes = [
-    {
-      title: "Job Seeker",
-      description: "Find your next opportunity and showcase your skills",
-      icon: User,
-      type: "seeker" as const,
-      path: "/auth/seeker"
-    },
-    {
-      title: "Business",
-      description: "Post jobs and find the perfect candidates",
-      icon: Building2,
-      type: "business" as const,
-      path: "/auth/business"
-    }
-  ];
-
   return (
-    <div className="min-h-screen flex flex-col items-center p-6 page-transition">
-      <div className="text-center max-w-3xl mx-auto mb-8">
-        <h1 className="text-4xl font-semibold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          Welcome to Sweaquity
-        </h1>
-        <p className="text-lg text-muted-foreground mb-6">
-          The platform where skills meet equity - build your future by contributing to exciting projects
-        </p>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-6 w-full max-w-4xl mb-12">
-        {userTypes.map((type) => (
-          <Card
-            key={type.type}
-            className="p-6 landing-card hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => navigate(type.path)}
-          >
-            <div className="flex flex-col items-center text-center h-full">
-              <div className="mb-4 p-3 rounded-full bg-accent/10 text-accent">
-                <type.icon size={24} />
-              </div>
-              <h2 className="text-xl font-semibold mb-2">{type.title}</h2>
-              <p className="text-sm text-muted-foreground">
-                {type.description}
-              </p>
+    <div className="min-h-screen flex flex-col">
+      <header className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+        <div className="container mx-auto px-4 py-16 md:py-24">
+          <div className="max-w-3xl">
+            <h1 className="text-4xl md:text-5xl font-bold mb-6">
+              Find Equity Opportunities in Exciting Projects
+            </h1>
+            <p className="text-xl mb-8">
+              Connect with businesses looking for your skills and earn equity in innovative projects.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <Button asChild size="lg" className="bg-white text-blue-600 hover:bg-blue-50">
+                <Link to="/seeker/register">Join as Job Seeker</Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
+                <Link to="/business/register">Post a Project</Link>
+              </Button>
             </div>
-          </Card>
-        ))}
-      </div>
-      
-      <div className="w-full max-w-6xl mb-8">
-        <h2 className="text-2xl font-semibold mb-6 text-center">Featured Equity Projects</h2>
-        
-        {isLoading ? (
-          <div className="grid md:grid-cols-2 gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="p-6 h-64 animate-pulse bg-muted/50"></Card>
-            ))}
           </div>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-6">
-            {featuredProjects.map((project) => (
-              <Card key={project.project_id} className="p-6 hover:shadow-md transition-shadow">
-                <div className="flex flex-col h-full">
-                  <div className="mb-4">
-                    <h3 className="text-lg font-semibold">{project.title}</h3>
-                    <p className="text-sm text-muted-foreground">{project.company_name}</p>
-                  </div>
-                  
-                  <p className="text-sm mb-4 line-clamp-2">{project.description}</p>
-                  
-                  <div className="mb-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <BarChart2 className="h-4 w-4 text-green-600" />
-                      <span className="text-sm font-medium">
-                        {project.equity_allocation}% Equity Available
-                      </span>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {project.skills_required?.slice(0, 4).map((skill, i) => (
-                        <Badge key={i} variant="outline" className="text-xs">
-                          {skill}
-                        </Badge>
+        </div>
+      </header>
+
+      <main className="flex-1 container mx-auto px-4 py-12">
+        <section className="mb-16">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold">Featured Equity Projects</h2>
+            <Button asChild variant="ghost" className="gap-1">
+              <Link to="/seeker/login">
+                View All <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map(i => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader className="pb-2">
+                    <div className="h-6 bg-muted rounded-md mb-2 w-3/4"></div>
+                    <div className="h-4 bg-muted rounded-md w-1/2"></div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-24 bg-muted rounded-md mb-4"></div>
+                    <div className="flex gap-2">
+                      {[1, 2, 3].map(j => (
+                        <div key={j} className="h-6 w-16 bg-muted rounded-full"></div>
                       ))}
-                      {project.skills_required?.length > 4 && (
-                        <span className="text-xs text-muted-foreground">+{project.skills_required.length - 4} more</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredProjects.map(project => (
+                <Card key={project.project_id} className="flex flex-col h-full">
+                  <CardHeader>
+                    <CardTitle>{project.title}</CardTitle>
+                    <CardDescription>{project.company_name}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-1">
+                    <p className="line-clamp-3 mb-4">{project.description}</p>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {project.skills_required.slice(0, 3).map((skill, i) => (
+                        <Badge key={i} variant="outline">{skill}</Badge>
+                      ))}
+                      {project.skills_required.length > 3 && (
+                        <Badge variant="outline">+{project.skills_required.length - 3} more</Badge>
                       )}
                     </div>
-                  </div>
-                  
-                  {project.sub_tasks?.[0] && (
-                    <div className="bg-muted/20 p-3 rounded-md mt-auto">
-                      <h4 className="text-sm font-medium mb-1">{project.sub_tasks[0].title}</h4>
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {project.sub_tasks[0].description}
-                      </p>
-                      <div className="flex justify-between items-center mt-2">
-                        <span className="text-xs font-medium text-green-600">
-                          {project.sub_tasks[0].equity_allocation}% Equity
-                        </span>
-                        <Button size="sm" variant="outline" asChild>
-                          <Link to={`/projects/${project.project_id}`}>View Project</Link>
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                    <p className="text-sm font-medium">
+                      Up to {project.equity_allocation}% equity available
+                    </p>
+                  </CardContent>
+                  <CardFooter>
+                    <Button asChild className="w-full">
+                      <Link to="/seeker/login">Apply Now</Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+
+              {featuredProjects.length === 0 && (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-muted-foreground">No featured projects available at the moment.</p>
                 </div>
-              </Card>
-            ))}
+              )}
+            </div>
+          )}
+        </section>
+
+        <section className="grid md:grid-cols-2 gap-12 mb-16">
+          <div>
+            <h2 className="text-2xl font-bold mb-4">For Job Seekers</h2>
+            <p className="mb-6 text-muted-foreground">
+              Find exciting projects that match your skills and earn equity instead of just a salary.
+              Build your portfolio while becoming a part-owner in innovative businesses.
+            </p>
+            <ul className="space-y-3 mb-6">
+              <li className="flex gap-2">
+                <Badge className="h-6">1</Badge>
+                <span>Upload your CV and showcase your skills</span>
+              </li>
+              <li className="flex gap-2">
+                <Badge className="h-6">2</Badge>
+                <span>Get matched with projects seeking your expertise</span>
+              </li>
+              <li className="flex gap-2">
+                <Badge className="h-6">3</Badge>
+                <span>Negotiate equity and join exciting ventures</span>
+              </li>
+            </ul>
+            <Button asChild>
+              <Link to="/seeker/register">Sign Up as Job Seeker</Link>
+            </Button>
           </div>
-        )}
-        
-        <div className="flex justify-center mt-8">
-          <Button asChild>
-            <Link to="/auth/seeker">Explore All Projects</Link>
-          </Button>
+          
+          <div>
+            <h2 className="text-2xl font-bold mb-4">For Businesses</h2>
+            <p className="mb-6 text-muted-foreground">
+              Find talented professionals willing to work for equity in your venture.
+              Break down your project into tasks and allocate equity for each contribution.
+            </p>
+            <ul className="space-y-3 mb-6">
+              <li className="flex gap-2">
+                <Badge className="h-6">1</Badge>
+                <span>Post your project and define required skills</span>
+              </li>
+              <li className="flex gap-2">
+                <Badge className="h-6">2</Badge>
+                <span>Review applications from skilled professionals</span>
+              </li>
+              <li className="flex gap-2">
+                <Badge className="h-6">3</Badge>
+                <span>Collaborate with equity partners to grow your business</span>
+              </li>
+            </ul>
+            <Button asChild>
+              <Link to="/business/register">Post Your Project</Link>
+            </Button>
+          </div>
+        </section>
+      </main>
+
+      <footer className="bg-muted py-12">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="mb-6 md:mb-0">
+              <h2 className="text-xl font-bold">SweaQuity</h2>
+              <p className="text-muted-foreground">Connect talent with equity opportunities</p>
+            </div>
+            <div className="flex gap-8">
+              <Link to="/about" className="text-muted-foreground hover:text-foreground">About</Link>
+              <Link to="/terms" className="text-muted-foreground hover:text-foreground">Terms</Link>
+              <Link to="/privacy" className="text-muted-foreground hover:text-foreground">Privacy</Link>
+              <Link to="/contact" className="text-muted-foreground hover:text-foreground">Contact</Link>
+            </div>
+          </div>
+          <div className="mt-8 text-center text-sm text-muted-foreground">
+            &copy; {new Date().getFullYear()} SweaQuity. All rights reserved.
+          </div>
         </div>
-      </div>
-      
-      <Button asChild variant="link" className="text-muted-foreground">
-        <Link to="/auth/recruiter">Recruitment login here</Link>
-      </Button>
+      </footer>
     </div>
   );
 };
