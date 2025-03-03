@@ -49,21 +49,23 @@ export const useUserSkills = () => {
       return [];
     }
 
-    // Normalize user skills to lowercase strings for comparison
+    // Normalize user skills to lowercase strings for comparison, ensuring type safety
     const userSkillNames = userSkills.map(skill => {
       if (typeof skill === 'string') return skill.toLowerCase();
-      return (typeof skill === 'object' && skill !== null && 'skill' in skill)
-        ? String(skill.skill).toLowerCase()
-        : '';
-    }).filter(Boolean);
+      if (typeof skill === 'object' && skill !== null && 'skill' in skill && typeof skill.skill === 'string') {
+        return skill.skill.toLowerCase();
+      }
+      return ''; // Return empty string for invalid skill formats
+    }).filter(Boolean); // Filter out empty strings
 
-    // Normalize role skills to lowercase strings
+    // Normalize role skills to lowercase strings, ensuring type safety
     const roleSkills = application.business_roles.skill_requirements.map(skill => {
       if (typeof skill === 'string') return skill.toLowerCase();
-      return (typeof skill === 'object' && skill !== null && 'skill' in skill)
-        ? String(skill.skill).toLowerCase()
-        : '';
-    }).filter(Boolean);
+      if (typeof skill === 'object' && skill !== null && 'skill' in skill && typeof skill.skill === 'string') {
+        return skill.skill.toLowerCase();
+      }
+      return ''; // Return empty string for invalid skill formats
+    }).filter(Boolean); // Filter out empty strings
 
     // Get matching skills
     const matchedSkills = roleSkills.filter(roleSkill => 
