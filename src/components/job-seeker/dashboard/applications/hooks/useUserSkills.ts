@@ -55,7 +55,7 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
     // Get user skills from the state as lowercase strings for comparison
     const userSkillNames = userSkills.map(skill => {
       if (typeof skill === 'string') return String(skill).toLowerCase();
-      if (skill && typeof skill.skill === 'string') return skill.skill.toLowerCase();
+      if (skill && typeof skill.skill === 'string') return String(skill.skill).toLowerCase();
       return '';
     }).filter(Boolean); // Filter out empty strings
     
@@ -68,7 +68,7 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
         if (typeof req === 'string') {
           return userSkillNames.includes(String(req).toLowerCase()) ? req : null;
         } else if (req && typeof req === 'object' && 'skill' in req && typeof req.skill === 'string') {
-          return userSkillNames.includes(req.skill.toLowerCase()) ? req.skill : null;
+          return userSkillNames.includes(String(req.skill).toLowerCase()) ? req.skill : null;
         }
         return null;
       })

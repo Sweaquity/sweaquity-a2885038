@@ -48,7 +48,7 @@ export const ApplicationsList = ({
         return String(skill).toLowerCase().includes(term);
       }
       if (skill && typeof skill === 'object' && 'skill' in skill && typeof skill.skill === 'string') {
-        return skill.skill.toLowerCase().includes(term);
+        return String(skill.skill).toLowerCase().includes(term);
       }
       return false;
     });
@@ -79,7 +79,7 @@ export const ApplicationsList = ({
           <ApplicationItem
             key={application.job_app_id}
             application={application}
-            matchedSkills={getMatchedSkills(application)}
+            getMatchedSkills={() => getMatchedSkills(application)}
             onApplicationUpdated={onApplicationUpdated}
           />
         ))}

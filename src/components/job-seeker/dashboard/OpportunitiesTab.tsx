@@ -47,15 +47,15 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
         
         // Check against business name
         if (project.business_roles?.company_name && 
-            project.business_roles.company_name.toLowerCase().includes(term)) return true;
+            String(project.business_roles.company_name).toLowerCase().includes(term)) return true;
         
         // Check against project description
         const projectDescription = project.business_roles?.description;
-        if (projectDescription && projectDescription.toLowerCase().includes(term)) return true;
+        if (projectDescription && String(projectDescription).toLowerCase().includes(term)) return true;
         
         // Check against task title
         const taskTitle = project.business_roles?.title;
-        if (taskTitle && taskTitle.toLowerCase().includes(term)) return true;
+        if (taskTitle && String(taskTitle).toLowerCase().includes(term)) return true;
         
         return false;
       });
@@ -63,14 +63,14 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
 
     if (filterSkill) {
       filtered = filtered.filter(project => {
-        const requirements = project.sub_tasks.flatMap(task => task.skill_requirements || []);
+        const requirements = project.sub_tasks?.flatMap(task => task.skill_requirements || []) || [];
         
         return requirements.some(req => {
           if (typeof req === 'string') {
-            return req.toLowerCase() === filterSkill.toLowerCase();
+            return String(req).toLowerCase() === filterSkill.toLowerCase();
           }
           if (req && typeof req === 'object' && 'skill' in req && typeof req.skill === 'string') {
-            return req.skill.toLowerCase() === filterSkill.toLowerCase();
+            return String(req.skill).toLowerCase() === filterSkill.toLowerCase();
           }
           return false;
         });
@@ -126,13 +126,13 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
     const skillsSet = new Set<string>();
     
     projects.forEach(project => {
-      project.sub_tasks.forEach(task => {
+      project.sub_tasks?.forEach(task => {
         const requirements = task.skill_requirements || [];
         requirements.forEach(req => {
           if (typeof req === 'string') {
-            skillsSet.add(req.toLowerCase());
+            skillsSet.add(String(req).toLowerCase());
           } else if (req && typeof req === 'object' && 'skill' in req && typeof req.skill === 'string') {
-            skillsSet.add(req.skill.toLowerCase());
+            skillsSet.add(String(req.skill).toLowerCase());
           }
         });
       });
@@ -206,12 +206,13 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                   </div>
                   <Badge variant="secondary" className="flex items-center">
                     <Star className="h-4 w-4 mr-1 text-amber-500" />
-                    {project.skill_match || 0}% Match
+                    {/* Add a default value or calculate skill match */}
+                    {(project as any).skill_match || 0}% Match
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent className="p-4">
-                {project.sub_tasks.map((task) => (
+                {(project.sub_tasks || []).map((task) => (
                   <div key={task.id} className="border-b pb-4 mb-4 last:border-0 last:mb-0 last:pb-0">
                     <div className="space-y-3">
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
