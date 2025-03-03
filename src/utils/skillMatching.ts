@@ -20,9 +20,14 @@ export const skillMatching = (userSkills: Skill[], task: any): MatchResult | nul
     }).filter(skill => skill !== ''); // Filter out empty strings
     
     // Extract user skill names to lowercase for comparison
-    const userSkillNames = userSkills.map(s => 
-      typeof s === 'string' ? s.toLowerCase() : s.skill.toLowerCase()
-    );
+    const userSkillNames = userSkills.map(s => {
+      if (typeof s === 'string') {
+        return s.toLowerCase();
+      } else if (s && typeof s.skill === 'string') {
+        return s.skill.toLowerCase();
+      }
+      return '';
+    }).filter(Boolean); // Remove empty strings
     
     // Find matching skills
     const matchedSkills = taskSkills.filter(skill => 

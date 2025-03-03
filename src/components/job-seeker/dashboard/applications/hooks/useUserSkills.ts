@@ -58,9 +58,14 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
     }
     
     // Get user skills from the state
-    const skillNames = userSkills.map(skill => 
-      typeof skill === 'string' ? skill.toLowerCase() : skill.skill.toLowerCase()
-    );
+    const skillNames = userSkills.map(skill => {
+      if (typeof skill === 'string') {
+        return skill.toLowerCase();
+      } else if (skill && typeof skill.skill === 'string') {
+        return skill.skill.toLowerCase();
+      }
+      return ""; // Return empty string for invalid skills
+    }).filter(Boolean); // Remove empty strings
     
     // Safely handle the skill_requirements array
     const skillRequirements = Array.isArray(application.business_roles.skill_requirements) 
