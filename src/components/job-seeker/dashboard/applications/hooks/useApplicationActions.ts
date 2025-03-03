@@ -82,12 +82,27 @@ export const useApplicationActions = (onSuccess?: () => void) => {
         .from('job_applications')
         .select(`
           task_id,
-          project_sub_tasks!inner (equity_allocation)
+          project_sub_tasks(equity_allocation)
         `)
         .eq('job_app_id', applicationId)
         .single();
         
       if (appError) throw appError;
+      
+      // Fixed: Properly access equity_allocation from the nested object
+      let equityAllocation = 0;
+      if (applicationData && 
+          applicationData.project_sub_tasks && 
+          typeof applicationData.project_sub_tasks === 'object') {
+        // If it's an array with one item
+        if (Array.isArray(applicationData.project_sub_tasks) && applicationData.project_sub_tasks.length > 0) {
+          equityAllocation = applicationData.project_sub_tasks[0].equity_allocation || 0;
+        } 
+        // If it's a direct object (not array)
+        else if ('equity_allocation' in applicationData.project_sub_tasks) {
+          equityAllocation = applicationData.project_sub_tasks.equity_allocation || 0;
+        }
+      }
       
       // Check if an entry already exists
       const { data: existingEntry } = await supabase
@@ -106,7 +121,7 @@ export const useApplicationActions = (onSuccess?: () => void) => {
         .from('accepted_jobs')
         .insert({
           job_app_id: applicationId,
-          equity_agreed: applicationData?.project_sub_tasks?.equity_allocation || 0
+          equity_agreed: equityAllocation
         });
       
       if (error) throw error;

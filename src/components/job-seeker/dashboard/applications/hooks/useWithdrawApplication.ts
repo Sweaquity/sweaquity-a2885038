@@ -7,10 +7,10 @@ export const useWithdrawApplication = (onApplicationUpdated?: () => void) => {
   const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
-  const handleWithdrawApplication = async (applicationId: string, reason: string): Promise<boolean> => {
+  const handleWithdrawApplication = async (applicationId: string, reason: string): Promise<void> => {
     if (!applicationId || !reason) {
       toast.error("Application ID and withdrawal reason are required");
-      return false;
+      return;
     }
     
     setIsWithdrawing(true);
@@ -33,12 +33,9 @@ export const useWithdrawApplication = (onApplicationUpdated?: () => void) => {
       if (onApplicationUpdated) {
         onApplicationUpdated();
       }
-      
-      return true;
     } catch (error: any) {
       console.error("Error withdrawing application:", error);
       toast.error(error.message || "Failed to withdraw application");
-      return false;
     } finally {
       setIsWithdrawing(false);
       setIsWithdrawDialogOpen(false);

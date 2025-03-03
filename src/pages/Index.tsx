@@ -44,7 +44,21 @@ export default function IndexPage() {
 
         if (error) throw error;
         
-        setFeaturedProjects(data || []);
+        // Fixed: Transform the data to match the FeaturedProject interface
+        const transformedData: FeaturedProject[] = data?.map(project => ({
+          project_id: project.project_id,
+          title: project.title,
+          description: project.description,
+          equity_allocation: project.equity_allocation,
+          skills_required: project.skills_required,
+          project_timeframe: project.project_timeframe,
+          // Handle nested business data correctly
+          business: project.business && Array.isArray(project.business) && project.business.length > 0 
+            ? { company_name: project.business[0].company_name }
+            : { company_name: "Anonymous Company" }
+        })) || [];
+        
+        setFeaturedProjects(transformedData);
       } catch (error) {
         console.error('Error fetching featured projects:', error);
       } finally {

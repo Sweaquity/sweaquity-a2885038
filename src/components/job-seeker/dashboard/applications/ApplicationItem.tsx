@@ -43,7 +43,7 @@ export const ApplicationItem = ({
     updateApplicationStatus 
   } = useApplicationActions(onApplicationUpdated);
 
-  // Change the handler to accept no arguments
+  // Fixed: Removing the event parameter as it's not expected
   const handleToggle = () => {
     setIsExpanded(!isExpanded);
   };
@@ -56,9 +56,10 @@ export const ApplicationItem = ({
   const isPending = ["pending", "in review", "negotiation"].includes(application.status.toLowerCase());
   const bothPartiesAccepted = application.accepted_jobseeker && application.accepted_business;
 
-  // Create a void returning withdraw handler
+  // Fixed: Make handleWithdraw return a void Promise
   const handleWithdraw = async (reason: string): Promise<void> => {
     await handleWithdrawApplication(application.job_app_id, reason);
+    // No return value needed
   };
 
   return (
