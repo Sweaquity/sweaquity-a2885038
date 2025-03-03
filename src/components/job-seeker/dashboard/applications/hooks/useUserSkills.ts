@@ -63,10 +63,10 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
     );
     
     // Convert skills_required to an array we can work with
-    let requiredSkills: any[] = [];
+    let requiredSkills: Array<string | { skill: string }> = [];
     
     if (Array.isArray(application.business_roles.skills_required)) {
-      requiredSkills = application.business_roles.skills_required;
+      requiredSkills = application.business_roles.skills_required as Array<string | { skill: string }>;
     }
     
     // Find the intersection of user skills and required skills
