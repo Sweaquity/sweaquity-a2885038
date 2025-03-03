@@ -1,7 +1,8 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight, FileText, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, FileText, Loader2, MessageCircle, Bell } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,9 +11,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skill } from "@/types/jobSeeker";
 import { useApplicationActions } from "@/components/job-seeker/dashboard/applications/hooks/useApplicationActions";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { RejectApplicationDialog } from "./applications/RejectApplicationDialog";
 
 interface Application {
   job_app_id: string;
@@ -56,13 +59,61 @@ export const ProjectApplicationsSection = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [expandedApplications, setExpandedApplications] = useState<Set<string>>(new Set());
+  const [newApplicationsCount, setNewApplicationsCount] = useState(0);
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
+  
   const { isUpdatingStatus, updateApplicationStatus } = useApplicationActions(() => {
     loadProjectsWithApplications();
   });
 
   useEffect(() => {
     loadProjectsWithApplications();
+    setupRealtimeListener();
+    return () => {
+      cleanupRealtimeListener();
+    };
   }, []);
+
+  const setupRealtimeListener = () => {
+    const channel = supabase
+      .channel('application-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'job_applications'
+        },
+        () => {
+          setNewApplicationsCount(prev => prev + 1);
+          toast.info("New application received!");
+          loadProjectsWithApplications();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'job_applications',
+          filter: 'task_discourse=neq.null'
+        },
+        () => {
+          setNewMessagesCount(prev => prev + 1);
+          toast.info("New message received!");
+          loadProjectsWithApplications();
+        }
+      )
+      .subscribe();
+
+    return channel;
+  };
+
+  const cleanupRealtimeListener = () => {
+    supabase.removeChannel(supabase.channel('application-updates'));
+  };
 
   const loadProjectsWithApplications = async () => {
     try {
@@ -233,6 +284,40 @@ export const ProjectApplicationsSection = () => {
 
       console.log("Final projects with applications:", projectsWithApplications.length);
       setProjects(projectsWithApplications);
+      
+      // Count new applications (those that are less than 24 hours old)
+      const oneDayAgo = new Date();
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+      
+      let newApps = 0;
+      let newMsgs = 0;
+      
+      projectsWithApplications.forEach(project => {
+        project.applications.forEach(app => {
+          const appDate = new Date(app.applied_at);
+          if (appDate > oneDayAgo && app.status === 'pending') {
+            newApps++;
+          }
+          
+          // Check for recent messages in task_discourse
+          if (app.task_discourse) {
+            const lastMessageMatch = app.task_discourse.match(/\[([^\]]+)\]/);
+            if (lastMessageMatch) {
+              try {
+                const msgDate = new Date(lastMessageMatch[1]);
+                if (msgDate > oneDayAgo) {
+                  newMsgs++;
+                }
+              } catch (e) {
+                console.error("Error parsing message date:", e);
+              }
+            }
+          }
+        });
+      });
+      
+      setNewApplicationsCount(newApps);
+      setNewMessagesCount(newMsgs);
     } catch (error) {
       console.error('Error loading projects with applications:', error);
       toast.error("Failed to load applications data");
@@ -242,7 +327,48 @@ export const ProjectApplicationsSection = () => {
   };
 
   const handleStatusChange = async (applicationId: string, newStatus: string) => {
+    if (newStatus === 'rejected') {
+      setSelectedApplicationId(applicationId);
+      setRejectDialogOpen(true);
+      return;
+    }
+    
     await updateApplicationStatus(applicationId, newStatus);
+  };
+
+  const handleRejectWithNote = async (applicationId: string, note: string) => {
+    try {
+      const { data: application, error: fetchError } = await supabase
+        .from('job_applications')
+        .select('task_discourse')
+        .eq('job_app_id', applicationId)
+        .single();
+        
+      if (fetchError) throw fetchError;
+      
+      const timestamp = new Date().toLocaleString();
+      const rejectMessage = `[${timestamp}] Business: ${note} (Rejection reason)`;
+      
+      const updatedDiscourse = application.task_discourse 
+        ? `${application.task_discourse}\n\n${rejectMessage}`
+        : rejectMessage;
+        
+      const { error: updateError } = await supabase
+        .from('job_applications')
+        .update({ 
+          status: 'rejected',
+          task_discourse: updatedDiscourse
+        })
+        .eq('job_app_id', applicationId);
+        
+      if (updateError) throw updateError;
+      
+      toast.success("Application rejected with note");
+      loadProjectsWithApplications();
+    } catch (error) {
+      console.error('Error rejecting application:', error);
+      toast.error("Failed to reject application");
+    }
   };
 
   const toggleProjectExpanded = (projectId: string) => {
@@ -284,6 +410,60 @@ export const ProjectApplicationsSection = () => {
     );
   }
 
+  // Filter applications by status
+  const getPendingApplications = () => {
+    const pendingApps: Application[] = [];
+    projects.forEach(project => {
+      project.applications.forEach(app => {
+        if (['pending', 'in review'].includes(app.status.toLowerCase())) {
+          pendingApps.push(app);
+        }
+      });
+    });
+    return pendingApps;
+  };
+
+  const getActiveApplications = () => {
+    const activeApps: Application[] = [];
+    projects.forEach(project => {
+      project.applications.forEach(app => {
+        if (['negotiation', 'accepted'].includes(app.status.toLowerCase())) {
+          activeApps.push(app);
+        }
+      });
+    });
+    return activeApps;
+  };
+
+  const getWithdrawnApplications = () => {
+    const withdrawnApps: Application[] = [];
+    projects.forEach(project => {
+      project.applications.forEach(app => {
+        if (app.status.toLowerCase() === 'withdrawn') {
+          withdrawnApps.push(app);
+        }
+      });
+    });
+    return withdrawnApps;
+  };
+
+  const getRejectedApplications = () => {
+    const rejectedApps: Application[] = [];
+    projects.forEach(project => {
+      project.applications.forEach(app => {
+        if (app.status.toLowerCase() === 'rejected') {
+          rejectedApps.push(app);
+        }
+      });
+    });
+    return rejectedApps;
+  };
+
+  const pendingApplications = getPendingApplications();
+  const activeApplications = getActiveApplications();
+  const withdrawnApplications = getWithdrawnApplications();
+  const rejectedApplications = getRejectedApplications();
+
   return (
     <Card>
       <CardHeader>
@@ -293,218 +473,598 @@ export const ProjectApplicationsSection = () => {
         {projects.length === 0 ? (
           <p className="text-muted-foreground text-center p-4">No projects found.</p>
         ) : (
-          <div className="space-y-4">
-            {projects.map(project => (
-              <Collapsible 
-                key={project.project_id}
-                open={expandedProjects.has(project.project_id)}
-                onOpenChange={() => toggleProjectExpanded(project.project_id)}
-                className="border rounded-lg overflow-hidden"
-              >
-                <CollapsibleTrigger className="flex justify-between items-center w-full p-4 text-left hover:bg-muted/50">
-                  <div>
-                    <h3 className="text-lg font-medium">{project.title}</h3>
-                    <div className="flex flex-wrap items-center gap-2 mt-1">
-                      <Badge variant="outline">
-                        {project.applications.length} application{project.applications.length !== 1 ? 's' : ''}
-                      </Badge>
-                      {project.skills_required && project.skills_required.length > 0 && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-muted-foreground">Skills:</span>
-                          <div className="flex flex-wrap gap-1">
-                            {project.skills_required.slice(0, 3).map((skill, i) => (
-                              <Badge key={i} variant="secondary" className="text-xs">
-                                {skill}
-                              </Badge>
-                            ))}
-                            {project.skills_required.length > 3 && (
-                              <span className="text-xs text-muted-foreground">
-                                +{project.skills_required.length - 3}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {expandedProjects.has(project.project_id) ? 
-                    <ChevronDown className="h-5 w-5 flex-shrink-0" /> : 
-                    <ChevronRight className="h-5 w-5 flex-shrink-0" />
-                  }
-                </CollapsibleTrigger>
-                <CollapsibleContent className="px-4 pb-4">
-                  {project.applications.length === 0 ? (
-                    <p className="text-muted-foreground text-center p-4">No applications for this project.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-[200px]">Applicant</TableHead>
-                            <TableHead>Role</TableHead>
-                            <TableHead className="text-center">Skills Match</TableHead>
-                            <TableHead className="text-center">Status</TableHead>
-                            <TableHead className="w-[80px]"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {project.applications.map(application => (
-                            <TableRow 
-                              key={application.job_app_id}
-                              className="cursor-pointer hover:bg-muted/50"
-                              onClick={() => toggleApplicationExpanded(application.job_app_id)}
-                            >
-                              <TableCell>
-                                <div>
-                                  <p className="font-medium">{application.profile?.first_name} {application.profile?.last_name}</p>
-                                  <p className="text-xs text-muted-foreground">{application.profile?.title || "No title"}</p>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div>
-                                  <p className="font-medium">{application.business_roles?.title || "Untitled"}</p>
-                                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                                    {application.business_roles?.timeframe && `${application.business_roles.timeframe} • `}
-                                    {application.business_roles?.equity_allocation && `${application.business_roles.equity_allocation}% equity`}
-                                  </p>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <Badge variant={
-                                  application.skillMatch && application.skillMatch > 70 ? "default" :
-                                  application.skillMatch && application.skillMatch > 40 ? "secondary" : 
-                                  "outline"
-                                }>
-                                  {application.skillMatch || 0}% match
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <select 
-                                  className="w-full px-2 py-1 border rounded text-xs"
-                                  value={application.status}
-                                  onChange={(e) => {
-                                    e.stopPropagation();
-                                    handleStatusChange(application.job_app_id, e.target.value);
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  disabled={isUpdatingStatus === application.job_app_id}
-                                >
-                                  <option value="pending">Pending</option>
-                                  <option value="in review">In Review</option>
-                                  <option value="negotiation">Negotiation</option>
-                                  <option value="accepted">Accepted</option>
-                                  <option value="rejected">Rejected</option>
-                                  <option value="withdrawn">Withdrawn</option>
-                                </select>
-                                {isUpdatingStatus === application.job_app_id && (
-                                  <Loader2 className="animate-spin ml-2 h-4 w-4" />
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {expandedApplications.has(application.job_app_id) ? 
-                                  <ChevronDown className="h-4 w-4 mx-auto" /> : 
-                                  <ChevronRight className="h-4 w-4 mx-auto" />
-                                }
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                      
-                      {project.applications.map(application => (
-                        <Collapsible
-                          key={`${application.job_app_id}-details`}
-                          open={expandedApplications.has(application.job_app_id)}
-                          className="border rounded-lg overflow-hidden mt-2"
-                        >
-                          <CollapsibleContent className="p-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <h4 className="font-medium mb-2">Application Details</h4>
-                                <div className="space-y-2">
-                                  <div>
-                                    <p className="text-sm font-medium">Message</p>
-                                    <p className="text-sm">{application.message || "No message provided"}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium">Applied</p>
-                                    <p className="text-sm">{new Date(application.applied_at).toLocaleDateString()}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium">Location</p>
-                                    <p className="text-sm">{application.profile?.location || "Not specified"}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium">Preference</p>
-                                    <p className="text-sm">{application.profile?.employment_preference || "Not specified"}</p>
-                                  </div>
-                                  {application.cv_url && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        window.open(application.cv_url!, '_blank');
-                                      }}
-                                    >
-                                      <FileText className="mr-1 h-4 w-4" />
-                                      View CV
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <h4 className="font-medium mb-2">Skills Match</h4>
-                                <div className="space-y-2">
-                                  <div>
-                                    <p className="text-sm font-medium">Required Skills</p>
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                      {application.business_roles?.skill_requirements?.map((skillReq, index) => {
-                                        const hasSkill = application.profile?.skills?.some(
-                                          s => s.skill.toLowerCase() === skillReq.skill.toLowerCase()
-                                        );
-                                        return (
-                                          <Badge key={index} variant={hasSkill ? "default" : "outline"} className="text-xs">
-                                            {skillReq.skill} ({skillReq.level}) {hasSkill && "✓"}
-                                          </Badge>
-                                        );
-                                      })}
-                                      
-                                      {(!application.business_roles?.skill_requirements || application.business_roles.skill_requirements.length === 0) && 
-                                        <p className="text-xs text-muted-foreground">No skill requirements specified</p>
-                                      }
-                                    </div>
-                                  </div>
-                                  
-                                  <div>
-                                    <p className="text-sm font-medium">Description</p>
-                                    <p className="text-sm mt-1">{application.business_roles?.description || "No description provided"}</p>
-                                  </div>
-                                  
-                                  <div>
-                                    <p className="text-sm font-medium">Timeframe</p>
-                                    <p className="text-sm">{application.business_roles?.timeframe || "Not specified"}</p>
-                                  </div>
-                                  
-                                  <div>
-                                    <p className="text-sm font-medium">Equity Allocation</p>
-                                    <p className="text-sm">{application.business_roles?.equity_allocation ? `${application.business_roles.equity_allocation}%` : "Not specified"}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      ))}
-                    </div>
-                  )}
-                </CollapsibleContent>
-              </Collapsible>
-            ))}
-          </div>
+          <Tabs defaultValue="pending" className="space-y-4">
+            <TabsList className="grid grid-cols-4 gap-2">
+              <TabsTrigger value="pending" className="relative">
+                Pending Applications ({pendingApplications.length})
+                {newApplicationsCount > 0 && (
+                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                    {newApplicationsCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="active" className="relative">
+                Active Projects ({activeApplications.length})
+                {newMessagesCount > 0 && (
+                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                    {newMessagesCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="withdrawn">
+                Withdrawn ({withdrawnApplications.length})
+              </TabsTrigger>
+              <TabsTrigger value="rejected">
+                Rejected ({rejectedApplications.length})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="pending" className="space-y-4">
+              {pendingApplications.length === 0 ? (
+                <p className="text-muted-foreground text-center p-4">No pending applications found.</p>
+              ) : (
+                <PendingApplicationsTable 
+                  applications={pendingApplications}
+                  expandedApplications={expandedApplications}
+                  toggleApplicationExpanded={toggleApplicationExpanded}
+                  handleStatusChange={handleStatusChange}
+                  isUpdatingStatus={isUpdatingStatus}
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="active" className="space-y-4">
+              {activeApplications.length === 0 ? (
+                <p className="text-muted-foreground text-center p-4">No active projects found.</p>
+              ) : (
+                <ActiveApplicationsTable 
+                  applications={activeApplications}
+                  expandedApplications={expandedApplications}
+                  toggleApplicationExpanded={toggleApplicationExpanded}
+                  handleStatusChange={handleStatusChange}
+                  isUpdatingStatus={isUpdatingStatus}
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="withdrawn" className="space-y-4">
+              {withdrawnApplications.length === 0 ? (
+                <p className="text-muted-foreground text-center p-4">No withdrawn applications found.</p>
+              ) : (
+                <WithdrawnApplicationsTable 
+                  applications={withdrawnApplications}
+                  expandedApplications={expandedApplications}
+                  toggleApplicationExpanded={toggleApplicationExpanded}
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="rejected" className="space-y-4">
+              {rejectedApplications.length === 0 ? (
+                <p className="text-muted-foreground text-center p-4">No rejected applications found.</p>
+              ) : (
+                <RejectedApplicationsTable 
+                  applications={rejectedApplications}
+                  expandedApplications={expandedApplications}
+                  toggleApplicationExpanded={toggleApplicationExpanded}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
         )}
       </CardContent>
+      
+      <RejectApplicationDialog
+        isOpen={rejectDialogOpen}
+        onOpenChange={setRejectDialogOpen}
+        onReject={(note) => {
+          if (selectedApplicationId) {
+            handleRejectWithNote(selectedApplicationId, note);
+          }
+        }}
+      />
     </Card>
   );
-}
+};
+
+// Table component for pending applications
+const PendingApplicationsTable = ({ 
+  applications, 
+  expandedApplications, 
+  toggleApplicationExpanded, 
+  handleStatusChange, 
+  isUpdatingStatus 
+}: { 
+  applications: Application[], 
+  expandedApplications: Set<string>, 
+  toggleApplicationExpanded: (id: string) => void,
+  handleStatusChange: (id: string, status: string) => void,
+  isUpdatingStatus: string | null
+}) => {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[200px]">Applicant</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead className="text-center">Skills Match</TableHead>
+          <TableHead className="text-center">Status</TableHead>
+          <TableHead className="w-[80px]"></TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {applications.map(application => (
+          <TableRow 
+            key={application.job_app_id}
+            className="cursor-pointer hover:bg-muted/50"
+            onClick={() => toggleApplicationExpanded(application.job_app_id)}
+          >
+            <TableCell>
+              <div>
+                <p className="font-medium">{application.profile?.first_name} {application.profile?.last_name}</p>
+                <p className="text-xs text-muted-foreground">{application.profile?.title || "No title"}</p>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div>
+                <p className="font-medium">{application.business_roles?.title || "Untitled"}</p>
+                <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                  {application.business_roles?.timeframe && `${application.business_roles.timeframe} • `}
+                  {application.business_roles?.equity_allocation && `${application.business_roles.equity_allocation}% equity`}
+                </p>
+              </div>
+            </TableCell>
+            <TableCell className="text-center">
+              <Badge variant={
+                application.skillMatch && application.skillMatch > 70 ? "default" :
+                application.skillMatch && application.skillMatch > 40 ? "secondary" : 
+                "outline"
+              }>
+                {application.skillMatch || 0}% match
+              </Badge>
+            </TableCell>
+            <TableCell>
+              <select 
+                className="w-full px-2 py-1 border rounded text-xs"
+                value={application.status}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  handleStatusChange(application.job_app_id, e.target.value);
+                }}
+                onClick={(e) => e.stopPropagation()}
+                disabled={isUpdatingStatus === application.job_app_id}
+              >
+                <option value="pending">Pending</option>
+                <option value="in review">In Review</option>
+                <option value="negotiation">Negotiation</option>
+                <option value="accepted">Accepted</option>
+                <option value="rejected">Rejected</option>
+              </select>
+              {isUpdatingStatus === application.job_app_id && (
+                <Loader2 className="animate-spin ml-2 h-4 w-4" />
+              )}
+            </TableCell>
+            <TableCell>
+              {expandedApplications.has(application.job_app_id) ? 
+                <ChevronDown className="h-4 w-4 mx-auto" /> : 
+                <ChevronRight className="h-4 w-4 mx-auto" />
+              }
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+      {applications.map(application => (
+        <Collapsible
+          key={`${application.job_app_id}-details`}
+          open={expandedApplications.has(application.job_app_id)}
+        >
+          <CollapsibleContent className="p-4 border-t">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-medium mb-2">Application Details</h4>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm font-medium">Message</p>
+                    <p className="text-sm">{application.message || "No message provided"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Applied</p>
+                    <p className="text-sm">{new Date(application.applied_at).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Location</p>
+                    <p className="text-sm">{application.profile?.location || "Not specified"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Preference</p>
+                    <p className="text-sm">{application.profile?.employment_preference || "Not specified"}</p>
+                  </div>
+                  {application.cv_url && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(application.cv_url!, '_blank');
+                      }}
+                    >
+                      <FileText className="mr-1 h-4 w-4" />
+                      View CV
+                    </Button>
+                  )}
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Skills Match</h4>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm font-medium">Required Skills</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {application.business_roles?.skill_requirements?.map((skillReq, index) => {
+                        const hasSkill = application.profile?.skills?.some(
+                          s => typeof s === 'object' && s !== null && 'skill' in s && 
+                            typeof s.skill === 'string' && 
+                            typeof skillReq.skill === 'string' &&
+                            s.skill.toLowerCase() === skillReq.skill.toLowerCase()
+                        );
+                        return (
+                          <Badge key={index} variant={hasSkill ? "default" : "outline"} className="text-xs">
+                            {skillReq.skill} ({skillReq.level}) {hasSkill && "✓"}
+                          </Badge>
+                        );
+                      })}
+                      
+                      {(!application.business_roles?.skill_requirements || application.business_roles.skill_requirements.length === 0) && 
+                        <p className="text-xs text-muted-foreground">No skill requirements specified</p>
+                      }
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium">Description</p>
+                    <p className="text-sm mt-1">{application.business_roles?.description || "No description provided"}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium">Timeframe</p>
+                    <p className="text-sm">{application.business_roles?.timeframe || "Not specified"}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium">Equity Allocation</p>
+                    <p className="text-sm">{application.business_roles?.equity_allocation ? `${application.business_roles.equity_allocation}%` : "Not specified"}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      ))}
+    </Table>
+  );
+};
+
+// Table component for active applications
+const ActiveApplicationsTable = ({ 
+  applications, 
+  expandedApplications, 
+  toggleApplicationExpanded, 
+  handleStatusChange, 
+  isUpdatingStatus 
+}: { 
+  applications: Application[], 
+  expandedApplications: Set<string>, 
+  toggleApplicationExpanded: (id: string) => void,
+  handleStatusChange: (id: string, status: string) => void,
+  isUpdatingStatus: string | null
+}) => {
+  return (
+    <div className="space-y-4">
+      {applications.map(application => (
+        <Card key={application.job_app_id} className="shadow-sm hover:shadow transition-shadow">
+          <Collapsible 
+            open={expandedApplications.has(application.job_app_id)}
+            onOpenChange={() => toggleApplicationExpanded(application.job_app_id)}
+          >
+            <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
+              <div className="flex flex-1 flex-col space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <h3 className="text-md font-semibold line-clamp-1">
+                    {application.business_roles?.title || "Untitled Role"}
+                  </h3>
+                  <Badge className={
+                    application.status.toLowerCase() === 'accepted' 
+                      ? 'bg-green-100 text-green-800 border-green-300'
+                      : 'bg-amber-100 text-amber-800 border-amber-300'
+                  }>
+                    {application.status}
+                  </Badge>
+                </div>
+                
+                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center">
+                    {application.profile?.first_name} {application.profile?.last_name}
+                  </span>
+                  <span className="inline-flex items-center">
+                    Project: {application.business_roles?.project.title || "Untitled Project"}
+                  </span>
+                  <span className="inline-flex items-center">
+                    {application.business_roles?.equity_allocation && `${application.business_roles.equity_allocation}% equity`}
+                  </span>
+                </div>
+              </div>
+              
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  {expandedApplications.has(application.job_app_id) ? 
+                    <ChevronDown className="h-4 w-4" /> : 
+                    <ChevronRight className="h-4 w-4" />
+                  }
+                </Button>
+              </CollapsibleTrigger>
+            </CardHeader>
+            
+            <CardContent className="px-4 py-2">
+              <div className="grid grid-cols-1 gap-4 mb-2 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Skills Required</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {application.business_roles?.skill_requirements?.map((skill, index) => (
+                      <Badge key={index} variant="outline" className="bg-slate-50">
+                        {typeof skill === 'string' ? skill : skill.skill}
+                        {typeof skill !== 'string' && skill.level && 
+                          <span className="ml-1 opacity-70">({skill.level})</span>
+                        }
+                      </Badge>
+                    ))}
+                    {(!application.business_roles?.skill_requirements || 
+                      application.business_roles.skill_requirements.length === 0) && 
+                      <span className="text-muted-foreground">No specific skills required</span>
+                    }
+                  </div>
+                </div>
+                
+                <select 
+                  className="w-full md:w-1/3 px-2 py-1 border rounded text-xs self-start"
+                  value={application.status}
+                  onChange={(e) => handleStatusChange(application.job_app_id, e.target.value)}
+                  disabled={isUpdatingStatus === application.job_app_id}
+                >
+                  <option value="negotiation">Negotiation</option>
+                  <option value="accepted">Accepted</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="in review">Return to In Review</option>
+                </select>
+              </div>
+              
+              <CollapsibleContent className="mt-4 space-y-4">
+                <div>
+                  <h4 className="font-medium mb-1">Application Message</h4>
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">
+                    {application.message || "No application message provided."}
+                  </p>
+                </div>
+                
+                {application.task_discourse && (
+                  <div className="mt-3 p-3 bg-slate-50 rounded-md border">
+                    <h4 className="font-medium mb-2">Message History</h4>
+                    <pre className="text-sm whitespace-pre-wrap font-sans">
+                      {application.task_discourse}
+                    </pre>
+                  </div>
+                )}
+                
+                <div className="flex flex-wrap gap-2 mt-4">
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    onClick={() => {
+                      // Implement message functionality
+                      toast.info("Message functionality coming soon");
+                    }}
+                  >
+                    <MessageCircle className="mr-1.5 h-4 w-4" />
+                    Send Message
+                  </Button>
+                  
+                  {application.cv_url && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(application.cv_url!, '_blank')}
+                    >
+                      <FileText className="mr-1.5 h-4 w-4" />
+                      View CV
+                    </Button>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </CardContent>
+          </Collapsible>
+        </Card>
+      ))}
+    </div>
+  );
+};
+
+// Table component for withdrawn applications
+const WithdrawnApplicationsTable = ({ 
+  applications, 
+  expandedApplications, 
+  toggleApplicationExpanded
+}: { 
+  applications: Application[], 
+  expandedApplications: Set<string>, 
+  toggleApplicationExpanded: (id: string) => void
+}) => {
+  return (
+    <div className="space-y-4">
+      {applications.map(application => (
+        <Card key={application.job_app_id} className="shadow-sm hover:shadow transition-shadow">
+          <Collapsible 
+            open={expandedApplications.has(application.job_app_id)}
+            onOpenChange={() => toggleApplicationExpanded(application.job_app_id)}
+          >
+            <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
+              <div className="flex flex-1 flex-col space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <h3 className="text-md font-semibold line-clamp-1">
+                    {application.business_roles?.title || "Untitled Role"}
+                  </h3>
+                  <Badge variant="outline">
+                    Withdrawn
+                  </Badge>
+                </div>
+                
+                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center">
+                    {application.profile?.first_name} {application.profile?.last_name}
+                  </span>
+                  <span className="inline-flex items-center">
+                    Project: {application.business_roles?.project.title || "Untitled Project"}
+                  </span>
+                  <span className="inline-flex items-center">
+                    Applied: {new Date(application.applied_at).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+              
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  {expandedApplications.has(application.job_app_id) ? 
+                    <ChevronDown className="h-4 w-4" /> : 
+                    <ChevronRight className="h-4 w-4" />
+                  }
+                </Button>
+              </CollapsibleTrigger>
+            </CardHeader>
+            
+            <CardContent className="px-4 py-2">
+              <CollapsibleContent className="mt-2 space-y-4">
+                <div>
+                  <h4 className="font-medium mb-1">Application Message</h4>
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">
+                    {application.message || "No application message provided."}
+                  </p>
+                </div>
+                
+                {application.task_discourse && (
+                  <div className="mt-3 p-3 bg-slate-50 rounded-md border">
+                    <h4 className="font-medium mb-2">Message History</h4>
+                    <pre className="text-sm whitespace-pre-wrap font-sans">
+                      {application.task_discourse}
+                    </pre>
+                  </div>
+                )}
+                
+                {application.cv_url && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(application.cv_url!, '_blank')}
+                  >
+                    <FileText className="mr-1.5 h-4 w-4" />
+                    View CV
+                  </Button>
+                )}
+              </CollapsibleContent>
+            </CardContent>
+          </Collapsible>
+        </Card>
+      ))}
+    </div>
+  );
+};
+
+// Table component for rejected applications
+const RejectedApplicationsTable = ({ 
+  applications, 
+  expandedApplications, 
+  toggleApplicationExpanded
+}: { 
+  applications: Application[], 
+  expandedApplications: Set<string>, 
+  toggleApplicationExpanded: (id: string) => void
+}) => {
+  return (
+    <div className="space-y-4">
+      {applications.map(application => (
+        <Card key={application.job_app_id} className="shadow-sm hover:shadow transition-shadow">
+          <Collapsible 
+            open={expandedApplications.has(application.job_app_id)}
+            onOpenChange={() => toggleApplicationExpanded(application.job_app_id)}
+          >
+            <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
+              <div className="flex flex-1 flex-col space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <h3 className="text-md font-semibold line-clamp-1">
+                    {application.business_roles?.title || "Untitled Role"}
+                  </h3>
+                  <Badge className="bg-red-100 text-red-800 border-red-300">
+                    Rejected
+                  </Badge>
+                </div>
+                
+                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center">
+                    {application.profile?.first_name} {application.profile?.last_name}
+                  </span>
+                  <span className="inline-flex items-center">
+                    Project: {application.business_roles?.project.title || "Untitled Project"}
+                  </span>
+                  <span className="inline-flex items-center">
+                    Applied: {new Date(application.applied_at).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+              
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  {expandedApplications.has(application.job_app_id) ? 
+                    <ChevronDown className="h-4 w-4" /> : 
+                    <ChevronRight className="h-4 w-4" />
+                  }
+                </Button>
+              </CollapsibleTrigger>
+            </CardHeader>
+            
+            <CardContent className="px-4 py-2">
+              <CollapsibleContent className="mt-2 space-y-4">
+                <div>
+                  <h4 className="font-medium mb-1">Application Message</h4>
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">
+                    {application.message || "No application message provided."}
+                  </p>
+                </div>
+                
+                {application.task_discourse && (
+                  <div className="mt-3 p-3 bg-slate-50 rounded-md border">
+                    <h4 className="font-medium mb-2">Rejection Reason</h4>
+                    <pre className="text-sm whitespace-pre-wrap font-sans">
+                      {application.task_discourse}
+                    </pre>
+                    <p className="text-xs text-muted-foreground mt-2 italic">
+                      Note: The applicant can see this rejection reason
+                    </p>
+                  </div>
+                )}
+                
+                {application.cv_url && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(application.cv_url!, '_blank')}
+                  >
+                    <FileText className="mr-1.5 h-4 w-4" />
+                    View CV
+                  </Button>
+                )}
+              </CollapsibleContent>
+            </CardContent>
+          </Collapsible>
+        </Card>
+      ))}
+    </div>
+  );
+};

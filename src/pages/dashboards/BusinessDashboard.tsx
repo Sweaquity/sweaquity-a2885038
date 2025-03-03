@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -8,9 +7,10 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ProjectsSection } from "@/components/business/ProjectsSection";
 import { BusinessProfileCompletion } from "@/components/business/BusinessProfileCompletion";
-import { UserCircle2, Menu } from "lucide-react";
+import { UserCircle2, Menu, Bell } from "lucide-react";
 import { ActiveRolesTable } from "@/components/business/roles/ActiveRolesTable";
 import { ProjectApplicationsSection } from "@/components/business/ProjectApplicationsSection";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,8 +43,10 @@ const BusinessDashboard = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [businessData, setBusinessData] = useState<any>(null);
-  const [hasJobSeekerProfile, setHasJobSeekerProfile] = useState(true); // Set default to true
+  const [hasJobSeekerProfile, setHasJobSeekerProfile] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [newApplicationsCount, setNewApplicationsCount] = useState(0);
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -55,7 +57,6 @@ const BusinessDashboard = () => {
       }
 
       try {
-        // Check business profile using businesses_id field
         const { data: businessData, error: businessError } = await supabase
           .from('businesses')
           .select('*')
@@ -67,7 +68,6 @@ const BusinessDashboard = () => {
         console.log("Business profile check:", businessData);
         setBusinessData(businessData);
 
-        // Load projects for this business
         const { data: projectsData, error: projectsError } = await supabase
           .from('business_projects')
           .select('*')
@@ -78,7 +78,6 @@ const BusinessDashboard = () => {
         if (projectsData && projectsData.length > 0) {
           const projectIds = projectsData.map(p => p.project_id);
 
-          // Get all tasks for these projects
           const { data: tasksData, error: tasksError } = await supabase
             .from('project_sub_tasks')
             .select('*')
@@ -94,7 +93,44 @@ const BusinessDashboard = () => {
           setProjects(projectsWithTasks);
         }
 
-        // Check if user has a job seeker profile
+        const oneDayAgo = new Date();
+        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+        
+        const { data: recentApps, error: recentAppsError } = await supabase
+          .from('job_applications')
+          .select('applied_at, task_discourse, status')
+          .gte('applied_at', oneDayAgo.toISOString())
+          .eq('status', 'pending');
+          
+        if (recentAppsError) throw recentAppsError;
+        
+        setNewApplicationsCount(recentApps?.length || 0);
+        
+        const { data: recentMsgs, error: recentMsgsError } = await supabase
+          .from('job_applications')
+          .select('task_discourse, updated_at')
+          .gte('updated_at', oneDayAgo.toISOString())
+          .neq('task_discourse', null);
+          
+        if (recentMsgsError) throw recentMsgsError;
+        
+        const newMsgs = recentMsgs?.filter(msg => {
+          if (!msg.task_discourse) return false;
+          
+          const lastMessageMatch = msg.task_discourse.match(/\[([^\]]+)\]/);
+          if (lastMessageMatch) {
+            try {
+              const msgDate = new Date(lastMessageMatch[1]);
+              return msgDate > oneDayAgo;
+            } catch (e) {
+              return false;
+            }
+          }
+          return false;
+        });
+        
+        setNewMessagesCount(newMsgs?.length || 0);
+
         const { data: profileData } = await supabase
           .from('profiles')
           .select('id')
@@ -102,7 +138,7 @@ const BusinessDashboard = () => {
           .maybeSingle();
 
         console.log("Job seeker profile check:", profileData);
-        setHasJobSeekerProfile(true); // Always set to true for now to ensure button shows
+        setHasJobSeekerProfile(true);
       } catch (error) {
         console.error('Error fetching data:', error);
         toast.error("Failed to load dashboard data");
@@ -112,6 +148,39 @@ const BusinessDashboard = () => {
     };
 
     checkAuth();
+    
+    const channel = supabase
+      .channel('dashboard-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'job_applications'
+        },
+        () => {
+          setNewApplicationsCount(prev => prev + 1);
+          toast.info("New application received!");
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'job_applications',
+          filter: 'task_discourse=neq.null'
+        },
+        () => {
+          setNewMessagesCount(prev => prev + 1);
+          toast.info("New message received!");
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [navigate]);
 
   const handleSignOut = async () => {
@@ -126,6 +195,15 @@ const BusinessDashboard = () => {
   const handleProfileSwitch = () => {
     console.log("Switching to job seeker profile");
     navigate('/seeker/dashboard');
+  };
+
+  const handleTabChange = (value: string) => {
+    if (value === 'applications') {
+      setNewApplicationsCount(0);
+    }
+    if (value === 'roles') {
+      setNewMessagesCount(0);
+    }
   };
 
   if (isLoading) {
@@ -144,9 +222,7 @@ const BusinessDashboard = () => {
             {businessData?.company_name} Dashboard
           </h1>
           <div className="flex items-center gap-2">
-            {/* Desktop view */}
             <div className="hidden md:flex items-center gap-4">
-              {/* Always show the Switch to Job Seeker button */}
               <Button variant="outline" onClick={handleProfileSwitch}>
                 <UserCircle2 className="mr-2 h-4 w-4" />
                 Switch to Job Seeker
@@ -154,7 +230,6 @@ const BusinessDashboard = () => {
               <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
             </div>
             
-            {/* Mobile view */}
             <div className="flex md:hidden">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -163,7 +238,6 @@ const BusinessDashboard = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {/* Always show the Switch to Job Seeker option */}
                   <DropdownMenuItem onClick={handleProfileSwitch}>
                     <UserCircle2 className="mr-2 h-4 w-4" />
                     Switch to Job Seeker
@@ -177,13 +251,27 @@ const BusinessDashboard = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="account" className="space-y-6">
+        <Tabs defaultValue="account" className="space-y-6" onValueChange={handleTabChange}>
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="account">Account</TabsTrigger>
             <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="roles">Active Roles</TabsTrigger>
-            <TabsTrigger value="applications">Applications</TabsTrigger>
+            <TabsTrigger value="roles" className="relative">
+              Active Roles
+              {newMessagesCount > 0 && (
+                <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                  {newMessagesCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="applications" className="relative">
+              Applications
+              {newApplicationsCount > 0 && (
+                <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                  {newApplicationsCount}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="account">
