@@ -1,18 +1,13 @@
 
-import { useState, useEffect } from "react";
-import { EquityProject, Skill } from "@/types/jobSeeker";
-import { useNavigate } from "react-router-dom";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { useState, useEffect, useMemo } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { ApplicationSkills } from "./applications/ApplicationSkills";
+import { Input } from "@/components/ui/input";
+import { Briefcase, Search, Star, Clock, FileText, BarChart3 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { EquityProject, Skill, SubTask } from "@/types/jobSeeker";
+import { SkillBadge } from "./SkillBadge";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
@@ -21,301 +16,259 @@ interface OpportunitiesTabProps {
   userSkills: Skill[];
 }
 
-export const OpportunitiesTab = ({
-  projects,
-  userSkills,
-}: OpportunitiesTabProps) => {
-  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
-  const [filteredProjects, setFilteredProjects] = useState<EquityProject[]>([]);
-  const [companyNames, setCompanyNames] = useState<Record<string, string>>({});
-  const [projectTitles, setProjectTitles] = useState<Record<string, string>>({});
+export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps) => {
   const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredProjects, setFilteredProjects] = useState<EquityProject[]>([]);
+  const [filterSkill, setFilterSkill] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Fetch project and business details for all projects
-    const fetchProjectDetails = async () => {
-      const projectIds = projects.map(project => project.project_id).filter(Boolean);
-      if (projectIds.length === 0) return;
-
-      try {
-        // Fetch project titles
-        const { data: projectsData, error: projectsError } = await supabase
-          .from('business_projects')
-          .select('project_id, title, business_id')
-          .in('project_id', projectIds);
-
-        if (projectsError) throw projectsError;
-
-        const newProjectTitles: Record<string, string> = {};
-        const businessIds: string[] = [];
-
-        if (projectsData) {
-          projectsData.forEach(project => {
-            newProjectTitles[project.project_id] = project.title || 'Untitled Project';
-            if (project.business_id) businessIds.push(project.business_id);
-          });
-        }
-
-        setProjectTitles(newProjectTitles);
-
-        // Fetch business names if we have business IDs
-        if (businessIds.length > 0) {
-          const { data: businessesData, error: businessesError } = await supabase
-            .from('businesses')
-            .select('businesses_id, company_name')
-            .in('businesses_id', businessIds);
-
-          if (businessesError) throw businessesError;
-
-          const newCompanyNames: Record<string, string> = {};
-          if (businessesData) {
-            businessesData.forEach(business => {
-              newCompanyNames[business.businesses_id] = business.company_name || 'Unnamed Company';
-            });
-          }
-
-          setCompanyNames(newCompanyNames);
-        }
-      } catch (error) {
-        console.error("Error fetching project details:", error);
+  // Convert user skills to lowercase strings for comparison
+  const userSkillStrings = useMemo(() => {
+    return userSkills.map(skill => {
+      if (typeof skill === 'string') {
+        return String(skill).toLowerCase();
       }
-    };
+      if (skill && typeof skill.skill === 'string') {
+        return skill.skill.toLowerCase();
+      }
+      return '';
+    }).filter(Boolean);
+  }, [userSkills]);
 
-    fetchProjectDetails();
-  }, [projects]);
-
+  // Filter projects based on search term and selected skill
   useEffect(() => {
-    // Filter projects that match user skills
-    if (userSkills.length > 0) {
-      const userSkillNames = userSkills.map(skill => {
-        if (typeof skill === 'string') return String(skill).toLowerCase();
-        if (skill && typeof skill.skill === 'string') return skill.skill.toLowerCase();
-        return '';
-      }).filter(Boolean);
-      
-      const matched = projects.filter(project => {
-        const task = project.sub_tasks?.[0];
-        if (!task) return false;
+    let filtered = [...projects];
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(project => {
+        // Check against project title
+        if (project.title && project.title.toLowerCase().includes(term)) return true;
         
-        // Check if any required skills match user skills
-        const requiredSkills = task.skill_requirements?.map(req => {
-          if (typeof req === 'string') return String(req).toLowerCase();
-          if (req && typeof req.skill === 'string') return req.skill.toLowerCase();
-          return '';
-        }).filter(Boolean) || [];
+        // Check against business name
+        if (project.business_roles?.company_name && 
+            project.business_roles.company_name.toLowerCase().includes(term)) return true;
         
-        return requiredSkills.some(skill => userSkillNames.includes(skill));
+        // Check against project description
+        const projectDescription = project.business_roles?.description;
+        if (projectDescription && projectDescription.toLowerCase().includes(term)) return true;
+        
+        // Check against task title
+        const taskTitle = project.business_roles?.title;
+        if (taskTitle && taskTitle.toLowerCase().includes(term)) return true;
+        
+        return false;
       });
-      
-      setFilteredProjects(matched);
-    } else {
-      // If no user skills, show all projects
-      setFilteredProjects(projects);
     }
-  }, [projects, userSkills]);
 
-  const toggleProject = (projectId: string) => {
-    setExpandedProjectId(expandedProjectId === projectId ? null : projectId);
-  };
+    if (filterSkill) {
+      filtered = filtered.filter(project => {
+        const requirements = project.sub_tasks.flatMap(task => task.skill_requirements || []);
+        
+        return requirements.some(req => {
+          if (typeof req === 'string') {
+            return req.toLowerCase() === filterSkill.toLowerCase();
+          }
+          if (req && typeof req === 'object' && 'skill' in req && typeof req.skill === 'string') {
+            return req.skill.toLowerCase() === filterSkill.toLowerCase();
+          }
+          return false;
+        });
+      });
+    }
 
-  const handleApply = async (projectId: string, taskId: string) => {
+    setFilteredProjects(filtered);
+  }, [projects, searchTerm, filterSkill]);
+
+  const handleApply = async (project: EquityProject, task: SubTask) => {
     try {
-      // First check if the project exists
+      // Verify project and task exist
       const { data: projectData, error: projectError } = await supabase
         .from('business_projects')
-        .select('project_id')
-        .eq('project_id', projectId)
+        .select('*')
+        .eq('project_id', project.project_id)
         .single();
-
+        
       if (projectError || !projectData) {
-        console.error("Project not found:", projectId);
-        toast.error("Project not found. Please try again.");
+        console.error("Project validation error:", projectError);
+        toast.error("Project not found or no longer available");
         return;
       }
-
-      // Check if the task exists
+      
       const { data: taskData, error: taskError } = await supabase
         .from('project_sub_tasks')
-        .select('task_id')
-        .eq('task_id', taskId)
+        .select('*')
+        .eq('task_id', task.id)
         .single();
-
+        
       if (taskError || !taskData) {
-        console.error("Task not found:", taskId);
-        toast.error("Task not found. Please try again.");
+        console.error("Task validation error:", taskError);
+        toast.error("This opportunity is no longer available");
         return;
       }
-
-      // If both exist, navigate to application page
-      navigate(`/projects/${projectId}/apply?taskId=${taskId}`);
+        
+      navigate(`/projects/${project.project_id}/apply`, { 
+        state: { 
+          taskId: task.id, 
+          projectId: project.project_id,
+          projectTitle: project.title || "Untitled Project",
+          taskTitle: task.title || "Untitled Task"
+        } 
+      });
     } catch (error) {
-      console.error("Error checking project/task:", error);
-      toast.error("Something went wrong. Please try again.");
+      console.error("Navigate error:", error);
+      toast.error("Unable to apply for this role. Please try again.");
     }
   };
 
-  const getCompanyName = (project: EquityProject): string => {
-    // First try to get from project's business_roles
-    if (project.business_roles?.company_name) return project.business_roles.company_name;
+  // Extract unique skills from all projects for filtering
+  const allSkills = useMemo(() => {
+    const skillsSet = new Set<string>();
     
-    // Try to get from cached company names if we have a business_id
-    if (project.created_by && companyNames[project.created_by]) {
-      return companyNames[project.created_by];
-    }
+    projects.forEach(project => {
+      project.sub_tasks.forEach(task => {
+        const requirements = task.skill_requirements || [];
+        requirements.forEach(req => {
+          if (typeof req === 'string') {
+            skillsSet.add(req.toLowerCase());
+          } else if (req && typeof req === 'object' && 'skill' in req && typeof req.skill === 'string') {
+            skillsSet.add(req.skill.toLowerCase());
+          }
+        });
+      });
+    });
     
-    return "Unknown Company";
-  };
-
-  const getProjectTitle = (project: EquityProject): string => {
-    // First try to get from project itself
-    if (project.title) return project.title;
-    
-    // Try to get from business_roles
-    if (project.business_roles?.project_title) return project.business_roles.project_title;
-    
-    // Try to get from cached project titles
-    if (project.project_id && projectTitles[project.project_id]) {
-      return projectTitles[project.project_id];
-    }
-    
-    return "Untitled Project";
-  };
-
-  if (filteredProjects.length === 0) {
-    return (
-      <div className="text-center p-10 bg-gray-50 rounded-lg">
-        <h3 className="text-lg font-medium">No matching opportunities available</h3>
-        <p className="text-gray-500 mt-2">
-          We couldn't find any opportunities that match your skills. Please update your skills profile 
-          or check back later for new project opportunities.
-        </p>
-      </div>
-    );
-  }
+    return Array.from(skillsSet);
+  }, [projects]);
 
   return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">Available Opportunities</h2>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Role</TableHead>
-            <TableHead>Company</TableHead>
-            <TableHead>Timeframe</TableHead>
-            <TableHead>Equity</TableHead>
-            <TableHead>Skills Required</TableHead>
-            <TableHead className="text-right">Details</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredProjects.map((project) => {
-            const task = project.sub_tasks?.[0];
-            if (!task) return null;
-            
-            const isExpanded = expandedProjectId === project.id;
-            
-            // Get user matched skills
-            const userSkillNames = userSkills.map(skill => {
-              if (typeof skill === 'string') return String(skill).toLowerCase();
-              if (skill && typeof skill.skill === 'string') return skill.skill.toLowerCase();
-              return '';
-            }).filter(Boolean);
-            
-            const requiredSkillNames = task.skill_requirements?.map(req => {
-              if (typeof req === 'string') return String(req).toLowerCase();
-              if (req && typeof req.skill === 'string') return req.skill.toLowerCase();
-              return '';
-            }).filter(Boolean) || [];
-            
-            const matchedSkills = requiredSkillNames.filter(skill => 
-              userSkillNames.includes(skill)
-            );
-            
-            // Get company name and project title
-            const companyName = getCompanyName(project);
-            const projectTitle = getProjectTitle(project);
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-4">
+        <div className="w-full md:w-1/2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search projects, companies or skills..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+        <div className="w-full md:w-auto flex flex-wrap gap-2">
+          {allSkills.slice(0, 5).map((skill, index) => (
+            <Badge 
+              key={index} 
+              variant={filterSkill === skill ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => setFilterSkill(filterSkill === skill ? null : skill)}
+            >
+              {skill}
+            </Badge>
+          ))}
+          {allSkills.length > 5 && (
+            <Badge variant="outline" className="cursor-pointer" onClick={() => {}}>
+              +{allSkills.length - 5} more
+            </Badge>
+          )}
+        </div>
+      </div>
 
-            return (
-              <>
-                <TableRow key={project.id} className={`cursor-pointer hover:bg-gray-50 ${isExpanded ? 'bg-gray-50' : ''}`}>
-                  <TableCell onClick={() => toggleProject(project.id)}>
-                    <div className="font-medium">{task.title}</div>
-                  </TableCell>
-                  <TableCell onClick={() => toggleProject(project.id)}>
-                    {companyName}
-                  </TableCell>
-                  <TableCell onClick={() => toggleProject(project.id)}>{task.timeframe}</TableCell>
-                  <TableCell onClick={() => toggleProject(project.id)}>{task.equity_allocation}%</TableCell>
-                  <TableCell onClick={() => toggleProject(project.id)}>
-                    <div className="flex flex-wrap gap-1 max-w-xs">
-                      <ApplicationSkills 
-                        requiredSkills={task.skill_requirements || []}
-                        matchedSkills={matchedSkills}
-                      />
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleProject(project.id)}
-                    >
-                      {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-                {isExpanded && (
-                  <TableRow key={`${project.id}-expanded`}>
-                    <TableCell colSpan={6} className="p-0 border-t-0">
-                      <div className="bg-gray-50 p-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                          <div>
-                            <h3 className="font-semibold text-lg">{task.title}</h3>
-                            <p className="text-sm text-gray-600">
-                              {companyName} • {projectTitle}
-                            </p>
-                            {task.description && (
-                              <p className="mt-2 text-sm text-gray-600">
-                                {task.description}
-                              </p>
-                            )}
-                          </div>
-                          
-                          <div className="flex flex-col justify-center items-end">
-                            <Button
-                              onClick={() => handleApply(project.project_id, task.task_id)}
-                              size="sm"
-                            >
-                              Apply for This Role
-                            </Button>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <h4 className="font-medium mb-1">Equity Allocation</h4>
-                            <p className="text-sm">{task.equity_allocation}%</p>
-                          </div>
-                          <div>
-                            <h4 className="font-medium mb-1">Timeframe</h4>
-                            <p className="text-sm">{task.timeframe}</p>
-                          </div>
-                          <div>
-                            <h4 className="font-medium mb-1">Skills Match</h4>
-                            <p className="text-sm font-medium text-green-600">
-                              {matchedSkills.length} of {requiredSkillNames.length} skills
-                            </p>
-                          </div>
+      {filteredProjects.length === 0 ? (
+        <Card>
+          <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+            <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-xl font-semibold mb-2">No Matching Opportunities</h3>
+            <p className="text-muted-foreground mb-4">
+              We couldn't find any opportunities matching your criteria. Try adjusting your search or check back later.
+            </p>
+            {searchTerm || filterSkill ? (
+              <Button variant="outline" onClick={() => { setSearchTerm(""); setFilterSkill(null); }}>
+                Clear Filters
+              </Button>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {filteredProjects.map((project) => (
+            <Card key={project.id} className="overflow-hidden border border-border">
+              <CardHeader className="border-b bg-muted/30">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg">
+                      {project.title || "Untitled Project"}
+                    </CardTitle>
+                    <CardDescription className="flex items-center mt-1">
+                      <Briefcase className="h-4 w-4 mr-1" />
+                      {project.business_roles?.company_name || "Unknown Company"}
+                    </CardDescription>
+                  </div>
+                  <Badge variant="secondary" className="flex items-center">
+                    <Star className="h-4 w-4 mr-1 text-amber-500" />
+                    {project.skill_match || 0}% Match
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4">
+                {project.sub_tasks.map((task) => (
+                  <div key={task.id} className="border-b pb-4 mb-4 last:border-0 last:mb-0 last:pb-0">
+                    <div className="space-y-3">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                        <h3 className="font-semibold text-base">{task.title}</h3>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge className="flex items-center">
+                            <BarChart3 className="h-3 w-3 mr-1" />
+                            {task.equity_allocation}% Equity
+                          </Badge>
+                          <Badge variant="outline" className="flex items-center">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {task.timeframe}
+                          </Badge>
                         </div>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </>
-            );
-          })}
-        </TableBody>
-      </Table>
+                      
+                      <p className="text-sm text-muted-foreground">{task.description}</p>
+                      
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium">Required Skills:</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {(task.skill_requirements || []).map((req, idx) => {
+                            const skill = typeof req === 'string' ? req : 
+                                        (req && typeof req === 'object' && 'skill' in req) ? 
+                                        req.skill : '';
+                                        
+                            if (!skill) return null;
+                            
+                            const skillLower = String(skill).toLowerCase();
+                            const isUserSkill = userSkillStrings.includes(skillLower);
+                            
+                            return (
+                              <SkillBadge 
+                                key={idx} 
+                                skill={skill} 
+                                isUserSkill={isUserSkill} 
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                      
+                      <Button 
+                        onClick={() => handleApply(project, task)}
+                        className="w-full sm:w-auto mt-2"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Apply for this role
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

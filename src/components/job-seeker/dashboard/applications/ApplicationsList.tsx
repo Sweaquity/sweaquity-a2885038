@@ -1,89 +1,89 @@
 
 import { useState } from "react";
-import { JobApplication, Skill } from "@/types/jobSeeker";
 import { ApplicationItem } from "./ApplicationItem";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
+import { JobApplication } from "@/types/jobSeeker";
 import { useUserSkills } from "./hooks/useUserSkills";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-
-// Create an EmptyState component since it's missing
-const EmptyState = ({ message }: { message: string }) => (
-  <div className="flex flex-col items-center justify-center p-8 text-center border rounded-lg bg-gray-50">
-    <p className="text-muted-foreground">{message}</p>
-  </div>
-);
 
 interface ApplicationsListProps {
   applications: JobApplication[];
-  userSkills?: Skill[];
-  emptyMessage?: string;
   onApplicationUpdated?: () => void;
 }
 
-export const ApplicationsList = ({
-  applications,
-  userSkills = [],
-  emptyMessage = "You haven't applied to any opportunities yet.",
-  onApplicationUpdated,
+export const ApplicationsList = ({ 
+  applications = [],
+  onApplicationUpdated
 }: ApplicationsListProps) => {
-  const { userSkills: hookUserSkills, getMatchedSkills } = useUserSkills();
-  const [expandedApplicationId, setExpandedApplicationId] = useState<string | null>(null);
-  
-  // Function to get matched skills for an application
-  const getMatchedSkillsForApplication = (application: JobApplication) => {
-    // Extract skill requirements from business_roles if available
-    const requiredSkills = application.business_roles?.skill_requirements || [];
-    const skillNames = (userSkills || hookUserSkills).map(skill => {
-      if (typeof skill === 'string') return String(skill).toLowerCase();
-      if (skill && typeof skill.skill === 'string') return skill.skill.toLowerCase();
-      return '';
-    }).filter(Boolean);
+  const [searchTerm, setSearchTerm] = useState("");
+  const { userSkills, getMatchedSkills } = useUserSkills();
+
+  const filteredApplications = applications.filter((application) => {
+    if (!searchTerm) return true;
     
-    return requiredSkills.filter(skill => {
+    const term = searchTerm.toLowerCase();
+    
+    // Check project title
+    if (application.business_roles?.project_title && 
+        String(application.business_roles.project_title).toLowerCase().includes(term)) {
+      return true;
+    }
+    
+    // Check company name
+    if (application.business_roles?.company_name && 
+        String(application.business_roles.company_name).toLowerCase().includes(term)) {
+      return true;
+    }
+    
+    // Check role title
+    if (application.business_roles?.title && 
+        String(application.business_roles.title).toLowerCase().includes(term)) {
+      return true;
+    }
+    
+    // Check skills
+    const skills = application.business_roles?.skill_requirements || [];
+    return skills.some(skill => {
       if (typeof skill === 'string') {
-        return skillNames.includes(String(skill).toLowerCase());
-      } else if (skill && typeof skill.skill === 'string') {
-        return skillNames.includes(skill.skill.toLowerCase());
+        return String(skill).toLowerCase().includes(term);
+      }
+      if (skill && typeof skill === 'object' && 'skill' in skill && typeof skill.skill === 'string') {
+        return skill.skill.toLowerCase().includes(term);
       }
       return false;
-    }).map(skill => typeof skill === 'string' ? skill : skill.skill);
-  };
-  
+    });
+  });
+
   if (applications.length === 0) {
-    return <EmptyState message={emptyMessage} />;
+    return (
+      <div className="text-center p-6">
+        <p className="text-muted-foreground">No applications found</p>
+      </div>
+    );
   }
-  
+
   return (
-    <div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Role</TableHead>
-            <TableHead>Company</TableHead>
-            <TableHead>Timeframe</TableHead>
-            <TableHead>Equity</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Applied</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {applications.map(application => (
-            <ApplicationItem 
-              key={application.job_app_id} 
-              application={application}
-              isExpanded={expandedApplicationId === application.job_app_id}
-              toggleExpanded={() => {
-                setExpandedApplicationId(
-                  expandedApplicationId === application.job_app_id 
-                    ? null 
-                    : application.job_app_id
-                );
-              }}
-              getMatchedSkills={getMatchedSkillsForApplication}
-              onApplicationUpdated={onApplicationUpdated}
-            />
-          ))}
-        </TableBody>
-      </Table>
+    <div className="space-y-4">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search applications..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      <div className="space-y-4">
+        {filteredApplications.map((application) => (
+          <ApplicationItem
+            key={application.job_app_id}
+            application={application}
+            matchedSkills={getMatchedSkills(application)}
+            onApplicationUpdated={onApplicationUpdated}
+          />
+        ))}
+      </div>
     </div>
   );
 };

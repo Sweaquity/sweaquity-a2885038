@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Skill, JobApplication, SkillRequirement } from "@/types/jobSeeker";
+import { Skill, JobApplication } from "@/types/jobSeeker";
 
 export const useUserSkills = (initialSkills?: Skill[]) => {
   const [userSkills, setUserSkills] = useState<Skill[]>(initialSkills || []);

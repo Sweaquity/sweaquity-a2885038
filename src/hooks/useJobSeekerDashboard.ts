@@ -17,6 +17,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
   const [isProfileComplete, setIsProfileComplete] = useState(false);
   const [hasBusinessProfile, setHasBusinessProfile] = useState(false);
   const loadingRef = useRef(false);
+  const logsDisabledRef = useRef(false);
 
   const { profile, skills, loadProfile, handleSkillsUpdate } = useProfile();
   const { applications, pastApplications, loadApplications } = useApplications();
@@ -27,7 +28,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        console.log("No active session found, redirecting to login");
+        if (!logsDisabledRef.current) console.log("No active session found, redirecting to login");
         navigate('/auth/seeker');
         return false;
       }
@@ -72,6 +73,13 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
         .maybeSingle();
         
       const hasProfile = !!businessData;
+      
+      if (!logsDisabledRef.current && businessData) {
+        console.log("Business profile check:", businessData);
+        // Disable further logs after the first check
+        logsDisabledRef.current = true;
+      }
+      
       setHasBusinessProfile(hasProfile);
       return hasProfile;
     } catch (error) {
@@ -95,8 +103,18 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
           .map(app => app.task_id) || []
       );
 
+      if (!logsDisabledRef.current) {
+        console.log("Unavailable task IDs:", Array.from(unavailableTaskIds));
+        console.log("User skills:", Array.isArray(userSkills) 
+          ? userSkills.map(s => typeof s === 'string' ? s : s.skill)
+          : []);
+      }
+
       const formattedUserSkills = Array.isArray(userSkills) 
-        ? userSkills.map(s => typeof s === 'string' ? s : s.skill.toLowerCase())
+        ? userSkills.map(s => {
+            if (typeof s === 'string') return s.toLowerCase();
+            return typeof s.skill === 'string' ? s.skill.toLowerCase() : '';
+          }).filter(Boolean)
         : [];
       
       const { data: tasksData, error: tasksError } = await supabase
@@ -127,12 +145,15 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
           
           if (!task.skill_requirements || !Array.isArray(task.skill_requirements)) return false;
           
-          const taskSkills = task.skill_requirements.map(s => 
-            typeof s === 'string' ? s.toLowerCase() : s.skill.toLowerCase()
-          );
+          const taskSkills = task.skill_requirements.map(s => {
+            if (typeof s === 'string') return s.toLowerCase();
+            return typeof s === 'object' && s !== null && 'skill' in s && typeof s.skill === 'string' 
+              ? s.skill.toLowerCase() 
+              : '';
+          }).filter(Boolean);
           
           const hasMatchingSkill = formattedUserSkills.some(skill => 
-            taskSkills.includes(skill.toLowerCase())
+            taskSkills.includes(skill)
           );
           
           return hasMatchingSkill;
@@ -142,12 +163,15 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
             task.skill_requirements = [];
           }
           
-          const taskSkills = task.skill_requirements.map(s => 
-            typeof s === 'string' ? s.toLowerCase() : s.skill.toLowerCase()
-          );
+          const taskSkills = task.skill_requirements.map(s => {
+            if (typeof s === 'string') return s.toLowerCase(); 
+            return typeof s === 'object' && s !== null && 'skill' in s && typeof s.skill === 'string'
+              ? s.skill.toLowerCase()
+              : '';
+          }).filter(Boolean);
           
           const matchingSkills = formattedUserSkills.filter(skill => 
-            taskSkills.includes(skill.toLowerCase())
+            taskSkills.includes(skill)
           );
           
           const matchPercentage = taskSkills.length > 0 
@@ -193,10 +217,16 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
               title: task.title,
               description: task.description,
               project_title: task.project?.title,
-              company_name: companyName
+              company_name: companyName,
+              skill_requirements: task.skill_requirements || []
             }
           };
         }) || [];
+
+      if (!logsDisabledRef.current) {
+        console.log("Available opportunities after filtering by skills:", opportunities.length);
+        logsDisabledRef.current = true; // Disable logs after first load
+      }
 
       return opportunities;
     } catch (error) {
@@ -219,11 +249,13 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
         return;
       }
 
-      console.log("Loading profile data for user:", session.user.id);
+      if (!logsDisabledRef.current) {
+        console.log("Loading profile data for user:", session.user.id);
+      }
 
       const isComplete = await checkProfileCompletion(session.user.id);
       if (!isComplete) {
-        console.log("Profile incomplete, redirecting to completion page");
+        if (!logsDisabledRef.current) console.log("Profile incomplete, redirecting to completion page");
         navigate('/seeker/profile/complete');
         loadingRef.current = false;
         return;
@@ -254,10 +286,14 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     } finally {
       setIsLoading(false);
       loadingRef.current = false;
+      // Ensure logs are disabled after first load
+      logsDisabledRef.current = true;
     }
   }, [checkSession, checkProfileCompletion, checkBusinessProfile, loadProfile, loadApplications, loadCVData, loadOpportunities, skills, applications, navigate, transformToEquityProjects]);
 
   useEffect(() => {
+    // Reset the logs disabled flag when refreshTrigger changes
+    logsDisabledRef.current = false;
     loadDashboardData();
     
     const sessionCheckInterval = setInterval(async () => {
