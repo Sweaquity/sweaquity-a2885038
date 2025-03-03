@@ -69,7 +69,6 @@ export const EquityProjectsList = ({
           <EquityProjectItem
             key={application.job_app_id}
             application={application}
-            getMatchedSkills={() => getMatchedSkills(application)}
             onApplicationUpdated={onApplicationUpdated}
           />
         ))}

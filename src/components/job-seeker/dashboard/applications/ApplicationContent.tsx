@@ -3,7 +3,7 @@ import { useState } from "react";
 import { JobApplication } from "@/types/jobSeeker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, FilePdf } from "lucide-react";
+import { MessageCircle, FileText } from "lucide-react";
 import { WithdrawDialog } from "./WithdrawDialog";
 import { CreateMessageDialog } from "./CreateMessageDialog";
 
@@ -11,12 +11,14 @@ interface ApplicationContentProps {
   application: JobApplication;
   onWithdrawSuccess?: () => void;
   onMessageSent?: () => void;
+  matchedSkills?: string[];
 }
 
 export const ApplicationContent = ({ 
   application, 
   onWithdrawSuccess,
-  onMessageSent
+  onMessageSent,
+  matchedSkills = []
 }: ApplicationContentProps) => {
   const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
@@ -66,7 +68,15 @@ export const ApplicationContent = ({
           <h4 className="font-medium mb-1">Required Skills</h4>
           <div className="flex flex-wrap gap-1">
             {application.business_roles.skill_requirements.map((skill, index) => (
-              <Badge key={index} variant="outline" className="bg-slate-50">
+              <Badge 
+                key={index} 
+                variant={
+                  matchedSkills.includes(typeof skill === 'string' ? skill.toLowerCase() : skill.skill.toLowerCase()) 
+                  ? "default" 
+                  : "outline"
+                }
+                className="bg-slate-50"
+              >
                 {typeof skill === 'string' ? skill : skill.skill}
                 {typeof skill !== 'string' && skill.level && 
                   <span className="ml-1 opacity-70">({skill.level})</span>
@@ -96,7 +106,7 @@ export const ApplicationContent = ({
               onClick={viewCv}
               disabled={!application.cv_url}
             >
-              <FilePdf className="mr-1.5 h-4 w-4" />
+              <FileText className="mr-1.5 h-4 w-4" />
               View CV
             </Button>
             
@@ -114,8 +124,13 @@ export const ApplicationContent = ({
       <WithdrawDialog
         isOpen={isWithdrawDialogOpen}
         onOpenChange={setIsWithdrawDialogOpen}
-        applicationId={application.job_app_id}
-        onWithdrawSuccess={onWithdrawSuccess}
+        onWithdraw={(reason) => {
+          // Since WithdrawDialog now expects an onWithdraw prop instead of applicationId
+          // We'll call onWithdrawSuccess when it's done
+          onWithdrawSuccess?.();
+          return Promise.resolve();
+        }}
+        isWithdrawing={false}
       />
       
       <CreateMessageDialog

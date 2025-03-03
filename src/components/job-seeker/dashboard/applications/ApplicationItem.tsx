@@ -39,7 +39,8 @@ export const ApplicationItem = ({
       
       <ApplicationContent 
         application={application} 
-        matchedSkills={matchedSkills} 
+        matchedSkills={matchedSkills}
+        onWithdrawSuccess={onApplicationUpdated}
       />
 
       <WithdrawDialog
