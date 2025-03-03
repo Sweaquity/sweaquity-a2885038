@@ -59,10 +59,18 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
       typeof skill === 'string' ? skill.toLowerCase() : skill.skill.toLowerCase()
     );
     
+    // Ensure the skills_required is treated as an array of strings
+    const requiredSkills = application.business_roles.skills_required as string[];
+    
     // Find the intersection of user skills and required skills
-    return application.business_roles.skills_required.filter(skill => 
-      skillNames.includes(typeof skill === 'string' ? skill.toLowerCase() : skill.skill?.toLowerCase())
-    );
+    return requiredSkills.filter(skillRequired => {
+      if (typeof skillRequired === 'string') {
+        return skillNames.includes(skillRequired.toLowerCase());
+      } else if (skillRequired && typeof skillRequired === 'object' && 'skill' in skillRequired) {
+        return skillNames.includes((skillRequired as { skill: string }).skill.toLowerCase());
+      }
+      return false;
+    });
   };
 
   return { userSkills, getMatchedSkills };
