@@ -52,15 +52,20 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
 
   // Get matched skills from application and task requirements
   const getMatchedSkills = (application: JobApplication): string[] => {
-    if (!application.business_roles?.skills_required) return [];
+    // First check if business_roles and skills_required exist
+    if (!application.business_roles || !application.business_roles.skills_required) {
+      return [];
+    }
     
     // Get user skills from the state
     const skillNames = userSkills.map(skill => 
       typeof skill === 'string' ? skill.toLowerCase() : skill.skill.toLowerCase()
     );
     
-    // Ensure the skills_required is treated as an array of strings
-    const requiredSkills = application.business_roles.skills_required as string[];
+    // Safely cast skills_required to an array type we can work with
+    const requiredSkills = Array.isArray(application.business_roles.skills_required) 
+      ? application.business_roles.skills_required 
+      : [];
     
     // Find the intersection of user skills and required skills
     return requiredSkills.filter(skillRequired => {
