@@ -472,16 +472,7 @@ export const ProjectApplicationsSection = () => {
                                       })}
                                       
                                       {(!application.business_roles?.skill_requirements || application.business_roles.skill_requirements.length === 0) && 
-                                        application.business_roles?.skills_required?.map((skill, index) => {
-                                          const hasSkill = application.profile?.skills?.some(
-                                            s => s.skill.toLowerCase() === skill.toLowerCase()
-                                          );
-                                          return (
-                                            <Badge key={index} variant={hasSkill ? "default" : "outline"} className="text-xs">
-                                              {skill} {hasSkill && "✓"}
-                                            </Badge>
-                                          );
-                                        })
+                                        <p className="text-xs text-muted-foreground">No skill requirements specified</p>
                                       }
                                     </div>
                                   </div>
