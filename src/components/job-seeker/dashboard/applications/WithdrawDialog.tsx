@@ -9,12 +9,14 @@ export interface WithdrawDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onWithdraw: (reason: string) => Promise<void>;
+  isWithdrawing?: boolean;
 }
 
 export const WithdrawDialog = ({
   isOpen,
   onOpenChange,
-  onWithdraw
+  onWithdraw,
+  isWithdrawing = false
 }: WithdrawDialogProps) => {
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,6 +34,8 @@ export const WithdrawDialog = ({
       setIsSubmitting(false);
     }
   };
+
+  const isLoading = isSubmitting || isWithdrawing;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -60,9 +64,9 @@ export const WithdrawDialog = ({
             type="button"
             variant="destructive"
             onClick={handleWithdraw} 
-            disabled={!reason.trim() || isSubmitting}
+            disabled={!reason.trim() || isLoading}
           >
-            {isSubmitting ? (
+            {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Withdrawing...

@@ -81,11 +81,11 @@ export const useUserSkills = () => {
         
         // Find matching user skill
         const matchingUserSkill = userSkills.find(userSkill => {
-          // Ensure userSkill has a skill property before using toLowerCase
           if (typeof userSkill === 'string') {
             return userSkill.toLowerCase() === reqNameLower;
-          } else if (userSkill && typeof userSkill === 'object' && 'skill' in userSkill && typeof userSkill.skill === 'string') {
-            return userSkill.skill.toLowerCase() === reqNameLower;
+          } else if (userSkill && typeof userSkill === 'object' && 'skill' in userSkill) {
+            // Add a type check to ensure skill is a string before using toLowerCase
+            return typeof userSkill.skill === 'string' && userSkill.skill.toLowerCase() === reqNameLower;
           }
           return false;
         });

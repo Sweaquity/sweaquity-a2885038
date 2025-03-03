@@ -21,6 +21,9 @@ interface FeaturedProject {
     skill_requirements: any[];
   }[];
   company_name?: string;
+  businesses?: {
+    company_name?: string;
+  };
 }
 
 const Index = () => {
