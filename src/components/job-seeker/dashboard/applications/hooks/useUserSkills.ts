@@ -52,34 +52,32 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
 
   // Get matched skills from application requirements
   const getMatchedSkills = (application: JobApplication): string[] => {
-    // Check if business_roles exists and has skill_requirements
-    if (application.business_roles && application.business_roles.skill_requirements) {
-      // Get user skills from the state as lowercase strings for comparison
-      const userSkillNames = userSkills.map(skill => {
-        return typeof skill === 'string' 
-          ? skill.toLowerCase() 
-          : (skill && typeof skill.skill === 'string' ? skill.skill.toLowerCase() : '');
-      }).filter(Boolean); // Filter out empty strings
-      
-      // Safely handle the skill_requirements array
-      const skillRequirements = Array.isArray(application.business_roles.skill_requirements) 
-        ? application.business_roles.skill_requirements 
-        : [];
-      
-      // Find matching skills
-      return skillRequirements
-        .map(req => {
-          if (typeof req === 'string') {
-            return userSkillNames.includes(req.toLowerCase()) ? req : null;
-          } else if (req && typeof req === 'object' && 'skill' in req && typeof req.skill === 'string') {
-            return userSkillNames.includes(req.skill.toLowerCase()) ? req.skill : null;
-          }
-          return null;
-        })
-        .filter((skill): skill is string => skill !== null);
+    // Get user skills from the state as lowercase strings for comparison
+    const userSkillNames = userSkills.map(skill => {
+      return typeof skill === 'string' 
+        ? skill.toLowerCase() 
+        : (skill && typeof skill.skill === 'string' ? skill.skill.toLowerCase() : '');
+    }).filter(Boolean); // Filter out empty strings
+    
+    // Look for skill requirements in application object, avoiding business_roles
+    let requiredSkills: Array<string | SkillRequirement> = [];
+    
+    // Check if there are direct skill requirements on the application
+    if (application.skill_requirements && Array.isArray(application.skill_requirements)) {
+      requiredSkills = application.skill_requirements;
     }
     
-    return []; // Return empty array if no business_roles or skill_requirements
+    // Find matching skills from the required skills array
+    return requiredSkills
+      .map(req => {
+        if (typeof req === 'string') {
+          return userSkillNames.includes(req.toLowerCase()) ? req : null;
+        } else if (req && typeof req === 'object' && 'skill' in req && typeof req.skill === 'string') {
+          return userSkillNames.includes(req.skill.toLowerCase()) ? req.skill : null;
+        }
+        return null;
+      })
+      .filter((skill): skill is string => skill !== null);
   };
 
   return { userSkills, getMatchedSkills };
