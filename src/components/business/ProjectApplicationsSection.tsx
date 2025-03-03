@@ -26,6 +26,7 @@ interface Application {
   message: string;
   cv_url: string | null;
   skillMatch?: number;
+  task_discourse?: string; // Added this missing property
   profile: {
     first_name: string;
     last_name: string;
