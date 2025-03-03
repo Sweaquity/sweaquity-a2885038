@@ -32,15 +32,20 @@ export const ApplicationsList = ({
   const getMatchedSkillsForApplication = (application: JobApplication) => {
     // Extract skill requirements from business_roles if available
     const requiredSkills = application.business_roles?.skill_requirements || [];
-    const skillNames = (userSkills || hookUserSkills).map(skill => 
-      typeof skill === 'string' ? skill.toLowerCase() : skill.skill.toLowerCase()
-    );
+    const skillNames = (userSkills || hookUserSkills).map(skill => {
+      if (typeof skill === 'string') return String(skill).toLowerCase();
+      if (skill && typeof skill.skill === 'string') return skill.skill.toLowerCase();
+      return '';
+    }).filter(Boolean);
     
-    return requiredSkills.filter(skill => 
-      typeof skill === 'string' 
-        ? skillNames.includes(skill.toLowerCase())
-        : skillNames.includes(skill.skill.toLowerCase())
-    ).map(skill => typeof skill === 'string' ? skill : skill.skill);
+    return requiredSkills.filter(skill => {
+      if (typeof skill === 'string') {
+        return skillNames.includes(String(skill).toLowerCase());
+      } else if (skill && typeof skill.skill === 'string') {
+        return skillNames.includes(skill.skill.toLowerCase());
+      }
+      return false;
+    }).map(skill => typeof skill === 'string' ? skill : skill.skill);
   };
   
   if (applications.length === 0) {

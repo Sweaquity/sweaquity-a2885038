@@ -87,16 +87,22 @@ export const OpportunitiesTab = ({
   useEffect(() => {
     // Filter projects that match user skills
     if (userSkills.length > 0) {
-      const userSkillNames = userSkills.map(skill => skill.skill.toLowerCase());
+      const userSkillNames = userSkills.map(skill => {
+        if (typeof skill === 'string') return String(skill).toLowerCase();
+        if (skill && typeof skill.skill === 'string') return skill.skill.toLowerCase();
+        return '';
+      }).filter(Boolean);
       
       const matched = projects.filter(project => {
         const task = project.sub_tasks?.[0];
         if (!task) return false;
         
         // Check if any required skills match user skills
-        const requiredSkills = task.skill_requirements?.map(req => 
-          typeof req === 'string' ? req.toLowerCase() : req.skill.toLowerCase()
-        ) || [];
+        const requiredSkills = task.skill_requirements?.map(req => {
+          if (typeof req === 'string') return String(req).toLowerCase();
+          if (req && typeof req.skill === 'string') return req.skill.toLowerCase();
+          return '';
+        }).filter(Boolean) || [];
         
         return requiredSkills.some(skill => userSkillNames.includes(skill));
       });
@@ -209,11 +215,21 @@ export const OpportunitiesTab = ({
             const isExpanded = expandedProjectId === project.id;
             
             // Get user matched skills
-            const userSkillNames = userSkills.map(skill => skill.skill.toLowerCase());
-            const requiredSkillNames = task.skill_requirements?.map(req => 
-              typeof req === 'string' ? req.toLowerCase() : req.skill.toLowerCase()
-            ) || [];
-            const matchedSkills = requiredSkillNames.filter(skill => userSkillNames.includes(skill));
+            const userSkillNames = userSkills.map(skill => {
+              if (typeof skill === 'string') return String(skill).toLowerCase();
+              if (skill && typeof skill.skill === 'string') return skill.skill.toLowerCase();
+              return '';
+            }).filter(Boolean);
+            
+            const requiredSkillNames = task.skill_requirements?.map(req => {
+              if (typeof req === 'string') return String(req).toLowerCase();
+              if (req && typeof req.skill === 'string') return req.skill.toLowerCase();
+              return '';
+            }).filter(Boolean) || [];
+            
+            const matchedSkills = requiredSkillNames.filter(skill => 
+              userSkillNames.includes(skill)
+            );
             
             // Get company name and project title
             const companyName = getCompanyName(project);

@@ -21,7 +21,7 @@ export const ApplicationSkills = ({
     const skillLevel = typeof skill === 'string' ? undefined : skill.level;
     
     const isMatched = matchedSkills.some(
-      matched => matched.toLowerCase() === skillName.toLowerCase()
+      matched => matched.toLowerCase() === String(skillName).toLowerCase()
     );
 
     return {
