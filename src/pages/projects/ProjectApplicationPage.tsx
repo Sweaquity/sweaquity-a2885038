@@ -1,16 +1,12 @@
 import { useState, useEffect } from "react";
-import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { useParams, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { ApplicationForm } from "@/components/projects/ApplicationForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Skill } from "@/types/jobSeeker";
-
-interface ApplicationPageState {
-  taskId?: string;
-}
 
 interface Business {
   company_name: string;
@@ -34,7 +30,8 @@ const ProjectApplicationPage = () => {
   const { id: projectId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const state = location.state as ApplicationPageState;
+  const [searchParams] = useSearchParams();
+  const taskIdFromQuery = searchParams.get('taskId');
   
   const [isLoading, setIsLoading] = useState(true);
   const [projectTitle, setProjectTitle] = useState("");
@@ -43,16 +40,15 @@ const ProjectApplicationPage = () => {
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string>("");
   const [userSkills, setUserSkills] = useState<Skill[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   
   useEffect(() => {
-    if (state?.taskId) {
-      setSelectedTaskId(state.taskId);
+    if (taskIdFromQuery) {
+      setSelectedTaskId(taskIdFromQuery);
     }
     
     loadData();
     loadUserSkills();
-  }, [projectId, state]);
+  }, [projectId, taskIdFromQuery]);
   
   const loadUserSkills = async () => {
     try {
@@ -141,16 +137,16 @@ const ProjectApplicationPage = () => {
       
       setTasks(tasksData || []);
       
-      // If there's a taskId in the state and it's valid, use it
+      // If there's a taskId in the query params and it's valid, use it
       // Otherwise, use the first task
-      if (state?.taskId && tasksData?.some(task => task.task_id === state.taskId)) {
-        setSelectedTaskId(state.taskId);
+      if (taskIdFromQuery && tasksData?.some(task => task.task_id === taskIdFromQuery)) {
+        setSelectedTaskId(taskIdFromQuery);
       } else if (tasksData && tasksData.length > 0 && !selectedTaskId) {
         setSelectedTaskId(tasksData[0].task_id);
       }
       
     } catch (error) {
-      console.error("Error loading application details for project:", projectId, "task:", state?.taskId, error);
+      console.error("Error loading application details for project:", projectId, "task:", taskIdFromQuery, error);
       toast.error("Failed to load project details");
     } finally {
       setIsLoading(false);
@@ -159,76 +155,13 @@ const ProjectApplicationPage = () => {
   
   const handleTaskSelect = (taskId: string) => {
     setSelectedTaskId(taskId);
-  };
-  
-  const handleSubmit = async (formData: {
-    message: string;
-    acceptTerms: boolean;
-    cvUrl?: string;
-  }) => {
-    if (!selectedTaskId || !projectId) {
-      toast.error("No task selected");
-      return;
-    }
-    
-    try {
-      setIsSubmitting(true);
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("You must be logged in to apply");
-        navigate('/auth/seeker');
-        return;
-      }
-      
-      // Check if user already applied for this task
-      const { data: existingApps, error: checkError } = await supabase
-        .from('job_applications')
-        .select('job_app_id, status')
-        .eq('user_id', session.user.id)
-        .eq('task_id', selectedTaskId);
-      
-      if (checkError) throw checkError;
-      
-      // If there's an existing application that isn't withdrawn or rejected, show error
-      if (existingApps && existingApps.length > 0) {
-        const activeApp = existingApps.find(app => 
-          !['withdrawn', 'rejected'].includes(app.status.toLowerCase())
-        );
-        
-        if (activeApp) {
-          toast.error("You've already applied for this role");
-          return;
-        }
-      }
-      
-      // Insert application
-      const { data, error } = await supabase
-        .from('job_applications')
-        .insert([{
-          user_id: session.user.id,
-          task_id: selectedTaskId,
-          project_id: projectId,
-          message: formData.message,
-          cv_url: formData.cvUrl
-        }])
-        .select();
-      
-      if (error) throw error;
-      
-      toast.success("Application submitted successfully");
-      navigate('/seeker/dashboard', { 
-        state: { 
-          activeTab: 'applications'
-        } 
-      });
-      
-    } catch (error) {
-      console.error("Error submitting application:", error);
-      toast.error("Failed to submit application");
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Update URL with the new taskId without navigating
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set('taskId', taskId);
+    navigate({
+      pathname: location.pathname,
+      search: newSearchParams.toString()
+    }, { replace: true });
   };
   
   const goBack = () => {
@@ -237,8 +170,9 @@ const ProjectApplicationPage = () => {
   
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        Loading application details...
+      <div className="container mx-auto flex justify-center items-center min-h-screen">
+        <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+        <span>Loading application details...</span>
       </div>
     );
   }

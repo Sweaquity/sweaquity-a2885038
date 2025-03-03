@@ -55,11 +55,8 @@ export const OpportunitiesTab = ({
   };
 
   const handleApply = (projectId: string, taskId: string) => {
-    navigate(`/projects/${projectId}/apply`, { 
-      state: { 
-        taskId: taskId
-      } 
-    });
+    // Updated to use query parameters instead of state
+    navigate(`/projects/${projectId}/apply?taskId=${taskId}`);
   };
 
   if (filteredProjects.length === 0) {

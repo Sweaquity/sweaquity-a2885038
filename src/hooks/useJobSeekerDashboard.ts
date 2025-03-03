@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -15,21 +15,27 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
   const [availableOpportunities, setAvailableOpportunities] = useState<EquityProject[]>([]);
   const [isSessionChecked, setIsSessionChecked] = useState(false);
   const [isProfileComplete, setIsProfileComplete] = useState(false);
+  const loadingRef = useRef(false); // Ref to prevent multiple simultaneous loads
   
   const { profile, skills, loadProfile, handleSkillsUpdate } = useProfile();
   const { applications, pastApplications, loadApplications } = useApplications();
   const { equityProjects, setEquityProjects, logEffort, setLogEffort, transformToEquityProjects } = useEquityProjects();
   const { cvUrl, setCvUrl, parsedCvData, setParsedCvData, loadCVData } = useCVData();
 
-  // Check authentication session
+  // Check authentication session - with debounce to prevent multiple redirects
   const checkSession = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      console.log("No active session found, redirecting to login");
-      navigate('/auth/seeker');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log("No active session found, redirecting to login");
+        navigate('/auth/seeker');
+        return false;
+      }
+      return session;
+    } catch (error) {
+      console.error("Error checking session:", error);
       return false;
     }
-    return session;
   }, [navigate]);
 
   // Check if profile is complete
@@ -58,7 +64,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     }
   }, []);
 
-  // Load opportunities based on user skills
+  // Load opportunities based on user skills - optimized to prevent excessive logging
   const loadOpportunities = useCallback(async (userId, userSkills) => {
     try {
       // Get user's existing applications
@@ -134,8 +140,16 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
             ? Math.round((matchingSkills.length / taskSkills.length) * 100) 
             : 0;
 
-          // Get company name
-          const companyName = task.project?.business?.company_name || "Unknown Company";
+          // Get company name safely
+          let companyName = "Unknown Company";
+          
+          if (task.project?.business) {
+            if (Array.isArray(task.project.business)) {
+              companyName = task.project.business[0]?.company_name || "Unknown Company";
+            } else {
+              companyName = task.project.business.company_name || "Unknown Company";
+            }
+          }
           
           return {
             id: task.task_id,
@@ -180,14 +194,22 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     }
   }, []);
 
-  // Main data loading function
+  // Main data loading function with protection against multiple simultaneous loads
   const loadDashboardData = useCallback(async () => {
+    // Prevent multiple simultaneous loads
+    if (loadingRef.current) return;
+    
+    loadingRef.current = true;
+    
     try {
       setIsLoading(true);
       
       // Check session
       const session = await checkSession();
-      if (!session) return;
+      if (!session) {
+        loadingRef.current = false;
+        return;
+      }
 
       console.log("Loading profile data for user:", session.user.id);
 
@@ -196,6 +218,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
       if (!isComplete) {
         console.log("Profile incomplete, redirecting to completion page");
         navigate('/seeker/profile/complete');
+        loadingRef.current = false;
         return;
       }
 
@@ -224,17 +247,21 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
       toast.error("Failed to load dashboard data");
     } finally {
       setIsLoading(false);
+      loadingRef.current = false;
     }
   }, [checkSession, checkProfileCompletion, loadProfile, loadApplications, loadCVData, loadOpportunities, skills, applications, navigate, transformToEquityProjects]);
 
   // Set up session check and data loading
   useEffect(() => {
-    // Set up periodic session checks (especially important for mobile devices)
+    // Only run if not already loading
+    if (!loadingRef.current) {
+      loadDashboardData();
+    }
+    
+    // Set up periodic session checks (every 5 minutes instead of every minute)
     const sessionCheckInterval = setInterval(async () => {
       await checkSession();
-    }, 60000); // Check every minute
-
-    loadDashboardData();
+    }, 300000); // Check every 5 minutes instead of every minute
 
     // Cleanup interval on component unmount
     return () => {
@@ -243,11 +270,16 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
   }, [checkSession, loadDashboardData, refreshTrigger]);
 
   const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast.error("Failed to sign out");
-    } else {
-      navigate('/auth/seeker');
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        toast.error("Failed to sign out");
+      } else {
+        navigate('/auth/seeker');
+      }
+    } catch (error) {
+      console.error("Sign out error:", error);
+      toast.error("An error occurred during sign out");
     }
   };
 

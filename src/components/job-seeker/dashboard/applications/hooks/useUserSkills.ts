@@ -7,7 +7,7 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
   const [userSkills, setUserSkills] = useState<Skill[]>(initialSkills || []);
 
   useEffect(() => {
-    if (initialSkills) {
+    if (initialSkills && initialSkills.length > 0) {
       setUserSkills(initialSkills);
       return;
     }
@@ -55,11 +55,13 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
     if (!application.business_roles?.skills_required) return [];
     
     // Get user skills from the state
-    const skillNames = userSkills.map(skill => skill.skill.toLowerCase());
+    const skillNames = userSkills.map(skill => 
+      typeof skill === 'string' ? skill.toLowerCase() : skill.skill.toLowerCase()
+    );
     
     // Find the intersection of user skills and required skills
     return application.business_roles.skills_required.filter(skill => 
-      skillNames.includes(skill.toLowerCase())
+      skillNames.includes(typeof skill === 'string' ? skill.toLowerCase() : skill.skill?.toLowerCase())
     );
   };
 

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -123,8 +124,6 @@ export const ProjectDetailsPage = () => {
           toast.error("Project not found");
           return;
         }
-
-        console.log('Project data:', projectData);
 
         // Fetch tasks for this project
         const { data: tasksData, error: tasksError } = await supabase
@@ -356,7 +355,7 @@ export const ProjectDetailsPage = () => {
                       
                       <div className="pt-2">
                         <Button
-                          onClick={() => navigate(`/projects/${project.id}/apply/${task.task_id}`)}
+                          onClick={() => navigate(`/projects/${project.id}/apply?taskId=${task.task_id}`)}
                           className="w-full sm:w-auto"
                         >
                           Apply for this Role
