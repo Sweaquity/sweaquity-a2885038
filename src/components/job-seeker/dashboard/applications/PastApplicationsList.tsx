@@ -32,12 +32,20 @@ export const PastApplicationsList = ({
 
   if (applications.length === 0) {
     return (
-      <EmptyState
-        title="No Past Applications"
-        description="You don't have any withdrawn or rejected applications yet."
-        actionText="Find Projects"
-        actionLink="/seeker/dashboard/opportunities"
-      />
+      <div className="text-center">
+        <h3 className="text-lg font-medium">No Past Applications</h3>
+        <p className="text-muted-foreground mt-1">
+          You don't have any withdrawn or rejected applications yet.
+        </p>
+        <div className="mt-4">
+          <a 
+            href="/seeker/dashboard/opportunities" 
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+          >
+            Find Projects
+          </a>
+        </div>
+      </div>
     );
   }
 
@@ -89,6 +97,7 @@ export const PastApplicationsList = ({
           <PastApplicationItem
             key={application.job_app_id}
             application={application}
+            getMatchedSkills={() => getMatchedSkills(application)}
           />
         ))}
 

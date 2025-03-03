@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { MoreHorizontal, Calendar, ChevronDown, Download, CheckCircle } from "lucide-react";
@@ -49,7 +49,7 @@ export const EquityProjectItem = ({ application, onApplicationUpdated }: EquityP
   };
 
   // Call on component mount
-  useState(() => {
+  useEffect(() => {
     loadAcceptedJobData();
   }, [application.job_app_id, application.status]);
 
@@ -219,7 +219,7 @@ export const EquityProjectItem = ({ application, onApplicationUpdated }: EquityP
         isOpen={showAcceptDialog}
         onOpenChange={setShowAcceptDialog}
         application={application}
-        onAccepted={() => {
+        onAccept={() => {
           onApplicationUpdated();
           loadAcceptedJobData();
         }}

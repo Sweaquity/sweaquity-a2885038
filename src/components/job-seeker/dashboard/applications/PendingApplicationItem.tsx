@@ -1,6 +1,6 @@
 
 import { Card } from "@/components/ui/card";
-import { JobApplication } from "@/types/jobSeeker";
+import { JobApplication, SkillRequirement } from "@/types/jobSeeker";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ import { StatusBadge } from "./StatusBadge";
 
 interface PendingApplicationItemProps {
   application: JobApplication;
-  getMatchedSkills: () => string[];
+  getMatchedSkills: () => (string | SkillRequirement)[];
   onApplicationUpdated?: () => void;
 }
 
@@ -35,7 +35,7 @@ export const PendingApplicationItem = ({
   const appliedDate = new Date(application.applied_at);
   const timeAgo = formatDistanceToNow(appliedDate, { addSuffix: true });
 
-  const onWithdraw = async (reason: string) => {
+  const onWithdraw = async (reason?: string) => {
     await handleWithdrawApplication(application.job_app_id, reason);
   };
 
@@ -62,15 +62,23 @@ export const PendingApplicationItem = ({
           
           <div className="space-y-1">
             <div className="flex flex-wrap gap-1">
-              {(application.business_roles?.skill_requirements || []).slice(0, 2).map((skill, index) => (
-                <Badge 
-                  key={index} 
-                  variant={matchedSkills.includes(typeof skill === 'string' ? skill : skill.skill) ? "default" : "outline"}
-                  className="text-xs"
-                >
-                  {typeof skill === 'string' ? skill : skill.skill}
-                </Badge>
-              ))}
+              {(application.business_roles?.skill_requirements || []).slice(0, 2).map((skill, index) => {
+                const skillName = typeof skill === 'string' ? skill : skill.skill;
+                const isMatched = matchedSkills.some(s => 
+                  typeof s === 'string' 
+                    ? s.toLowerCase() === skillName.toLowerCase() 
+                    : s.skill.toLowerCase() === skillName.toLowerCase()
+                );
+                return (
+                  <Badge 
+                    key={index} 
+                    variant={isMatched ? "default" : "outline"}
+                    className="text-xs"
+                  >
+                    {skillName}
+                  </Badge>
+                );
+              })}
               {(application.business_roles?.skill_requirements || []).length > 2 && (
                 <span className="text-xs text-muted-foreground">
                   +{(application.business_roles?.skill_requirements || []).length - 2} more

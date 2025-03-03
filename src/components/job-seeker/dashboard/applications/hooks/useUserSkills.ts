@@ -63,7 +63,7 @@ export const useUserSkills = () => {
     });
   };
   
-  const getMatchedSkills = (application?: JobApplication) => {
+  const getMatchedSkills = (application?: JobApplication): (string | SkillRequirement)[] => {
     if (!application || !application.business_roles || !application.business_roles.skill_requirements) {
       return [];
     }
@@ -74,11 +74,15 @@ export const useUserSkills = () => {
       const userSkillName = typeof userSkill === 'string' ? userSkill : userSkill.skill;
       
       return requiredSkills.some(reqSkill => {
-        const reqSkillName = typeof reqSkill === 'string' ? reqSkill : reqSkill.skill;
-        return userSkillName && reqSkillName && 
-               userSkillName.toLowerCase() === reqSkillName.toLowerCase();
+        // Safely handle potentially undefined skill names
+        const reqSkillName = typeof reqSkill === 'string' ? reqSkill : (reqSkill?.skill || '');
+        const userSkillNameLower = userSkillName ? userSkillName.toLowerCase() : '';
+        const reqSkillNameLower = reqSkillName ? reqSkillName.toLowerCase() : '';
+        
+        return userSkillNameLower && reqSkillNameLower && 
+               userSkillNameLower === reqSkillNameLower;
       });
-    });
+    }).map(skill => typeof skill === 'string' ? skill : { skill: skill.skill, level: skill.level });
   };
   
   return {
