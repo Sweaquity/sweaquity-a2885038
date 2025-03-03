@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { JobApplication } from "@/types/jobSeeker";
+import { JobApplication, SkillRequirement } from "@/types/jobSeeker";
 import { useUserSkills } from "./hooks/useUserSkills";
 import { PendingApplicationItem } from "./PendingApplicationItem";
 
@@ -47,7 +47,7 @@ export const PendingApplicationsList = ({
       if (typeof skill === 'string') {
         return String(skill).toLowerCase().includes(term);
       }
-      if (skill && typeof skill === 'object' && 'skill' in skill && typeof skill.skill === 'string') {
+      if (skill && typeof skill === 'object' && 'skill' in skill) {
         return String(skill.skill).toLowerCase().includes(term);
       }
       return false;

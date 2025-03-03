@@ -11,7 +11,7 @@ export const useWithdrawApplication = (onApplicationUpdated?: () => void) => {
     try {
       setIsWithdrawing(true);
       
-      // We store the withdrawal reason in the notes field, not in task_discourse
+      // Update the status to withdrawn and store the reason in notes, not in task_discourse
       const { error } = await supabase
         .from('job_applications')
         .update({ 

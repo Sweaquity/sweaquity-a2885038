@@ -46,26 +46,15 @@ export const useApplicationActions = (onSuccess?: () => void) => {
     }
   };
 
-  const withdrawApplication = async (applicationId: string, withdrawalReason?: string) => {
+  const withdrawApplication = async (applicationId: string, withdrawalReason?: string): Promise<void> => {
     try {
       setIsWithdrawing(applicationId);
 
       let updateData: any = { status: 'withdrawn' };
       
-      // If there's a withdrawal reason, update the task_discourse field
+      // Store the withdrawal reason in notes field
       if (withdrawalReason) {
-        const { data: applicationData } = await supabase
-          .from('job_applications')
-          .select('task_discourse')
-          .eq('job_app_id', applicationId)
-          .single();
-          
-        const timestamp = new Date().toLocaleString();
-        const withdrawMessage = `[${timestamp}] You: ${withdrawalReason} (Withdrawal reason)`;
-        
-        updateData.task_discourse = applicationData?.task_discourse 
-          ? `${applicationData.task_discourse}\n\n${withdrawMessage}`
-          : withdrawMessage;
+        updateData.notes = withdrawalReason;
       }
 
       const { error } = await supabase
@@ -77,12 +66,9 @@ export const useApplicationActions = (onSuccess?: () => void) => {
 
       toast.success("Application withdrawn successfully");
       if (onSuccess) onSuccess();
-      
-      return true;
     } catch (error: any) {
       console.error('Error withdrawing application:', error);
       toast.error(error.message || "Failed to withdraw application");
-      return false;
     } finally {
       setIsWithdrawing(null);
     }

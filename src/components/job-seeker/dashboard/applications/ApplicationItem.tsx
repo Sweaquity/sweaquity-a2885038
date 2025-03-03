@@ -39,6 +39,11 @@ export const ApplicationItem = ({
     setIsExpanded(!isExpanded);
   };
   
+  // Fix for the event handler
+  const handleOpenWithdrawDialog = () => {
+    setIsWithdrawDialogOpen(true);
+  };
+  
   const isAccepted = application.status === "accepted";
   const isPending = ["pending", "in review", "negotiation"].includes(application.status);
   const bothPartiesAccepted = application.accepted_jobseeker && application.accepted_business;
@@ -51,7 +56,7 @@ export const ApplicationItem = ({
           company={application.business_roles?.company_name || ""}
           project={application.business_roles?.project_title || ""}
           status={application.status}
-          onWithdrawClick={() => setIsWithdrawDialogOpen(true)}
+          onWithdrawClick={handleOpenWithdrawDialog}
         />
       </div>
       
@@ -95,10 +100,7 @@ export const ApplicationItem = ({
               {isAccepted && (
                 <Button
                   size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsAcceptDialogOpen(true);
-                  }}
+                  onClick={() => setIsAcceptDialogOpen(true)}
                   variant={bothPartiesAccepted ? "default" : "outline"}
                   className={bothPartiesAccepted ? "bg-green-600 hover:bg-green-700" : ""}
                 >
@@ -112,10 +114,7 @@ export const ApplicationItem = ({
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsMessageDialogOpen(true);
-                    }}
+                    onClick={() => setIsMessageDialogOpen(true)}
                   >
                     <MessageCircle className="mr-1 h-4 w-4" />
                     Message
@@ -124,10 +123,7 @@ export const ApplicationItem = ({
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsWithdrawDialogOpen(true);
-                    }}
+                    onClick={handleOpenWithdrawDialog}
                   >
                     <X className="mr-1 h-4 w-4" />
                     Withdraw
@@ -162,13 +158,14 @@ export const ApplicationItem = ({
         />
       )}
       
-      {isWithdrawDialogOpen && (
-        <WithdrawDialog
-          isOpen={isWithdrawDialogOpen}
-          onOpenChange={setIsWithdrawDialogOpen}
-          onWithdraw={(reason) => handleWithdrawApplication(application.job_app_id, reason)}
-        />
-      )}
+      <WithdrawDialog
+        isOpen={isWithdrawDialogOpen}
+        onOpenChange={setIsWithdrawDialogOpen}
+        onWithdraw={(reason) => {
+          handleWithdrawApplication(application.job_app_id, reason);
+        }}
+        isWithdrawing={false}
+      />
       
       {isAcceptDialogOpen && (
         <AcceptJobDialog
