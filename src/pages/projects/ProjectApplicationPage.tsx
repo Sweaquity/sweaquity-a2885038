@@ -1,279 +1,288 @@
-
 import { useState, useEffect } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
+import { ApplicationForm } from "@/components/projects/ApplicationForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ApplicationForm } from "@/components/projects/ApplicationForm";
-import { ProjectHeader } from "@/components/projects/ProjectHeader";
-import { supabase } from "@/lib/supabase";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Skill } from "@/types/jobSeeker";
+
+interface ApplicationPageState {
+  taskId?: string;
+}
+
+interface Business {
+  company_name: string;
+  // Add other business properties if needed
+}
+
+interface ProjectTask {
+  task_id: string;
+  title: string;
+  description: string;
+  timeframe: string;
+  equity_allocation: number;
+  skills_required: string[];
+  skill_requirements: Array<{
+    skill: string;
+    level: "Beginner" | "Intermediate" | "Expert";
+  }>;
+}
 
 const ProjectApplicationPage = () => {
-  const { id: projectId, taskId: urlTaskId } = useParams<{ id: string; taskId: string }>();
+  const { id: projectId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const state = location.state as ApplicationPageState;
+  
   const [isLoading, setIsLoading] = useState(true);
-  const [projectDetails, setProjectDetails] = useState<{
-    title: string;
-    companyName: string;
-    status: string;
-    description: string;
-    equityAllocation: number;
-    projectTimeframe: string;
-    skillsRequired: string[];
-  }>({
-    title: "",
-    companyName: "",
-    status: "",
-    description: "",
-    equityAllocation: 0,
-    projectTimeframe: "",
-    skillsRequired: []
-  });
-  const [taskDetails, setTaskDetails] = useState<{
-    taskId: string;
-    title: string;
-    description: string;
-    equityAllocation: number;
-    skillsRequired: string[];
-    timeframe: string;
-  }>({
-    taskId: "",
-    title: "",
-    description: "",
-    equityAllocation: 0,
-    skillsRequired: [],
-    timeframe: ""
-  });
-  const [hasStoredCV, setHasStoredCV] = useState(false);
-  const [storedCVUrl, setStoredCVUrl] = useState<string | null>(null);
-
-  const { state } = location;
-  const taskId = urlTaskId || (state && state.taskId);
-
+  const [projectTitle, setProjectTitle] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [businessId, setBusinessId] = useState("");
+  const [tasks, setTasks] = useState<ProjectTask[]>([]);
+  const [selectedTaskId, setSelectedTaskId] = useState<string>("");
+  const [userSkills, setUserSkills] = useState<Skill[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("You must be logged in to apply");
-        navigate("/auth/seeker");
-        return false;
-      }
-      return true;
-    };
-
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Check auth first
-        const isAuthenticated = await checkAuth();
-        if (!isAuthenticated) return;
-        
-        // If we don't have a project ID or task ID, show an error
-        if (!projectId || !taskId) {
-          toast.error("Missing project or task information");
-          navigate("/seeker/dashboard");
-          return;
-        }
-
-        console.log("Loading application details for project:", projectId, "task:", taskId);
-        
-        // Fetch project details
-        const { data: projectData, error: projectError } = await supabase
-          .from('business_projects')
-          .select(`
-            title,
-            description,
-            status,
-            equity_allocation,
-            project_timeframe,
-            skills_required,
-            business_id,
-            businesses (
-              company_name
-            )
-          `)
-          .eq('project_id', projectId)
-          .single();
-        
-        if (projectError) {
-          console.error("Error fetching project:", projectError);
-          toast.error("Failed to load project details");
-          navigate("/seeker/dashboard");
-          return;
-        }
-        
-        // Set project details
-        let companyName = "Unknown Company";
-        
-        if (projectData.businesses) {
-          // Handle case where businesses might be received in different formats
-          if (typeof projectData.businesses === 'object' && projectData.businesses !== null) {
-            // If it's a direct object reference
-            companyName = projectData.businesses.company_name || "Unknown Company";
-          }
-        }
-          
-        setProjectDetails({
-          title: projectData.title || "Untitled Project",
-          companyName: companyName,
-          status: projectData.status || "unknown",
-          description: projectData.description || "",
-          equityAllocation: projectData.equity_allocation || 0,
-          projectTimeframe: projectData.project_timeframe || "",
-          skillsRequired: projectData.skills_required || []
-        });
-        
-        // Fetch task details
-        const { data: taskData, error: taskError } = await supabase
-          .from('project_sub_tasks')
-          .select('task_id, title, description, equity_allocation, skills_required, timeframe')
-          .eq('task_id', taskId)
-          .single();
-        
-        if (taskError) {
-          console.error("Error fetching task:", taskError);
-          toast.error("Failed to load task details");
-          navigate("/seeker/dashboard");
-          return;
-        }
-        
-        setTaskDetails({
-          taskId: taskData.task_id,
-          title: taskData.title,
-          description: taskData.description || "",
-          equityAllocation: taskData.equity_allocation || 0,
-          skillsRequired: taskData.skills_required || [],
-          timeframe: taskData.timeframe || ""
-        });
-        
-        // Load user's CV data
-        await loadUserCVData();
-        
-      } catch (error) {
-        console.error("Error in ProjectApplicationPage:", error);
-        toast.error("An error occurred while loading the application page");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (state?.taskId) {
+      setSelectedTaskId(state.taskId);
+    }
     
     loadData();
-  }, [projectId, taskId, navigate, state]);
+    loadUserSkills();
+  }, [projectId, state]);
   
-  const loadUserCVData = async () => {
+  const loadUserSkills = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       
-      // Check if user has a CV
-      const { data: profileData } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
-        .select('cv_url')
+        .select('skills')
         .eq('id', session.user.id)
         .single();
+        
+      if (error) throw error;
       
-      if (profileData?.cv_url) {
-        setHasStoredCV(true);
-        setStoredCVUrl(profileData.cv_url);
+      if (data?.skills) {
+        setUserSkills(Array.isArray(data.skills) ? data.skills : JSON.parse(data.skills));
       }
     } catch (error) {
-      console.error("Error loading CV data:", error);
+      console.error("Error loading user skills:", error);
     }
   };
   
-  const handleCancel = () => {
+  const loadData = async () => {
+    if (!projectId) {
+      toast.error("No project ID provided");
+      navigate(-1);
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      // First, load project details
+      const { data: projectData, error: projectError } = await supabase
+        .from('business_projects')
+        .select(`
+          title,
+          description,
+          status,
+          equity_allocation,
+          project_timeframe,
+          skills_required,
+          business_id,
+          businesses(company_name)
+        `)
+        .eq('project_id', projectId)
+        .maybeSingle();
+      
+      if (projectError) {
+        console.error("Error fetching project:", projectError);
+        throw projectError;
+      }
+      
+      if (!projectData) {
+        toast.error("Project not found");
+        navigate(-1);
+        return;
+      }
+      
+      setProjectTitle(projectData.title);
+      // Correctly access business data from the join
+      const businessData = projectData.businesses as Business;
+      setCompanyName(businessData.company_name || "Unknown Company");
+      setBusinessId(projectData.business_id);
+      
+      // Then, load tasks for this project
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('project_sub_tasks')
+        .select('*')
+        .eq('project_id', projectId)
+        .eq('status', 'open');
+      
+      if (tasksError) {
+        console.error("Error fetching tasks:", tasksError);
+        throw tasksError;
+      }
+      
+      setTasks(tasksData || []);
+      
+      // If there's a taskId in the state and it's valid, use it
+      // Otherwise, use the first task
+      if (state?.taskId && tasksData?.some(task => task.task_id === state.taskId)) {
+        setSelectedTaskId(state.taskId);
+      } else if (tasksData && tasksData.length > 0 && !selectedTaskId) {
+        setSelectedTaskId(tasksData[0].task_id);
+      }
+      
+    } catch (error) {
+      console.error("Error loading application details for project:", projectId, "task:", state?.taskId, error);
+      toast.error("Failed to load project details");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleTaskSelect = (taskId: string) => {
+    setSelectedTaskId(taskId);
+  };
+  
+  const handleSubmit = async (formData: {
+    message: string;
+    acceptTerms: boolean;
+    cvUrl?: string;
+  }) => {
+    if (!selectedTaskId || !projectId) {
+      toast.error("No task selected");
+      return;
+    }
+    
+    try {
+      setIsSubmitting(true);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("You must be logged in to apply");
+        navigate('/auth/seeker');
+        return;
+      }
+      
+      // Check if user already applied for this task
+      const { data: existingApps, error: checkError } = await supabase
+        .from('job_applications')
+        .select('job_app_id, status')
+        .eq('user_id', session.user.id)
+        .eq('task_id', selectedTaskId);
+      
+      if (checkError) throw checkError;
+      
+      // If there's an existing application that isn't withdrawn or rejected, show error
+      if (existingApps && existingApps.length > 0) {
+        const activeApp = existingApps.find(app => 
+          !['withdrawn', 'rejected'].includes(app.status.toLowerCase())
+        );
+        
+        if (activeApp) {
+          toast.error("You've already applied for this role");
+          return;
+        }
+      }
+      
+      // Insert application
+      const { data, error } = await supabase
+        .from('job_applications')
+        .insert([{
+          user_id: session.user.id,
+          task_id: selectedTaskId,
+          project_id: projectId,
+          message: formData.message,
+          cv_url: formData.cvUrl
+        }])
+        .select();
+      
+      if (error) throw error;
+      
+      toast.success("Application submitted successfully");
+      navigate('/seeker/dashboard', { 
+        state: { 
+          activeTab: 'applications'
+        } 
+      });
+      
+    } catch (error) {
+      console.error("Error submitting application:", error);
+      toast.error("Failed to submit application");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  const goBack = () => {
     navigate(-1);
   };
   
-  const handleApplicationSubmitted = () => {
-    toast.success("Application submitted successfully!");
-    navigate("/seeker/dashboard?tab=applications", { 
-      state: { activeTab: "applications" } 
-    });
-  };
-
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        Loading application details...
+      </div>
+    );
+  }
+  
   return (
-    <div className="container mx-auto py-8 px-4 max-w-3xl">
-      {isLoading ? (
-        <Card className="w-full">
-          <CardContent className="pt-6">
-            <div className="flex justify-center items-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-2">Loading application details...</span>
+    <div className="container mx-auto py-8">
+      <Button 
+        variant="ghost" 
+        onClick={goBack} 
+        className="mb-6"
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" /> Back
+      </Button>
+      
+      <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Apply for Role at {companyName}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold">{projectTitle}</h2>
+              {tasks.length > 1 && (
+                <div className="mt-4">
+                  <h3 className="text-lg font-medium mb-2">Available Roles</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {tasks.map((task) => (
+                      <Button
+                        key={task.task_id}
+                        variant={selectedTaskId === task.task_id ? "default" : "outline"}
+                        onClick={() => handleTaskSelect(task.task_id)}
+                      >
+                        {task.title}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
+            
+            {selectedTaskId && (
+              <ApplicationForm 
+                task={tasks.find(t => t.task_id === selectedTaskId)}
+                companyName={companyName}
+                projectTitle={projectTitle}
+                onSubmit={handleSubmit}
+                isSubmitting={isSubmitting}
+                userSkills={userSkills}
+              />
+            )}
           </CardContent>
         </Card>
-      ) : (
-        <>
-          <Button 
-            variant="outline" 
-            onClick={handleCancel} 
-            className="mb-4"
-          >
-            Back
-          </Button>
-          
-          <Card className="w-full">
-            <CardHeader>
-              <ProjectHeader 
-                title={projectDetails.title}
-                companyName={projectDetails.companyName}
-                status={projectDetails.status}
-              />
-              
-              <div className="mt-6 space-y-4">
-                <div>
-                  <h3 className="text-md font-medium">Project Description</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{projectDetails.description}</p>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <h4 className="font-medium">Project Timeframe</h4>
-                    <p className="text-muted-foreground">{projectDetails.projectTimeframe}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-medium">Total Equity</h4>
-                    <p className="text-muted-foreground">{projectDetails.equityAllocation}%</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-6 pt-4 border-t">
-                <CardTitle className="text-xl">Apply for Role: {taskDetails.title}</CardTitle>
-                <div className="mt-2 space-y-2 text-sm">
-                  <p>{taskDetails.description}</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                    <div>
-                      <h4 className="font-medium">Equity Allocation</h4>
-                      <p className="text-muted-foreground">{taskDetails.equityAllocation}%</p>
-                    </div>
-                    <div>
-                      <h4 className="font-medium">Timeframe</h4>
-                      <p className="text-muted-foreground">{taskDetails.timeframe}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ApplicationForm 
-                projectId={projectId || ""}
-                taskId={taskDetails.taskId}
-                projectTitle={projectDetails.title}
-                taskTitle={taskDetails.title}
-                onCancel={handleCancel}
-                hasStoredCV={hasStoredCV}
-                storedCVUrl={storedCVUrl}
-                onApplicationSubmitted={handleApplicationSubmitted}
-              />
-            </CardContent>
-          </Card>
-        </>
-      )}
+      </div>
     </div>
   );
 };

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DashboardContent } from "@/components/job-seeker/dashboard/DashboardContent";
@@ -20,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const JobSeekerDashboard = () => {
   const location = useLocation();
@@ -28,10 +30,9 @@ const JobSeekerDashboard = () => {
   const tabFromUrl = searchParams.get('tab');
   
   const [activeTab, setActiveTab] = useState<string>(tabFromUrl || "dashboard");
-  const [isRedirecting, setIsRedirecting] = useState(true);
-  const [profileComplete, setProfileComplete] = useState(false);
+  const [localLoading, setLocalLoading] = useState(true);
   const [forceRefresh, setForceRefresh] = useState(0);
-  const [hasBusinessProfile, setHasBusinessProfile] = useState(true);
+  const [hasBusinessProfile, setHasBusinessProfile] = useState(false);
 
   const {
     isLoading,
@@ -69,14 +70,11 @@ const JobSeekerDashboard = () => {
   }, [tabFromUrl]);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkBusinessProfile = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
-        if (!session) {
-          navigate('/auth/seeker');
-          return;
-        }
+        if (!session) return;
 
         const { data: businessData } = await supabase
           .from('businesses')
@@ -85,54 +83,58 @@ const JobSeekerDashboard = () => {
           .maybeSingle();
           
         console.log("Business profile check:", businessData);
-        setHasBusinessProfile(true);
-
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('first_name, last_name, title, location, terms_accepted')
-          .eq('id', session.user.id)
-          .single();
-
-        if (profileError) {
-          throw profileError;
+        setHasBusinessProfile(!!businessData);
+        
+        // If we've reached this point and data has loaded, turn off loading state
+        if (!isLoading) {
+          setLocalLoading(false);
         }
-
-        const isComplete = !!profileData.first_name && 
-                         !!profileData.last_name && 
-                         !!profileData.terms_accepted;
-        
-        setProfileComplete(isComplete);
-        
-        if (!isComplete) {
-          navigate('/seeker/profile/complete');
-          return;
-        }
-        
-        const { state } = location;
-        if (state && state.activeTab) {
-          setActiveTab(state.activeTab);
-          navigate(`/seeker/dashboard?tab=${state.activeTab}`, { replace: true });
-        }
-        
-        setIsRedirecting(false);
       } catch (error) {
-        console.error('Auth check error:', error);
-        toast.error("Authentication check failed");
-        navigate('/auth/seeker');
+        console.error('Business profile check error:', error);
+        // Still turn off loading if there's an error
+        if (!isLoading) {
+          setLocalLoading(false);
+        }
       }
     };
 
-    checkAuth();
-  }, [navigate, location]);
+    checkBusinessProfile();
+  }, [isLoading]);
 
-  if (isLoading || isRedirecting) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-  }
+  // Update local loading state when the main loading state changes
+  useEffect(() => {
+    if (!isLoading) {
+      // Add a small delay to prevent flicker
+      const timer = setTimeout(() => {
+        setLocalLoading(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading]);
 
   const handleDocumentAction = (projectId: string, action: 'edit' | 'approve') => {
     console.log(`Document action: ${action} for project ${projectId}`);
     toast.info(`${action} action for document is not implemented yet`);
   };
+
+  if (localLoading) {
+    return (
+      <div className="min-h-screen p-4 md:p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+          <Skeleton className="h-36 w-full mb-6" />
+          <Skeleton className="h-12 w-full mb-6" />
+          <div className="space-y-4">
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-48 w-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-4 md:p-6">
@@ -143,10 +145,12 @@ const JobSeekerDashboard = () => {
           </h1>
           <div className="flex items-center gap-2">
             <div className="hidden md:flex items-center gap-4">
-              <Button variant="outline" onClick={handleProfileSwitch}>
-                <Building2 className="mr-2 h-4 w-4" />
-                Switch to Business
-              </Button>
+              {hasBusinessProfile && (
+                <Button variant="outline" onClick={handleProfileSwitch}>
+                  <Building2 className="mr-2 h-4 w-4" />
+                  Switch to Business
+                </Button>
+              )}
               <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
             </div>
             
@@ -158,10 +162,12 @@ const JobSeekerDashboard = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleProfileSwitch}>
-                    <Building2 className="mr-2 h-4 w-4" />
-                    Switch to Business
-                  </DropdownMenuItem>
+                  {hasBusinessProfile && (
+                    <DropdownMenuItem onClick={handleProfileSwitch}>
+                      <Building2 className="mr-2 h-4 w-4" />
+                      Switch to Business
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={handleSignOut}>
                     Sign Out
                   </DropdownMenuItem>

@@ -42,6 +42,7 @@ export const useApplications = () => {
       
       // Process the data to make it fit our JobApplication type
       const processedApplications = data.map((app: any) => {
+        // Get company name from businesses relation
         const companyName = app.business_roles?.project?.business?.company_name || "Unknown Company";
         
         // Properly format skill_requirements to match SkillRequirement type
