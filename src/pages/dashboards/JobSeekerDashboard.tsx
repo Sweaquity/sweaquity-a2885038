@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DashboardContent } from "@/components/job-seeker/dashboard/DashboardContent";
@@ -66,10 +65,8 @@ const JobSeekerDashboard = () => {
     }
   }, [tabFromUrl]);
 
-  // Update local loading state when the main loading state changes
   useEffect(() => {
     if (!isLoading) {
-      // Add a small delay to prevent flicker
       const timer = setTimeout(() => {
         setLocalLoading(false);
       }, 300);
@@ -81,7 +78,6 @@ const JobSeekerDashboard = () => {
     toast.info(`${action} action for document is not implemented yet`);
   };
 
-  // Force end loading state after maximum 3 seconds for better UX
   useEffect(() => {
     const timer = setTimeout(() => {
       setLocalLoading(false);
@@ -211,7 +207,6 @@ const JobSeekerDashboard = () => {
               applications={applications} 
               onApplicationUpdated={handleApplicationUpdated}
             />
-            <EquityTab equityProjects={equityProjects} />
           </TabsContent>
 
           <TabsContent value="opportunities" className="space-y-6">

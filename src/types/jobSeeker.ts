@@ -9,6 +9,7 @@ export interface JobApplication {
   notes: string;
   message: string; 
   cv_url: string | null;
+  task_discourse?: string;
   business_roles?: {
     title: string;
     description: string;
@@ -17,6 +18,8 @@ export interface JobApplication {
     timeframe?: string;
     skill_requirements?: (string | SkillRequirement)[];
     equity_allocation?: number;
+    completion_percentage?: number;
+    task_status?: string;
   };
   id: string; // Adding this for backward compatibility
 }
