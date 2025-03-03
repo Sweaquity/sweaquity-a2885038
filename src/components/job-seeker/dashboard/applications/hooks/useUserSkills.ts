@@ -52,8 +52,8 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
 
   // Get matched skills from application and task requirements
   const getMatchedSkills = (application: JobApplication): string[] => {
-    // First check if business_roles and skills_required exist
-    if (!application.business_roles || !application.business_roles.skills_required) {
+    // First check if business_roles and skill_requirements exist
+    if (!application.business_roles || !application.business_roles.skill_requirements) {
       return [];
     }
     
@@ -62,13 +62,12 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
       typeof skill === 'string' ? skill.toLowerCase() : skill.skill.toLowerCase()
     );
     
-    // Convert skills_required to an array we can work with
-    // Explicitly type requiredSkills to avoid the 'never' type inference
+    // Convert skill_requirements to an array we can work with
     const requiredSkills: Array<string | { skill: string }> = [];
     
-    if (Array.isArray(application.business_roles.skills_required)) {
+    if (Array.isArray(application.business_roles.skill_requirements)) {
       // Safely copy the array while ensuring proper typing
-      application.business_roles.skills_required.forEach(skill => {
+      application.business_roles.skill_requirements.forEach(skill => {
         if (typeof skill === 'string' || (typeof skill === 'object' && skill !== null && 'skill' in skill)) {
           requiredSkills.push(skill);
         }

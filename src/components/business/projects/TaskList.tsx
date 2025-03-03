@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Clock, Edit, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,6 @@ interface Task {
   equity_earned: number;
   equity_allocation: number;
   timeframe: string;
-  skills_required: string[];
   skill_requirements: any[];
   dependencies: string[];
 }

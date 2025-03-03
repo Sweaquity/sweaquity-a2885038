@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { JobApplication, Skill } from "@/types/jobSeeker";
 import { ApplicationItem } from "./ApplicationItem";
@@ -30,12 +29,14 @@ export const ApplicationsList = ({
   
   // Function to get matched skills for an application
   const getMatchedSkillsForApplication = (application: JobApplication) => {
-    const requiredSkills = application.business_roles?.skills_required || [];
+    const requiredSkills = application.business_roles?.skill_requirements || [];
     const skillNames = (userSkills || hookUserSkills).map(skill => skill.skill.toLowerCase());
     
     return requiredSkills.filter(skill => 
-      skillNames.includes(skill.toLowerCase())
-    );
+      typeof skill === 'string' 
+        ? skillNames.includes(skill.toLowerCase())
+        : skillNames.includes(skill.skill.toLowerCase())
+    ).map(skill => typeof skill === 'string' ? skill : skill.skill);
   };
   
   if (applications.length === 0) {

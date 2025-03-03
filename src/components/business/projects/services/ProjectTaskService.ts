@@ -11,7 +11,6 @@ interface Task {
   equity_earned: number;
   equity_allocation: number;
   timeframe: string;
-  skills_required: string[];
   skill_requirements: any[];
   dependencies: string[];
 }

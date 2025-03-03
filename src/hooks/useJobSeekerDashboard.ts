@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -15,14 +14,13 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
   const [availableOpportunities, setAvailableOpportunities] = useState<EquityProject[]>([]);
   const [isSessionChecked, setIsSessionChecked] = useState(false);
   const [isProfileComplete, setIsProfileComplete] = useState(false);
-  const loadingRef = useRef(false); // Ref to prevent multiple simultaneous loads
-  
+  const loadingRef = useRef(false);
+
   const { profile, skills, loadProfile, handleSkillsUpdate } = useProfile();
   const { applications, pastApplications, loadApplications } = useApplications();
   const { equityProjects, setEquityProjects, logEffort, setLogEffort, transformToEquityProjects } = useEquityProjects();
   const { cvUrl, setCvUrl, parsedCvData, setParsedCvData, loadCVData } = useCVData();
 
-  // Check authentication session - with debounce to prevent multiple redirects
   const checkSession = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -38,7 +36,6 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     }
   }, [navigate]);
 
-  // Check if profile is complete
   const checkProfileCompletion = useCallback(async (userId) => {
     try {
       const { data: profileData, error: profileError } = await supabase
@@ -64,10 +61,8 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     }
   }, []);
 
-  // Load opportunities based on user skills - optimized to prevent excessive logging
   const loadOpportunities = useCallback(async (userId, userSkills) => {
     try {
-      // Get user's existing applications
       const { data: userApplications, error: applicationsError } = await supabase
         .from('job_applications')
         .select('task_id, status')
@@ -75,7 +70,6 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
 
       if (applicationsError) throw applicationsError;
 
-      // Create set of unavailable task IDs (anything except withdrawn and rejected)
       const unavailableTaskIds = new Set(
         userApplications
           ?.filter(app => ['pending', 'in review', 'negotiation', 'accepted'].includes(app.status))
@@ -84,14 +78,12 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
 
       console.log("Unavailable task IDs:", Array.from(unavailableTaskIds));
 
-      // Format user skills for matching
       const formattedUserSkills = Array.isArray(userSkills) 
         ? userSkills.map(s => typeof s === 'string' ? s : s.skill.toLowerCase())
         : [];
 
       console.log("User skills:", formattedUserSkills);
       
-      // Fetch open tasks from all businesses
       const { data: tasksData, error: tasksError } = await supabase
         .from('project_sub_tasks')
         .select(`
@@ -112,17 +104,18 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
         throw tasksError;
       }
       
-      // Filter and format opportunities
       const opportunities = tasksData
         ?.filter(task => {
-          // Skip tasks that have already been applied for
           if (unavailableTaskIds.has(task.task_id)) return false;
           
-          // If userSkills is empty, include all tasks, otherwise check for matching skills
           if (formattedUserSkills.length === 0) return true;
           
-          // Check if the user has any matching skills for this task
-          const taskSkills = (task.skills_required || []).map(s => s.toLowerCase());
+          if (!task.skill_requirements || !Array.isArray(task.skill_requirements)) return false;
+          
+          const taskSkills = task.skill_requirements.map(s => 
+            typeof s === 'string' ? s.toLowerCase() : s.skill.toLowerCase()
+          );
+          
           const hasMatchingSkill = formattedUserSkills.some(skill => 
             taskSkills.includes(skill.toLowerCase())
           );
@@ -130,8 +123,14 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
           return hasMatchingSkill;
         })
         .map(task => {
-          // Calculate skill match percentage
-          const taskSkills = (task.skills_required || []).map(s => s.toLowerCase());
+          if (!task.skill_requirements || !Array.isArray(task.skill_requirements)) {
+            task.skill_requirements = [];
+          }
+          
+          const taskSkills = task.skill_requirements.map(s => 
+            typeof s === 'string' ? s.toLowerCase() : s.skill.toLowerCase()
+          );
+          
           const matchingSkills = formattedUserSkills.filter(skill => 
             taskSkills.includes(skill.toLowerCase())
           );
@@ -140,7 +139,6 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
             ? Math.round((matchingSkills.length / taskSkills.length) * 100) 
             : 0;
 
-          // Get company name safely
           let companyName = "Unknown Company";
           
           if (task.project?.business) {
@@ -173,7 +171,6 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
               status: task.status,
               equity_allocation: task.equity_allocation,
               skill_requirements: task.skill_requirements || [],
-              skills_required: task.skills_required || [],
               task_status: task.task_status,
               completion_percentage: task.completion_percentage
             }],
@@ -194,9 +191,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     }
   }, []);
 
-  // Main data loading function with protection against multiple simultaneous loads
   const loadDashboardData = useCallback(async () => {
-    // Prevent multiple simultaneous loads
     if (loadingRef.current) return;
     
     loadingRef.current = true;
@@ -204,7 +199,6 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     try {
       setIsLoading(true);
       
-      // Check session
       const session = await checkSession();
       if (!session) {
         loadingRef.current = false;
@@ -213,7 +207,6 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
 
       console.log("Loading profile data for user:", session.user.id);
 
-      // Check profile completion
       const isComplete = await checkProfileCompletion(session.user.id);
       if (!isComplete) {
         console.log("Profile incomplete, redirecting to completion page");
@@ -222,23 +215,19 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
         return;
       }
 
-      // Load user data in parallel
       await Promise.all([
         loadProfile(session.user.id),
         loadApplications(session.user.id),
         loadCVData(session.user.id)
       ]);
 
-      // Load opportunities based on skills
       const opportunities = await loadOpportunities(session.user.id, skills);
       setAvailableOpportunities(opportunities);
 
-      // Transform accepted applications to equity projects
       const acceptedProjects = transformToEquityProjects(
         applications.filter(app => app.status === 'accepted')
       );
 
-      // Set equity projects
       setEquityProjects(acceptedProjects);
       setIsSessionChecked(true);
 
@@ -251,19 +240,15 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     }
   }, [checkSession, checkProfileCompletion, loadProfile, loadApplications, loadCVData, loadOpportunities, skills, applications, navigate, transformToEquityProjects]);
 
-  // Set up session check and data loading
   useEffect(() => {
-    // Only run if not already loading
     if (!loadingRef.current) {
       loadDashboardData();
     }
     
-    // Set up periodic session checks (every 5 minutes instead of every minute)
     const sessionCheckInterval = setInterval(async () => {
       await checkSession();
-    }, 300000); // Check every 5 minutes instead of every minute
+    }, 300000);
 
-    // Cleanup interval on component unmount
     return () => {
       clearInterval(sessionCheckInterval);
     };

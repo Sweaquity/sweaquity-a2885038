@@ -1,4 +1,3 @@
-
 export interface JobApplication {
   job_app_id: string;
   role_id: string;
@@ -15,7 +14,6 @@ export interface JobApplication {
     company_name?: string;
     project_title?: string;
     timeframe?: string;
-    skills_required?: string[];
     skill_requirements?: (string | SkillRequirement)[];
     equity_allocation?: number;
   };
@@ -32,7 +30,6 @@ export interface SubTask {
   project_id: string;
   title: string;
   description: string;
-  skills_required: string[];
   skill_requirements: SkillRequirement[];
   equity_allocation: number;
   timeframe: string;

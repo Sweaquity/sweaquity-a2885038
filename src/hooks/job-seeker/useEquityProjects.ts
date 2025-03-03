@@ -25,15 +25,18 @@ export const useEquityProjects = () => {
         title: app.business_roles?.title || '',
         sub_tasks: [{
           id: app.task_id,
-          task_id: app.task_id, // Added task_id here
+          task_id: app.task_id,
           project_id: app.project_id,
           title: app.business_roles?.title || '',
           description: app.business_roles?.description || '',
           timeframe: app.business_roles?.timeframe || '',
           status: 'active',
           equity_allocation: app.business_roles?.equity_allocation || 0,
-          skill_requirements: [],
-          skills_required: app.business_roles?.skills_required || [],
+          skill_requirements: app.business_roles?.skill_requirements?.map(skill => 
+            typeof skill === 'string' 
+              ? { skill, level: 'Intermediate' } 
+              : skill
+          ) || [],
           task_status: 'active',
           completion_percentage: 0
         }]

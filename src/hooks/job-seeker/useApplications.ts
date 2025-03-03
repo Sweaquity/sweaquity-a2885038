@@ -23,7 +23,6 @@ export const useApplications = () => {
             title,
             description,
             timeframe,
-            skills_required,
             skill_requirements,
             equity_allocation,
             project:business_projects (
@@ -70,7 +69,6 @@ export const useApplications = () => {
             title: app.business_roles?.title || "Unknown Role",
             description: app.business_roles?.description || "",
             timeframe: app.business_roles?.timeframe || "",
-            skills_required: app.business_roles?.skills_required || [],
             skill_requirements: formattedSkillRequirements,
             equity_allocation: app.business_roles?.equity_allocation,
             company_name: companyName,

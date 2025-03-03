@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { EquityProject, Skill } from "@/types/jobSeeker";
 import { useNavigate } from "react-router-dom";
@@ -37,8 +36,7 @@ export const OpportunitiesTab = ({
         if (!task) return false;
         
         // Check if any required skills match user skills
-        const requiredSkills = task.skill_requirements?.map(req => req.skill.toLowerCase()) || 
-                              task.skills_required?.map(skill => skill.toLowerCase()) || [];
+        const requiredSkills = task.skill_requirements?.map(req => req.skill.toLowerCase()) || [];
         
         return requiredSkills.some(skill => userSkillNames.includes(skill));
       });
@@ -94,8 +92,7 @@ export const OpportunitiesTab = ({
             
             // Get user matched skills
             const userSkillNames = userSkills.map(skill => skill.skill.toLowerCase());
-            const requiredSkillNames = task.skill_requirements?.map(req => req.skill.toLowerCase()) || 
-                                     task.skills_required?.map(skill => skill.toLowerCase()) || [];
+            const requiredSkillNames = task.skill_requirements?.map(req => req.skill.toLowerCase()) || [];
             const matchedSkills = requiredSkillNames.filter(skill => userSkillNames.includes(skill));
 
             return (
@@ -112,7 +109,7 @@ export const OpportunitiesTab = ({
                   <TableCell onClick={() => toggleProject(project.id)}>
                     <div className="flex flex-wrap gap-1 max-w-xs">
                       <ApplicationSkills 
-                        requiredSkills={task.skill_requirements || task.skills_required || []}
+                        requiredSkills={task.skill_requirements || []}
                         matchedSkills={matchedSkills}
                       />
                     </div>
