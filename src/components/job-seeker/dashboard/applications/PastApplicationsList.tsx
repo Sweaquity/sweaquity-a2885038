@@ -2,25 +2,18 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Search, ChevronDown, ChevronRight } from "lucide-react";
-import { JobApplication } from "@/types/jobSeeker";
-import { useUserSkills } from "./hooks/useUserSkills";
+import { JobApplication, SkillRequirement } from "@/types/jobSeeker";
 import { 
-  Card, 
-  CardHeader, 
-  CardContent 
-} from "@/components/ui/card";
-import { formatDistanceToNow } from "date-fns";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
 } from "@/components/ui/table";
+import { formatDistanceToNow } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "./StatusBadge";
 
 interface PastApplicationsListProps {
   applications: JobApplication[];
@@ -30,8 +23,39 @@ export const PastApplicationsList = ({
   applications = []
 }: PastApplicationsListProps) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const { userSkills, getMatchedSkills } = useUserSkills();
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  // Make sure we only show withdrawn and rejected applications
+  const filteredApplications = applications.filter((application) => {
+    // First, check if the application status is either withdrawn or rejected
+    const isCorrectStatus = ['rejected', 'withdrawn'].includes(application.status.toLowerCase());
+    
+    // If no search term, just return based on status
+    if (!searchTerm) return isCorrectStatus;
+    
+    // If there's a search term, apply additional filtering
+    const term = searchTerm.toLowerCase();
+    
+    // Check project title
+    if (application.business_roles?.project_title && 
+        String(application.business_roles.project_title).toLowerCase().includes(term)) {
+      return isCorrectStatus;
+    }
+    
+    // Check company name
+    if (application.business_roles?.company_name && 
+        String(application.business_roles.company_name).toLowerCase().includes(term)) {
+      return isCorrectStatus;
+    }
+    
+    // Check role title
+    if (application.business_roles?.title && 
+        String(application.business_roles.title).toLowerCase().includes(term)) {
+      return isCorrectStatus;
+    }
+    
+    return false;
+  });
 
   const toggleExpand = (id: string) => {
     setExpandedItems(prev => {
@@ -45,33 +69,7 @@ export const PastApplicationsList = ({
     });
   };
 
-  const filteredApplications = applications.filter((application) => {
-    if (!searchTerm) return true;
-    
-    const term = searchTerm.toLowerCase();
-    
-    // Check project title
-    if (application.business_roles?.project_title && 
-        String(application.business_roles.project_title).toLowerCase().includes(term)) {
-      return true;
-    }
-    
-    // Check company name
-    if (application.business_roles?.company_name && 
-        String(application.business_roles.company_name).toLowerCase().includes(term)) {
-      return true;
-    }
-    
-    // Check role title
-    if (application.business_roles?.title && 
-        String(application.business_roles.title).toLowerCase().includes(term)) {
-      return true;
-    }
-    
-    return false;
-  });
-
-  if (applications.length === 0) {
+  if (filteredApplications.length === 0) {
     return (
       <div className="text-center p-6">
         <p className="text-muted-foreground">No past applications found</p>
@@ -125,9 +123,7 @@ export const PastApplicationsList = ({
                     <span className="text-sm text-muted-foreground">{timeAgo}</span>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={application.status.toLowerCase() === 'rejected' ? 'destructive' : 'outline'}>
-                      {application.status}
-                    </Badge>
+                    <StatusBadge status={application.status} />
                   </TableCell>
                   <TableCell>
                     {isExpanded ? (
@@ -178,7 +174,18 @@ export const PastApplicationsList = ({
                               </div>
                             )}
                             
-                            {!application.task_discourse && (
+                            {application.notes && !application.task_discourse && (
+                              <div>
+                                <h4 className="text-sm font-medium mb-2">
+                                  {application.status === 'rejected' ? 'Rejection Reason' : 'Withdrawal Reason'}
+                                </h4>
+                                <div className="bg-slate-50 p-3 rounded-md border text-sm whitespace-pre-wrap">
+                                  {application.notes}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {!application.task_discourse && !application.notes && (
                               <div className="text-sm text-muted-foreground italic">
                                 No additional feedback provided.
                               </div>

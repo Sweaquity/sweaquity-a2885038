@@ -16,6 +16,7 @@ export const useWithdrawApplication = (onApplicationUpdated?: () => void) => {
     setIsWithdrawing(true);
 
     try {
+      // Update application to withdrawn status with reason saved in notes field (not task_discourse)
       const { error } = await supabase
         .from('job_applications')
         .update({ 

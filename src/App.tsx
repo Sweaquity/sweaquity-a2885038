@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import BusinessDashboard from "./pages/dashboards/BusinessDashboard";
 import RecruiterDashboard from "./pages/dashboards/RecruiterDashboard";
 import JobSeekerDashboard from "./pages/dashboards/JobSeekerDashboard";
+import AdminDashboard from "./pages/dashboards/AdminDashboard";
 import ProjectDetailsPage from "./pages/projects/ProjectDetailsPage";
 import ProjectApplicationPage from "./pages/projects/ProjectApplicationPage";
 import ProfileCompletePage from "./pages/ProfileCompletePage";
@@ -37,6 +38,7 @@ function App() {
               <Route path="/recruiter/dashboard" element={<RecruiterDashboard />} />
               <Route path="/seeker/dashboard" element={<JobSeekerDashboard />} />
               <Route path="/seeker/profile/complete" element={<ProfileCompletePage />} />
+              <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/projects/:id" element={<ProjectDetailsPage />} />
               <Route path="/projects/:id/apply" element={<ProjectApplicationPage />} />
               {/* Add redirect route to support /project/ links using the ProjectRedirect component */}

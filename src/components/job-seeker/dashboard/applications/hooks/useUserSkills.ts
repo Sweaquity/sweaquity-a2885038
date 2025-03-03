@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Skill, JobApplication } from "@/types/jobSeeker";
+import { Skill, JobApplication, SkillRequirement } from "@/types/jobSeeker";
 
 export const useUserSkills = () => {
   const [userSkills, setUserSkills] = useState<Skill[]>([]);
@@ -55,7 +55,7 @@ export const useUserSkills = () => {
     fetchUserSkills();
   }, []);
 
-  const getMatchedSkills = (application: JobApplication) => {
+  const getMatchedSkills = (application: JobApplication): (string | SkillRequirement)[] => {
     if (!application.business_roles || !userSkills.length) return [];
 
     const requiredSkills = application.business_roles.skill_requirements || [];
@@ -73,7 +73,7 @@ export const useUserSkills = () => {
 
     // Find matches between required skills and user skills
     const matches = requiredSkills.filter(req => {
-      if (typeof req === 'string' && typeof req === 'string') {
+      if (typeof req === 'string') {
         return userSkillsLower.includes(req.toLowerCase());
       }
       

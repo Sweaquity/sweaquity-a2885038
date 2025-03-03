@@ -22,6 +22,8 @@ export interface JobApplication {
     task_status?: string;
   };
   id: string; // Adding this for backward compatibility
+  accepted_jobseeker?: boolean;
+  accepted_business?: boolean;
 }
 
 export interface SkillRequirement {
