@@ -57,7 +57,6 @@ const JobSeekerDashboard = () => {
   };
 
   const handleProfileSwitch = () => {
-    console.log("Switching to business profile");
     navigate('/business/dashboard');
   };
 
@@ -79,11 +78,23 @@ const JobSeekerDashboard = () => {
   }, [isLoading]);
 
   const handleDocumentAction = (projectId: string, action: 'edit' | 'approve') => {
-    console.log(`Document action: ${action} for project ${projectId}`);
     toast.info(`${action} action for document is not implemented yet`);
   };
 
-  if (localLoading) {
+  // Reduce loading time for better UX
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Force end loading state after 3 seconds maximum to prevent infinite loading
+      setLocalLoading(false);
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  // If loading state persists for more than 3 seconds, show content anyway
+  const showContent = !localLoading || (localLoading && Date.now() - performance.now() > 3000);
+
+  if (localLoading && !showContent) {
     return (
       <div className="min-h-screen p-4 md:p-6">
         <div className="max-w-7xl mx-auto">

@@ -206,8 +206,8 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
                   </div>
                   <Badge variant="secondary" className="flex items-center">
                     <Star className="h-4 w-4 mr-1 text-amber-500" />
-                    {/* Add a default value for skill match */}
-                    {(project as any).skill_match || 0}% Match
+                    {/* Use skill_match if it exists, otherwise use 0 */}
+                    {project.skill_match ?? 0}% Match
                   </Badge>
                 </div>
               </CardHeader>

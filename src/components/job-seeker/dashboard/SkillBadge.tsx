@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skill } from "@/types/jobSeeker";
 
 interface SkillBadgeProps {
-  skill: Skill;
+  skill: Skill | string;
   onRemove?: () => void;
   onLevelChange?: (level: "Beginner" | "Intermediate" | "Expert") => void;
   isUserSkill?: boolean;
@@ -18,8 +18,12 @@ export const SkillBadge = ({ skill, onRemove, onLevelChange, isUserSkill }: Skil
   const ChevronDown = onLevelChange ? require("lucide-react").ChevronDown : null;
   const X = onRemove ? require("lucide-react").X : null;
 
+  // Handle both string and object skill types
+  const skillName = typeof skill === 'string' ? skill : skill.skill;
+  const skillLevel = typeof skill === 'string' ? 'Intermediate' : skill.level;
+
   const getColorByLevel = () => {
-    switch (skill.level) {
+    switch (skillLevel) {
       case "Beginner":
         return "bg-blue-100 text-blue-800 border-blue-200";
       case "Intermediate":
@@ -38,7 +42,7 @@ export const SkillBadge = ({ skill, onRemove, onLevelChange, isUserSkill }: Skil
         variant="outline"
         className={`${isUserSkill ? getColorByLevel() : "bg-gray-100 text-gray-800 border-gray-200"}`}
       >
-        {skill.skill}{isUserSkill ? ` (${skill.level})` : ""}
+        {skillName}{isUserSkill ? ` (${skillLevel})` : ""}
       </Badge>
     );
   }
@@ -52,7 +56,7 @@ export const SkillBadge = ({ skill, onRemove, onLevelChange, isUserSkill }: Skil
             variant="outline"
             className={`${getColorByLevel()} cursor-pointer hover:opacity-90 transition-opacity flex items-center gap-1`}
           >
-            {skill.skill} ({skill.level})
+            {skillName} ({skillLevel})
             <ChevronDown className="h-3 w-3 ml-1" />
           </Badge>
         </DropdownMenuTrigger>

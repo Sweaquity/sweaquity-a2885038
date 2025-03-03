@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -17,7 +16,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
   const [isProfileComplete, setIsProfileComplete] = useState(false);
   const [hasBusinessProfile, setHasBusinessProfile] = useState(false);
   const loadingRef = useRef(false);
-  const logsDisabledRef = useRef(false);
+  const logsDisabledRef = useRef(true);
 
   const { profile, skills, loadProfile, handleSkillsUpdate } = useProfile();
   const { applications, pastApplications, loadApplications } = useApplications();
@@ -28,7 +27,6 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        if (!logsDisabledRef.current) console.log("No active session found, redirecting to login");
         navigate('/auth/seeker');
         return false;
       }
@@ -73,13 +71,6 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
         .maybeSingle();
         
       const hasProfile = !!businessData;
-      
-      if (!logsDisabledRef.current && businessData) {
-        console.log("Business profile check:", businessData);
-        // Disable further logs after the first check
-        logsDisabledRef.current = true;
-      }
-      
       setHasBusinessProfile(hasProfile);
       return hasProfile;
     } catch (error) {
@@ -102,13 +93,6 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
           ?.filter(app => ['pending', 'in review', 'negotiation', 'accepted'].includes(app.status))
           .map(app => app.task_id) || []
       );
-
-      if (!logsDisabledRef.current) {
-        console.log("Unavailable task IDs:", Array.from(unavailableTaskIds));
-        console.log("User skills:", Array.isArray(userSkills) 
-          ? userSkills.map(s => typeof s === 'string' ? s : s.skill)
-          : []);
-      }
 
       const formattedUserSkills = Array.isArray(userSkills) 
         ? userSkills.map(s => {
@@ -223,11 +207,6 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
           };
         }) || [];
 
-      if (!logsDisabledRef.current) {
-        console.log("Available opportunities after filtering by skills:", opportunities.length);
-        logsDisabledRef.current = true; // Disable logs after first load
-      }
-
       return opportunities;
     } catch (error) {
       console.error("Error loading opportunities:", error);
@@ -249,19 +228,13 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
         return;
       }
 
-      if (!logsDisabledRef.current) {
-        console.log("Loading profile data for user:", session.user.id);
-      }
-
       const isComplete = await checkProfileCompletion(session.user.id);
       if (!isComplete) {
-        if (!logsDisabledRef.current) console.log("Profile incomplete, redirecting to completion page");
         navigate('/seeker/profile/complete');
         loadingRef.current = false;
         return;
       }
 
-      // Check if user has a business profile (only log once)
       await checkBusinessProfile(session.user.id);
 
       await Promise.all([
@@ -286,14 +259,20 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     } finally {
       setIsLoading(false);
       loadingRef.current = false;
-      // Ensure logs are disabled after first load
-      logsDisabledRef.current = true;
     }
   }, [checkSession, checkProfileCompletion, checkBusinessProfile, loadProfile, loadApplications, loadCVData, loadOpportunities, skills, applications, navigate, transformToEquityProjects]);
 
   useEffect(() => {
-    // Reset the logs disabled flag when refreshTrigger changes
-    logsDisabledRef.current = false;
+    if (refreshTrigger > 0) {
+      logsDisabledRef.current = false;
+      
+      const timer = setTimeout(() => {
+        logsDisabledRef.current = true;
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+    
     loadDashboardData();
     
     const sessionCheckInterval = setInterval(async () => {

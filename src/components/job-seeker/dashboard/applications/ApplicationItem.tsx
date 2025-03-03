@@ -184,7 +184,7 @@ export const ApplicationItem = ({
                 {matchedSkills.map((skill, index) => (
                   <SkillBadge 
                     key={index} 
-                    skill={{ skill, level: "Intermediate" }} 
+                    skill={skill} 
                     isUserSkill={true} 
                   />
                 ))}
