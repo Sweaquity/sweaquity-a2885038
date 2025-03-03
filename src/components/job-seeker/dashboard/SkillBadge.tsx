@@ -24,16 +24,20 @@ export const SkillBadge = ({
   onLevelChange,
 }: SkillBadgeProps) => {
   // Safely handle skill strings or objects
-  const skillName = typeof skill === 'string' 
-    ? skill 
-    : (skill && typeof skill === 'object' && 'skill' in skill) 
-      ? String(skill.skill) 
-      : '';
-      
-  // Safely handle skill level
-  const skillLevel = typeof skill === 'object' && skill && 'level' in skill
-    ? String(skill.level)
-    : 'Intermediate';
+  let skillName = "";
+  let skillLevel = "Intermediate";
+  
+  if (typeof skill === 'string') {
+    skillName = skill;
+  } else if (skill && typeof skill === 'object') {
+    if ('skill' in skill && skill.skill !== undefined) {
+      skillName = String(skill.skill);
+    }
+    
+    if ('level' in skill && skill.level !== undefined) {
+      skillLevel = String(skill.level);
+    }
+  }
 
   // Get variant based on whether it's a user's skill or not
   const variant = isUserSkill ? "default" : "outline";

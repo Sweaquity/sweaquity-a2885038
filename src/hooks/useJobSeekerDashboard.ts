@@ -97,7 +97,9 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
       const formattedUserSkills = Array.isArray(userSkills) 
         ? userSkills.map(s => {
             if (typeof s === 'string') return s.toLowerCase();
-            return typeof s.skill === 'string' ? s.skill.toLowerCase() : '';
+            return typeof s === 'object' && s !== null && 'skill' in s && typeof s.skill === 'string' 
+              ? s.skill.toLowerCase() 
+              : '';
           }).filter(Boolean)
         : [];
       
@@ -105,11 +107,11 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
         .from('project_sub_tasks')
         .select(`
           *,
-          project:business_projects (
+          business_projects!inner (
             project_id,
             title,
             business_id,
-            business:businesses (
+            businesses (
               company_name
             )
           )
@@ -120,9 +122,14 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
         console.error("Error fetching tasks:", tasksError);
         throw tasksError;
       }
+
+      if (!tasksData || tasksData.length === 0) {
+        console.log("No tasks found");
+        return [];
+      }
       
       const opportunities = tasksData
-        ?.filter(task => {
+        .filter(task => {
           if (unavailableTaskIds.has(task.task_id)) return false;
           
           if (formattedUserSkills.length === 0) return true;
@@ -135,6 +142,8 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
               ? s.skill.toLowerCase() 
               : '';
           }).filter(Boolean);
+          
+          if (taskSkills.length === 0 || formattedUserSkills.length === 0) return true;
           
           const hasMatchingSkill = formattedUserSkills.some(skill => 
             taskSkills.includes(skill)
@@ -163,12 +172,17 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
             : 0;
 
           let companyName = "Unknown Company";
+          let projectTitle = "Untitled Project";
           
-          if (task.project?.business) {
-            if (Array.isArray(task.project.business)) {
-              companyName = task.project.business[0]?.company_name || "Unknown Company";
-            } else {
-              companyName = task.project.business.company_name || "Unknown Company";
+          if (task.business_projects) {
+            projectTitle = task.business_projects.title || "Untitled Project";
+            
+            if (task.business_projects.businesses) {
+              if (Array.isArray(task.business_projects.businesses)) {
+                companyName = task.business_projects.businesses[0]?.company_name || "Unknown Company";
+              } else {
+                companyName = task.business_projects.businesses.company_name || "Unknown Company";
+              }
             }
           }
           
@@ -181,7 +195,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
             start_date: task.created_at,
             effort_logs: [],
             total_hours_logged: 0,
-            title: task.project?.title || "Untitled Project",
+            title: projectTitle,
             created_by: task.created_by,
             skill_match: matchPercentage,
             sub_tasks: [{
@@ -200,12 +214,12 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
             business_roles: {
               title: task.title,
               description: task.description,
-              project_title: task.project?.title,
+              project_title: projectTitle,
               company_name: companyName,
               skill_requirements: task.skill_requirements || []
             }
           };
-        }) || [];
+        });
 
       return opportunities;
     } catch (error) {

@@ -81,20 +81,16 @@ const JobSeekerDashboard = () => {
     toast.info(`${action} action for document is not implemented yet`);
   };
 
-  // Reduce loading time for better UX
+  // Force end loading state after maximum 3 seconds for better UX
   useEffect(() => {
     const timer = setTimeout(() => {
-      // Force end loading state after 3 seconds maximum to prevent infinite loading
       setLocalLoading(false);
     }, 3000);
     
     return () => clearTimeout(timer);
   }, []);
 
-  // If loading state persists for more than 3 seconds, show content anyway
-  const showContent = !localLoading || (localLoading && Date.now() - performance.now() > 3000);
-
-  if (localLoading && !showContent) {
+  if (localLoading) {
     return (
       <div className="min-h-screen p-4 md:p-6">
         <div className="max-w-7xl mx-auto">
