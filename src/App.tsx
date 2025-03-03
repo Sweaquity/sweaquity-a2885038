@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,7 +10,7 @@ import NotFound from "./pages/NotFound";
 import BusinessDashboard from "./pages/dashboards/BusinessDashboard";
 import RecruiterDashboard from "./pages/dashboards/RecruiterDashboard";
 import JobSeekerDashboard from "./pages/dashboards/JobSeekerDashboard";
-import { ProjectDetailsPage } from "./pages/projects/ProjectDetailsPage";
+import ProjectDetailsPage from "./pages/projects/ProjectDetailsPage";
 import ProjectApplicationPage from "./pages/projects/ProjectApplicationPage";
 import ProfileCompletePage from "./pages/ProfileCompletePage";
 

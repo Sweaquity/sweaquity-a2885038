@@ -1,4 +1,5 @@
-import { Skill } from "@/types/jobSeeker";
+
+import { Skill, SkillRequirement } from "@/types/jobSeeker";
 
 interface MatchResult {
   matchPercentage: number;
@@ -9,7 +10,7 @@ interface MatchResult {
 export const skillMatching = (userSkills: Skill[], task: any): MatchResult | null => {
   // Check if the task has required skills
   if (task && task.skill_requirements && Array.isArray(task.skill_requirements)) {
-    const taskSkills = task.skill_requirements.map(sk => 
+    const taskSkills = task.skill_requirements.map((sk: string | SkillRequirement) => 
       typeof sk === 'string' ? sk.toLowerCase() : sk.skill.toLowerCase()
     );
     

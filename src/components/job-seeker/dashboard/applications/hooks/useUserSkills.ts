@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Skill, JobApplication } from "@/types/jobSeeker";
+import { Skill, JobApplication, SkillRequirement } from "@/types/jobSeeker";
 
 export const useUserSkills = (initialSkills?: Skill[]) => {
   const [userSkills, setUserSkills] = useState<Skill[]>(initialSkills || []);
@@ -73,8 +73,7 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
         if (typeof req === 'string') {
           return skillNames.includes(req.toLowerCase()) ? req : null;
         } else if (req && typeof req === 'object' && 'skill' in req) {
-          const skillName = req.skill.toLowerCase();
-          return skillNames.includes(skillName) ? req.skill : null;
+          return skillNames.includes(req.skill.toLowerCase()) ? req.skill : null;
         }
         return null;
       })
