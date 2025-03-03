@@ -36,11 +36,12 @@ export const loadProjects = async (): Promise<Project[]> => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return [];
     
+    // Query explicitly joins with the businesses table to get company names
     const { data: projectsData, error: projectsError } = await supabase
       .from('business_projects')
       .select(`
         *,
-        businesses (
+        businesses!inner (
           company_name
         )
       `)
