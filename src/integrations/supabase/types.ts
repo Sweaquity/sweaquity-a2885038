@@ -285,6 +285,7 @@ export type Database = {
           message: string | null
           project_id: string | null
           status: string | null
+          task_discourse: string | null
           task_id: string
           updated_at: string | null
           user_id: string
@@ -297,6 +298,7 @@ export type Database = {
           message?: string | null
           project_id?: string | null
           status?: string | null
+          task_discourse?: string | null
           task_id: string
           updated_at?: string | null
           user_id: string
@@ -309,6 +311,7 @@ export type Database = {
           message?: string | null
           project_id?: string | null
           status?: string | null
+          task_discourse?: string | null
           task_id?: string
           updated_at?: string | null
           user_id?: string
