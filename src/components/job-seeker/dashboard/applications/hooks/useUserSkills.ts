@@ -72,7 +72,7 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
       .map(req => {
         if (typeof req === 'string') {
           return skillNames.includes(req.toLowerCase()) ? req : null;
-        } else if (req && typeof req === 'object' && 'skill' in req) {
+        } else if (req && typeof req === 'object' && 'skill' in req && typeof req.skill === 'string') {
           return skillNames.includes(req.skill.toLowerCase()) ? req.skill : null;
         }
         return null;
