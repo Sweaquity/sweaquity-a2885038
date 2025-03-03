@@ -6,9 +6,30 @@ import { JobApplication } from "@/types/jobSeeker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { MessageCircle, ChevronDown, ChevronUp, ExternalLink, Clock, Check } from "lucide-react";
 import { CreateMessageDialog } from "./CreateMessageDialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
+  Dialog, 
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
+import { WithdrawDialog } from "./WithdrawDialog";
+import { AcceptJobDialog } from "./AcceptJobDialog";
+import { useAcceptedJobs } from "@/hooks/useAcceptedJobs";
+import { useApplicationActions } from "./hooks/useApplicationActions";
 
 interface EquityProjectItemProps {
   application: JobApplication;
@@ -19,11 +40,25 @@ interface EquityProjectItemProps {
 export const EquityProjectItem = ({ 
   application,
   onMessageSent,
-  onApplicationUpdated
+  onApplicationUpdated = () => {}
 }: EquityProjectItemProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
+  const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
+  const [isAcceptJobDialogOpen, setIsAcceptJobDialogOpen] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState(application.status);
   const navigate = useNavigate();
+
+  const { 
+    isUpdatingStatus, 
+    updateApplicationStatus 
+  } = useApplicationActions(onApplicationUpdated);
+  
+  const {
+    acceptJobAsJobSeeker,
+    isLoading: isAcceptingJob
+  } = useAcceptedJobs(onApplicationUpdated);
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -49,6 +84,39 @@ export const EquityProjectItem = ({
       navigate(`/projects/${application.project_id}`);
     }
   };
+
+  const handleAcceptJob = async () => {
+    await acceptJobAsJobSeeker(application);
+    onApplicationUpdated();
+  };
+
+  const handleWithdraw = async (reason?: string) => {
+    try {
+      await updateApplicationStatus(application.job_app_id, 'withdrawn', reason);
+      toast.success("Application withdrawn successfully");
+      onApplicationUpdated();
+    } catch (error) {
+      console.error("Error withdrawing application:", error);
+      toast.error("Failed to withdraw application");
+    }
+  };
+
+  const handleStatusChange = (status: string) => {
+    if (status === 'withdrawn') {
+      setIsWithdrawDialogOpen(true);
+      return;
+    }
+    
+    setSelectedStatus(status);
+    setIsStatusDialogOpen(true);
+  };
+
+  const confirmStatusChange = async () => {
+    await updateApplicationStatus(application.job_app_id, selectedStatus);
+    setIsStatusDialogOpen(false);
+  };
+  
+  const showAcceptButton = application.status === 'accepted' && !application.accepted_jobseeker;
 
   return (
     <Card className="shadow-sm hover:shadow transition-shadow">
@@ -77,11 +145,40 @@ export const EquityProjectItem = ({
             </div>
           </div>
           
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </Button>
-          </CollapsibleTrigger>
+          <div className="flex items-center gap-2">
+            <Select 
+              value={application.status} 
+              onValueChange={handleStatusChange}
+              disabled={isUpdatingStatus === application.job_app_id}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="negotiation">Negotiation</SelectItem>
+                <SelectItem value="accepted">Accepted</SelectItem>
+                <SelectItem value="withdrawn">Withdraw</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {showAcceptButton && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setIsAcceptJobDialogOpen(true)}
+                disabled={isAcceptingJob}
+              >
+                <Check className="mr-1.5 h-4 w-4" />
+                Accept Job
+              </Button>
+            )}
+            
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </CollapsibleTrigger>
+          </div>
         </CardHeader>
         
         <CardContent className="px-4 py-2">
@@ -164,7 +261,52 @@ export const EquityProjectItem = ({
         isOpen={isMessageDialogOpen}
         onOpenChange={setIsMessageDialogOpen}
         applicationId={application.job_app_id}
-        onMessageSent={onMessageSent}
+        existingMessage={application.task_discourse}
+        onMessageSent={() => {
+          if (onMessageSent) onMessageSent();
+          onApplicationUpdated();
+        }}
+      />
+      
+      <WithdrawDialog
+        isOpen={isWithdrawDialogOpen}
+        onOpenChange={setIsWithdrawDialogOpen}
+        onWithdraw={handleWithdraw}
+        isWithdrawing={isUpdatingStatus === application.job_app_id}
+      />
+      
+      <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Application Status</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to change the status to "{selectedStatus}"?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsStatusDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmStatusChange} disabled={isUpdatingStatus === application.job_app_id}>
+              {isUpdatingStatus === application.job_app_id ? (
+                <>
+                  <Clock className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                'Confirm'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <AcceptJobDialog
+        isOpen={isAcceptJobDialogOpen}
+        onOpenChange={setIsAcceptJobDialogOpen}
+        application={application}
+        onAccept={handleAcceptJob}
+        isLoading={isAcceptingJob}
       />
     </Card>
   );

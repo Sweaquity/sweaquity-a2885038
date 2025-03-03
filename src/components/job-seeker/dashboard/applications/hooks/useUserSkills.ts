@@ -1,7 +1,7 @@
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Skill, JobApplication } from '@/types/jobSeeker';
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { JobApplication, Skill, SkillRequirement } from "@/types/jobSeeker";
 
 export const useUserSkills = () => {
   const [userSkills, setUserSkills] = useState<Skill[]>([]);
@@ -9,12 +9,11 @@ export const useUserSkills = () => {
   
   useEffect(() => {
     const loadUserSkills = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
-        
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          console.error('User not authenticated');
+          setIsLoading(false);
           return;
         }
         
@@ -25,32 +24,26 @@ export const useUserSkills = () => {
           .single();
           
         if (error) {
-          console.error('Error loading user skills:', error);
+          console.error("Error loading user skills:", error);
           return;
         }
         
-        if (data && data.skills) {
-          let parsedSkills: Skill[] = [];
-          
+        let skills: Skill[] = [];
+        if (data?.skills) {
           if (typeof data.skills === 'string') {
             try {
-              parsedSkills = JSON.parse(data.skills);
+              skills = JSON.parse(data.skills);
             } catch (e) {
-              console.error('Error parsing skills:', e);
+              console.error("Error parsing skills:", e);
             }
-          } else if (Array.isArray(data.skills)) {
-            parsedSkills = data.skills;
+          } else {
+            skills = data.skills;
           }
-          
-          setUserSkills(parsedSkills.map(skill => {
-            if (typeof skill === 'string') {
-              return { skill, level: 'Intermediate' };
-            }
-            return skill;
-          }));
         }
+        
+        setUserSkills(skills || []);
       } catch (error) {
-        console.error('Error in loadUserSkills:', error);
+        console.error("Error in useUserSkills:", error);
       } finally {
         setIsLoading(false);
       }
@@ -62,42 +55,35 @@ export const useUserSkills = () => {
   const hasSkill = (skillName: string): boolean => {
     if (!userSkills || userSkills.length === 0) return false;
     
-    const lowerSkillName = skillName.toLowerCase();
     return userSkills.some(skill => {
-      const skillToCheck = typeof skill === 'string' 
-        ? skill.toLowerCase()
-        : skill.skill.toLowerCase();
-      return skillToCheck === lowerSkillName;
+      if (typeof skill === 'string') {
+        return skill.toLowerCase() === skillName.toLowerCase();
+      }
+      return skill.skill.toLowerCase() === skillName.toLowerCase();
     });
   };
   
-  const getMatchedSkills = (application: JobApplication): string[] => {
-    if (!application.business_roles?.skill_requirements || !userSkills || userSkills.length === 0) {
+  const getMatchedSkills = (application?: JobApplication) => {
+    if (!application || !application.business_roles || !application.business_roles.skill_requirements) {
       return [];
     }
     
-    const userSkillNames = userSkills.map(skill => {
-      return typeof skill === 'string' ? skill.toLowerCase() : skill.skill.toLowerCase();
-    });
+    const requiredSkills = application.business_roles.skill_requirements;
     
-    const matchedSkills: string[] = [];
-    
-    application.business_roles.skill_requirements.forEach(requirement => {
-      let skillName = '';
+    return userSkills.filter(userSkill => {
+      const userSkillName = typeof userSkill === 'string' ? userSkill : userSkill.skill;
       
-      if (typeof requirement === 'string') {
-        skillName = requirement.toLowerCase();
-      } else if (requirement && typeof requirement === 'object' && 'skill' in requirement) {
-        skillName = requirement.skill.toLowerCase();
-      }
-      
-      if (skillName && userSkillNames.includes(skillName)) {
-        matchedSkills.push(skillName);
-      }
+      return requiredSkills.some(reqSkill => {
+        const reqSkillName = typeof reqSkill === 'string' ? reqSkill : reqSkill.skill;
+        return userSkillName.toLowerCase() === reqSkillName.toLowerCase();
+      });
     });
-    
-    return matchedSkills;
   };
   
-  return { userSkills, isLoading, hasSkill, getMatchedSkills };
+  return {
+    userSkills,
+    isLoading,
+    hasSkill,
+    getMatchedSkills
+  };
 };

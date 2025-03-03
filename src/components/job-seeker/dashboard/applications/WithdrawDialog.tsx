@@ -1,76 +1,76 @@
 
-import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
+import React, { useState } from 'react';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { XCircle, Loader2 } from 'lucide-react';
 
-export interface WithdrawDialogProps {
+interface WithdrawDialogProps {
   isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
+  onOpenChange: (open: boolean) => void;
   onWithdraw: (reason?: string) => Promise<void>;
-  isWithdrawing?: boolean;
+  isWithdrawing: boolean;
 }
 
-export const WithdrawDialog = ({
-  isOpen,
-  onOpenChange,
-  onWithdraw,
-  isWithdrawing = false
+export const WithdrawDialog = ({ 
+  isOpen, 
+  onOpenChange, 
+  onWithdraw, 
+  isWithdrawing 
 }: WithdrawDialogProps) => {
-  const [reason, setReason] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reason, setReason] = useState('');
 
   const handleWithdraw = async () => {
-    try {
-      setIsSubmitting(true);
-      await onWithdraw(reason || undefined);
-      onOpenChange(false);
-    } catch (error) {
-      console.error('Error withdrawing application:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
+    await onWithdraw(reason || undefined);
+    setReason('');
+    onOpenChange(false);
   };
-
-  const isLoading = isSubmitting || isWithdrawing;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Withdraw Application</DialogTitle>
           <DialogDescription>
-            You can provide an optional reason for withdrawing your application. This will be visible to the project owner.
+            Are you sure you want to withdraw this application? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="grid gap-4 py-4">
+        
+        <div className="py-4">
           <Textarea
-            placeholder="Optional reason for withdrawal..."
-            className="min-h-[100px]"
+            placeholder="Optional: Provide a reason for withdrawing"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
+            rows={4}
           />
         </div>
-
+        
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button 
-            type="button"
-            variant="destructive"
+            variant="destructive" 
             onClick={handleWithdraw} 
-            disabled={isLoading}
+            disabled={isWithdrawing}
           >
-            {isLoading ? (
+            {isWithdrawing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Withdrawing...
               </>
             ) : (
-              "Withdraw Application"
+              <>
+                <XCircle className="mr-2 h-4 w-4" />
+                Withdraw Application
+              </>
             )}
           </Button>
         </DialogFooter>

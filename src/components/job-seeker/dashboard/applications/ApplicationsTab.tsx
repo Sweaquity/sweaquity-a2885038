@@ -80,6 +80,8 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     };
   }, [applications, onApplicationUpdated]);
   
+  console.log("Past applications:", pastApplications);
+  
   // Reset notification counter when viewing the relevant tab
   const handleTabChange = (value: string) => {
     if (value === 'equity') {
@@ -135,13 +137,10 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
           </TabsContent>
           
           <TabsContent value="past" className="space-y-4">
-            {pastApplications.length === 0 ? (
-              <p className="text-muted-foreground text-center p-4">No past applications found.</p>
-            ) : (
-              <PastApplicationsList 
-                applications={pastApplications}
-              />
-            )}
+            <PastApplicationsList 
+              applications={pastApplications}
+              onApplicationUpdated={onApplicationUpdated}
+            />
           </TabsContent>
         </Tabs>
       </CardContent>

@@ -3,81 +3,42 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
-export const useApplicationActions = (onSuccess?: () => void) => {
+export const useApplicationActions = (onApplicationUpdated?: () => void) => {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null);
-  const [isWithdrawing, setIsWithdrawing] = useState<string | null>(null);
 
-  const updateApplicationStatus = async (applicationId: string, newStatus: string, rejectionNote?: string) => {
+  const updateApplicationStatus = async (applicationId: string, status: string, reason?: string) => {
     try {
       setIsUpdatingStatus(applicationId);
-
-      let updateData: any = { status: newStatus };
       
-      // If there's a rejection note, update the task_discourse field
-      if (rejectionNote && newStatus === 'rejected') {
-        const { data: applicationData } = await supabase
-          .from('job_applications')
-          .select('task_discourse')
-          .eq('job_app_id', applicationId)
-          .single();
-          
-        const timestamp = new Date().toLocaleString();
-        const rejectMessage = `[${timestamp}] Business: ${rejectionNote} (Rejection reason)`;
-        
-        updateData.task_discourse = applicationData?.task_discourse 
-          ? `${applicationData.task_discourse}\n\n${rejectMessage}`
-          : rejectMessage;
+      const updateData: { status: string; notes?: string } = { status };
+      
+      // Only include notes if a reason is provided
+      if (reason) {
+        updateData.notes = reason;
       }
-
+      
       const { error } = await supabase
         .from('job_applications')
         .update(updateData)
         .eq('job_app_id', applicationId);
-
+        
       if (error) throw error;
-
-      toast.success(`Application ${newStatus.toLowerCase()}`);
-      if (onSuccess) onSuccess();
-    } catch (error: any) {
+      
+      toast.success(`Application ${status === 'withdrawn' ? 'withdrawn' : 'status updated'} successfully`);
+      
+      if (onApplicationUpdated) {
+        onApplicationUpdated();
+      }
+    } catch (error) {
       console.error('Error updating application status:', error);
-      toast.error(error.message || "Failed to update application status");
+      toast.error("Failed to update application status");
     } finally {
       setIsUpdatingStatus(null);
     }
   };
 
-  const withdrawApplication = async (applicationId: string, withdrawalReason?: string): Promise<void> => {
-    try {
-      setIsWithdrawing(applicationId);
-
-      let updateData: any = { status: 'withdrawn' };
-      
-      // Store the withdrawal reason in notes field
-      if (withdrawalReason) {
-        updateData.notes = withdrawalReason;
-      }
-
-      const { error } = await supabase
-        .from('job_applications')
-        .update(updateData)
-        .eq('job_app_id', applicationId);
-
-      if (error) throw error;
-
-      toast.success("Application withdrawn successfully");
-      if (onSuccess) onSuccess();
-    } catch (error: any) {
-      console.error('Error withdrawing application:', error);
-      toast.error(error.message || "Failed to withdraw application");
-    } finally {
-      setIsWithdrawing(null);
-    }
-  };
-
   return {
     isUpdatingStatus,
-    isWithdrawing,
-    updateApplicationStatus,
-    withdrawApplication
+    updateApplicationStatus
   };
 };

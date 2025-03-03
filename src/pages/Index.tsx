@@ -64,8 +64,8 @@ const Index = () => {
           if (project.businesses) {
             if (Array.isArray(project.businesses)) {
               companyName = project.businesses[0]?.company_name || "Unknown Company";
-            } else {
-              companyName = project.businesses.company_name || "Unknown Company";
+            } else if (project.businesses && typeof project.businesses === 'object') {
+              companyName = (project.businesses as any).company_name || "Unknown Company";
             }
           }
 
@@ -197,7 +197,7 @@ const Index = () => {
                           {project.sub_tasks[0].equity_allocation}% Equity
                         </span>
                         <Button size="sm" variant="outline" asChild>
-                          <Link to={`/projects/${project.project_id}`}>View Project</Link>
+                          <Link to={`/auth/seeker`}>Sign in to view</Link>
                         </Button>
                       </div>
                     </div>
@@ -207,12 +207,6 @@ const Index = () => {
             ))}
           </div>
         )}
-        
-        <div className="flex justify-center mt-8">
-          <Button asChild>
-            <Link to="/auth/seeker">Explore All Projects</Link>
-          </Button>
-        </div>
       </div>
       
       <Button asChild variant="link" className="text-muted-foreground">
