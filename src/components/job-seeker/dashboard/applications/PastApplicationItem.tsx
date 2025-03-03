@@ -1,115 +1,98 @@
 
-import { JobApplication } from "@/types/jobSeeker";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { CalendarDays, X, AlertCircle } from "lucide-react";
+import { JobApplication } from "@/types/jobSeeker";
 import { StatusBadge } from "./StatusBadge";
+import { ApplicationHeader } from "./ApplicationHeader";
+import { ApplicationContent } from "./ApplicationContent";
+import { ApplicationSkills } from "./ApplicationSkills";
+import { formatDistanceToNow } from "date-fns";
 
 interface PastApplicationItemProps {
   application: JobApplication;
-  getMatchedSkills: () => string[];
+  getMatchedSkills: () => (string | { skill: string; level: string })[];
 }
 
-export const PastApplicationItem = ({ 
-  application, 
-  getMatchedSkills
+export const PastApplicationItem = ({
+  application,
+  getMatchedSkills,
 }: PastApplicationItemProps) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const handleToggle = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  const isRejected = application.status === "rejected";
+  const isWithdrawn = application.status === "withdrawn";
+  const applicationDate = new Date(application.applied_at);
   
-  const matchedSkills = getMatchedSkills();
-  const appliedDate = new Date(application.applied_at);
-  const timeAgo = formatDistanceToNow(appliedDate, { addSuffix: true });
+  let statusIcon = isRejected ? 
+    <AlertCircle className="h-4 w-4 text-red-500" /> : 
+    <X className="h-4 w-4 text-amber-500" />;
 
   return (
-    <Collapsible
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      className="border rounded-lg overflow-hidden"
-    >
-      <CollapsibleTrigger className="w-full">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-4 text-left hover:bg-muted/50 transition-colors">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h3 className="font-medium line-clamp-1">
-                {application.business_roles?.title || "Unknown Role"}
-              </h3>
-              {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            </div>
-            <p className="text-sm text-muted-foreground line-clamp-1">
-              {application.business_roles?.company_name || "Unknown Company"} • 
-              {application.business_roles?.project_title && ` ${application.business_roles.project_title}`}
-            </p>
+    <Card className={`overflow-hidden transition-all duration-200 ${isExpanded ? "shadow-md" : ""}`}>
+      <div className="p-4 cursor-pointer" onClick={handleToggle}>
+        <ApplicationHeader
+          title={application.business_roles?.title || ""}
+          company={application.business_roles?.company_name || ""}
+          project={application.business_roles?.project_title || ""}
+          status={application.status}
+        />
+        
+        <div className="flex items-center justify-between mt-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <CalendarDays className="h-4 w-4" />
+            <span>Applied {formatDistanceToNow(applicationDate, { addSuffix: true })}</span>
           </div>
-          
-          <div className="space-y-1">
-            <div className="flex flex-wrap gap-1">
-              {(application.business_roles?.skill_requirements || []).slice(0, 2).map((skill, index) => (
-                <Badge 
-                  key={index} 
-                  variant={matchedSkills.includes(typeof skill === 'string' ? skill : skill.skill) ? "default" : "outline"}
-                  className="text-xs"
-                >
-                  {typeof skill === 'string' ? skill : skill.skill}
-                </Badge>
-              ))}
-              {(application.business_roles?.skill_requirements || []).length > 2 && (
-                <span className="text-xs text-muted-foreground">
-                  +{(application.business_roles?.skill_requirements || []).length - 2} more
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Applied {timeAgo}
-            </p>
-          </div>
-          
-          <div className="flex justify-end">
+          <div className="flex items-center gap-2">
+            {statusIcon}
             <StatusBadge status={application.status} />
           </div>
         </div>
-      </CollapsibleTrigger>
+      </div>
       
-      <CollapsibleContent>
-        <div className="p-4 border-t bg-muted/10">
-          <div className="space-y-4">
-            <div>
-              <h4 className="font-medium mb-2">Task Description</h4>
-              <p className="text-sm">
-                {application.business_roles?.description || "No description provided."}
-              </p>
-            </div>
+      {isExpanded && (
+        <>
+          <Separator />
+          <CardContent className="p-4 pt-4">
+            <ApplicationContent 
+              description={application.business_roles?.description || ""}
+              timeframe={application.business_roles?.timeframe || ""}
+              equityAllocation={application.business_roles?.equity_allocation}
+              taskStatus={application.business_roles?.task_status || ""}
+              completionPercentage={application.business_roles?.completion_percentage || 0}
+            />
             
-            <div>
-              <h4 className="font-medium mb-2">Your Application Message</h4>
-              <p className="text-sm">
-                {application.message || "No message provided."}
-              </p>
+            <div className="mt-4">
+              <h4 className="text-sm font-medium mb-2">Required Skills</h4>
+              <ApplicationSkills
+                requiredSkills={application.business_roles?.skill_requirements || []}
+                matchedSkills={getMatchedSkills()}
+              />
             </div>
             
             {application.notes && (
-              <div>
-                <h4 className="font-medium mb-2">
-                  {application.status === 'withdrawn' ? 'Withdrawal Reason' : 'Rejection Reason'}
+              <div className="mt-4 p-3 bg-muted/40 rounded-md">
+                <h4 className="text-sm font-medium mb-2">
+                  {isWithdrawn ? "Withdrawal Reason" : "Rejection Notes"}
                 </h4>
-                <p className="text-sm">
-                  {application.notes}
-                </p>
+                <p className="text-sm">{application.notes}</p>
               </div>
             )}
             
             {application.task_discourse && (
-              <div>
-                <h4 className="font-medium mb-2">Previous Messages</h4>
-                <div className="text-sm bg-muted/20 p-2 rounded-md max-h-32 overflow-y-auto">
-                  <div dangerouslySetInnerHTML={{ __html: application.task_discourse.replace(/\n/g, '<br>') }} />
-                </div>
+              <div className="mt-4 p-3 bg-muted/40 rounded-md">
+                <h4 className="text-sm font-medium mb-2">Message History</h4>
+                <p className="text-sm whitespace-pre-wrap">{application.task_discourse}</p>
               </div>
             )}
-          </div>
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+          </CardContent>
+        </>
+      )}
+    </Card>
   );
 };

@@ -9,6 +9,47 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      accepted_jobs: {
+        Row: {
+          accepted_discourse: string | null
+          created_at: string | null
+          date_accepted: string | null
+          document_url: string | null
+          equity_agreed: number | null
+          id: string
+          job_app_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          accepted_discourse?: string | null
+          created_at?: string | null
+          date_accepted?: string | null
+          document_url?: string | null
+          equity_agreed?: number | null
+          id?: string
+          job_app_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          accepted_discourse?: string | null
+          created_at?: string | null
+          date_accepted?: string | null
+          document_url?: string | null
+          equity_agreed?: number | null
+          id?: string
+          job_app_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accepted_jobs_job_app_id_fkey"
+            columns: ["job_app_id"]
+            isOneToOne: false
+            referencedRelation: "job_applications"
+            referencedColumns: ["job_app_id"]
+          },
+        ]
+      }
       business_members: {
         Row: {
           business_id: string | null
@@ -278,6 +319,8 @@ export type Database = {
       }
       job_applications: {
         Row: {
+          accepted_business: boolean | null
+          accepted_jobseeker: boolean | null
           applied_at: string | null
           created_at: string | null
           cv_url: string | null
@@ -291,6 +334,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          accepted_business?: boolean | null
+          accepted_jobseeker?: boolean | null
           applied_at?: string | null
           created_at?: string | null
           cv_url?: string | null
@@ -304,6 +349,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          accepted_business?: boolean | null
+          accepted_jobseeker?: boolean | null
           applied_at?: string | null
           created_at?: string | null
           cv_url?: string | null
