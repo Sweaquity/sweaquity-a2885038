@@ -63,10 +63,16 @@ export const useUserSkills = (initialSkills?: Skill[]) => {
     );
     
     // Convert skills_required to an array we can work with
-    let requiredSkills: Array<string | { skill: string }> = [];
+    // Explicitly type requiredSkills to avoid the 'never' type inference
+    const requiredSkills: Array<string | { skill: string }> = [];
     
     if (Array.isArray(application.business_roles.skills_required)) {
-      requiredSkills = application.business_roles.skills_required as Array<string | { skill: string }>;
+      // Safely copy the array while ensuring proper typing
+      application.business_roles.skills_required.forEach(skill => {
+        if (typeof skill === 'string' || (typeof skill === 'object' && skill !== null && 'skill' in skill)) {
+          requiredSkills.push(skill);
+        }
+      });
     }
     
     // Find the intersection of user skills and required skills
