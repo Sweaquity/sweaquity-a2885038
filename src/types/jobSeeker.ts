@@ -68,7 +68,8 @@ export interface EquityProject {
       status?: string;
     };
   };
-  created_by?: string; // Added missing property
+  created_by?: string;
+  skill_match?: number; // Added property for skill match percentage
 }
 
 export interface Profile {

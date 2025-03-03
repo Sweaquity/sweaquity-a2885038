@@ -34,7 +34,10 @@ function App() {
               <Route path="/projects/:id" element={<ProjectDetailsPage />} />
               <Route path="/projects/:id/apply" element={<ProjectApplicationPage />} />
               {/* Add redirect route to support /project/ links */}
-              <Route path="/project/:id" element={<Navigate to={relativePath => `/projects/${relativePath.params.id}`} replace />} />
+              <Route 
+                path="/project/:id" 
+                element={<Navigate to={params => `/projects/${params.id}`} replace />} 
+              />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
