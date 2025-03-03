@@ -1,68 +1,75 @@
 
 import { useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
 
-interface WithdrawDialogProps {
+export interface WithdrawDialogProps {
   isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (isOpen: boolean) => void;
   onWithdraw: (reason: string) => Promise<void>;
-  isWithdrawing: boolean;
 }
 
-export const WithdrawDialog = ({ 
-  isOpen, 
+export const WithdrawDialog = ({
+  isOpen,
   onOpenChange,
-  onWithdraw,
-  isWithdrawing
+  onWithdraw
 }: WithdrawDialogProps) => {
-  const [withdrawReason, setWithdrawReason] = useState("");
+  const [reason, setReason] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleWithdraw = async () => {
-    await onWithdraw(withdrawReason);
-    setWithdrawReason(""); // Reset reason after submission
+    if (!reason.trim()) return;
+    
+    try {
+      setIsSubmitting(true);
+      await onWithdraw(reason);
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error withdrawing application:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Withdraw Application</DialogTitle>
           <DialogDescription>
-            Are you sure you want to withdraw your application? This action cannot be undone.
+            Please provide a reason for withdrawing your application. This will be visible to the project owner.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <label htmlFor="reason" className="text-sm font-medium">
-              Reason for withdrawing (required)
-            </label>
-            <Textarea
-              id="reason"
-              placeholder="Please explain why you're withdrawing your application..."
-              value={withdrawReason}
-              onChange={(e) => setWithdrawReason(e.target.value)}
-            />
-          </div>
+
+        <div className="grid gap-4 py-4">
+          <Textarea
+            placeholder="Reason for withdrawal..."
+            className="min-h-[100px]"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
         </div>
+
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button 
-            variant="destructive" 
-            onClick={handleWithdraw}
-            disabled={isWithdrawing}
+            type="button"
+            variant="destructive"
+            onClick={handleWithdraw} 
+            disabled={!reason.trim() || isSubmitting}
           >
-            {isWithdrawing ? "Withdrawing..." : "Withdraw Application"}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Withdrawing...
+              </>
+            ) : (
+              "Withdraw Application"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

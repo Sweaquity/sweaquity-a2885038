@@ -1,144 +1,54 @@
 
-import { useState } from "react";
-import { JobApplication } from "@/types/jobSeeker";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { MessageCircle, FileText } from "lucide-react";
-import { WithdrawDialog } from "./WithdrawDialog";
-import { CreateMessageDialog } from "./CreateMessageDialog";
+import { Progress } from "@/components/ui/progress";
 
 interface ApplicationContentProps {
-  application: JobApplication;
-  onWithdrawSuccess?: () => void;
-  onMessageSent?: () => void;
-  matchedSkills?: string[];
+  description: string;
+  timeframe: string;
+  equityAllocation?: number;
+  taskStatus: string;
+  completionPercentage: number;
 }
 
-export const ApplicationContent = ({ 
-  application, 
-  onWithdrawSuccess,
-  onMessageSent,
-  matchedSkills = []
+export const ApplicationContent = ({
+  description,
+  timeframe,
+  equityAllocation,
+  taskStatus,
+  completionPercentage
 }: ApplicationContentProps) => {
-  const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
-  const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
-
-  const viewCv = () => {
-    if (application.cv_url) {
-      window.open(application.cv_url, '_blank');
-    }
-  };
-
   return (
     <div className="space-y-4">
-      {/* Project description section */}
-      {application.business_roles?.description && (
-        <div>
-          <h4 className="font-medium mb-1">Project Description</h4>
-          <p className="text-sm text-muted-foreground whitespace-pre-line">
-            {application.business_roles.description}
-          </p>
-        </div>
-      )}
-      
-      {/* Application message section */}
-      {application.message && (
-        <div>
-          <h4 className="font-medium mb-1">Your Application Message</h4>
-          <p className="text-sm text-muted-foreground whitespace-pre-line">
-            {application.message}
-          </p>
-        </div>
-      )}
-
-      {/* Message history section */}
-      {application.task_discourse && (
-        <div className="p-3 bg-slate-50 rounded-md border">
-          <h4 className="font-medium mb-2">Message History</h4>
-          <pre className="text-sm whitespace-pre-wrap font-sans">
-            {application.task_discourse}
-          </pre>
-        </div>
-      )}
-      
-      {/* Skills section */}
-      {application.business_roles?.skill_requirements && 
-      application.business_roles.skill_requirements.length > 0 && (
-        <div>
-          <h4 className="font-medium mb-1">Required Skills</h4>
-          <div className="flex flex-wrap gap-1">
-            {application.business_roles.skill_requirements.map((skill, index) => (
-              <Badge 
-                key={index} 
-                variant={
-                  matchedSkills.includes(typeof skill === 'string' ? skill.toLowerCase() : skill.skill.toLowerCase()) 
-                  ? "default" 
-                  : "outline"
-                }
-                className="bg-slate-50"
-              >
-                {typeof skill === 'string' ? skill : skill.skill}
-                {typeof skill !== 'string' && skill.level && 
-                  <span className="ml-1 opacity-70">({skill.level})</span>
-                }
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
-      
-      {/* Actions section */}
-      <div className="flex flex-wrap gap-2 mt-4">
-        {['pending', 'in review', 'negotiation'].includes(application.status.toLowerCase()) && (
-          <>
-            <Button 
-              variant="default" 
-              size="sm"
-              onClick={() => setIsMessageDialogOpen(true)}
-            >
-              <MessageCircle className="mr-1.5 h-4 w-4" />
-              Send Message
-            </Button>
-            
-            <Button 
-              variant="secondary" 
-              size="sm"
-              onClick={viewCv}
-              disabled={!application.cv_url}
-            >
-              <FileText className="mr-1.5 h-4 w-4" />
-              View CV
-            </Button>
-            
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setIsWithdrawDialogOpen(true)}
-            >
-              Withdraw Application
-            </Button>
-          </>
-        )}
+      <div>
+        <h4 className="text-sm font-medium mb-2">Description</h4>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
       
-      <WithdrawDialog
-        isOpen={isWithdrawDialogOpen}
-        onOpenChange={setIsWithdrawDialogOpen}
-        onWithdraw={(reason) => {
-          // Since WithdrawDialog now expects an onWithdraw prop instead of applicationId
-          // We'll call onWithdrawSuccess when it's done
-          onWithdrawSuccess?.();
-          return Promise.resolve();
-        }}
-        isWithdrawing={false}
-      />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+        <div>
+          <p className="text-muted-foreground">Timeframe</p>
+          <p className="font-medium">{timeframe || "Not specified"}</p>
+        </div>
+        
+        <div>
+          <p className="text-muted-foreground">Equity Allocation</p>
+          <p className="font-medium">{equityAllocation ? `${equityAllocation}%` : "Not specified"}</p>
+        </div>
+        
+        <div>
+          <p className="text-muted-foreground">Task Status</p>
+          <p className="font-medium capitalize">{taskStatus || "Not started"}</p>
+        </div>
+      </div>
       
-      <CreateMessageDialog
-        isOpen={isMessageDialogOpen}
-        onOpenChange={setIsMessageDialogOpen}
-        applicationId={application.job_app_id}
-        onMessageSent={onMessageSent}
-      />
+      {completionPercentage > 0 && (
+        <div>
+          <div className="flex justify-between text-xs mb-1">
+            <span>Completion</span>
+            <span>{completionPercentage}%</span>
+          </div>
+          <Progress value={completionPercentage} className="h-2" />
+        </div>
+      )}
     </div>
   );
 };

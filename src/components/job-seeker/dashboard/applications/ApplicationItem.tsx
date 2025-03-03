@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { MessageCircle, FileText, Check, X } from "lucide-react";
+import { MessageCircle, File, Check, X } from "lucide-react";
 import { JobApplication } from "@/types/jobSeeker";
 import { CreateMessageDialog } from "./CreateMessageDialog";
 import { WithdrawDialog } from "./WithdrawDialog";
@@ -51,6 +51,7 @@ export const ApplicationItem = ({
           company={application.business_roles?.company_name || ""}
           project={application.business_roles?.project_title || ""}
           status={application.status}
+          onWithdrawClick={() => setIsWithdrawDialogOpen(true)}
         />
       </div>
       
@@ -141,7 +142,7 @@ export const ApplicationItem = ({
                   asChild
                 >
                   <a href={application.cv_url || "#"} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                    <FileText className="mr-1 h-4 w-4" />
+                    <File className="mr-1 h-4 w-4" />
                     View CV
                   </a>
                 </Button>
@@ -154,7 +155,7 @@ export const ApplicationItem = ({
       {isMessageDialogOpen && (
         <CreateMessageDialog
           isOpen={isMessageDialogOpen}
-          onClose={() => setIsMessageDialogOpen(false)}
+          onOpenChange={setIsMessageDialogOpen}
           applicationId={application.job_app_id}
           existingMessage={application.task_discourse || ""}
           onMessageSent={onApplicationUpdated}
@@ -164,7 +165,7 @@ export const ApplicationItem = ({
       {isWithdrawDialogOpen && (
         <WithdrawDialog
           isOpen={isWithdrawDialogOpen}
-          onClose={() => setIsWithdrawDialogOpen(false)}
+          onOpenChange={setIsWithdrawDialogOpen}
           onWithdraw={(reason) => handleWithdrawApplication(application.job_app_id, reason)}
         />
       )}

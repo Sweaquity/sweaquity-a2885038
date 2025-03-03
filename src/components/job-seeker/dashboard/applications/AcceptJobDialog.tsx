@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { JobApplication } from "@/types/jobSeeker";
 import { AcceptedJob, useAcceptedJobs } from "@/hooks/useAcceptedJobs";
-import { FileUpload, Upload } from "lucide-react";
+import { File, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 interface AcceptJobDialogProps {
@@ -190,7 +190,7 @@ export const AcceptJobDialog = ({
                       variant="outline"
                       onClick={() => window.open(acceptedJob.document_url, "_blank")}
                     >
-                      <FileUpload className="h-4 w-4 mr-2" />
+                      <File className="h-4 w-4 mr-2" />
                       View
                     </Button>
                   </div>
