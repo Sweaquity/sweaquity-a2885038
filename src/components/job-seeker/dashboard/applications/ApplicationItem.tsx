@@ -1,8 +1,9 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp, MessageSquare, ExternalLink, Clock, XCircle } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
-import { JobApplication, SkillRequirement } from '@/types/jobSeeker';
+import { JobApplication } from '@/types/jobSeeker';
 import { ApplicationHeader } from './ApplicationHeader';
 import { ApplicationContent } from './ApplicationContent';
 import { ApplicationSkills } from './ApplicationSkills';
@@ -77,6 +78,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
         return;
       }
 
+      // Get existing discourse
       const { data: applicationData, error: fetchError } = await supabase
         .from('job_applications')
         .select('task_discourse')
@@ -85,13 +87,16 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
 
       if (fetchError) throw fetchError;
 
+      // Format the message with timestamp and sender
       const timestamp = new Date().toLocaleString();
       const formattedMessage = `[${timestamp}] Job Seeker: ${message}`;
 
+      // Append to existing discourse or create new
       const updatedDiscourse = applicationData?.task_discourse
         ? `${applicationData.task_discourse}\n\n${formattedMessage}`
         : formattedMessage;
 
+      // Update the application with the new discourse
       const { error: updateError } = await supabase
         .from('job_applications')
         .update({ task_discourse: updatedDiscourse })
@@ -126,47 +131,8 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
   };
   
   const handleAcceptJob = async () => {
-    try {
-      await acceptJobAsJobSeeker(application);
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("You must be logged in to accept jobs");
-        return;
-      }
-
-      const { data: applicationData, error: fetchError } = await supabase
-        .from('job_applications')
-        .select('task_discourse')
-        .eq('job_app_id', application.job_app_id)
-        .single();
-
-      if (fetchError) {
-        console.error("Error fetching discourse:", fetchError);
-        return;
-      }
-
-      const timestamp = new Date().toLocaleString();
-      const formattedMessage = `[${timestamp}] Job Seeker: I have accepted this job offer.`;
-
-      const updatedDiscourse = applicationData?.task_discourse
-        ? `${applicationData.task_discourse}\n\n${formattedMessage}`
-        : formattedMessage;
-
-      const { error: updateError } = await supabase
-        .from('job_applications')
-        .update({ task_discourse: updatedDiscourse })
-        .eq('job_app_id', application.job_app_id);
-
-      if (updateError) {
-        console.error("Error updating discourse:", updateError);
-      }
-      
-      if (onApplicationUpdated) onApplicationUpdated();
-    } catch (error) {
-      console.error("Error accepting job:", error);
-      toast.error("Failed to accept job");
-    }
+    await acceptJobAsJobSeeker(application);
+    if (onApplicationUpdated) onApplicationUpdated();
   };
   
   const showAcceptButton = application.status === 'accepted' && !application.accepted_jobseeker;
@@ -210,7 +176,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={handleAcceptJob}
+                      onClick={() => setIsAcceptJobDialogOpen(true)}
                       disabled={isAcceptingJob}
                     >
                       Accept Job

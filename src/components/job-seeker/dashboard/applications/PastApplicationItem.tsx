@@ -11,15 +11,13 @@ import { StatusBadge } from "./StatusBadge";
 
 interface PastApplicationItemProps {
   application: JobApplication;
-  onApplicationUpdated?: () => void;
+  getMatchedSkills: () => (string | SkillRequirement)[];
 }
 
-export const PastApplicationItem = ({ 
-  application,
-  onApplicationUpdated
-}: PastApplicationItemProps) => {
+export const PastApplicationItem = ({ application, getMatchedSkills }: PastApplicationItemProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  
+  const matchedSkills = getMatchedSkills();
+
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), "PPP");
@@ -47,17 +45,6 @@ export const PastApplicationItem = ({
   const equityAllocation = application.business_roles?.equity_allocation || 0;
   const taskStatus = application.business_roles?.task_status || "";
   const completionPercentage = application.business_roles?.completion_percentage || 0;
-
-  // This function safely checks if a skill has a toLowerCase method before calling it
-  const hasMatchingSkill = (userSkillName: string, requiredSkillName: string): boolean => {
-    if (typeof userSkillName === 'string' && typeof requiredSkillName === 'string') {
-      return userSkillName.toLowerCase() === requiredSkillName.toLowerCase();
-    }
-    return false;
-  };
-
-  // Generate mock matched skills for display purposes
-  const mockMatchedSkills = requiredSkills.slice(0, Math.floor(requiredSkills.length / 2));
 
   return (
     <Card className="overflow-hidden">
@@ -112,11 +99,11 @@ export const PastApplicationItem = ({
                 <div className="flex flex-wrap gap-1">
                   {requiredSkills.map((skill, index) => {
                     const skillName = typeof skill === 'string' ? skill : skill.skill;
-                    // For display purposes, consider some skills as matched
-                    const isMatched = mockMatchedSkills.some(mock => {
-                      const mockName = typeof mock === 'string' ? mock : mock.skill;
-                      return mockName === skillName;
-                    });
+                    const isMatched = matchedSkills.some(s => 
+                      typeof s === 'string' 
+                        ? s.toLowerCase() === skillName.toLowerCase() 
+                        : s.skill.toLowerCase() === skillName.toLowerCase()
+                    );
                     
                     return (
                       <Badge 

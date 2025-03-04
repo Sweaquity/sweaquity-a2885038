@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +28,7 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
     email: '',
     location: '',
     availability: [] as string[],
-    employment_preference: 'both' as 'equity' | 'both' | 'employment_only',
+    employment_preference: 'both' as 'full_time' | 'equity' | 'both',
     terms_accepted: false,
     marketing_consent: false,
     project_updates_consent: false,
@@ -249,7 +250,7 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
               <Label htmlFor="employment_preference">Sweaquity options or Employment too?</Label>
               <Select
                 value={formData.employment_preference}
-                onValueChange={(value: 'equity' | 'both' | 'employment_only') => 
+                onValueChange={(value: 'full_time' | 'equity' | 'both') => 
                   handleFieldChange('employment_preference', value)
                 }
               >
@@ -259,7 +260,7 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
                 <SelectContent>
                   <SelectItem value="equity">Sweaquity options only</SelectItem>
                   <SelectItem value="both">Both Sweaquity and Employment</SelectItem>
-                  <SelectItem value="employment_only">Employment only</SelectItem>
+                  <SelectItem value="full_time">Employment only</SelectItem>
                 </SelectContent>
               </Select>
             </div>

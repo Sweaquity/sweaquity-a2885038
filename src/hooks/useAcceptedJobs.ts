@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -59,19 +60,10 @@ export const useAcceptedJobs = (onUpdate?: () => void) => {
     setIsLoading(true);
     
     try {
-      // First update the task_discourse with business acceptance message
-      const currentDate = new Date().toISOString();
-      const acceptMessage = `[${currentDate}] Business accepted the job offer.`;
-      
-      let existingDiscourse = application.task_discourse || '';
-      const updatedDiscourse = existingDiscourse ? `${existingDiscourse}\n${acceptMessage}` : acceptMessage;
-      
-      // Update both accepted_business and task_discourse in one go
       const { error } = await supabase
         .from('job_applications')
         .update({ 
-          accepted_business: true,
-          task_discourse: updatedDiscourse
+          accepted_business: true 
         })
         .eq('job_app_id', application.job_app_id);
       

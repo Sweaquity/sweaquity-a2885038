@@ -55,15 +55,15 @@ export const useUserSkills = () => {
   const hasSkill = (skillName: string): boolean => {
     if (!userSkills || userSkills.length === 0) return false;
     
-    return userSkills.some((skill: string | { skill: string }) => {
+    return userSkills.some(skill => {
       if (typeof skill === 'string') {
         return skill.toLowerCase() === skillName.toLowerCase();
       }
-      return typeof skill.skill === 'string' && skill.skill.toLowerCase() === skillName.toLowerCase();
+      return skill.skill.toLowerCase() === skillName.toLowerCase();
     });
   };
   
-  const getMatchedSkills = (application?: JobApplication): (string | SkillRequirement)[] => {
+  const getMatchedSkills = (application?: JobApplication) => {
     if (!application || !application.business_roles || !application.business_roles.skill_requirements) {
       return [];
     }
@@ -71,26 +71,13 @@ export const useUserSkills = () => {
     const requiredSkills = application.business_roles.skill_requirements;
     
     return userSkills.filter(userSkill => {
-      // Ensure userSkill is properly typed
       const userSkillName = typeof userSkill === 'string' ? userSkill : userSkill.skill;
       
       return requiredSkills.some(reqSkill => {
-        // Safely extract the skill name from the required skill
-        let reqSkillName = '';
-        
-        if (typeof reqSkill === 'string') {
-          reqSkillName = reqSkill;
-        } else if (reqSkill && typeof reqSkill === 'object' && 'skill' in reqSkill) {
-          reqSkillName = reqSkill.skill || '';
-        }
-        
-        // Only call toLowerCase on strings that are defined
-        if (typeof userSkillName === 'string' && reqSkillName && typeof reqSkillName === 'string') {
-          return userSkillName.toLowerCase() === reqSkillName.toLowerCase();
-        }
-        return false;
+        const reqSkillName = typeof reqSkill === 'string' ? reqSkill : reqSkill.skill;
+        return userSkillName.toLowerCase() === reqSkillName.toLowerCase();
       });
-    }).map(skill => typeof skill === 'string' ? skill : { skill: skill.skill, level: skill.level });
+    });
   };
   
   return {

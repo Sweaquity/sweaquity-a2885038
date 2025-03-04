@@ -64,15 +64,11 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
 
   const checkBusinessProfile = useCallback(async (userId) => {
     try {
-      const { data: businessData, error } = await supabase
+      const { data: businessData } = await supabase
         .from('businesses')
         .select('businesses_id')
         .eq('businesses_id', userId)
         .maybeSingle();
-        
-      if (error) {
-        console.error('Business profile check error:', error);
-      }
         
       const hasProfile = !!businessData;
       setHasBusinessProfile(hasProfile);
@@ -253,9 +249,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
         return;
       }
 
-      if (isComplete) {
-        await checkBusinessProfile(session.user.id);
-      }
+      await checkBusinessProfile(session.user.id);
 
       await Promise.all([
         loadProfile(session.user.id),

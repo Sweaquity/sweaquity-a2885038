@@ -1,36 +1,106 @@
 
 import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 import { JobApplication } from "@/types/jobSeeker";
+import { useUserSkills } from "./hooks/useUserSkills";
 import { PastApplicationItem } from "./PastApplicationItem";
+import { Card } from "@/components/ui/card"; 
 
 interface PastApplicationsListProps {
   applications: JobApplication[];
-  onApplicationUpdated: () => void;
+  onApplicationUpdated?: () => void;
 }
 
-export const PastApplicationsList = ({
-  applications,
+export const PastApplicationsList = ({ 
+  applications = [],
   onApplicationUpdated
 }: PastApplicationsListProps) => {
-  console.log("PastApplicationsList: Rendering with", applications.length, "applications");
-  
-  if (applications.length === 0) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const { userSkills, getMatchedSkills } = useUserSkills();
+
+  // Filter to only include rejected or withdrawn applications
+  const pastApplications = applications.filter(
+    app => app.status === 'rejected' || app.status === 'withdrawn'
+  );
+
+  const filteredApplications = pastApplications.filter((application) => {
+    if (!searchTerm) return true;
+    
+    const term = searchTerm.toLowerCase();
+    
+    // Check project title
+    if (application.business_roles?.project_title && 
+        String(application.business_roles.project_title).toLowerCase().includes(term)) {
+      return true;
+    }
+    
+    // Check company name
+    if (application.business_roles?.company_name && 
+        String(application.business_roles.company_name).toLowerCase().includes(term)) {
+      return true;
+    }
+    
+    // Check role title
+    if (application.business_roles?.title && 
+        String(application.business_roles.title).toLowerCase().includes(term)) {
+      return true;
+    }
+    
+    // Check notes (withdrawal reason)
+    if (application.notes && 
+        String(application.notes).toLowerCase().includes(term)) {
+      return true;
+    }
+    
+    // Check skills
+    const skills = application.business_roles?.skill_requirements || [];
+    return skills.some(skill => {
+      if (typeof skill === 'string') {
+        return String(skill).toLowerCase().includes(term);
+      }
+      if (skill && typeof skill === 'object' && 'skill' in skill && typeof skill.skill === 'string') {
+        return String(skill.skill).toLowerCase().includes(term);
+      }
+      return false;
+    });
+  });
+
+  if (pastApplications.length === 0) {
     return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">No past applications found.</p>
+      <div className="text-center p-6">
+        <p className="text-muted-foreground">No rejected or withdrawn applications found</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {applications.map((application) => (
-        <PastApplicationItem
-          key={application.job_app_id}
-          application={application}
-          onApplicationUpdated={onApplicationUpdated}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search past applications..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-9"
         />
-      ))}
+      </div>
+
+      <div className="space-y-4">
+        {filteredApplications.length === 0 ? (
+          <Card className="p-4 text-center text-muted-foreground">
+            No matches found for "{searchTerm}"
+          </Card>
+        ) : (
+          filteredApplications.map((application) => (
+            <PastApplicationItem
+              key={application.job_app_id}
+              application={application}
+              getMatchedSkills={() => getMatchedSkills(application)}
+            />
+          ))
+        )}
+      </div>
     </div>
   );
 };

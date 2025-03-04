@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ interface ProfileFormData {
   email: string;
   location: string;
   availability: string[];
-  employment_preference: 'equity' | 'both' | 'employment_only';
+  employment_preference: 'full_time' | 'equity' | 'both';
   terms_accepted: boolean;
   marketing_consent: boolean;
   project_updates_consent: boolean;
@@ -128,14 +129,11 @@ export const ProfileCompletionForm = () => {
           ? JSON.stringify(formData.availability) 
           : formData.availability;
 
-      console.log("Submitting employment preference:", formData.employment_preference);
-
       const { error } = await supabase
         .from('profiles')
         .update({
           ...formData,
           availability: availabilityData,
-          employment_preference: formData.employment_preference,
           updated_at: new Date().toISOString()
         })
         .eq('id', session.user.id);
@@ -184,7 +182,7 @@ export const ProfileCompletionForm = () => {
             <Label htmlFor="employment_preference">Employment Preference *</Label>
             <Select
               value={formData.employment_preference}
-              onValueChange={(value: 'equity' | 'both' | 'employment_only') => 
+              onValueChange={(value: 'full_time' | 'equity' | 'both') => 
                 handleFieldChange('employment_preference', value)
               }
             >
@@ -194,7 +192,7 @@ export const ProfileCompletionForm = () => {
               <SelectContent>
                 <SelectItem value="equity">Equity only</SelectItem>
                 <SelectItem value="both">Both Equity and Employment</SelectItem>
-                <SelectItem value="employment_only">Employment only</SelectItem>
+                <SelectItem value="full_time">Employment only</SelectItem>
               </SelectContent>
             </Select>
           </div>

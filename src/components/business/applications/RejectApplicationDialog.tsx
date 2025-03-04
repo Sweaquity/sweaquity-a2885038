@@ -11,9 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
+import { Loader2, AlertCircle } from "lucide-react";
 
 interface RejectApplicationDialogProps {
   isOpen: boolean;
@@ -24,27 +22,29 @@ interface RejectApplicationDialogProps {
 export const RejectApplicationDialog = ({
   isOpen,
   onOpenChange,
-  onReject,
+  onReject
 }: RejectApplicationDialogProps) => {
-  const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleReject = async () => {
-    if (!reason.trim()) {
-      toast.error("Please provide a reason for rejection");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!note.trim()) {
+      setError("Please provide a reason for rejection");
       return;
     }
 
     setIsSubmitting(true);
+    setError("");
+    
     try {
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
-      
-      onReject(reason);
-      setReason("");
+      await onReject(note);
+      setNote("");
       onOpenChange(false);
     } catch (error) {
       console.error("Error rejecting application:", error);
-      toast.error("Failed to reject application");
+      setError("Failed to reject application. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -52,58 +52,66 @@ export const RejectApplicationDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) setReason("");
+      if (!open) {
+        setNote("");
+        setError("");
+      }
       onOpenChange(open);
     }}>
       <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Reject Application</DialogTitle>
-          <DialogDescription>
-            Please provide a reason for rejecting this application. 
-            This will be shared with the applicant.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="reason">
-              Reason <span className="text-destructive">*</span>
-            </Label>
-            <Textarea
-              id="reason"
-              placeholder="Enter reason here..."
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="min-h-24"
-            />
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Reject Application</DialogTitle>
+            <DialogDescription>
+              Provide a reason for rejecting this application. 
+              <span className="font-medium text-amber-600 block mt-1">
+                Note: This message will be visible to the applicant.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="rejection-note" className="text-left">
+                Rejection Reason
+              </Label>
+              <Textarea
+                id="rejection-note"
+                placeholder="Enter your rejection reason here..."
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="min-h-24"
+              />
+              {error && (
+                <div className="flex items-center gap-1 text-sm text-red-500 mt-1">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>{error}</span>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-        
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button 
-            type="button" 
-            variant="destructive"
-            onClick={handleReject}
-            disabled={isSubmitting || !reason.trim()}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Rejecting...
-              </>
-            ) : (
-              "Reject Application"
-            )}
-          </Button>
-        </DialogFooter>
+          
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Reject Application"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
