@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -922,4 +923,139 @@ const ActiveApplicationsTable = ({
                           </>
                         ) : (
                           <>
-                            <MessageCircle className="mr-1.5 h-
+                            <MessageCircle className="mr-1.5 h-4 w-4" />
+                            Send Message
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </CardContent>
+          </Collapsible>
+        </Card>
+      ))}
+    </div>
+  );
+};
+
+const WithdrawnApplicationsTable = ({ 
+  applications, 
+  expandedApplications, 
+  toggleApplicationExpanded 
+}: { 
+  applications: Application[], 
+  expandedApplications: Set<string>, 
+  toggleApplicationExpanded: (id: string) => void
+}) => {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[200px]">Applicant</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead>Applied Date</TableHead>
+          <TableHead>Withdrawn Date</TableHead>
+          <TableHead className="w-[80px]"></TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {applications.map(application => (
+          <TableRow 
+            key={application.job_app_id}
+            className="cursor-pointer hover:bg-muted/50"
+            onClick={() => toggleApplicationExpanded(application.job_app_id)}
+          >
+            <TableCell>
+              <div>
+                <p className="font-medium">{application.profile?.first_name} {application.profile?.last_name}</p>
+                <p className="text-xs text-muted-foreground">{application.profile?.title || "No title"}</p>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div>
+                <p className="font-medium">{application.business_roles?.title || "Untitled"}</p>
+                <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                  {application.business_roles?.project.title || "Untitled Project"}
+                </p>
+              </div>
+            </TableCell>
+            <TableCell>
+              {new Date(application.applied_at).toLocaleDateString()}
+            </TableCell>
+            <TableCell>
+              {application.updated_at ? new Date(application.updated_at).toLocaleDateString() : "Unknown"}
+            </TableCell>
+            <TableCell>
+              {expandedApplications.has(application.job_app_id) ? 
+                <ChevronDown className="h-4 w-4 mx-auto" /> : 
+                <ChevronRight className="h-4 w-4 mx-auto" />
+              }
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+};
+
+const RejectedApplicationsTable = ({ 
+  applications, 
+  expandedApplications, 
+  toggleApplicationExpanded 
+}: { 
+  applications: Application[], 
+  expandedApplications: Set<string>, 
+  toggleApplicationExpanded: (id: string) => void
+}) => {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[200px]">Applicant</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead>Applied Date</TableHead>
+          <TableHead>Rejection Date</TableHead>
+          <TableHead className="w-[80px]"></TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {applications.map(application => (
+          <TableRow 
+            key={application.job_app_id}
+            className="cursor-pointer hover:bg-muted/50"
+            onClick={() => toggleApplicationExpanded(application.job_app_id)}
+          >
+            <TableCell>
+              <div>
+                <p className="font-medium">{application.profile?.first_name} {application.profile?.last_name}</p>
+                <p className="text-xs text-muted-foreground">{application.profile?.title || "No title"}</p>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div>
+                <p className="font-medium">{application.business_roles?.title || "Untitled"}</p>
+                <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                  {application.business_roles?.project.title || "Untitled Project"}
+                </p>
+              </div>
+            </TableCell>
+            <TableCell>
+              {new Date(application.applied_at).toLocaleDateString()}
+            </TableCell>
+            <TableCell>
+              {application.updated_at ? new Date(application.updated_at).toLocaleDateString() : "Unknown"}
+            </TableCell>
+            <TableCell>
+              {expandedApplications.has(application.job_app_id) ? 
+                <ChevronDown className="h-4 w-4 mx-auto" /> : 
+                <ChevronRight className="h-4 w-4 mx-auto" />
+              }
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+};
