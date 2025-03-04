@@ -8,14 +8,24 @@ import { Badge } from "@/components/ui/badge";
 import { JobApplication, SkillRequirement } from "@/types/jobSeeker";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { StatusBadge } from "./StatusBadge";
+import { useUserSkills } from "./hooks/useUserSkills";
 
 interface PastApplicationItemProps {
   application: JobApplication;
-  getMatchedSkills: () => (string | SkillRequirement)[];
+  onApplicationUpdated?: () => void;
 }
 
-export const PastApplicationItem = ({ application, getMatchedSkills }: PastApplicationItemProps) => {
+export const PastApplicationItem = ({ 
+  application,
+  onApplicationUpdated
+}: PastApplicationItemProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const { userSkills } = useUserSkills();
+  
+  const getMatchedSkills = () => {
+    return userSkills || [];
+  };
+
   const matchedSkills = getMatchedSkills();
 
   const formatDate = (dateString: string) => {
