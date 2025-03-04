@@ -66,9 +66,13 @@ export const useApplications = () => {
           } as SkillRequirement;
         });
         
+        // Normalize status to lowercase for consistent filtering
+        const normalizedStatus = app.status?.toLowerCase() || "";
+        
         return {
           ...app,
           id: app.job_app_id, // Ensuring id property is set
+          status: app.status || "", // Ensure status is never undefined
           business_roles: {
             title: app.business_roles?.title || "Unknown Role",
             description: app.business_roles?.description || "",
@@ -84,20 +88,18 @@ export const useApplications = () => {
       });
       
       console.log("Processed applications:", processedApplications);
-      console.log("Status values:", processedApplications.map((app: JobApplication) => app.status));
       
-      // Separate current from past applications (those that are rejected or withdrawn)
+      // Separate current from past applications using lowercase comparison
       const current = processedApplications.filter((app: JobApplication) => 
-        !['rejected', 'withdrawn'].includes(app.status.toLowerCase())
+        !['rejected', 'withdrawn'].includes((app.status || "").toLowerCase())
       );
       
       const past = processedApplications.filter((app: JobApplication) => 
-        ['rejected', 'withdrawn'].includes(app.status.toLowerCase())
+        ['rejected', 'withdrawn'].includes((app.status || "").toLowerCase())
       );
       
-      console.log("Current applications:", current.length);
-      console.log("Past applications:", past.length);
-      console.log("Past application statuses:", past.map((app: JobApplication) => app.status));
+      console.log("Current applications count:", current.length);
+      console.log("Past applications count:", past.length, "with statuses:", past.map((app: JobApplication) => app.status));
       
       setApplications(current);
       setPastApplications(past);

@@ -19,7 +19,7 @@ interface ApplicationsTabProps {
 export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} }: ApplicationsTabProps) => {
   const [newMessagesCount, setNewMessagesCount] = useState(0);
   
-  // Debug the incoming applications
+  // Debug the incoming applications (single log is sufficient)
   console.log("All applications in ApplicationsTab:", applications);
   
   // Filter applications by status
@@ -36,11 +36,11 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     ['rejected', 'withdrawn'].includes(app.status.toLowerCase())
   );
   
-  // Debug filtered applications
-  console.log("Pending applications:", pendingApplications.length);
-  console.log("Equity projects:", equityProjects.length);
-  console.log("Past applications:", pastApplications.length);
-  console.log("Past application statuses:", pastApplications.map(app => app.status));
+  // Single console log for debugging filtered applications
+  console.log("Filtered applications - Pending:", pendingApplications.length, 
+              "Equity:", equityProjects.length, 
+              "Past:", pastApplications.length, 
+              "Past statuses:", pastApplications.map(app => app.status));
   
   useEffect(() => {
     // Count new messages from the past 24 hours
@@ -89,8 +89,6 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
       supabase.removeChannel(channel);
     };
   }, [applications, onApplicationUpdated]);
-  
-  console.log("Past applications:", pastApplications);
   
   // Reset notification counter when viewing the relevant tab
   const handleTabChange = (value: string) => {
