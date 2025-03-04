@@ -76,10 +76,16 @@ export const useUserSkills = () => {
       
       return requiredSkills.some(reqSkill => {
         // Safely handle potentially undefined skill names
-        const reqSkillName = typeof reqSkill === 'string' ? reqSkill : (reqSkill && 'skill' in reqSkill ? reqSkill.skill : '');
+        let reqSkillName: string = '';
         
-        // Only compare if both skills are valid strings
-        if (typeof userSkillName === 'string' && typeof reqSkillName === 'string') {
+        if (typeof reqSkill === 'string') {
+          reqSkillName = reqSkill;
+        } else if (reqSkill && typeof reqSkill === 'object' && 'skill' in reqSkill) {
+          reqSkillName = reqSkill.skill || '';
+        }
+        
+        // Only compare if both are valid strings
+        if (typeof userSkillName === 'string' && reqSkillName) {
           return userSkillName.toLowerCase() === reqSkillName.toLowerCase();
         }
         return false;
