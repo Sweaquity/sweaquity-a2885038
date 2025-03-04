@@ -22,18 +22,18 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
   // Debug the incoming applications (single log is sufficient)
   console.log("All applications in ApplicationsTab:", applications);
   
-  // Filter applications by status
+  // Filter applications by status - ensure case-insensitive comparison
   const pendingApplications = applications.filter(app => 
-    ['pending', 'in review'].includes(app.status.toLowerCase())
+    ['pending', 'in review'].includes((app.status || "").toLowerCase())
   );
   
   const equityProjects = applications.filter(app => 
-    ['negotiation', 'accepted'].includes(app.status.toLowerCase())
+    ['negotiation', 'accepted'].includes((app.status || "").toLowerCase())
   );
   
-  // Make sure to filter by exact status values
+  // Ensure case-insensitive comparison for past applications
   const pastApplications = applications.filter(app => 
-    ['rejected', 'withdrawn'].includes(app.status.toLowerCase())
+    ['rejected', 'withdrawn'].includes((app.status || "").toLowerCase())
   );
   
   // Single console log for debugging filtered applications

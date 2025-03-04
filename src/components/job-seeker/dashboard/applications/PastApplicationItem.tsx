@@ -27,9 +27,9 @@ export const PastApplicationItem = ({ application, getMatchedSkills }: PastAppli
   };
 
   const getReasonText = () => {
-    if (application.status === "withdrawn") {
+    if (application.status.toLowerCase() === "withdrawn") {
       return "You withdrew this application" + (application.notes ? ": " + application.notes : "");
-    } else if (application.status === "rejected") {
+    } else if (application.status.toLowerCase() === "rejected") {
       return "This application was rejected" + (application.notes ? ": " + application.notes : "");
     }
     return "";
