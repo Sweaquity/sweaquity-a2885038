@@ -12,8 +12,9 @@ export const useApplicationActions = (onApplicationUpdated?: () => void) => {
       
       const updateData: { status: string; notes?: string } = { status };
       
-      // Only include notes if a reason is provided
-      if (reason) {
+      // Only include notes if a reason is provided and status is not 'withdrawn'
+      // For withdrawn applications from job seekers, note is optional
+      if (reason && (status !== 'withdrawn' || (status === 'withdrawn' && reason.trim() !== ''))) {
         updateData.notes = reason;
       }
       

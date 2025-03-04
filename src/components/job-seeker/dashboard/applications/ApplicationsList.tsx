@@ -1,88 +1,56 @@
 
 import { useState } from "react";
+import { 
+  Tabs, 
+  TabsContent, 
+  TabsList, 
+  TabsTrigger 
+} from "@/components/ui/tabs";
 import { ApplicationItem } from "./ApplicationItem";
-import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
 import { JobApplication } from "@/types/jobSeeker";
 import { useUserSkills } from "./hooks/useUserSkills";
+import { PendingApplicationsList } from "./PendingApplicationsList";
+import { PastApplicationsList } from "./PastApplicationsList";
 
 interface ApplicationsListProps {
   applications: JobApplication[];
-  onApplicationUpdated?: () => void;
+  pastApplications: JobApplication[];
+  onApplicationUpdated: () => void;
 }
 
-export const ApplicationsList = ({ 
-  applications = [],
-  onApplicationUpdated
-}: ApplicationsListProps) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const { userSkills } = useUserSkills();
-
-  const filteredApplications = applications.filter((application) => {
-    if (!searchTerm) return true;
-    
-    const term = searchTerm.toLowerCase();
-    
-    // Check project title
-    if (application.business_roles?.project_title && 
-        String(application.business_roles.project_title).toLowerCase().includes(term)) {
-      return true;
-    }
-    
-    // Check company name
-    if (application.business_roles?.company_name && 
-        String(application.business_roles.company_name).toLowerCase().includes(term)) {
-      return true;
-    }
-    
-    // Check role title
-    if (application.business_roles?.title && 
-        String(application.business_roles.title).toLowerCase().includes(term)) {
-      return true;
-    }
-    
-    // Check skills
-    const skills = application.business_roles?.skill_requirements || [];
-    return skills.some(skill => {
-      if (typeof skill === 'string') {
-        return String(skill).toLowerCase().includes(term);
-      }
-      if (skill && typeof skill === 'object' && 'skill' in skill && typeof skill.skill === 'string') {
-        return String(skill.skill).toLowerCase().includes(term);
-      }
-      return false;
-    });
-  });
-
-  if (applications.length === 0) {
-    return (
-      <div className="text-center p-6">
-        <p className="text-muted-foreground">No applications found</p>
-      </div>
-    );
-  }
+export const ApplicationsList = ({ applications, pastApplications, onApplicationUpdated }: ApplicationsListProps) => {
+  const [activeTab, setActiveTab] = useState("pending");
+  const { getMatchedSkills } = useUserSkills();
+  
+  const handleApplicationUpdate = () => {
+    onApplicationUpdated();
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search applications..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-9"
+    <Tabs 
+      defaultValue="pending" 
+      value={activeTab} 
+      onValueChange={setActiveTab}
+      className="w-full"
+    >
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="pending">Current Applications</TabsTrigger>
+        <TabsTrigger value="past">Past Applications</TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="pending" className="mt-6">
+        <PendingApplicationsList 
+          applications={applications} 
+          onApplicationUpdated={handleApplicationUpdate} 
         />
-      </div>
-
-      <div className="space-y-4">
-        {filteredApplications.map((application) => (
-          <ApplicationItem
-            key={application.job_app_id}
-            application={application}
-            onApplicationUpdated={onApplicationUpdated}
-          />
-        ))}
-      </div>
-    </div>
+      </TabsContent>
+      
+      <TabsContent value="past" className="mt-6">
+        <PastApplicationsList 
+          applications={pastApplications} 
+          onApplicationUpdated={handleApplicationUpdate} 
+        />
+      </TabsContent>
+    </Tabs>
   );
 };
