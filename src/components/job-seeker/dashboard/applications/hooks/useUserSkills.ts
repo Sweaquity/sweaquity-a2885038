@@ -56,10 +56,9 @@ export const useUserSkills = () => {
     if (!userSkills || userSkills.length === 0) return false;
     
     return userSkills.some(skill => {
-      if (typeof skill === 'string') {
-        return skill.toLowerCase() === skillName.toLowerCase();
-      }
-      return skill.skill.toLowerCase() === skillName.toLowerCase();
+      // Make sure we handle both string and object skill formats
+      const skillStr = typeof skill === 'string' ? skill : skill.skill;
+      return skillStr.toLowerCase() === skillName.toLowerCase();
     });
   };
   
@@ -73,6 +72,7 @@ export const useUserSkills = () => {
     const matchedSkills: string[] = [];
     
     userSkills.forEach(userSkill => {
+      // Handle both string and object skill formats
       const userSkillName = typeof userSkill === 'string' ? userSkill : userSkill.skill;
       
       requiredSkills.forEach(reqSkill => {

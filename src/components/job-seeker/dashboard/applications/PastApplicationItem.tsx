@@ -11,12 +11,12 @@ import { StatusBadge } from "./StatusBadge";
 
 interface PastApplicationItemProps {
   application: JobApplication;
-  getMatchedSkills: () => (string | SkillRequirement)[];
+  getMatchedSkills: (application: JobApplication) => string[];
 }
 
 export const PastApplicationItem = ({ application, getMatchedSkills }: PastApplicationItemProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const matchedSkills = getMatchedSkills();
+  const matchedSkills = getMatchedSkills(application);
 
   const formatDate = (dateString: string) => {
     try {
@@ -99,11 +99,7 @@ export const PastApplicationItem = ({ application, getMatchedSkills }: PastAppli
                 <div className="flex flex-wrap gap-1">
                   {requiredSkills.map((skill, index) => {
                     const skillName = typeof skill === 'string' ? skill : skill.skill;
-                    const isMatched = matchedSkills.some(s => 
-                      typeof s === 'string' 
-                        ? s.toLowerCase() === skillName.toLowerCase() 
-                        : s.skill.toLowerCase() === skillName.toLowerCase()
-                    );
+                    const isMatched = matchedSkills.includes(skillName);
                     
                     return (
                       <Badge 

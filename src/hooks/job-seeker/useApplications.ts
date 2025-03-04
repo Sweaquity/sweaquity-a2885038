@@ -25,6 +25,8 @@ export const useApplications = () => {
             timeframe,
             skill_requirements,
             equity_allocation,
+            completion_percentage,
+            task_status,
             project:business_projects (
               project_id,
               title,
@@ -73,6 +75,8 @@ export const useApplications = () => {
             timeframe: app.business_roles?.timeframe || "",
             skill_requirements: formattedSkillRequirements,
             equity_allocation: app.business_roles?.equity_allocation,
+            completion_percentage: app.business_roles?.completion_percentage,
+            task_status: app.business_roles?.task_status,
             company_name: companyName,
             project_title: app.business_roles?.project?.title
           }
@@ -93,6 +97,7 @@ export const useApplications = () => {
       
       console.log("Current applications:", current.length);
       console.log("Past applications:", past.length);
+      console.log("Past application statuses:", past.map((app: JobApplication) => app.status));
       
       setApplications(current);
       setPastApplications(past);

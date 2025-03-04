@@ -1,3 +1,4 @@
+
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { JobApplication } from "@/types/jobSeeker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -30,6 +31,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     ['negotiation', 'accepted'].includes(app.status.toLowerCase())
   );
   
+  // Make sure to filter by exact status values
   const pastApplications = applications.filter(app => 
     ['rejected', 'withdrawn'].includes(app.status.toLowerCase())
   );
@@ -145,10 +147,14 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
           </TabsContent>
           
           <TabsContent value="past" className="space-y-4">
-            <PastApplicationsList 
-              applications={pastApplications}
-              onApplicationUpdated={onApplicationUpdated}
-            />
+            {pastApplications.length === 0 ? (
+              <p className="text-muted-foreground text-center p-4">No rejected or withdrawn applications found.</p>
+            ) : (
+              <PastApplicationsList 
+                applications={pastApplications}
+                onApplicationUpdated={onApplicationUpdated}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </CardContent>
