@@ -17,12 +17,18 @@ export const useApplicationActions = (onApplicationUpdated?: () => void) => {
         updateData.notes = reason;
       }
       
+      // Log for debugging
+      console.log(`Updating application ${applicationId} to status: ${status}${reason ? ` with reason: ${reason}` : ''}`);
+      
       const { error } = await supabase
         .from('job_applications')
         .update(updateData)
         .eq('job_app_id', applicationId);
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error in Supabase update:', error);
+        throw error;
+      }
       
       toast.success(`Application ${status === 'withdrawn' ? 'withdrawn' : 'status updated'} successfully`);
       

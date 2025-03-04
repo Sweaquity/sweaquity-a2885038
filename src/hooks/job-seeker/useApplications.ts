@@ -39,6 +39,8 @@ export const useApplications = () => {
       
       if (error) throw error;
       
+      console.log("Raw application data from supabase:", data);
+      
       // Process the data to make it fit our JobApplication type
       const processedApplications = data.map((app: any) => {
         // Get company name from businesses relation
@@ -77,6 +79,9 @@ export const useApplications = () => {
         };
       });
       
+      console.log("Processed applications:", processedApplications);
+      console.log("Status values:", processedApplications.map((app: JobApplication) => app.status));
+      
       // Separate current from past applications (those that are rejected or withdrawn)
       const current = processedApplications.filter((app: JobApplication) => 
         !['rejected', 'withdrawn'].includes(app.status.toLowerCase())
@@ -85,6 +90,9 @@ export const useApplications = () => {
       const past = processedApplications.filter((app: JobApplication) => 
         ['rejected', 'withdrawn'].includes(app.status.toLowerCase())
       );
+      
+      console.log("Current applications:", current.length);
+      console.log("Past applications:", past.length);
       
       setApplications(current);
       setPastApplications(past);

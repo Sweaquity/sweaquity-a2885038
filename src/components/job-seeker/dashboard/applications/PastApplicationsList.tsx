@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
@@ -20,9 +19,9 @@ export const PastApplicationsList = ({
   const { userSkills, getMatchedSkills } = useUserSkills();
 
   // Filter to only include rejected or withdrawn applications
-  const pastApplications = applications.filter(
-    app => app.status === 'rejected' || app.status === 'withdrawn'
-  );
+  // This happens at the parent component (ApplicationsTab) already,
+  // so we'll keep all applications passed to this component
+  const pastApplications = applications;
 
   const filteredApplications = pastApplications.filter((application) => {
     if (!searchTerm) return true;
@@ -65,6 +64,11 @@ export const PastApplicationsList = ({
       return false;
     });
   });
+
+  // Debug information
+  console.log("Applications received:", applications.length);
+  console.log("Filtered applications:", filteredApplications.length);
+  console.log("Application status values:", applications.map(app => app.status));
 
   if (pastApplications.length === 0) {
     return (

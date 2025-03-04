@@ -1,4 +1,3 @@
-
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { JobApplication } from "@/types/jobSeeker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,6 +18,9 @@ interface ApplicationsTabProps {
 export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} }: ApplicationsTabProps) => {
   const [newMessagesCount, setNewMessagesCount] = useState(0);
   
+  // Debug the incoming applications
+  console.log("All applications in ApplicationsTab:", applications);
+  
   // Filter applications by status
   const pendingApplications = applications.filter(app => 
     ['pending', 'in review'].includes(app.status.toLowerCase())
@@ -31,6 +33,12 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
   const pastApplications = applications.filter(app => 
     ['rejected', 'withdrawn'].includes(app.status.toLowerCase())
   );
+  
+  // Debug filtered applications
+  console.log("Pending applications:", pendingApplications.length);
+  console.log("Equity projects:", equityProjects.length);
+  console.log("Past applications:", pastApplications.length);
+  console.log("Past application statuses:", pastApplications.map(app => app.status));
   
   useEffect(() => {
     // Count new messages from the past 24 hours
