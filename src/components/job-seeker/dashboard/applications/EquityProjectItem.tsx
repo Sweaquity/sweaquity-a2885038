@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
@@ -38,7 +37,6 @@ export const EquityProjectItem = ({ application, onApplicationUpdated }: EquityP
 
   const [contractUrl, setContractUrl] = useState<string | null>(null);
 
-  // Load contract if accepted
   const loadAcceptedJobData = async () => {
     if (application.job_app_id && application.status === 'accepted') {
       const acceptedJob = await getAcceptedJob(application.job_app_id);
@@ -48,12 +46,10 @@ export const EquityProjectItem = ({ application, onApplicationUpdated }: EquityP
     }
   };
 
-  // Call on component mount
   useEffect(() => {
     loadAcceptedJobData();
   }, [application.job_app_id, application.status]);
 
-  // Format date to readable string
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -94,8 +90,8 @@ export const EquityProjectItem = ({ application, onApplicationUpdated }: EquityP
       .substring(0, 2);
   };
 
-  // Handle accepting job and refreshing data
   const handleAcceptJob = async (): Promise<void> => {
+    await acceptJobAsJobSeeker(application);
     onApplicationUpdated();
     await loadAcceptedJobData();
     return Promise.resolve();
@@ -221,12 +217,12 @@ export const EquityProjectItem = ({ application, onApplicationUpdated }: EquityP
         )}
       </CardFooter>
 
-      {/* Accept Job Dialog */}
       <AcceptJobDialog
         isOpen={showAcceptDialog}
         onOpenChange={setShowAcceptDialog}
         application={application}
         onAccept={handleAcceptJob}
+        isLoading={isAcceptLoading}
       />
     </Card>
   );

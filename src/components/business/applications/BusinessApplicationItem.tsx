@@ -119,7 +119,7 @@ export const BusinessApplicationItem = ({
       <CardContent className="pt-0">
         <div className="flex items-center gap-2 mb-3">
           <User className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm">{application.user_id}</span>
+          <span className="text-sm">Applicant ID: {application.id}</span>
         </div>
         
         {application.message && (
