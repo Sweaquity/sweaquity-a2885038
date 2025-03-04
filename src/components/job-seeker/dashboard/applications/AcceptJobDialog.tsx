@@ -1,23 +1,22 @@
 
-import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { JobApplication } from "@/types/jobSeeker";
-import { Loader2 } from "lucide-react";
+import { Clock } from "lucide-react";
 
 interface AcceptJobDialogProps {
   isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
+  onOpenChange: (open: boolean) => void;
   application: JobApplication;
-  onAccept?: () => Promise<void>;
-  isLoading?: boolean;
+  onAccept: () => Promise<void>;
+  isLoading: boolean;
 }
 
 export const AcceptJobDialog = ({
@@ -25,68 +24,62 @@ export const AcceptJobDialog = ({
   onOpenChange,
   application,
   onAccept,
-  isLoading = false
+  isLoading,
 }: AcceptJobDialogProps) => {
-  const [acceptingJob, setAcceptingJob] = useState(false);
-  
   const handleAccept = async () => {
-    try {
-      setAcceptingJob(true);
-      if (onAccept) {
-        await onAccept();
-      }
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Error accepting job:", error);
-    } finally {
-      setAcceptingJob(false);
-    }
+    await onAccept();
+    onOpenChange(false);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Accept Job Offer</DialogTitle>
           <DialogDescription>
-            You are accepting the job offer for "{application.business_roles?.title}" at {application.business_roles?.company_name}.
-            This will confirm your agreement to the equity terms.
+            You are about to accept this job offer for{" "}
+            <span className="font-medium">
+              {application.business_roles?.title || "the role"}
+            </span>
+            . This will indicate your commitment to work on this project.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4">
-          <div className="rounded-md bg-muted p-4 mb-4">
-            <h4 className="font-medium mb-2">Equity Terms:</h4>
-            <p className="text-sm">{application.business_roles?.equity_allocation}% equity stake</p>
-            
-            <h4 className="font-medium mt-4 mb-2">Project:</h4>
-            <p className="text-sm">{application.business_roles?.project_title}</p>
-            
-            <h4 className="font-medium mt-4 mb-2">Role:</h4>
-            <p className="text-sm">{application.business_roles?.title}</p>
-            
-            <h4 className="font-medium mt-4 mb-2">Description:</h4>
-            <p className="text-sm">{application.business_roles?.description}</p>
+        <div className="space-y-4 py-4">
+          <div>
+            <h4 className="text-sm font-medium">Project Details</h4>
+            <p className="text-sm text-muted-foreground">
+              {application.business_roles?.project_title || "Untitled Project"} at{" "}
+              {application.business_roles?.company_name || "Unknown Company"}
+            </p>
           </div>
-          
-          <p className="text-sm text-muted-foreground">
-            Once both you and the business accept, a formal contract will be generated for review and signature.
-          </p>
+
+          <div>
+            <h4 className="text-sm font-medium">Equity Allocation</h4>
+            <p className="text-sm text-muted-foreground">
+              {application.business_roles?.equity_allocation || 0}%
+            </p>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-medium">Timeframe</h4>
+            <p className="text-sm text-muted-foreground">
+              {application.business_roles?.timeframe || "Not specified"}
+            </p>
+          </div>
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button 
-            type="button"
-            variant="default"
-            onClick={handleAccept} 
-            disabled={isLoading || acceptingJob}
+            onClick={handleAccept}
+            disabled={isLoading}
           >
-            {(isLoading || acceptingJob) ? (
+            {isLoading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Clock className="mr-2 h-4 w-4 animate-spin" />
                 Accepting...
               </>
             ) : (
@@ -97,4 +90,4 @@ export const AcceptJobDialog = ({
       </DialogContent>
     </Dialog>
   );
-};
+}
