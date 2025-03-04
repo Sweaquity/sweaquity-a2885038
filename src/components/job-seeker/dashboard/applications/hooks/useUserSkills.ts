@@ -45,13 +45,18 @@ export const useUserSkills = () => {
       return [];
     }
 
-    // Get all skill names from user skills
-    const userSkillNames = userSkills.map(skill => 
-      typeof skill === 'string' ? skill.toLowerCase() : skill.skill.toLowerCase()
-    );
+    // Get all skill names from user skills - fixed the potential 'never' type issue
+    const userSkillNames = userSkills.map(skill => {
+      if (typeof skill === 'string') {
+        return skill.toLowerCase();
+      } else if (skill && typeof skill === 'object' && 'skill' in skill) {
+        return skill.skill.toLowerCase();
+      }
+      return ''; // Return empty string as fallback
+    }).filter(Boolean); // Filter out empty strings
 
     // Extract skill names from application requirements
-    const requiredSkillNames = application.business_roles.skill_requirements.map(req => {
+    const requiredSkillNames = (application.business_roles.skill_requirements || []).map(req => {
       if (typeof req === 'string') {
         return req.toLowerCase();
       } else if (req && typeof req === 'object' && 'skill' in req) {
@@ -66,7 +71,7 @@ export const useUserSkills = () => {
     );
 
     // Return the original case versions of the matched skills
-    return application.business_roles.skill_requirements
+    return (application.business_roles.skill_requirements || [])
       .filter(req => {
         const skillName = typeof req === 'string' 
           ? req.toLowerCase() 
@@ -75,7 +80,12 @@ export const useUserSkills = () => {
             : '';
         return matchedSkills.includes(skillName);
       })
-      .map(req => typeof req === 'string' ? req : req.skill);
+      .map(req => {
+        if (typeof req === 'string') return req;
+        if (req && typeof req === 'object' && 'skill' in req) return req.skill;
+        return ''; // Should never reach here due to the filter
+      })
+      .filter(Boolean); // Filter out any empty strings just in case
   };
 
   return {
