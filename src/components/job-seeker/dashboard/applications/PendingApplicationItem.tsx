@@ -62,15 +62,18 @@ export const PendingApplicationItem = ({
           
           <div className="space-y-1">
             <div className="flex flex-wrap gap-1">
-              {(application.business_roles?.skill_requirements || []).slice(0, 2).map((skill, index) => (
-                <Badge 
-                  key={index} 
-                  variant={matchedSkills.includes(typeof skill === 'string' ? skill : skill.skill) ? "default" : "outline"}
-                  className="text-xs"
-                >
-                  {typeof skill === 'string' ? skill : skill.skill}
-                </Badge>
-              ))}
+              {(application.business_roles?.skill_requirements || []).slice(0, 2).map((skill, index) => {
+                const skillName = typeof skill === 'string' ? skill : skill.skill;
+                return (
+                  <Badge 
+                    key={index} 
+                    variant={matchedSkills.includes(skillName) ? "default" : "outline"}
+                    className="text-xs"
+                  >
+                    {skillName}
+                  </Badge>
+                );
+              })}
               {(application.business_roles?.skill_requirements || []).length > 2 && (
                 <span className="text-xs text-muted-foreground">
                   +{(application.business_roles?.skill_requirements || []).length - 2} more

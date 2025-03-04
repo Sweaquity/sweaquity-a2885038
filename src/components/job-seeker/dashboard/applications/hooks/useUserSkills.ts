@@ -63,21 +63,27 @@ export const useUserSkills = () => {
     });
   };
   
-  const getMatchedSkills = (application?: JobApplication) => {
+  const getMatchedSkills = (application?: JobApplication): string[] => {
     if (!application || !application.business_roles || !application.business_roles.skill_requirements) {
       return [];
     }
     
     const requiredSkills = application.business_roles.skill_requirements;
     
-    return userSkills.filter(userSkill => {
+    const matchedSkills: string[] = [];
+    
+    userSkills.forEach(userSkill => {
       const userSkillName = typeof userSkill === 'string' ? userSkill : userSkill.skill;
       
-      return requiredSkills.some(reqSkill => {
+      requiredSkills.forEach(reqSkill => {
         const reqSkillName = typeof reqSkill === 'string' ? reqSkill : reqSkill.skill;
-        return userSkillName.toLowerCase() === reqSkillName.toLowerCase();
+        if (userSkillName.toLowerCase() === reqSkillName.toLowerCase()) {
+          matchedSkills.push(userSkillName);
+        }
       });
     });
+    
+    return matchedSkills;
   };
   
   return {
