@@ -59,7 +59,7 @@ export const useUserSkills = () => {
       if (typeof skill === 'string') {
         return skill.toLowerCase() === skillName.toLowerCase();
       }
-      return skill.skill && skill.skill.toLowerCase() === skillName.toLowerCase();
+      return skill.skill.toLowerCase() === skillName.toLowerCase();
     });
   };
   
@@ -75,8 +75,7 @@ export const useUserSkills = () => {
       
       return requiredSkills.some(reqSkill => {
         const reqSkillName = typeof reqSkill === 'string' ? reqSkill : reqSkill.skill;
-        return userSkillName && reqSkillName && 
-               userSkillName.toLowerCase() === reqSkillName.toLowerCase();
+        return userSkillName.toLowerCase() === reqSkillName.toLowerCase();
       });
     });
   };
