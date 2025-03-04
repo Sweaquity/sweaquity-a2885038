@@ -19,28 +19,28 @@ interface ApplicationsTabProps {
 export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} }: ApplicationsTabProps) => {
   const [newMessagesCount, setNewMessagesCount] = useState(0);
   
-  // Debug the incoming applications (single log is sufficient)
+  // Debug the incoming applications
   console.log("All applications in ApplicationsTab:", applications);
   
-  // Filter applications by status - ensure case-insensitive comparison
-  const pendingApplications = applications.filter(app => 
-    ['pending', 'in review'].includes((app.status || "").toLowerCase())
-  );
+  // Filter applications by status - ensuring case-insensitive comparison
+  const pendingApplications = applications.filter(app => {
+    const status = (app.status || "").toLowerCase();
+    return status === 'pending' || status === 'in review';
+  });
   
-  const equityProjects = applications.filter(app => 
-    ['negotiation', 'accepted'].includes((app.status || "").toLowerCase())
-  );
+  const equityProjects = applications.filter(app => {
+    const status = (app.status || "").toLowerCase();
+    return status === 'negotiation' || status === 'accepted';
+  });
   
-  // Ensure case-insensitive comparison for past applications
-  const pastApplications = applications.filter(app => 
-    ['rejected', 'withdrawn'].includes((app.status || "").toLowerCase())
-  );
+  // Getting past applications directly from the applications prop
+  // DO NOT filter here - they should already be filtered in useApplications.ts
   
   // Single console log for debugging filtered applications
-  console.log("Filtered applications - Pending:", pendingApplications.length, 
-              "Equity:", equityProjects.length, 
-              "Past:", pastApplications.length, 
-              "Past statuses:", pastApplications.map(app => app.status));
+  console.log(
+    "Filtered applications - Pending:", pendingApplications.length, 
+    "Equity:", equityProjects.length
+  );
   
   useEffect(() => {
     // Count new messages from the past 24 hours
@@ -55,7 +55,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
         if (lastMessageMatch) {
           try {
             const msgDate = new Date(lastMessageMatch[1]);
-            if (msgDate > oneDayAgo && ['negotiation', 'accepted'].includes(app.status.toLowerCase())) {
+            if (msgDate > oneDayAgo && ['negotiation', 'accepted'].includes((app.status || "").toLowerCase())) {
               newMsgs++;
             }
           } catch (e) {
@@ -118,7 +118,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
               )}
             </TabsTrigger>
             <TabsTrigger value="past">
-              Past Applications ({pastApplications.length})
+              Past Applications ({applications.length - pendingApplications.length - equityProjects.length})
             </TabsTrigger>
           </TabsList>
           
@@ -145,14 +145,13 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
           </TabsContent>
           
           <TabsContent value="past" className="space-y-4">
-            {pastApplications.length === 0 ? (
-              <p className="text-muted-foreground text-center p-4">No rejected or withdrawn applications found.</p>
-            ) : (
-              <PastApplicationsList 
-                applications={pastApplications}
-                onApplicationUpdated={onApplicationUpdated}
-              />
-            )}
+            <PastApplicationsList 
+              applications={applications.filter(app => {
+                const status = (app.status || "").toLowerCase();
+                return status === 'rejected' || status === 'withdrawn';
+              })}
+              onApplicationUpdated={onApplicationUpdated}
+            />
           </TabsContent>
         </Tabs>
       </CardContent>

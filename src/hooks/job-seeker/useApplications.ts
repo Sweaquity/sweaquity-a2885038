@@ -66,9 +66,6 @@ export const useApplications = () => {
           } as SkillRequirement;
         });
         
-        // Normalize status to lowercase for consistent filtering
-        const normalizedStatus = app.status?.toLowerCase() || "";
-        
         return {
           ...app,
           id: app.job_app_id, // Ensuring id property is set
@@ -89,21 +86,22 @@ export const useApplications = () => {
       
       console.log("Processed applications:", processedApplications);
       
-      // Separate current from past applications using lowercase comparison
-      const current = processedApplications.filter((app: JobApplication) => 
-        !['rejected', 'withdrawn'].includes((app.status || "").toLowerCase())
-      );
+      // FIXED: Properly separate current from past applications using consistent lowercase comparison
+      const current = processedApplications.filter((app: JobApplication) => {
+        const status = (app.status || "").toLowerCase();
+        return status !== 'rejected' && status !== 'withdrawn';
+      });
       
-      const past = processedApplications.filter((app: JobApplication) => 
-        ['rejected', 'withdrawn'].includes((app.status || "").toLowerCase())
-      );
+      const past = processedApplications.filter((app: JobApplication) => {
+        const status = (app.status || "").toLowerCase();
+        return status === 'rejected' || status === 'withdrawn';
+      });
       
       console.log("Current applications count:", current.length);
       console.log("Past applications count:", past.length, "with statuses:", past.map((app: JobApplication) => app.status));
       
       setApplications(current);
       setPastApplications(past);
-      
     } catch (error) {
       console.error("Error loading applications:", error);
       toast.error("Failed to load applications");

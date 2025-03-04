@@ -45,25 +45,27 @@ export const useUserSkills = () => {
       return [];
     }
 
-    // Get all skill names from user skills - fixed the potential 'never' type issue
-    const userSkillNames = userSkills.map(skill => {
+    // Get all skill names from user skills - with proper type checking
+    const userSkillNames: string[] = [];
+    
+    for (const skill of userSkills) {
       if (typeof skill === 'string') {
-        return skill.toLowerCase();
+        userSkillNames.push(skill.toLowerCase());
       } else if (skill && typeof skill === 'object' && 'skill' in skill) {
-        return skill.skill.toLowerCase();
+        userSkillNames.push(skill.skill.toLowerCase());
       }
-      return ''; // Return empty string as fallback
-    }).filter(Boolean); // Filter out empty strings
+    }
 
     // Extract skill names from application requirements
-    const requiredSkillNames = (application.business_roles.skill_requirements || []).map(req => {
+    const requiredSkillNames: string[] = [];
+    
+    for (const req of application.business_roles.skill_requirements || []) {
       if (typeof req === 'string') {
-        return req.toLowerCase();
+        requiredSkillNames.push(req.toLowerCase());
       } else if (req && typeof req === 'object' && 'skill' in req) {
-        return req.skill.toLowerCase();
+        requiredSkillNames.push(req.skill.toLowerCase());
       }
-      return '';
-    }).filter(Boolean);
+    }
 
     // Find the intersection of user skills and required skills
     const matchedSkills = requiredSkillNames.filter(reqSkill => 
@@ -71,21 +73,25 @@ export const useUserSkills = () => {
     );
 
     // Return the original case versions of the matched skills
-    return (application.business_roles.skill_requirements || [])
-      .filter(req => {
-        const skillName = typeof req === 'string' 
-          ? req.toLowerCase() 
-          : (req && typeof req === 'object' && 'skill' in req) 
-            ? req.skill.toLowerCase()
-            : '';
-        return matchedSkills.includes(skillName);
-      })
-      .map(req => {
-        if (typeof req === 'string') return req;
-        if (req && typeof req === 'object' && 'skill' in req) return req.skill;
-        return ''; // Should never reach here due to the filter
-      })
-      .filter(Boolean); // Filter out any empty strings just in case
+    const result: string[] = [];
+    
+    for (const req of application.business_roles.skill_requirements || []) {
+      let skillName = '';
+      
+      if (typeof req === 'string') {
+        skillName = req.toLowerCase();
+        if (matchedSkills.includes(skillName)) {
+          result.push(req);
+        }
+      } else if (req && typeof req === 'object' && 'skill' in req) {
+        skillName = req.skill.toLowerCase();
+        if (matchedSkills.includes(skillName)) {
+          result.push(req.skill);
+        }
+      }
+    }
+
+    return result;
   };
 
   return {
