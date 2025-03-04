@@ -17,6 +17,7 @@ export const PastApplicationsList = ({
   const [filter, setFilter] = useState<string>("all");
   const { getMatchedSkills } = useUserSkills();
   
+  // Only log once during component rendering, not in render loop
   console.log("Past applications:", applications);
   
   const filteredApplications = applications.filter(app => {

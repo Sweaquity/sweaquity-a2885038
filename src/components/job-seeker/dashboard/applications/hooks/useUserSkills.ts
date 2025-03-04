@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { JobApplication, Skill, SkillRequirement } from "@/types/jobSeeker";
@@ -70,10 +71,12 @@ export const useUserSkills = () => {
     const requiredSkills = application.business_roles.skill_requirements;
     
     return userSkills.filter(userSkill => {
+      // Ensure userSkill is properly typed
       const userSkillName = typeof userSkill === 'string' ? userSkill : userSkill.skill;
       
       return requiredSkills.some(reqSkill => {
-        let reqSkillName: string = '';
+        // Safely extract the skill name from the required skill
+        let reqSkillName = '';
         
         if (typeof reqSkill === 'string') {
           reqSkillName = reqSkill;
@@ -81,7 +84,8 @@ export const useUserSkills = () => {
           reqSkillName = reqSkill.skill || '';
         }
         
-        if (typeof userSkillName === 'string' && reqSkillName) {
+        // Only call toLowerCase on strings that are defined
+        if (typeof userSkillName === 'string' && reqSkillName && typeof reqSkillName === 'string') {
           return userSkillName.toLowerCase() === reqSkillName.toLowerCase();
         }
         return false;
