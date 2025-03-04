@@ -1,4 +1,3 @@
-
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { JobApplication } from "@/types/jobSeeker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,6 +30,8 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
   const pastApplications = applications.filter(app => 
     ['rejected', 'withdrawn'].includes(app.status.toLowerCase())
   );
+  
+  console.log("Past applications:", pastApplications);
   
   useEffect(() => {
     // Count new messages from the past 24 hours
@@ -79,8 +80,6 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
       supabase.removeChannel(channel);
     };
   }, [applications, onApplicationUpdated]);
-  
-  console.log("Past applications:", pastApplications);
   
   // Reset notification counter when viewing the relevant tab
   const handleTabChange = (value: string) => {

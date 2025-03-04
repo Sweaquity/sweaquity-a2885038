@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -43,9 +42,6 @@ export const BusinessApplicationItem = ({
     }
   };
 
-  // Show accept button when:
-  // 1. Status is 'accepted'
-  // 2. Business hasn't accepted yet
   const showAcceptButton = 
     application.status === 'accepted' && 
     !application.accepted_business;
@@ -132,10 +128,8 @@ export const BusinessApplicationItem = ({
       <RejectApplicationDialog 
         isOpen={showRejectDialog}
         onOpenChange={setShowRejectDialog}
-        onReject={(note) => {
-          console.log("Rejecting application with note:", note);
-          onApplicationUpdated();
-        }}
+        applicationId={application.job_app_id}
+        onReject={onApplicationUpdated}
       />
     </Card>
   );

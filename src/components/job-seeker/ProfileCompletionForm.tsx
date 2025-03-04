@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -136,6 +135,7 @@ export const ProfileCompletionForm = () => {
         .update({
           ...formData,
           availability: availabilityData,
+          employment_preference: formData.employment_preference,
           updated_at: new Date().toISOString()
         })
         .eq('id', session.user.id);
