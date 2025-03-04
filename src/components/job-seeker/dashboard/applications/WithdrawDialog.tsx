@@ -1,76 +1,108 @@
 
-import React, { useState } from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { XCircle, Loader2 } from 'lucide-react';
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 
 interface WithdrawDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onWithdraw: (reason?: string) => Promise<void>;
-  isWithdrawing: boolean;
+  onWithdraw: (reason?: string) => void;
+  isBusiness?: boolean;
 }
 
-export const WithdrawDialog = ({ 
-  isOpen, 
-  onOpenChange, 
-  onWithdraw, 
-  isWithdrawing 
+export const WithdrawDialog = ({
+  isOpen,
+  onOpenChange,
+  onWithdraw,
+  isBusiness = false
 }: WithdrawDialogProps) => {
-  const [reason, setReason] = useState('');
+  const [reason, setReason] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleWithdraw = async () => {
-    await onWithdraw(reason || undefined);
-    setReason('');
-    onOpenChange(false);
+    if (isBusiness && !reason.trim()) {
+      // For business users, a reason is required
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Pass reason even if empty for job seekers
+      await onWithdraw(reason);
+      setReason("");
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error withdrawing application:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        setReason("");
+      }
+      onOpenChange(open);
+    }}>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Withdraw Application</DialogTitle>
           <DialogDescription>
-            Are you sure you want to withdraw this application? This action cannot be undone.
+            {isBusiness 
+              ? "Please provide a reason for rejecting this application. This will be shared with the applicant."
+              : "You can optionally provide a reason for withdrawing your application."}
           </DialogDescription>
         </DialogHeader>
         
-        <div className="py-4">
-          <Textarea
-            placeholder="Optional: Provide a reason for withdrawing"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            rows={4}
-          />
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="reason">
+              Reason {isBusiness && <span className="text-destructive">*</span>}
+            </Label>
+            <Textarea
+              id="reason"
+              placeholder="Enter reason here..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="min-h-24"
+              required={isBusiness}
+            />
+          </div>
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
           <Button 
-            variant="destructive" 
-            onClick={handleWithdraw} 
-            disabled={isWithdrawing}
+            type="button" 
+            variant="destructive"
+            onClick={handleWithdraw}
+            disabled={isSubmitting || (isBusiness && !reason.trim())}
           >
-            {isWithdrawing ? (
+            {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Withdrawing...
               </>
             ) : (
-              <>
-                <XCircle className="mr-2 h-4 w-4" />
-                Withdraw Application
-              </>
+              "Withdraw Application"
             )}
           </Button>
         </DialogFooter>
