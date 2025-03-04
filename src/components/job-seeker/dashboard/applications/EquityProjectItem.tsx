@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
@@ -12,7 +13,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "./StatusBadge";
-import { JobApplication, EquityProject } from "@/types/jobSeeker";
+import { JobApplication } from "@/types/jobSeeker";
 import { AcceptJobDialog } from "./AcceptJobDialog";
 import { useApplicationActions } from "./hooks/useApplicationActions";
 import { useAcceptedJobs } from "@/hooks/useAcceptedJobs";
@@ -91,10 +92,36 @@ export const EquityProjectItem = ({ application, onApplicationUpdated }: EquityP
   };
 
   const handleAcceptJob = async (): Promise<void> => {
-    await acceptJobAsJobSeeker(application);
-    onApplicationUpdated();
-    await loadAcceptedJobData();
-    return Promise.resolve();
+    try {
+      // First update the task_discourse with acceptance message
+      if (application.job_app_id) {
+        const currentDate = new Date().toISOString();
+        const acceptMessage = `[${currentDate}] Job seeker accepted the job offer.`;
+        
+        let existingDiscourse = application.task_discourse || '';
+        const updatedDiscourse = existingDiscourse ? `${existingDiscourse}\n${acceptMessage}` : acceptMessage;
+        
+        const { error: discourseError } = await supabase
+          .from('job_applications')
+          .update({ 
+            task_discourse: updatedDiscourse 
+          })
+          .eq('job_app_id', application.job_app_id);
+          
+        if (discourseError) {
+          console.error("Error updating task discourse:", discourseError);
+        }
+      }
+      
+      // Then call the acceptJobAsJobSeeker function
+      await acceptJobAsJobSeeker(application);
+      onApplicationUpdated();
+      await loadAcceptedJobData();
+      return Promise.resolve();
+    } catch (error) {
+      console.error("Error in handleAcceptJob:", error);
+      return Promise.reject(error);
+    }
   };
 
   const companyName = application.business_roles?.company_name || "Unknown Company";
@@ -103,6 +130,7 @@ export const EquityProjectItem = ({ application, onApplicationUpdated }: EquityP
   const equityAllocation = application.business_roles?.equity_allocation || 0;
   const timeframe = application.business_roles?.timeframe || "Not specified";
 
+  // Display Accept Job button when status is 'accepted' and the job seeker hasn't accepted yet
   const showAcceptButton = 
     application.status === 'accepted' && 
     application.accepted_business &&

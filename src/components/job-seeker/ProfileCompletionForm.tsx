@@ -129,6 +129,8 @@ export const ProfileCompletionForm = () => {
           ? JSON.stringify(formData.availability) 
           : formData.availability;
 
+      console.log("Submitting employment preference:", formData.employment_preference);
+
       const { error } = await supabase
         .from('profiles')
         .update({
