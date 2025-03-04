@@ -23,7 +23,8 @@ export const PastApplicationItem = ({
   const { userSkills } = useUserSkills();
   
   const getMatchedSkills = () => {
-    return userSkills || [];
+    if (!userSkills) return [];
+    return userSkills;
   };
 
   const matchedSkills = getMatchedSkills();
@@ -109,11 +110,15 @@ export const PastApplicationItem = ({
                 <div className="flex flex-wrap gap-1">
                   {requiredSkills.map((skill, index) => {
                     const skillName = typeof skill === 'string' ? skill : skill.skill;
-                    const isMatched = matchedSkills.some(s => 
-                      typeof s === 'string' 
-                        ? s.toLowerCase() === skillName.toLowerCase() 
-                        : s.skill.toLowerCase() === skillName.toLowerCase()
-                    );
+                    const isMatched = matchedSkills.some(s => {
+                      if (typeof s === 'string' && typeof skillName === 'string') {
+                        return s.toLowerCase() === skillName.toLowerCase();
+                      }
+                      if (typeof s === 'object' && s && 'skill' in s && typeof s.skill === 'string' && typeof skillName === 'string') {
+                        return s.skill.toLowerCase() === skillName.toLowerCase();
+                      }
+                      return false;
+                    });
                     
                     return (
                       <Badge 

@@ -130,10 +130,12 @@ export const BusinessApplicationItem = ({
       </CardFooter>
       
       <RejectApplicationDialog 
-        open={showRejectDialog}
+        isOpen={showRejectDialog}
         onOpenChange={setShowRejectDialog}
-        applicationId={application.job_app_id}
-        onReject={onApplicationUpdated}
+        onReject={(note) => {
+          console.log("Rejecting application with note:", note);
+          onApplicationUpdated();
+        }}
       />
     </Card>
   );
