@@ -18,7 +18,7 @@ import { toast } from "sonner";
 interface RejectApplicationDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onReject: () => void;
+  onReject: (note: string) => void;
 }
 
 export const RejectApplicationDialog = ({
@@ -39,9 +39,8 @@ export const RejectApplicationDialog = ({
     try {
       await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
       
-      toast.success("Application rejected successfully");
+      onReject(reason);
       setReason("");
-      onReject();
       onOpenChange(false);
     } catch (error) {
       console.error("Error rejecting application:", error);

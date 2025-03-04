@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -8,6 +9,8 @@ import { useAcceptedJobs } from "@/hooks/useAcceptedJobs";
 import { RejectApplicationDialog } from "./RejectApplicationDialog";
 import { StatusBadge } from "@/components/job-seeker/dashboard/applications/StatusBadge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 interface BusinessApplicationItemProps {
   application: JobApplication;
@@ -39,6 +42,41 @@ export const BusinessApplicationItem = ({
       await acceptJobAsBusiness(application);
     } catch (error) {
       console.error("Error accepting application:", error);
+    }
+  };
+
+  const handleReject = async (note: string) => {
+    try {
+      const { data: application, error: fetchError } = await supabase
+        .from('job_applications')
+        .select('task_discourse')
+        .eq('job_app_id', application.job_app_id)
+        .single();
+        
+      if (fetchError) throw fetchError;
+      
+      const timestamp = new Date().toLocaleString();
+      const rejectMessage = `[${timestamp}] Business: ${note} (Rejection reason)`;
+      
+      const updatedDiscourse = application.task_discourse 
+        ? `${application.task_discourse}\n\n${rejectMessage}`
+        : rejectMessage;
+        
+      const { error: updateError } = await supabase
+        .from('job_applications')
+        .update({ 
+          status: 'rejected',
+          task_discourse: updatedDiscourse
+        })
+        .eq('job_app_id', application.job_app_id);
+        
+      if (updateError) throw updateError;
+      
+      toast.success("Application rejected with note");
+      onApplicationUpdated();
+    } catch (error) {
+      console.error('Error rejecting application:', error);
+      toast.error("Failed to reject application");
     }
   };
 
@@ -128,8 +166,7 @@ export const BusinessApplicationItem = ({
       <RejectApplicationDialog 
         isOpen={showRejectDialog}
         onOpenChange={setShowRejectDialog}
-        applicationId={application.job_app_id}
-        onReject={onApplicationUpdated}
+        onReject={handleReject}
       />
     </Card>
   );
