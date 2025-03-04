@@ -94,6 +94,13 @@ export const EquityProjectItem = ({ application, onApplicationUpdated }: EquityP
       .substring(0, 2);
   };
 
+  // Handle accepting job and refreshing data
+  const handleAcceptJob = async (): Promise<void> => {
+    onApplicationUpdated();
+    await loadAcceptedJobData();
+    return Promise.resolve();
+  };
+
   const companyName = application.business_roles?.company_name || "Unknown Company";
   const projectTitle = application.business_roles?.project_title || "Unknown Project";
   const roleName = application.business_roles?.title || "Unknown Role";
@@ -219,10 +226,7 @@ export const EquityProjectItem = ({ application, onApplicationUpdated }: EquityP
         isOpen={showAcceptDialog}
         onOpenChange={setShowAcceptDialog}
         application={application}
-        onAccept={() => {
-          onApplicationUpdated();
-          loadAcceptedJobData();
-        }}
+        onAccept={handleAcceptJob}
       />
     </Card>
   );
