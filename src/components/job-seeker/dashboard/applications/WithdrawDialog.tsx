@@ -18,13 +18,15 @@ interface WithdrawDialogProps {
   onOpenChange: (open: boolean) => void;
   onWithdraw: (reason?: string) => void;
   isBusiness?: boolean;
+  isWithdrawing?: boolean;
 }
 
 export const WithdrawDialog = ({
   isOpen,
   onOpenChange,
   onWithdraw,
-  isBusiness = false
+  isBusiness = false,
+  isWithdrawing = false
 }: WithdrawDialogProps) => {
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,7 +88,7 @@ export const WithdrawDialog = ({
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isWithdrawing}
           >
             Cancel
           </Button>
@@ -94,9 +96,9 @@ export const WithdrawDialog = ({
             type="button" 
             variant="destructive"
             onClick={handleWithdraw}
-            disabled={isSubmitting || (isBusiness && !reason.trim())}
+            disabled={isSubmitting || isWithdrawing || (isBusiness && !reason.trim())}
           >
-            {isSubmitting ? (
+            {isSubmitting || isWithdrawing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Withdrawing...

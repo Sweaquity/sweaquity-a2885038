@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { JobApplication } from "@/types/jobSeeker";
-import { useUserSkills } from "./hooks/useUserSkills";
 import { EquityProjectItem } from "./EquityProjectItem";
 
 interface EquityProjectsListProps {
@@ -16,7 +15,6 @@ export const EquityProjectsList = ({
   onApplicationUpdated
 }: EquityProjectsListProps) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const { userSkills, getMatchedSkills } = useUserSkills();
 
   const filteredApplications = applications.filter((application) => {
     if (!searchTerm) return true;
@@ -69,7 +67,7 @@ export const EquityProjectsList = ({
           <EquityProjectItem
             key={application.job_app_id}
             application={application}
-            onApplicationUpdated={onApplicationUpdated}
+            onApplicationUpdated={onApplicationUpdated || (() => {})}
           />
         ))}
       </div>

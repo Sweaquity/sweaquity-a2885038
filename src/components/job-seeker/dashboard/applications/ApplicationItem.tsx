@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp, MessageSquare, ExternalLink, Clock, XCircle } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
-import { JobApplication } from '@/types/jobSeeker';
+import { JobApplication, SkillRequirement } from '@/types/jobSeeker';
 import { ApplicationHeader } from './ApplicationHeader';
 import { ApplicationContent } from './ApplicationContent';
 import { ApplicationSkills } from './ApplicationSkills';
