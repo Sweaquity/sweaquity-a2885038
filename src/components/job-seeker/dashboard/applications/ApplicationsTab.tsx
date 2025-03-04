@@ -8,7 +8,6 @@ import { PendingApplicationsList } from "./PendingApplicationsList";
 import { EquityProjectsList } from "./EquityProjectsList";
 import { PastApplicationsList } from "./PastApplicationsList";
 import { useState, useEffect } from "react";
-import { Bell } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface ApplicationsTabProps {
@@ -24,22 +23,27 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
   
   // Filter applications by status - ensuring case-insensitive comparison
   const pendingApplications = applications.filter(app => {
-    const status = (app.status || "").toLowerCase();
+    const status = String(app.status || "").toLowerCase();
     return status === 'pending' || status === 'in review';
   });
   
   const equityProjects = applications.filter(app => {
-    const status = (app.status || "").toLowerCase();
+    const status = String(app.status || "").toLowerCase();
     return status === 'negotiation' || status === 'accepted';
   });
   
-  // Getting past applications directly from the applications prop
-  // DO NOT filter here - they should already be filtered in useApplications.ts
+  // Filter past applications directly - the useApplications hook should have filtered these properly
+  const pastApplications = applications.filter(app => {
+    const status = String(app.status || "").toLowerCase();
+    return status === 'rejected' || status === 'withdrawn';
+  });
   
   // Single console log for debugging filtered applications
   console.log(
     "Filtered applications - Pending:", pendingApplications.length, 
-    "Equity:", equityProjects.length
+    "Equity:", equityProjects.length,
+    "Past:", pastApplications.length,
+    "Past statuses:", pastApplications.map(app => app.status)
   );
   
   useEffect(() => {
@@ -55,7 +59,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
         if (lastMessageMatch) {
           try {
             const msgDate = new Date(lastMessageMatch[1]);
-            if (msgDate > oneDayAgo && ['negotiation', 'accepted'].includes((app.status || "").toLowerCase())) {
+            if (msgDate > oneDayAgo && ['negotiation', 'accepted'].includes(String(app.status || "").toLowerCase())) {
               newMsgs++;
             }
           } catch (e) {
@@ -118,7 +122,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
               )}
             </TabsTrigger>
             <TabsTrigger value="past">
-              Past Applications ({applications.length - pendingApplications.length - equityProjects.length})
+              Past Applications ({pastApplications.length})
             </TabsTrigger>
           </TabsList>
           
@@ -145,13 +149,14 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
           </TabsContent>
           
           <TabsContent value="past" className="space-y-4">
-            <PastApplicationsList 
-              applications={applications.filter(app => {
-                const status = (app.status || "").toLowerCase();
-                return status === 'rejected' || status === 'withdrawn';
-              })}
-              onApplicationUpdated={onApplicationUpdated}
-            />
+            {pastApplications.length === 0 ? (
+              <p className="text-muted-foreground text-center p-4">No past applications found.</p>
+            ) : (
+              <PastApplicationsList 
+                applications={pastApplications}
+                onApplicationUpdated={onApplicationUpdated}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </CardContent>

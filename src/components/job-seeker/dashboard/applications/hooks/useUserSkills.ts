@@ -45,25 +45,39 @@ export const useUserSkills = () => {
       return [];
     }
 
-    // Get all skill names from user skills - with proper type checking
+    // Get all skill names from user skills
     const userSkillNames: string[] = [];
     
     for (const skill of userSkills) {
       if (typeof skill === 'string') {
-        userSkillNames.push(skill.toLowerCase());
+        userSkillNames.push(String(skill).toLowerCase());
       } else if (skill && typeof skill === 'object' && 'skill' in skill) {
-        userSkillNames.push(skill.skill.toLowerCase());
+        const skillName = String(skill.skill || '');
+        if (skillName) {
+          userSkillNames.push(skillName.toLowerCase());
+        }
       }
     }
 
     // Extract skill names from application requirements
     const requiredSkillNames: string[] = [];
+    const originalSkillNames: Record<string, string> = {};
     
-    for (const req of application.business_roles.skill_requirements || []) {
-      if (typeof req === 'string') {
-        requiredSkillNames.push(req.toLowerCase());
-      } else if (req && typeof req === 'object' && 'skill' in req) {
-        requiredSkillNames.push(req.skill.toLowerCase());
+    for (const req of application.business_roles.skill_requirements) {
+      if (req) {
+        let skillName = '';
+        
+        if (typeof req === 'string') {
+          skillName = String(req || '').toLowerCase();
+          originalSkillNames[skillName] = req;
+        } else if (typeof req === 'object' && 'skill' in req) {
+          skillName = String(req.skill || '').toLowerCase();
+          originalSkillNames[skillName] = req.skill || '';
+        }
+        
+        if (skillName) {
+          requiredSkillNames.push(skillName);
+        }
       }
     }
 
@@ -73,25 +87,7 @@ export const useUserSkills = () => {
     );
 
     // Return the original case versions of the matched skills
-    const result: string[] = [];
-    
-    for (const req of application.business_roles.skill_requirements || []) {
-      let skillName = '';
-      
-      if (typeof req === 'string') {
-        skillName = req.toLowerCase();
-        if (matchedSkills.includes(skillName)) {
-          result.push(req);
-        }
-      } else if (req && typeof req === 'object' && 'skill' in req) {
-        skillName = req.skill.toLowerCase();
-        if (matchedSkills.includes(skillName)) {
-          result.push(req.skill);
-        }
-      }
-    }
-
-    return result;
+    return matchedSkills.map(skill => originalSkillNames[skill] || skill);
   };
 
   return {

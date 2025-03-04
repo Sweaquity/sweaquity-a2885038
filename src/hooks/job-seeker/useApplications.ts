@@ -86,16 +86,14 @@ export const useApplications = () => {
       
       console.log("Processed applications:", processedApplications);
       
-      // FIXED: Properly separate current from past applications using consistent lowercase comparison
-      const current = processedApplications.filter((app: JobApplication) => {
-        const status = (app.status || "").toLowerCase();
-        return status !== 'rejected' && status !== 'withdrawn';
-      });
+      // SIMPLIFIED: Use a direct approach to filter applications by status
+      const current = processedApplications.filter((app: JobApplication) => 
+        !['rejected', 'withdrawn'].includes(String(app.status).toLowerCase())
+      );
       
-      const past = processedApplications.filter((app: JobApplication) => {
-        const status = (app.status || "").toLowerCase();
-        return status === 'rejected' || status === 'withdrawn';
-      });
+      const past = processedApplications.filter((app: JobApplication) => 
+        ['rejected', 'withdrawn'].includes(String(app.status).toLowerCase())
+      );
       
       console.log("Current applications count:", current.length);
       console.log("Past applications count:", past.length, "with statuses:", past.map((app: JobApplication) => app.status));
