@@ -1,3 +1,4 @@
+
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { JobApplication } from "@/types/jobSeeker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
