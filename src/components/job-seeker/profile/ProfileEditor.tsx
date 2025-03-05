@@ -135,10 +135,25 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
         throw new Error("No authenticated session");
       }
 
+      // Convert availability to string if needed for storage
+      const availabilityData = 
+        Array.isArray(formData.availability) 
+          ? JSON.stringify(formData.availability) 
+          : formData.availability;
+
       const { error } = await supabase
         .from('profiles')
         .update({
-          ...formData,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          title: formData.title,
+          email: formData.email,
+          location: formData.location, 
+          availability: availabilityData,
+          employment_preference: formData.employment_preference,
+          terms_accepted: formData.terms_accepted,
+          marketing_consent: formData.marketing_consent,
+          project_updates_consent: formData.project_updates_consent,
           updated_at: new Date().toISOString()
         })
         .eq('id', session.user.id);
@@ -247,14 +262,14 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
             />
 
             <div className="space-y-2">
-              <Label htmlFor="employment_preference">Sweaquity options or Employment too?</Label>
+              <Label htmlFor="employment_preference">Employment Preference</Label>
               <Select
                 value={formData.employment_preference}
                 onValueChange={(value: 'full_time' | 'equity' | 'both') => 
                   handleFieldChange('employment_preference', value)
                 }
               >
-                <SelectTrigger id="employment_preference">
+                <SelectTrigger id="employment_preference" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -273,6 +288,15 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
               onMarketingConsentChange={handleMarketingConsentChange}
               onProjectUpdatesConsentChange={handleProjectUpdatesConsentChange}
             />
+
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" type="button" onClick={handleCancel}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
           </form>
         ) : (
           <div className="space-y-4">

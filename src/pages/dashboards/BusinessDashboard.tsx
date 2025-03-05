@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { BusinessProfileCompletion } from "@/components/business/BusinessProfile
 import { UserCircle2, Menu, Bell } from "lucide-react";
 import { ActiveRolesTable } from "@/components/business/roles/ActiveRolesTable";
 import { ProjectApplicationsSection } from "@/components/business/ProjectApplicationsSection";
+import { RequestAccessButton } from "@/components/business/users/RequestAccessButton";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -138,7 +140,7 @@ const BusinessDashboard = () => {
           .maybeSingle();
 
         console.log("Job seeker profile check:", profileData);
-        setHasJobSeekerProfile(true);
+        setHasJobSeekerProfile(!!profileData);
       } catch (error) {
         console.error('Error fetching data:', error);
         toast.error("Failed to load dashboard data");
@@ -223,10 +225,12 @@ const BusinessDashboard = () => {
           </h1>
           <div className="flex items-center gap-2">
             <div className="hidden md:flex items-center gap-4">
-              <Button variant="outline" onClick={handleProfileSwitch}>
-                <UserCircle2 className="mr-2 h-4 w-4" />
-                Switch to Job Seeker
-              </Button>
+              {hasJobSeekerProfile && (
+                <Button variant="outline" onClick={handleProfileSwitch}>
+                  <UserCircle2 className="mr-2 h-4 w-4" />
+                  Switch to Job Seeker
+                </Button>
+              )}
               <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
             </div>
             
@@ -238,10 +242,12 @@ const BusinessDashboard = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleProfileSwitch}>
-                    <UserCircle2 className="mr-2 h-4 w-4" />
-                    Switch to Job Seeker
-                  </DropdownMenuItem>
+                  {hasJobSeekerProfile && (
+                    <DropdownMenuItem onClick={handleProfileSwitch}>
+                      <UserCircle2 className="mr-2 h-4 w-4" />
+                      Switch to Job Seeker
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={handleSignOut}>
                     Sign Out
                   </DropdownMenuItem>
@@ -252,7 +258,7 @@ const BusinessDashboard = () => {
         </div>
 
         <Tabs defaultValue="account" className="space-y-6" onValueChange={handleTabChange}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 gap-2">
             <TabsTrigger value="account">Account</TabsTrigger>
             <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
@@ -344,11 +350,12 @@ const BusinessDashboard = () => {
 
           <TabsContent value="users">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <h2 className="text-lg font-semibold">Business Users</h2>
+                <RequestAccessButton />
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">User management coming soon.</p>
+                <p className="text-muted-foreground">No users have been added to your business yet. Use the "Request Access" button to invite team members.</p>
               </CardContent>
             </Card>
           </TabsContent>

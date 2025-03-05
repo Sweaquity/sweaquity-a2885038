@@ -140,7 +140,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
   return (
     <div className="border rounded-md overflow-hidden bg-card">
       <div className="p-4">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
           {application.business_roles && (
             <ApplicationHeader 
               title={application.business_roles.title || "Untitled Role"}
@@ -150,7 +150,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
             />
           )}
           
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 mt-2 sm:mt-0">
             {compact ? (
               <StatusBadge status={application.status} />
             ) : (
@@ -232,6 +232,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
               variant="outline" 
               size="sm" 
               onClick={() => setIsCreateMessageOpen(true)}
+              className="w-full sm:w-auto"
             >
               <MessageSquare className="mr-2 h-4 w-4" />
               Send Message
@@ -241,6 +242,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
               variant="outline"
               size="sm"
               onClick={() => window.open(`/projects/${application.project_id}`, '_blank')}
+              className="w-full sm:w-auto"
             >
               <ExternalLink className="mr-2 h-4 w-4" />
               View Project
@@ -249,7 +251,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
             <Button
               variant="outline"
               size="sm"
-              className="text-destructive hover:bg-destructive/10"
+              className="text-destructive hover:bg-destructive/10 w-full sm:w-auto"
               onClick={() => setIsWithdrawDialogOpen(true)}
             >
               <XCircle className="mr-2 h-4 w-4" />

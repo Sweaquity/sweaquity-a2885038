@@ -32,18 +32,24 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     return status === 'negotiation' || status === 'accepted';
   });
   
-  // Filter past applications directly - the useApplications hook should have filtered these properly
-  const pastApplications = applications.filter(app => {
+  // Specifically filter for withdrawn applications
+  const withdrawnApplications = applications.filter(app => {
     const status = String(app.status || "").toLowerCase();
-    return status === 'rejected' || status === 'withdrawn';
+    return status === 'withdrawn';
   });
   
-  // Single console log for debugging filtered applications
+  // Filter for rejected applications
+  const rejectedApplications = applications.filter(app => {
+    const status = String(app.status || "").toLowerCase();
+    return status === 'rejected';
+  });
+  
+  // Log filtered applications for debugging
   console.log(
     "Filtered applications - Pending:", pendingApplications.length, 
     "Equity:", equityProjects.length,
-    "Past:", pastApplications.length,
-    "Past statuses:", pastApplications.map(app => app.status)
+    "Withdrawn:", withdrawnApplications.length,
+    "Rejected:", rejectedApplications.length
   );
   
   useEffect(() => {
@@ -109,20 +115,23 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="pending" className="space-y-4" onValueChange={handleTabChange}>
-          <TabsList className="grid grid-cols-3 gap-2">
+          <TabsList className="grid grid-cols-2 md:grid-cols-4 gap-2">
             <TabsTrigger value="pending">
-              Pending Applications ({pendingApplications.length})
+              Pending ({pendingApplications.length})
             </TabsTrigger>
             <TabsTrigger value="equity" className="relative">
-              Current Equity Projects ({equityProjects.length})
+              Current Equity ({equityProjects.length})
               {newMessagesCount > 0 && (
                 <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
                   {newMessagesCount}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="past">
-              Past Applications ({pastApplications.length})
+            <TabsTrigger value="withdrawn">
+              Withdrawn ({withdrawnApplications.length})
+            </TabsTrigger>
+            <TabsTrigger value="rejected">
+              Rejected ({rejectedApplications.length})
             </TabsTrigger>
           </TabsList>
           
@@ -148,12 +157,23 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
             )}
           </TabsContent>
           
-          <TabsContent value="past" className="space-y-4">
-            {pastApplications.length === 0 ? (
-              <p className="text-muted-foreground text-center p-4">No past applications found.</p>
+          <TabsContent value="withdrawn" className="space-y-4">
+            {withdrawnApplications.length === 0 ? (
+              <p className="text-muted-foreground text-center p-4">No withdrawn applications found.</p>
             ) : (
               <PastApplicationsList 
-                applications={pastApplications}
+                applications={withdrawnApplications}
+                onApplicationUpdated={onApplicationUpdated}
+              />
+            )}
+          </TabsContent>
+          
+          <TabsContent value="rejected" className="space-y-4">
+            {rejectedApplications.length === 0 ? (
+              <p className="text-muted-foreground text-center p-4">No rejected applications found.</p>
+            ) : (
+              <PastApplicationsList 
+                applications={rejectedApplications}
                 onApplicationUpdated={onApplicationUpdated}
               />
             )}

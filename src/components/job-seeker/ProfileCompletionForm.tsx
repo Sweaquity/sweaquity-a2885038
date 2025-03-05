@@ -190,8 +190,8 @@ export const ProfileCompletionForm = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="equity">Equity only</SelectItem>
-                <SelectItem value="both">Both Equity and Employment</SelectItem>
+                <SelectItem value="equity">Sweaquity options only</SelectItem>
+                <SelectItem value="both">Both Sweaquity and Employment</SelectItem>
                 <SelectItem value="full_time">Employment only</SelectItem>
               </SelectContent>
             </Select>
