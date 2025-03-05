@@ -28,7 +28,7 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
     email: '',
     location: '',
     availability: [] as string[],
-    employment_preference: 'both' as 'full_time' | 'equity' | 'both',
+    employment_preference: 'both' as 'salary_only' | 'equity_only' | 'both',
     terms_accepted: false,
     marketing_consent: false,
     project_updates_consent: false,
@@ -265,7 +265,7 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
               <Label htmlFor="employment_preference">Employment Preference</Label>
               <Select
                 value={formData.employment_preference}
-                onValueChange={(value: 'full_time' | 'equity' | 'both') => 
+                onValueChange={(value: 'salary_only' | 'equity_only' | 'both') => 
                   handleFieldChange('employment_preference', value)
                 }
               >
@@ -273,9 +273,9 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="equity">Sweaquity options only</SelectItem>
-                  <SelectItem value="both">Both Sweaquity and Employment</SelectItem>
-                  <SelectItem value="full_time">Employment only</SelectItem>
+                  <SelectItem value="equity_only">Equity only</SelectItem>
+                  <SelectItem value="both">Both Equity and Salary</SelectItem>
+                  <SelectItem value="salary_only">Salary only</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -324,9 +324,9 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
               <div>
                 <Label className="text-muted-foreground">Employment Preference</Label>
                 <p className="font-medium">
-                  {formData.employment_preference === 'both' ? 'Both Sweaquity and Employment' :
-                   formData.employment_preference === 'equity' ? 'Sweaquity options only' :
-                   'Employment only'}
+                  {formData.employment_preference === 'both' ? 'Both Equity and Salary' :
+                   formData.employment_preference === 'equity_only' ? 'Equity only' :
+                   'Salary only'}
                 </p>
               </div>
             </div>

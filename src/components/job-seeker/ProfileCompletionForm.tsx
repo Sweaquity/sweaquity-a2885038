@@ -23,7 +23,7 @@ interface ProfileFormData {
   email: string;
   location: string;
   availability: string[];
-  employment_preference: 'full_time' | 'equity' | 'both';
+  employment_preference: 'salary_only' | 'equity_only' | 'both';
   terms_accepted: boolean;
   marketing_consent: boolean;
   project_updates_consent: boolean;
@@ -182,7 +182,7 @@ export const ProfileCompletionForm = () => {
             <Label htmlFor="employment_preference">Employment Preference *</Label>
             <Select
               value={formData.employment_preference}
-              onValueChange={(value: 'full_time' | 'equity' | 'both') => 
+              onValueChange={(value: 'salary_only' | 'equity_only' | 'both') => 
                 handleFieldChange('employment_preference', value)
               }
             >
@@ -190,9 +190,9 @@ export const ProfileCompletionForm = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="equity">Sweaquity options only</SelectItem>
-                <SelectItem value="both">Both Sweaquity and Employment</SelectItem>
-                <SelectItem value="full_time">Employment only</SelectItem>
+                <SelectItem value="equity_only">Equity only</SelectItem>
+                <SelectItem value="both">Both Equity and Salary</SelectItem>
+                <SelectItem value="salary_only">Salary only</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -115,11 +115,11 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="pending" className="space-y-4" onValueChange={handleTabChange}>
-          <TabsList className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <TabsTrigger value="pending">
+          <TabsList className="flex flex-wrap gap-2">
+            <TabsTrigger value="pending" className="flex-1 min-w-[120px]">
               Pending ({pendingApplications.length})
             </TabsTrigger>
-            <TabsTrigger value="equity" className="relative">
+            <TabsTrigger value="equity" className="flex-1 min-w-[120px] relative">
               Current Equity ({equityProjects.length})
               {newMessagesCount > 0 && (
                 <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
@@ -127,10 +127,10 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="withdrawn">
+            <TabsTrigger value="withdrawn" className="flex-1 min-w-[120px]">
               Withdrawn ({withdrawnApplications.length})
             </TabsTrigger>
-            <TabsTrigger value="rejected">
+            <TabsTrigger value="rejected" className="flex-1 min-w-[120px]">
               Rejected ({rejectedApplications.length})
             </TabsTrigger>
           </TabsList>

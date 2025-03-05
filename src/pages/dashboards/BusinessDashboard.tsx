@@ -78,7 +78,7 @@ const BusinessDashboard = () => {
         if (projectsError) throw projectsError;
         
         if (projectsData && projectsData.length > 0) {
-          const projectIds = projectsData.map(p => p.project_id);
+          const projectIds = projectsData.map((p: any) => p.project_id);
 
           const { data: tasksData, error: tasksError } = await supabase
             .from('project_sub_tasks')
@@ -258,11 +258,17 @@ const BusinessDashboard = () => {
         </div>
 
         <Tabs defaultValue="account" className="space-y-6" onValueChange={handleTabChange}>
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 gap-2">
-            <TabsTrigger value="account">Account</TabsTrigger>
-            <TabsTrigger value="projects">Projects</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="roles" className="relative">
+          <TabsList className="flex flex-wrap gap-2">
+            <TabsTrigger value="account" className="flex-1 min-w-[120px]">
+              Account
+            </TabsTrigger>
+            <TabsTrigger value="projects" className="flex-1 min-w-[120px]">
+              Projects
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex-1 min-w-[120px]">
+              Users
+            </TabsTrigger>
+            <TabsTrigger value="roles" className="flex-1 min-w-[120px] relative">
               Active Roles
               {newMessagesCount > 0 && (
                 <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
@@ -270,7 +276,7 @@ const BusinessDashboard = () => {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="applications" className="relative">
+            <TabsTrigger value="applications" className="flex-1 min-w-[120px] relative">
               Applications
               {newApplicationsCount > 0 && (
                 <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
@@ -369,8 +375,8 @@ const BusinessDashboard = () => {
                 {projects.length === 0 ? (
                   <p className="text-muted-foreground">No active projects found.</p>
                 ) : (
-                  projects.map((project) => (
-                    <div key={project.id} className="mb-6">
+                  projects.map((project, index) => (
+                    <div key={project.id || index} className="mb-6">
                       <h3 className="text-lg font-medium mb-2">{project.title}</h3>
                       {project.tasks.length === 0 ? (
                         <p className="text-sm text-muted-foreground">No tasks available for this project.</p>

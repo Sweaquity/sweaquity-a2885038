@@ -27,7 +27,7 @@ export const RequestAccessButton = () => {
 
     setIsLoading(true);
     try {
-      // Store the invitation request
+      // Get the current session and user details
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -35,16 +35,33 @@ export const RequestAccessButton = () => {
         return;
       }
 
+      // Get the business ID of the current business
+      const { data: businessData, error: businessError } = await supabase
+        .from('businesses')
+        .select('businesses_id, company_name')
+        .eq('businesses_id', session.user.id)
+        .single();
+
+      if (businessError) {
+        console.error('Error fetching business data:', businessError);
+        throw new Error('Failed to fetch business data');
+      }
+
+      // Store the invitation request
       const { error } = await supabase
         .from('business_invitations')
         .insert({
-          business_id: session.user.id,
+          business_id: businessData.businesses_id,
           invited_email: email.trim(),
           status: 'pending',
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          company_name: businessData.company_name || 'Unknown Company'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Insert error:', error);
+        throw error;
+      }
 
       toast.success('Access request sent successfully');
       setIsOpen(false);
