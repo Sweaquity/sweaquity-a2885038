@@ -24,25 +24,18 @@ serve(async (req) => {
       )
     }
 
-    console.log('Processing file:', file.name, 'type:', file.type);
-
     // For now, we'll implement a basic text extraction
     let text = '';
     try {
       // Convert file to text
       text = await file.text();
-      console.log('Extracted text length:', text.length);
     } catch (error) {
-      console.error('Text extraction error:', error);
       text = ''; // Default to empty string if extraction fails
     }
 
     // Extract skills and career history from text
     const skills = extractSkills(text);
     const careerHistory = extractCareerHistory(text);
-
-    console.log('Extracted skills:', skills);
-    console.log('Extracted career history:', careerHistory);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -75,7 +68,6 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }

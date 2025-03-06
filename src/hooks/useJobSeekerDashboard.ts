@@ -21,7 +21,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
   const { profile, skills, loadProfile, handleSkillsUpdate } = useProfile();
   const { applications, loadApplications } = useApplications();
   const { equityProjects, setEquityProjects, logEffort, setLogEffort, transformToEquityProjects } = useEquityProjects();
-  const { cvUrl, setCvUrl, parsedCvData, setParsedCvData, loadCVData } = useCVData();
+  const { cvUrl, setCvUrl, parsedCvData, setParsedCvData, loadCVData, userCVs, setUserCVs } = useCVData();
 
   const checkSession = useCallback(async () => {
     try {
@@ -32,7 +32,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
       }
       return session;
     } catch (error) {
-      console.error("Error checking session:", error);
+      navigate('/auth/seeker');
       return false;
     }
   }, [navigate]);
@@ -268,7 +268,6 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
       setIsSessionChecked(true);
 
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
       toast.error("Failed to load dashboard data");
     } finally {
       setIsLoading(false);
@@ -323,6 +322,17 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     }
   };
 
+  const onCvListUpdated = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await loadCVData(session.user.id);
+      }
+    } catch (error) {
+      toast.error("Failed to refresh CV list");
+    }
+  };
+
   return {
     isLoading,
     profile,
@@ -340,6 +350,8 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     handleSignOut,
     handleSkillsUpdate,
     refreshApplications,
-    hasBusinessProfile
+    hasBusinessProfile,
+    userCVs,
+    onCvListUpdated
   };
 };

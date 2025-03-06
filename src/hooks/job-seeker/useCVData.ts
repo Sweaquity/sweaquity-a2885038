@@ -33,7 +33,7 @@ export const useCVData = () => {
         
       if (profileError) {
         if (profileError.code !== 'PGRST116') {  // Ignore "no rows returned" error
-          console.error("Error fetching profile CV URL:", profileError);
+          toast.error("Error fetching profile data");
         }
       } else if (profileData?.cv_url) {
         setCvUrl(profileData.cv_url);
@@ -48,7 +48,7 @@ export const useCVData = () => {
 
       if (cvError) {
         if (cvError.code !== 'PGRST116') {  // Ignore "no rows returned" error
-          console.error("Error fetching CV data:", cvError);
+          toast.error("Error fetching CV data");
         }
       } else if (cvData) {
         setParsedCvData(cvData);
@@ -67,10 +67,9 @@ export const useCVData = () => {
         
         setUserCVs(filesWithDefault);
       } catch (error) {
-        console.error('Error loading CV list:', error);
+        toast.error('Error loading CV list');
       }
     } catch (error) {
-      console.error('Error loading CV data:', error);
       toast.error("Failed to load CV data");
     } finally {
       setIsLoading(false);

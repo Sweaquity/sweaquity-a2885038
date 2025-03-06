@@ -37,7 +37,9 @@ const JobSeekerDashboard = () => {
     handleSignOut,
     handleSkillsUpdate,
     refreshApplications,
-    hasBusinessProfile
+    hasBusinessProfile,
+    userCVs,
+    onCvListUpdated
   } = useJobSeekerDashboard(forceRefresh);
 
   const handleTabChange = (value: string) => {
@@ -122,6 +124,8 @@ const JobSeekerDashboard = () => {
               handleSkillsUpdate={handleSkillsUpdate}
               refreshApplications={refreshApplications}
               onDocumentAction={handleDocumentAction}
+              userCVs={userCVs}
+              onCvListUpdated={onCvListUpdated}
             />
           </TabsContent>
 
@@ -132,6 +136,8 @@ const JobSeekerDashboard = () => {
               skills={skills}
               parsedCvData={parsedCvData}
               onSkillsUpdate={handleSkillsUpdate}
+              userCVs={userCVs}
+              onCvListUpdated={onCvListUpdated}
             />
           </TabsContent>
 

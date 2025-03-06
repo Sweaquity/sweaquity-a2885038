@@ -1,6 +1,7 @@
 
 import { ProfileSection } from "@/components/job-seeker/ProfileSection";
 import { Profile, Skill } from "@/types/jobSeeker";
+import { CVFile } from "@/hooks/job-seeker/useCVData";
 
 interface ProfileTabProps {
   profile: Profile | null;
@@ -8,6 +9,8 @@ interface ProfileTabProps {
   skills: Skill[] | null;
   parsedCvData: any;
   onSkillsUpdate: (updatedSkills: Skill[]) => Promise<void>;
+  userCVs?: CVFile[];
+  onCvListUpdated?: () => void;
 }
 
 export const ProfileTab = ({
@@ -16,6 +19,8 @@ export const ProfileTab = ({
   skills,
   parsedCvData,
   onSkillsUpdate,
+  userCVs = [],
+  onCvListUpdated = () => {},
 }: ProfileTabProps) => {
   return (
     <div className="space-y-6">
@@ -27,6 +32,8 @@ export const ProfileTab = ({
         onSkillsUpdate={onSkillsUpdate}
         setCvUrl={() => {}}
         setParsedCvData={() => {}}
+        userCVs={userCVs}
+        onCvListUpdated={onCvListUpdated}
       />
     </div>
   );

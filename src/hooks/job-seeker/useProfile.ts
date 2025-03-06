@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -33,7 +32,6 @@ export const useProfile = () => {
             data.availability = [data.availability];
           }
         } catch (e) {
-          console.error("Error parsing availability:", e);
           // Keep it as is if parsing fails
         }
       } else {
@@ -50,7 +48,7 @@ export const useProfile = () => {
             parsedSkills = data.skills;
           }
         } catch (e) {
-          console.error("Error parsing skills:", e);
+          // Parsing failed, keep empty array
         }
       }
       
@@ -67,7 +65,6 @@ export const useProfile = () => {
       setProfile(profileWithId);
       setSkills(parsedSkills);
     } catch (error) {
-      console.error("Error loading profile:", error);
       toast.error("Failed to load profile data");
     } finally {
       setIsLoading(false);
@@ -93,7 +90,6 @@ export const useProfile = () => {
       setSkills(updatedSkills);
       toast.success("Skills updated successfully");
     } catch (error) {
-      console.error("Error updating skills:", error);
       toast.error("Failed to update skills");
     }
   };
