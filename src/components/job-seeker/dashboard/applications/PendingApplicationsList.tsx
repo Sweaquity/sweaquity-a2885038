@@ -19,26 +19,31 @@ export const PendingApplicationsList = ({
   const [searchTerm, setSearchTerm] = useState("");
   const { userSkills, getMatchedSkills } = useUserSkills();
 
+  // Helper function to normalize text for case-insensitive searching
+  const normalizeText = (text: string | null | undefined): string => {
+    return (text || "").toString().toLowerCase().trim();
+  };
+
   const filteredApplications = applications.filter((application) => {
     if (!searchTerm) return true;
     
-    const term = searchTerm.toLowerCase();
+    const term = normalizeText(searchTerm);
     
     // Check project title
     if (application.business_roles?.project_title && 
-        application.business_roles.project_title.toLowerCase().includes(term)) {
+        normalizeText(application.business_roles.project_title).includes(term)) {
       return true;
     }
     
     // Check company name
     if (application.business_roles?.company_name && 
-        application.business_roles.company_name.toLowerCase().includes(term)) {
+        normalizeText(application.business_roles.company_name).includes(term)) {
       return true;
     }
     
     // Check role title
     if (application.business_roles?.title && 
-        application.business_roles.title.toLowerCase().includes(term)) {
+        normalizeText(application.business_roles.title).includes(term)) {
       return true;
     }
     
@@ -46,10 +51,10 @@ export const PendingApplicationsList = ({
     const skills = application.business_roles?.skill_requirements || [];
     return skills.some(skill => {
       if (typeof skill === 'string') {
-        return skill.toLowerCase().includes(term);
+        return normalizeText(skill).includes(term);
       }
       if (typeof skill === 'object' && skill && 'skill' in skill) {
-        return skill.skill.toLowerCase().includes(term);
+        return normalizeText(skill.skill).includes(term);
       }
       return false;
     });

@@ -17,29 +17,34 @@ export const PastApplicationsList = ({ applications, onApplicationUpdated }: Pas
   const { getMatchedSkills } = useUserSkills();
   
   // Debug to check applications
-  console.log("Past applications received:", applications);
+  console.log("Past applications received:", applications.map(app => ({id: app.job_app_id, status: app.status})));
+  
+  // Helper function to normalize text for case-insensitive searching
+  const normalizeText = (text: string | null | undefined): string => {
+    return (text || "").toString().toLowerCase().trim();
+  };
   
   // Filter applications by search term
   const filteredApplications = applications.filter((application) => {
     if (!searchTerm) return true;
     
-    const term = searchTerm.toLowerCase();
+    const term = normalizeText(searchTerm);
     
     // Check project title
     if (application.business_roles?.project_title && 
-        String(application.business_roles.project_title).toLowerCase().includes(term)) {
+        normalizeText(application.business_roles.project_title).includes(term)) {
       return true;
     }
     
     // Check company name
     if (application.business_roles?.company_name && 
-        String(application.business_roles.company_name).toLowerCase().includes(term)) {
+        normalizeText(application.business_roles.company_name).includes(term)) {
       return true;
     }
     
     // Check role title
     if (application.business_roles?.title && 
-        String(application.business_roles.title).toLowerCase().includes(term)) {
+        normalizeText(application.business_roles.title).includes(term)) {
       return true;
     }
     
