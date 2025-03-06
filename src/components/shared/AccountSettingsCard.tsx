@@ -19,7 +19,7 @@ export const AccountSettingsCard = ({ userType }: AccountSettingsCardProps) => {
         <CardTitle>Account Settings</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <h3 className="text-base font-semibold">Marketing Preferences</h3>
             <p className="text-sm text-muted-foreground mb-2">
@@ -28,12 +28,13 @@ export const AccountSettingsCard = ({ userType }: AccountSettingsCardProps) => {
             <Button
               variant="outline"
               onClick={() => setIsMarketingDialogOpen(true)}
+              className="w-full"
             >
               Update Marketing Preferences
             </Button>
           </div>
           
-          <div>
+          <div className="md:col-span-2">
             <h3 className="text-base font-semibold text-destructive">Danger Zone</h3>
             <p className="text-sm text-muted-foreground mb-2">
               Delete your account and all your data
@@ -41,6 +42,7 @@ export const AccountSettingsCard = ({ userType }: AccountSettingsCardProps) => {
             <Button
               variant="destructive"
               onClick={() => setIsDeleteDialogOpen(true)}
+              className="w-full md:w-auto"
             >
               Delete My Account
             </Button>

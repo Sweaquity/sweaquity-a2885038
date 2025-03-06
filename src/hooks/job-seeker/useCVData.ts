@@ -37,6 +37,9 @@ export const useCVData = () => {
         }
       } else if (profileData?.cv_url) {
         setCvUrl(profileData.cv_url);
+      } else {
+        // Explicitly set to null if no CV URL is found in the profile
+        setCvUrl(null);
       }
 
       // Get parsed CV data if available
@@ -52,6 +55,9 @@ export const useCVData = () => {
         }
       } else if (cvData) {
         setParsedCvData(cvData);
+      } else {
+        // Explicitly set to null if no parsed data is found
+        setParsedCvData(null);
       }
       
       try {
@@ -66,6 +72,19 @@ export const useCVData = () => {
         }));
         
         setUserCVs(filesWithDefault);
+        
+        // If there are no CVs, make sure cvUrl is null
+        if (cvFiles.length === 0) {
+          setCvUrl(null);
+          
+          // Also update the profile if needed
+          if (profileData?.cv_url) {
+            await supabase
+              .from('profiles')
+              .update({ cv_url: null })
+              .eq('id', userId);
+          }
+        }
       } catch (error) {
         toast.error('Error loading CV list');
       }

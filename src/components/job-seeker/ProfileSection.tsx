@@ -5,7 +5,6 @@ import { CareerHistoryCard } from "./career/CareerHistoryCard";
 import { ProfileEditor } from "./profile/ProfileEditor";
 import { Profile, Skill } from "@/types/jobSeeker";
 import { CVFile } from "@/hooks/job-seeker/useCVData";
-import { AccountSettingsCard } from "../shared/AccountSettingsCard";
 
 interface ProfileSectionProps {
   profile?: Profile;
@@ -46,7 +45,7 @@ export const ProfileSection = ({
       <CareerHistoryCard 
         careerHistory={parsedCvData?.career_history || []}
       />
-      <AccountSettingsCard userType="job_seeker" />
+      {/* AccountSettingsCard has been removed from here to avoid duplication */}
     </div>
   );
 };
