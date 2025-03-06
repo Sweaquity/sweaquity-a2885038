@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -19,6 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AccountSettingsCard } from "@/components/shared/AccountSettingsCard";
 
 interface SubTask {
   id: string;
@@ -258,7 +258,6 @@ const BusinessDashboard = () => {
         </div>
 
         <Tabs defaultValue="account" className="space-y-6" onValueChange={handleTabChange}>
-          {/* Fix the tabs layout for mobile */}
           <div className="grid grid-cols-2 md:flex md:flex-row gap-2">
             <TabsList className="h-auto p-1 grid grid-cols-2 md:flex md:flex-row">
               <TabsTrigger value="account" className="px-3 py-1.5">
@@ -350,6 +349,8 @@ const BusinessDashboard = () => {
                   </div>
                 </CardContent>
               </Card>
+              
+              <AccountSettingsCard userType="business" />
             </div>
           </TabsContent>
 

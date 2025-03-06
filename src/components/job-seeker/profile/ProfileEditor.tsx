@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +11,7 @@ import { ConsentCheckboxes } from "./ConsentCheckboxes";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Check } from "lucide-react";
+import { AccountSettingsCard } from "@/components/shared/AccountSettingsCard";
 
 interface ProfileEditorProps {
   profile: Profile | null;
@@ -230,148 +230,152 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Personal Information</CardTitle>
-        {!isEditing ? (
-          <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
-        ) : (
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleCancel}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
-        )}
-      </CardHeader>
-      <CardContent>
-        {isEditing ? (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <PersonalInfoFields
-              firstName={formData.first_name}
-              lastName={formData.last_name}
-              title={formData.title}
-              email={formData.email}
-              location={formData.location}
-              onFieldChange={handleFieldChange}
-            />
-
-            <AvailabilitySelector
-              selected={formData.availability}
-              onSelect={(value) => handleFieldChange('availability', value)}
-            />
-
-            <div className="space-y-2">
-              <Label htmlFor="employment_preference">Employment Preference</Label>
-              <Select
-                value={formData.employment_preference}
-                onValueChange={(value: 'salary_only' | 'equity_only' | 'both') => 
-                  handleFieldChange('employment_preference', value)
-                }
-              >
-                <SelectTrigger id="employment_preference" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="equity_only">Equity only</SelectItem>
-                  <SelectItem value="both">Both Equity and Salary</SelectItem>
-                  <SelectItem value="salary_only">Salary only</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <ConsentCheckboxes
-              termsAccepted={formData.terms_accepted}
-              marketingConsent={formData.marketing_consent}
-              projectUpdatesConsent={formData.project_updates_consent}
-              onTermsAcceptedChange={handleTermsAcceptedChange}
-              onMarketingConsentChange={handleMarketingConsentChange}
-              onProjectUpdatesConsentChange={handleProjectUpdatesConsentChange}
-            />
-
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" type="button" onClick={handleCancel}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSaving}>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Personal Information</CardTitle>
+          {!isEditing ? (
+            <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleCancel}>Cancel</Button>
+              <Button onClick={handleSubmit} disabled={isSaving}>
                 {isSaving ? "Saving..." : "Save Changes"}
               </Button>
             </div>
-          </form>
-        ) : (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-muted-foreground">First Name</Label>
-                <p className="font-medium">{formData.first_name}</p>
+          )}
+        </CardHeader>
+        <CardContent>
+          {isEditing ? (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <PersonalInfoFields
+                firstName={formData.first_name}
+                lastName={formData.last_name}
+                title={formData.title}
+                email={formData.email}
+                location={formData.location}
+                onFieldChange={handleFieldChange}
+              />
+
+              <AvailabilitySelector
+                selected={formData.availability}
+                onSelect={(value) => handleFieldChange('availability', value)}
+              />
+
+              <div className="space-y-2">
+                <Label htmlFor="employment_preference">Employment Preference</Label>
+                <Select
+                  value={formData.employment_preference}
+                  onValueChange={(value: 'salary_only' | 'equity_only' | 'both') => 
+                    handleFieldChange('employment_preference', value)
+                  }
+                >
+                  <SelectTrigger id="employment_preference" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="equity_only">Equity only</SelectItem>
+                    <SelectItem value="both">Both Equity and Salary</SelectItem>
+                    <SelectItem value="salary_only">Salary only</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div>
-                <Label className="text-muted-foreground">Last Name</Label>
-                <p className="font-medium">{formData.last_name}</p>
+
+              <ConsentCheckboxes
+                termsAccepted={formData.terms_accepted}
+                marketingConsent={formData.marketing_consent}
+                projectUpdatesConsent={formData.project_updates_consent}
+                onTermsAcceptedChange={handleTermsAcceptedChange}
+                onMarketingConsentChange={handleMarketingConsentChange}
+                onProjectUpdatesConsentChange={handleProjectUpdatesConsentChange}
+              />
+
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" type="button" onClick={handleCancel}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </Button>
               </div>
-              <div>
-                <Label className="text-muted-foreground">Professional Title</Label>
-                <p className="font-medium">{formData.title}</p>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">First Name</Label>
+                  <p className="font-medium">{formData.first_name}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Last Name</Label>
+                  <p className="font-medium">{formData.last_name}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Professional Title</Label>
+                  <p className="font-medium">{formData.title}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Email</Label>
+                  <p className="font-medium">{formData.email}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Location</Label>
+                  <p className="font-medium">{formData.location}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Employment Preference</Label>
+                  <p className="font-medium">
+                    {formData.employment_preference === 'both' ? 'Both Equity and Salary' :
+                     formData.employment_preference === 'equity_only' ? 'Equity only' :
+                     'Salary only'}
+                  </p>
+                </div>
               </div>
+              
               <div>
-                <Label className="text-muted-foreground">Email</Label>
-                <p className="font-medium">{formData.email}</p>
+                <Label className="text-muted-foreground">Availability</Label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {formData.availability && formData.availability.length > 0 ? (
+                    formData.availability.map((item, index) => (
+                      <Badge key={index} variant="secondary" className="px-2 py-1 text-sm">
+                        {item}
+                      </Badge>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground text-sm">No availability specified</p>
+                  )}
+                </div>
               </div>
+              
               <div>
-                <Label className="text-muted-foreground">Location</Label>
-                <p className="font-medium">{formData.location}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Employment Preference</Label>
-                <p className="font-medium">
-                  {formData.employment_preference === 'both' ? 'Both Equity and Salary' :
-                   formData.employment_preference === 'equity_only' ? 'Equity only' :
-                   'Salary only'}
-                </p>
+                <Label className="text-muted-foreground">Consents</Label>
+                <div className="grid grid-cols-3 gap-2 mt-1">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-sm border flex items-center justify-center ${formData.terms_accepted ? 'bg-primary border-primary text-primary-foreground' : 'border-gray-300'}`}>
+                      {formData.terms_accepted && <Check className="h-3 w-3" />}
+                    </div>
+                    <span className="text-sm">Terms & Conditions</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-sm border flex items-center justify-center ${formData.marketing_consent ? 'bg-primary border-primary text-primary-foreground' : 'border-gray-300'}`}>
+                      {formData.marketing_consent && <Check className="h-3 w-3" />}
+                    </div>
+                    <span className="text-sm">Marketing Communications</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-sm border flex items-center justify-center ${formData.project_updates_consent ? 'bg-primary border-primary text-primary-foreground' : 'border-gray-300'}`}>
+                      {formData.project_updates_consent && <Check className="h-3 w-3" />}
+                    </div>
+                    <span className="text-sm">Project Updates</span>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            <div>
-              <Label className="text-muted-foreground">Availability</Label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {formData.availability && formData.availability.length > 0 ? (
-                  formData.availability.map((item, index) => (
-                    <Badge key={index} variant="secondary" className="px-2 py-1 text-sm">
-                      {item}
-                    </Badge>
-                  ))
-                ) : (
-                  <p className="text-muted-foreground text-sm">No availability specified</p>
-                )}
-              </div>
-            </div>
-            
-            <div>
-              <Label className="text-muted-foreground">Consents</Label>
-              <div className="grid grid-cols-3 gap-2 mt-1">
-                <div className="flex items-center gap-2">
-                  <div className={`w-4 h-4 rounded-sm border flex items-center justify-center ${formData.terms_accepted ? 'bg-primary border-primary text-primary-foreground' : 'border-gray-300'}`}>
-                    {formData.terms_accepted && <Check className="h-3 w-3" />}
-                  </div>
-                  <span className="text-sm">Terms & Conditions</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className={`w-4 h-4 rounded-sm border flex items-center justify-center ${formData.marketing_consent ? 'bg-primary border-primary text-primary-foreground' : 'border-gray-300'}`}>
-                    {formData.marketing_consent && <Check className="h-3 w-3" />}
-                  </div>
-                  <span className="text-sm">Marketing Communications</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className={`w-4 h-4 rounded-sm border flex items-center justify-center ${formData.project_updates_consent ? 'bg-primary border-primary text-primary-foreground' : 'border-gray-300'}`}>
-                    {formData.project_updates_consent && <Check className="h-3 w-3" />}
-                  </div>
-                  <span className="text-sm">Project Updates</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </CardContent>
+      </Card>
+      
+      <AccountSettingsCard userType="job_seeker" />
+    </div>
   );
 };

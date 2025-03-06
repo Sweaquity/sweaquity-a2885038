@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -138,6 +137,7 @@ export const BusinessProfileCompletion = () => {
                 />
               </div>
             </div>
+            
             <div className="flex items-center space-x-2 pt-4">
               <Checkbox
                 id="terms"
@@ -151,6 +151,7 @@ export const BusinessProfileCompletion = () => {
                 I accept the <TermsAndConditionsLink /> *
               </Label>
             </div>
+            
             <Button type="submit" className="w-full">Complete Profile</Button>
           </form>
         </CardContent>
