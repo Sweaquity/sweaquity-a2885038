@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { PendingApplicationsList } from "./PendingApplicationsList";
 import { EquityProjectsList } from "./EquityProjectsList";
+import { AllApplicationsList } from "./AllApplicationsList";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -96,7 +97,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
       <CardContent className="overflow-container">
         <Tabs defaultValue="pending" className="space-y-4" onValueChange={handleTabChange}>
           <div className="overflow-x-hidden">
-            <TabsList className="responsive-tabs h-auto p-1 w-full grid grid-cols-2 gap-1">
+            <TabsList className="responsive-tabs h-auto p-1 w-full grid grid-cols-3 gap-1">
               <TabsTrigger value="pending" className="px-3 py-1.5">
                 Pending ({pendingApplications.length})
               </TabsTrigger>
@@ -107,6 +108,9 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                     {newMessagesCount}
                   </Badge>
                 )}
+              </TabsTrigger>
+              <TabsTrigger value="all" className="px-3 py-1.5">
+                All ({applications.length})
               </TabsTrigger>
             </TabsList>
           </div>
@@ -128,6 +132,17 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
             ) : (
               <EquityProjectsList 
                 applications={equityProjects} 
+                onApplicationUpdated={onApplicationUpdated} 
+              />
+            )}
+          </TabsContent>
+          
+          <TabsContent value="all" className="space-y-4 mt-4">
+            {applications.length === 0 ? (
+              <p className="text-muted-foreground text-center p-4">No applications found.</p>
+            ) : (
+              <AllApplicationsList 
+                applications={applications} 
                 onApplicationUpdated={onApplicationUpdated} 
               />
             )}
