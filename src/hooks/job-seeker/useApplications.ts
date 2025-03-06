@@ -89,12 +89,12 @@ export const useApplications = () => {
       // Filter applications by status using case-insensitive comparison
       const current = processedApplications.filter((app: JobApplication) => {
         const status = String(app.status || "").toLowerCase();
-        return !['rejected', 'withdrawn'].includes(status);
+        return status === 'pending' || status === 'in review' || status === 'negotiation' || status === 'accepted';
       });
       
       const past = processedApplications.filter((app: JobApplication) => {
         const status = String(app.status || "").toLowerCase();
-        return ['rejected', 'withdrawn'].includes(status);
+        return status === 'rejected' || status === 'withdrawn';
       });
       
       console.log("Current applications count:", current.length);

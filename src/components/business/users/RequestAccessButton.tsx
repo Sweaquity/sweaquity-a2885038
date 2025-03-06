@@ -35,6 +35,8 @@ export const RequestAccessButton = () => {
         return;
       }
 
+      console.log("Current user ID:", session.user.id);
+
       // Get the business ID of the current business
       const { data: businessData, error: businessError } = await supabase
         .from('businesses')
@@ -44,8 +46,17 @@ export const RequestAccessButton = () => {
 
       if (businessError) {
         console.error('Error fetching business data:', businessError);
-        throw new Error('Failed to fetch business data');
+        toast.error('Failed to fetch business data');
+        return;
       }
+
+      if (!businessData) {
+        console.error('No business data found for this user');
+        toast.error('No business profile found. Please set up your business profile first.');
+        return;
+      }
+
+      console.log("Business data:", businessData);
 
       // Store the invitation request
       const { error } = await supabase
@@ -60,7 +71,12 @@ export const RequestAccessButton = () => {
 
       if (error) {
         console.error('Insert error:', error);
-        throw error;
+        if (error.message.includes('relation "business_invitations" does not exist')) {
+          toast.error('The invitation feature is not yet available. Please try again later.');
+        } else {
+          toast.error('Failed to send access request');
+        }
+        return;
       }
 
       toast.success('Access request sent successfully');

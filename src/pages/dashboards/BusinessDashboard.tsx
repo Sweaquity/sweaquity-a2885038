@@ -258,33 +258,36 @@ const BusinessDashboard = () => {
         </div>
 
         <Tabs defaultValue="account" className="space-y-6" onValueChange={handleTabChange}>
-          <TabsList className="flex flex-wrap gap-2">
-            <TabsTrigger value="account" className="flex-1 min-w-[120px]">
-              Account
-            </TabsTrigger>
-            <TabsTrigger value="projects" className="flex-1 min-w-[120px]">
-              Projects
-            </TabsTrigger>
-            <TabsTrigger value="users" className="flex-1 min-w-[120px]">
-              Users
-            </TabsTrigger>
-            <TabsTrigger value="roles" className="flex-1 min-w-[120px] relative">
-              Active Roles
-              {newMessagesCount > 0 && (
-                <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
-                  {newMessagesCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="applications" className="flex-1 min-w-[120px] relative">
-              Applications
-              {newApplicationsCount > 0 && (
-                <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
-                  {newApplicationsCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
+          {/* Fix the tabs layout for mobile */}
+          <div className="grid grid-cols-2 md:flex md:flex-row gap-2">
+            <TabsList className="h-auto p-1 grid grid-cols-2 md:flex md:flex-row">
+              <TabsTrigger value="account" className="px-3 py-1.5">
+                Account
+              </TabsTrigger>
+              <TabsTrigger value="projects" className="px-3 py-1.5">
+                Projects
+              </TabsTrigger>
+              <TabsTrigger value="users" className="px-3 py-1.5">
+                Users
+              </TabsTrigger>
+              <TabsTrigger value="roles" className="px-3 py-1.5 relative">
+                Active Roles
+                {newMessagesCount > 0 && (
+                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                    {newMessagesCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="applications" className="px-3 py-1.5 relative">
+                Applications
+                {newApplicationsCount > 0 && (
+                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                    {newApplicationsCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="account">
             <div className="space-y-6">

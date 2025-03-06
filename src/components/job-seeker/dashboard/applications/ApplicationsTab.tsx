@@ -115,27 +115,32 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="pending" className="space-y-4" onValueChange={handleTabChange}>
-          <TabsList className="flex flex-wrap gap-2">
-            <TabsTrigger value="pending" className="flex-1 min-w-[120px]">
-              Pending ({pendingApplications.length})
-            </TabsTrigger>
-            <TabsTrigger value="equity" className="flex-1 min-w-[120px] relative">
-              Current Equity ({equityProjects.length})
-              {newMessagesCount > 0 && (
-                <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
-                  {newMessagesCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="withdrawn" className="flex-1 min-w-[120px]">
-              Withdrawn ({withdrawnApplications.length})
-            </TabsTrigger>
-            <TabsTrigger value="rejected" className="flex-1 min-w-[120px]">
-              Rejected ({rejectedApplications.length})
-            </TabsTrigger>
-          </TabsList>
+          {/* Fix the tab layout for mobile - use flex-wrap and make each row clear */}
+          <div className="flex flex-col space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <TabsList className="h-auto p-1 w-full grid grid-cols-2 md:grid-cols-4">
+                <TabsTrigger value="pending" className="px-3 py-1.5">
+                  Pending ({pendingApplications.length})
+                </TabsTrigger>
+                <TabsTrigger value="equity" className="px-3 py-1.5 relative">
+                  Current Equity ({equityProjects.length})
+                  {newMessagesCount > 0 && (
+                    <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                      {newMessagesCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="withdrawn" className="px-3 py-1.5">
+                  Withdrawn ({withdrawnApplications.length})
+                </TabsTrigger>
+                <TabsTrigger value="rejected" className="px-3 py-1.5">
+                  Rejected ({rejectedApplications.length})
+                </TabsTrigger>
+              </TabsList>
+            </div>
+          </div>
           
-          <TabsContent value="pending" className="space-y-4">
+          <TabsContent value="pending" className="space-y-4 mt-4">
             {pendingApplications.length === 0 ? (
               <p className="text-muted-foreground text-center p-4">No pending applications found.</p>
             ) : (
@@ -146,7 +151,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
             )}
           </TabsContent>
           
-          <TabsContent value="equity" className="space-y-4">
+          <TabsContent value="equity" className="space-y-4 mt-4">
             {equityProjects.length === 0 ? (
               <p className="text-muted-foreground text-center p-4">No equity projects found.</p>
             ) : (
@@ -157,7 +162,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
             )}
           </TabsContent>
           
-          <TabsContent value="withdrawn" className="space-y-4">
+          <TabsContent value="withdrawn" className="space-y-4 mt-4">
             {withdrawnApplications.length === 0 ? (
               <p className="text-muted-foreground text-center p-4">No withdrawn applications found.</p>
             ) : (
@@ -168,7 +173,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
             )}
           </TabsContent>
           
-          <TabsContent value="rejected" className="space-y-4">
+          <TabsContent value="rejected" className="space-y-4 mt-4">
             {rejectedApplications.length === 0 ? (
               <p className="text-muted-foreground text-center p-4">No rejected applications found.</p>
             ) : (
