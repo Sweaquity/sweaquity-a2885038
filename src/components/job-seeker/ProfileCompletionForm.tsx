@@ -23,7 +23,7 @@ interface ProfileFormData {
   email: string;
   location: string;
   availability: string[];
-  employment_preference: 'salary_only' | 'equity_only' | 'both';
+  employment_preference: 'Employment only' | 'Equity only' | 'Both Equity and Salary';
   terms_accepted: boolean;
   marketing_consent: boolean;
   project_updates_consent: boolean;
