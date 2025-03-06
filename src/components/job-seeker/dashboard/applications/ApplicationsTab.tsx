@@ -3,7 +3,6 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { JobApplication } from "@/types/jobSeeker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ApplicationsList } from "./ApplicationsList";
 import { PendingApplicationsList } from "./PendingApplicationsList";
 import { EquityProjectsList } from "./EquityProjectsList";
 import { useState, useEffect } from "react";
@@ -16,9 +15,6 @@ interface ApplicationsTabProps {
 
 export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} }: ApplicationsTabProps) => {
   const [newMessagesCount, setNewMessagesCount] = useState(0);
-  
-  // Debug the incoming applications
-  console.log("All applications in ApplicationsTab:", applications);
   
   // Safely normalize status to lowercase for case-insensitive comparison
   const normalizeStatus = (status: string | null | undefined): string => {

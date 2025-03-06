@@ -17,9 +17,6 @@ export const useApplicationActions = (onApplicationUpdated?: () => void) => {
         updateData.notes = reason;
       }
       
-      // Log for debugging
-      console.log(`Updating application ${applicationId} to status: ${status}${reason ? ` with reason: ${reason}` : ''}`);
-      
       const { error } = await supabase
         .from('job_applications')
         .update(updateData)
