@@ -26,18 +26,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     return (status || "").toString().toLowerCase().trim();
   };
   
-  // Filter applications by status - using the normalized status comparison
-  const pendingApplications = applications.filter(app => {
-    const status = normalizeStatus(app.status);
-    return status === 'pending' || status === 'in review';
-  });
-  
-  const equityProjects = applications.filter(app => {
-    const status = normalizeStatus(app.status);
-    return status === 'negotiation' || status === 'accepted';
-  });
-  
-  // Specifically filter for withdrawn applications
+  // Filter for withdrawn applications
   const withdrawnApplications = applications.filter(app => {
     const status = normalizeStatus(app.status);
     return status === 'withdrawn';
@@ -51,9 +40,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
   
   // Log filtered applications for debugging
   console.log(
-    "Filtered applications - Pending:", pendingApplications.length, 
-    "Equity:", equityProjects.length,
-    "Withdrawn:", withdrawnApplications.length,
+    "Filtered applications - Withdrawn:", withdrawnApplications.length,
     "Rejected:", rejectedApplications.length
   );
   
@@ -123,10 +110,10 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
           <div className="overflow-x-hidden">
             <TabsList className="responsive-tabs h-auto p-1 w-full grid grid-cols-2 md:grid-cols-4 gap-1">
               <TabsTrigger value="pending" className="px-3 py-1.5">
-                Pending ({pendingApplications.length})
+                Pending
               </TabsTrigger>
               <TabsTrigger value="equity" className="px-3 py-1.5 relative">
-                Current Equity ({equityProjects.length})
+                Current Equity
                 {newMessagesCount > 0 && (
                   <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
                     {newMessagesCount}
@@ -134,34 +121,26 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                 )}
               </TabsTrigger>
               <TabsTrigger value="withdrawn" className="px-3 py-1.5">
-                Withdrawn ({withdrawnApplications.length})
+                Withdrawn
               </TabsTrigger>
               <TabsTrigger value="rejected" className="px-3 py-1.5">
-                Rejected ({rejectedApplications.length})
+                Rejected
               </TabsTrigger>
             </TabsList>
           </div>
           
           <TabsContent value="pending" className="space-y-4 mt-4">
-            {pendingApplications.length === 0 ? (
-              <p className="text-muted-foreground text-center p-4">No pending applications found.</p>
-            ) : (
-              <PendingApplicationsList 
-                applications={pendingApplications} 
-                onApplicationUpdated={onApplicationUpdated} 
-              />
-            )}
+            <PendingApplicationsList 
+              applications={applications} 
+              onApplicationUpdated={onApplicationUpdated} 
+            />
           </TabsContent>
           
           <TabsContent value="equity" className="space-y-4 mt-4">
-            {equityProjects.length === 0 ? (
-              <p className="text-muted-foreground text-center p-4">No equity projects found.</p>
-            ) : (
-              <EquityProjectsList 
-                applications={equityProjects} 
-                onApplicationUpdated={onApplicationUpdated} 
-              />
-            )}
+            <EquityProjectsList 
+              applications={applications} 
+              onApplicationUpdated={onApplicationUpdated} 
+            />
           </TabsContent>
           
           <TabsContent value="withdrawn" className="space-y-4 mt-4">
