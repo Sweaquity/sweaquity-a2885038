@@ -55,7 +55,7 @@ export const AcceptJobDialog = ({
 
   // Extract project title from various possible sources
   const projectTitle = application.business_roles?.project_title || 
-                     (application.business_roles?.project && application.business_roles.project.title) || 
+                     (application.business_roles?.project?.title) || 
                      "Untitled Project";
 
   return (

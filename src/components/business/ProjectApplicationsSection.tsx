@@ -546,13 +546,12 @@ export const ProjectApplicationsSection = () => {
                   handleStatusChange={handleStatusChange}
                   isUpdatingStatus={isUpdatingStatus}
                   openAcceptJobDialog={(app) => {
-                    // Convert Application to JobApplication
                     const jobApp: JobApplication = {
                       ...app,
                       role_id: app.role_id || "",
-                      project_id: app.task_id, // Using task_id as project_id
+                      project_id: app.task_id,
                       notes: app.notes || "",
-                      id: app.job_app_id, // Using job_app_id as id
+                      id: app.job_app_id,
                     };
                     setSelectedApplication(jobApp);
                     setAcceptJobDialogOpen(true);
@@ -922,4 +921,388 @@ const ActiveApplicationsTable = ({
                     ))}
                     {(!application.business_roles?.skill_requirements || 
                       application.business_roles.skill_requirements.length === 0) && 
-                      <span className="text-muted-
+                      <span className="text-muted-foreground">No specific skills required</span>
+                    }
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <select 
+                    className="w-full md:w-1/3 px-2 py-1 border rounded text-xs self-start"
+                    value={application.status}
+                    onChange={(e) => handleStatusChange(application.job_app_id, e.target.value)}
+                    disabled={isUpdatingStatus === application.job_app_id}
+                  >
+                    <option value="negotiation">Negotiation</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="in review">Return to In Review</option>
+                  </select>
+                  
+                  {application.status.toLowerCase() === 'accepted' && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="ml-2" 
+                              onClick={() => openAcceptJobDialog(application)}
+                              disabled={(application.accepted_business === true) || (!application.accepted_business && !application.accepted_jobseeker)}
+                            >
+                              {application.accepted_business ? (
+                                <>
+                                  <CheckCircle className="mr-1.5 h-4 w-4 text-green-500" />
+                                  Job Accepted
+                                </>
+                              ) : (
+                                <>Accept Job</>
+                              )}
+                            </Button>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {application.accepted_business ? 
+                            "You've accepted this job" : 
+                            (!application.accepted_business && !application.accepted_jobseeker) ? 
+                              "Jobs can be accepted once either party updates the status to 'accepted'" :
+                              "Accept this job to confirm the contract"
+                          }
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+              </div>
+              
+              <CollapsibleContent className="mt-4 space-y-4">
+                <div>
+                  <h4 className="font-medium mb-1">Application Message</h4>
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">
+                    {application.message || "No application message provided."}
+                  </p>
+                </div>
+                
+                {application.task_discourse && (
+                  <div className="mt-3 p-3 bg-slate-50 rounded-md border">
+                    <h4 className="font-medium mb-2">Message History</h4>
+                    <pre className="text-sm whitespace-pre-wrap font-sans">
+                      {application.task_discourse}
+                    </pre>
+                  </div>
+                )}
+                
+                <div className="mt-4 space-y-2">
+                  <div className="flex flex-col space-y-2">
+                    <h4 className="text-sm font-medium">Send Message</h4>
+                    <Textarea 
+                      className="min-h-[100px] p-2 text-sm w-full"
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder="Type your message here..."
+                    />
+                    <div className="flex justify-end">
+                      <Button 
+                        size="sm"
+                        onClick={() => handleSendMessage(application.job_app_id)} 
+                        disabled={!message.trim() || sendingMessage === application.job_app_id}
+                      >
+                        {sendingMessage === application.job_app_id ? (
+                          <>
+                            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <MessageCircle className="mr-1 h-4 w-4" />
+                            Send
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                
+                {application.cv_url && (
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(application.cv_url!, '_blank');
+                      }}
+                    >
+                      <FileText className="mr-1 h-4 w-4" />
+                      Download CV
+                    </Button>
+                  </div>
+                )}
+              </CollapsibleContent>
+            </CardContent>
+          </Collapsible>
+        </Card>
+      ))}
+    </div>
+  );
+};
+
+const WithdrawnApplicationsTable = ({ 
+  applications, 
+  expandedApplications, 
+  toggleApplicationExpanded, 
+  handleStatusChange, 
+  isUpdatingStatus 
+}: { 
+  applications: Application[], 
+  expandedApplications: Set<string>, 
+  toggleApplicationExpanded: (id: string) => void,
+  handleStatusChange: (id: string, status: string) => void,
+  isUpdatingStatus: string | null
+}) => {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[200px]">Applicant</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead className="text-center">Withdrawn Date</TableHead>
+          <TableHead className="w-[80px]"></TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {applications.map(application => (
+          <TableRow 
+            key={application.job_app_id}
+            className="cursor-pointer hover:bg-muted/50"
+            onClick={() => toggleApplicationExpanded(application.job_app_id)}
+          >
+            <TableCell>
+              <div>
+                <p className="font-medium">{application.profile?.first_name} {application.profile?.last_name}</p>
+                <p className="text-xs text-muted-foreground">{application.profile?.title || "No title"}</p>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div>
+                <p className="font-medium">{application.business_roles?.title || "Untitled"}</p>
+                <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                  {application.business_roles?.timeframe && `${application.business_roles.timeframe} • `}
+                  {application.business_roles?.equity_allocation && `${application.business_roles.equity_allocation}% equity`}
+                </p>
+              </div>
+            </TableCell>
+            <TableCell className="text-center">
+              <p className="text-sm">{new Date(application.applied_at).toLocaleDateString()}</p>
+            </TableCell>
+            <TableCell>
+              {expandedApplications.has(application.job_app_id) ? 
+                <ChevronDown className="h-4 w-4 mx-auto" /> : 
+                <ChevronRight className="h-4 w-4 mx-auto" />
+              }
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+      {applications.map(application => (
+        <Collapsible
+          key={`${application.job_app_id}-details`}
+          open={expandedApplications.has(application.job_app_id)}
+        >
+          <CollapsibleContent className="p-4 border-t">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-medium mb-2">Application Details</h4>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm font-medium">Message</p>
+                    <p className="text-sm">{application.message || "No message provided"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Applied</p>
+                    <p className="text-sm">{new Date(application.applied_at).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Location</p>
+                    <p className="text-sm">{application.profile?.location || "Not specified"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Preference</p>
+                    <p className="text-sm">{application.profile?.employment_preference || "Not specified"}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Task Details</h4>
+                <div className="space-y-2">                  
+                  <div>
+                    <p className="text-sm font-medium">Description</p>
+                    <p className="text-sm mt-1">{application.business_roles?.description || "No description provided"}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium">Timeframe</p>
+                    <p className="text-sm">{application.business_roles?.timeframe || "Not specified"}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium">Equity Allocation</p>
+                    <p className="text-sm">{application.business_roles?.equity_allocation ? `${application.business_roles.equity_allocation}%` : "Not specified"}</p>
+                  </div>
+                  
+                  <select 
+                    className="w-full md:w-1/2 px-2 py-1 border rounded text-xs mt-4"
+                    value="withdrawn"
+                    onChange={(e) => handleStatusChange(application.job_app_id, e.target.value)}
+                    disabled={isUpdatingStatus === application.job_app_id}
+                  >
+                    <option value="withdrawn">Withdrawn</option>
+                    <option value="in review">Restore to In Review</option>
+                  </select>
+                  {isUpdatingStatus === application.job_app_id && (
+                    <Loader2 className="animate-spin ml-2 h-4 w-4" />
+                  )}
+                </div>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      ))}
+    </Table>
+  );
+};
+
+const RejectedApplicationsTable = ({ 
+  applications, 
+  expandedApplications, 
+  toggleApplicationExpanded, 
+  handleStatusChange, 
+  isUpdatingStatus 
+}: { 
+  applications: Application[], 
+  expandedApplications: Set<string>, 
+  toggleApplicationExpanded: (id: string) => void,
+  handleStatusChange: (id: string, status: string) => void,
+  isUpdatingStatus: string | null
+}) => {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[200px]">Applicant</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead className="text-center">Rejection Reason</TableHead>
+          <TableHead className="w-[80px]"></TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {applications.map(application => (
+          <TableRow 
+            key={application.job_app_id}
+            className="cursor-pointer hover:bg-muted/50"
+            onClick={() => toggleApplicationExpanded(application.job_app_id)}
+          >
+            <TableCell>
+              <div>
+                <p className="font-medium">{application.profile?.first_name} {application.profile?.last_name}</p>
+                <p className="text-xs text-muted-foreground">{application.profile?.title || "No title"}</p>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div>
+                <p className="font-medium">{application.business_roles?.title || "Untitled"}</p>
+                <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                  {application.business_roles?.project.title || "Untitled Project"}
+                </p>
+              </div>
+            </TableCell>
+            <TableCell className="text-center">
+              <p className="text-sm line-clamp-2">
+                {application.task_discourse ? 
+                  application.task_discourse.split('(Rejection reason)').pop()?.trim() || "No reason provided" : 
+                  "No reason provided"}
+              </p>
+            </TableCell>
+            <TableCell>
+              {expandedApplications.has(application.job_app_id) ? 
+                <ChevronDown className="h-4 w-4 mx-auto" /> : 
+                <ChevronRight className="h-4 w-4 mx-auto" />
+              }
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+      {applications.map(application => (
+        <Collapsible
+          key={`${application.job_app_id}-details`}
+          open={expandedApplications.has(application.job_app_id)}
+        >
+          <CollapsibleContent className="p-4 border-t">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-medium mb-2">Application Details</h4>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm font-medium">Message</p>
+                    <p className="text-sm">{application.message || "No message provided"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Applied</p>
+                    <p className="text-sm">{new Date(application.applied_at).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Location</p>
+                    <p className="text-sm">{application.profile?.location || "Not specified"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Rejection Reason</p>
+                    <p className="text-sm text-red-600">
+                      {application.task_discourse ? 
+                        application.task_discourse.split('(Rejection reason)').pop()?.trim() || "No reason provided" : 
+                        "No reason provided"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Task Details</h4>
+                <div className="space-y-2">                  
+                  <div>
+                    <p className="text-sm font-medium">Description</p>
+                    <p className="text-sm mt-1">{application.business_roles?.description || "No description provided"}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium">Timeframe</p>
+                    <p className="text-sm">{application.business_roles?.timeframe || "Not specified"}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium">Equity Allocation</p>
+                    <p className="text-sm">{application.business_roles?.equity_allocation ? `${application.business_roles.equity_allocation}%` : "Not specified"}</p>
+                  </div>
+                  
+                  <select 
+                    className="w-full md:w-1/2 px-2 py-1 border rounded text-xs mt-4"
+                    value="rejected"
+                    onChange={(e) => handleStatusChange(application.job_app_id, e.target.value)}
+                    disabled={isUpdatingStatus === application.job_app_id}
+                  >
+                    <option value="rejected">Rejected</option>
+                    <option value="in review">Restore to In Review</option>
+                  </select>
+                  {isUpdatingStatus === application.job_app_id && (
+                    <Loader2 className="animate-spin ml-2 h-4 w-4" />
+                  )}
+                </div>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      ))}
+    </Table>
+  );
+};
