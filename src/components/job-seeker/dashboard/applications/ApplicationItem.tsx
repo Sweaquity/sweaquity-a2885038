@@ -1,10 +1,6 @@
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { JobApplication } from '@/types/jobSeeker';
-import { ApplicationHeader } from './ApplicationHeader';
-import { ApplicationContent } from './ApplicationContent';
-import { ApplicationSkills } from './ApplicationSkills';
 import { CreateMessageDialog } from './CreateMessageDialog';
 import { WithdrawDialog } from './WithdrawDialog';
 import { useWithdrawApplication } from './hooks/useWithdrawApplication';
@@ -14,9 +10,9 @@ import { toast } from 'sonner';
 import { useAcceptedJobs } from '@/hooks/useAcceptedJobs';
 import { AcceptJobDialog } from './AcceptJobDialog';
 import { 
-  MessageActions, 
-  ApplicationStatus, 
-  StatusChangeDialog 
+  StatusChangeDialog,
+  ApplicationItemHeader,
+  ApplicationItemContent
 } from './components';
 
 interface ApplicationItemProps {
@@ -130,62 +126,29 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
 
   return (
     <div className="border rounded-md overflow-hidden bg-card dashboard-card">
-      {/* Top section */}
-      <div className="p-4">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
-          {application.business_roles && (
-            <ApplicationHeader 
-              title={application.business_roles.title || "Untitled Role"}
-              company={application.business_roles.company_name || "Unknown Company"}
-              project={application.business_roles.project_title || ""}
-              status={application.status}
-            />
-          )}
-          
-          <ApplicationStatus 
-            isExpanded={isExpanded}
-            toggleExpand={toggleExpand}
-            status={application.status}
-            onStatusChange={handleStatusChange}
-            isUpdatingStatus={isUpdatingStatus === applicationId}
-            showAcceptButton={showAcceptButton}
-            onAcceptClick={() => setIsAcceptJobDialogOpen(true)}
-            isAcceptingJob={isAcceptingJob}
-            compact={compact}
-          />
-        </div>
+      {/* Application Header Section */}
+      <ApplicationItemHeader
+        application={application}
+        isExpanded={isExpanded}
+        toggleExpand={toggleExpand}
+        onStatusChange={handleStatusChange}
+        isUpdatingStatus={isUpdatingStatus === applicationId}
+        showAcceptButton={showAcceptButton}
+        onAcceptClick={() => setIsAcceptJobDialogOpen(true)}
+        isAcceptingJob={isAcceptingJob}
+        compact={compact}
+      />
 
-        <div className="mt-2">
-          {application.business_roles && (
-            <ApplicationSkills
-              skillRequirements={application.business_roles.skill_requirements || []}
-              equityAllocation={application.business_roles.equity_allocation}
-              timeframe={application.business_roles.timeframe}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Expanded content */}
+      {/* Expanded Application Content */}
       {isExpanded && (
-        <div className="border-t p-4">
-          {application.business_roles && (
-            <ApplicationContent 
-              description={application.business_roles.description || ""}
-              message={application.message || ""}
-              discourse={application.task_discourse}
-              appliedAt={application.applied_at}
-            />
-          )}
-
-          <MessageActions 
-            onMessageClick={() => setIsCreateMessageOpen(true)}
-            projectId={application.project_id}
-            onWithdrawClick={() => setIsWithdrawDialogOpen(true)}
-          />
-        </div>
+        <ApplicationItemContent
+          application={application}
+          onMessageClick={() => setIsCreateMessageOpen(true)}
+          onWithdrawClick={() => setIsWithdrawDialogOpen(true)}
+        />
       )}
 
+      {/* Dialogs */}
       <CreateMessageDialog
         isOpen={isCreateMessageOpen}
         onOpenChange={setIsCreateMessageOpen}

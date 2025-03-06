@@ -13,7 +13,7 @@ export { EquityProjectItem } from './EquityProjectItem';
 export { PastApplicationsList } from './PastApplicationsList';
 export { PastApplicationItem } from './PastApplicationItem';
 export { CreateMessageDialog } from './CreateMessageDialog';
-// Export new component exports
+// Export components
 export { 
   MessageActions, 
   ApplicationStatus, 
@@ -21,5 +21,7 @@ export {
   ProjectActions,
   ProjectInfo,
   ProjectDetails,
-  ProjectHeader
+  ProjectHeader,
+  ApplicationItemHeader,
+  ApplicationItemContent
 } from './components';
