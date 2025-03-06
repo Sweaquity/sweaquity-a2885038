@@ -1,8 +1,6 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp, MessageSquare, ExternalLink, Clock, XCircle } from 'lucide-react';
-import { StatusBadge } from './StatusBadge';
 import { JobApplication } from '@/types/jobSeeker';
 import { ApplicationHeader } from './ApplicationHeader';
 import { ApplicationContent } from './ApplicationContent';
@@ -13,23 +11,13 @@ import { useWithdrawApplication } from './hooks/useWithdrawApplication';
 import { useApplicationActions } from './hooks/useApplicationActions';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { 
-  Dialog, 
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useAcceptedJobs } from '@/hooks/useAcceptedJobs';
 import { AcceptJobDialog } from './AcceptJobDialog';
+import { 
+  MessageActions, 
+  ApplicationStatus, 
+  StatusChangeDialog 
+} from './components';
 
 interface ApplicationItemProps {
   application: JobApplication;
@@ -154,59 +142,17 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
             />
           )}
           
-          <div className="flex items-center space-x-2 mt-2 sm:mt-0">
-            {compact ? (
-              <StatusBadge status={application.status} />
-            ) : (
-              <div className="flex flex-col items-end space-y-2">
-                <div className="flex flex-wrap gap-2 items-center justify-end">
-                  <Select 
-                    value={String(application.status) || "pending"} 
-                    onValueChange={handleStatusChange}
-                    disabled={isUpdatingStatus === applicationId}
-                  >
-                    <SelectTrigger className="w-[140px]">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="negotiation">Negotiation</SelectItem>
-                      <SelectItem value="accepted">Accepted</SelectItem>
-                      <SelectItem value="withdrawn">Withdraw</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  {showAcceptButton && (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setIsAcceptJobDialogOpen(true)}
-                      disabled={isAcceptingJob}
-                    >
-                      Accept Job
-                    </Button>
-                  )}
-                </div>
-                
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={toggleExpand}
-                  className="flex items-center"
-                >
-                  {isExpanded ? (
-                    <>
-                      Less details <ChevronUp className="ml-1 h-4 w-4" />
-                    </>
-                  ) : (
-                    <>
-                      More details <ChevronDown className="ml-1 h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
+          <ApplicationStatus 
+            isExpanded={isExpanded}
+            toggleExpand={toggleExpand}
+            status={application.status}
+            onStatusChange={handleStatusChange}
+            isUpdatingStatus={isUpdatingStatus === applicationId}
+            showAcceptButton={showAcceptButton}
+            onAcceptClick={() => setIsAcceptJobDialogOpen(true)}
+            isAcceptingJob={isAcceptingJob}
+            compact={compact}
+          />
         </div>
 
         <div className="mt-2">
@@ -232,37 +178,11 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
             />
           )}
 
-          <div className="mt-4 card-actions">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setIsCreateMessageOpen(true)}
-              className="w-full sm:w-auto"
-            >
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Send Message
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(`/projects/${application.project_id}`, '_blank')}
-              className="w-full sm:w-auto"
-            >
-              <ExternalLink className="mr-2 h-4 w-4" />
-              View Project
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-destructive hover:bg-destructive/10 w-full sm:w-auto"
-              onClick={() => setIsWithdrawDialogOpen(true)}
-            >
-              <XCircle className="mr-2 h-4 w-4" />
-              Withdraw
-            </Button>
-          </div>
+          <MessageActions 
+            onMessageClick={() => setIsCreateMessageOpen(true)}
+            projectId={application.project_id}
+            onWithdrawClick={() => setIsWithdrawDialogOpen(true)}
+          />
         </div>
       )}
 
@@ -281,31 +201,13 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
         isWithdrawing={isWithdrawing}
       />
       
-      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Update Application Status</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to change the status to "{selectedStatus}"?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col sm:flex-row sm:justify-end gap-2">
-            <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={confirmStatusChange} disabled={isUpdatingStatus === applicationId}>
-              {isUpdatingStatus === applicationId ? (
-                <>
-                  <Clock className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                'Confirm'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <StatusChangeDialog 
+        isOpen={statusDialogOpen}
+        onOpenChange={setStatusDialogOpen}
+        selectedStatus={selectedStatus}
+        onConfirm={confirmStatusChange}
+        isLoading={isUpdatingStatus === applicationId}
+      />
       
       <AcceptJobDialog
         isOpen={isAcceptJobDialogOpen}
