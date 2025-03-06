@@ -12,7 +12,6 @@ export { EquityProjectsList } from './EquityProjectsList';
 export { EquityProjectItem } from './EquityProjectItem';
 export { PastApplicationsList } from './PastApplicationsList';
 export { PastApplicationItem } from './PastApplicationItem';
-export { AllApplicationsList } from './AllApplicationsList';
 export { CreateMessageDialog } from './CreateMessageDialog';
 // Export components
 export { 
