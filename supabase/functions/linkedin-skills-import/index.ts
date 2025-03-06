@@ -15,9 +15,11 @@ serve(async (req) => {
 
   try {
     // Get request body
-    const { user_id } = await req.json();
+    const requestData = await req.json();
+    const { user_id } = requestData;
 
     if (!user_id) {
+      console.error("Missing user_id in request");
       return new Response(
         JSON.stringify({ error: "Missing user_id" }),
         { 
@@ -27,11 +29,25 @@ serve(async (req) => {
       );
     }
 
+    console.log("Received request for user_id:", user_id);
+
     // Initialize Supabase client with service role to access auth data
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+
+    // Log if credentials are missing
+    if (!Deno.env.get("SUPABASE_URL") || !Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
+      console.error("Missing Supabase credentials");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
+    }
 
     // Get user auth data to check for LinkedIn provider
     const { data: userData, error: userError } = await supabaseAdmin.auth
@@ -48,26 +64,10 @@ serve(async (req) => {
       );
     }
 
-    // Check if user has LinkedIn identity
-    const linkedInIdentity = userData.user.identities?.find(
-      id => id.provider === "linkedin_oidc"
-    );
+    console.log("User found:", userData.user.id);
 
-    if (!linkedInIdentity) {
-      return new Response(
-        JSON.stringify({ error: "No LinkedIn account connected" }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      );
-    }
-
-    // For the sake of demonstrating functionality, we'll return some mock skills
-    // In a real implementation, you would use the LinkedIn API with the access token
-    // stored in the identity.identity_data
-    
-    // Mock skills based on common LinkedIn skills
+    // For demonstration purposes - return mock skills
+    // In a real implementation, you would use the LinkedIn API
     const mockSkills = [
       "JavaScript",
       "React",
@@ -86,12 +86,15 @@ serve(async (req) => {
     const selectedSkills = [];
     const numberOfSkills = 5 + Math.floor(Math.random() * 4); // Between 5 and 8 skills
     
+    const availableSkills = [...mockSkills]; // Create a copy to avoid modifying the original
     for (let i = 0; i < numberOfSkills; i++) {
-      const randomIndex = Math.floor(Math.random() * mockSkills.length);
-      const skill = mockSkills.splice(randomIndex, 1)[0];
+      if (availableSkills.length === 0) break;
+      const randomIndex = Math.floor(Math.random() * availableSkills.length);
+      const skill = availableSkills.splice(randomIndex, 1)[0];
       if (skill) selectedSkills.push(skill);
-      if (mockSkills.length === 0) break;
     }
+
+    console.log("Returning skills:", selectedSkills);
 
     return new Response(
       JSON.stringify({ 
@@ -102,34 +105,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
       }
     );
-    
-    /* 
-    // In a real implementation, you would use the LinkedIn API
-    // to fetch the user's skills using their access token
-    
-    const accessToken = linkedInIdentity.identity_data.access_token;
-    
-    const response = await fetch("https://api.linkedin.com/v2/me?projection=(skills)", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json"
-      }
-    });
-    
-    const linkedInData = await response.json();
-    const skills = linkedInData.skills.map(skillObj => skillObj.skill.name);
-    
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        skills: skills 
-      }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
-      }
-    );
-    */
-    
   } catch (error) {
     console.error("Error processing request:", error);
     

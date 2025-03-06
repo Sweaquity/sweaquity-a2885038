@@ -6,3 +6,6 @@ verify_jwt = true
 
 [functions.match-opportunities]
 verify_jwt = true
+
+[functions.linkedin-skills-import]
+verify_jwt = true

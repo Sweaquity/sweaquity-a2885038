@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -8,8 +9,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { TermsAndConditionsLink } from "@/components/shared/TermsAndConditionsLink";
+import { useNavigate } from "react-router-dom";
 
 export const BusinessProfileCompletion = () => {
+  const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     company_name: "",
     industry: "",
@@ -20,15 +24,86 @@ export const BusinessProfileCompletion = () => {
     organization_type: "",
     terms_accepted: false
   });
+  
+  // Add loading state and error handling
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+
+  // Load existing data if available
+  useEffect(() => {
+    const loadBusinessData = async () => {
+      try {
+        setIsLoading(true);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setLoadError("No active session found");
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('businesses')
+          .select('*')
+          .eq('businesses_id', session.user.id)
+          .single();
+
+        if (error) {
+          if (error.code === 'PGRST116') {
+            // No data found - this is normal for new users
+            console.log("No business data found for new user");
+          } else {
+            console.error('Error loading business data:', error);
+            setLoadError("Error loading your business data");
+          }
+          return;
+        }
+
+        if (data) {
+          setFormData({
+            company_name: data.company_name || "",
+            industry: data.industry || "",
+            contact_phone: data.contact_phone || "",
+            website: data.website || "",
+            location: data.location || "",
+            project_stage: data.project_stage || "",
+            organization_type: data.organization_type || "",
+            terms_accepted: data.terms_accepted || false
+          });
+        }
+      } catch (error) {
+        console.error('Error in loadBusinessData:', error);
+        setLoadError("Failed to load business data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadBusinessData();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.company_name || !formData.industry || !formData.location || 
+        !formData.project_stage || !formData.organization_type) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    
+    if (!formData.terms_accepted) {
+      toast.error("You must accept the terms and conditions");
+      return;
+    }
+
     try {
+      setIsSubmitting(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast.error("No active session found");
         return;
       }
+
+      console.log("Updating business profile for user:", session.user.id);
+      console.log("Form data:", formData);
 
       const { error } = await supabase
         .from('businesses')
@@ -38,15 +113,41 @@ export const BusinessProfileCompletion = () => {
         })
         .eq('businesses_id', session.user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating business profile:', error);
+        throw error;
+      }
       
       toast.success("Profile updated successfully");
-      window.location.reload();
+      navigate("/business/dashboard");
     } catch (error) {
       console.error('Error updating profile:', error);
-      toast.error("Failed to update profile");
+      toast.error("Failed to update profile. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen p-6 flex items-center justify-center">
+        <p>Loading your profile data...</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen p-6 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{loadError}</p>
+          <Button onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-6 flex items-center justify-center">
@@ -57,7 +158,7 @@ export const BusinessProfileCompletion = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="company_name">Company Name *</Label>
                 <Input
@@ -152,7 +253,13 @@ export const BusinessProfileCompletion = () => {
               </Label>
             </div>
             
-            <Button type="submit" className="w-full">Complete Profile</Button>
+            <Button 
+              type="submit" 
+              className="w-full"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Saving..." : "Complete Profile"}
+            </Button>
           </form>
         </CardContent>
       </Card>

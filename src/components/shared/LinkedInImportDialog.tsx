@@ -33,12 +33,19 @@ export const LinkedInImportDialog = ({ isOpen, onClose }: LinkedInImportDialogPr
         return;
       }
       
+      console.log("Calling LinkedIn skills import function for user:", session.user.id);
+      
       // Call the LinkedIn API endpoint function to get skills
       const { data, error } = await supabase.functions.invoke('linkedin-skills-import', {
         body: { user_id: session.user.id }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error("LinkedIn skills import error:", error);
+        throw error;
+      }
+      
+      console.log("LinkedIn skills import response:", data);
       
       if (!data || !data.skills || data.skills.length === 0) {
         toast.info("No skills found in your LinkedIn profile");
@@ -58,7 +65,10 @@ export const LinkedInImportDialog = ({ isOpen, onClose }: LinkedInImportDialogPr
         .eq('id', session.user.id)
         .single();
         
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error("Error fetching profile:", profileError);
+        throw profileError;
+      }
       
       // Merge existing skills with new ones, avoiding duplicates
       let existingSkills: Skill[] = [];
@@ -72,6 +82,8 @@ export const LinkedInImportDialog = ({ isOpen, onClose }: LinkedInImportDialogPr
         }
       }
       
+      console.log("Existing skills:", existingSkills);
+      
       // Create a map of existing skills to check for duplicates
       const existingSkillsMap = new Map(
         existingSkills.map(skill => [skill.skill.toLowerCase(), skill])
@@ -84,6 +96,8 @@ export const LinkedInImportDialog = ({ isOpen, onClose }: LinkedInImportDialogPr
         }
       });
       
+      console.log("Merged skills:", existingSkills);
+      
       // Update the profile with the merged skills
       const { error: updateError } = await supabase
         .from('profiles')
@@ -93,7 +107,10 @@ export const LinkedInImportDialog = ({ isOpen, onClose }: LinkedInImportDialogPr
         })
         .eq('id', session.user.id);
         
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Error updating profile with skills:", updateError);
+        throw updateError;
+      }
       
       toast.success(`Successfully imported ${formattedSkills.length} skills from LinkedIn`);
       onClose();
@@ -103,7 +120,7 @@ export const LinkedInImportDialog = ({ isOpen, onClose }: LinkedInImportDialogPr
       
     } catch (error) {
       console.error("Error importing LinkedIn skills:", error);
-      toast.error("Failed to import skills from LinkedIn");
+      toast.error("Failed to import skills from LinkedIn. Please try again later.");
     } finally {
       setIsImporting(false);
     }
