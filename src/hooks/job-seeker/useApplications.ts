@@ -6,6 +6,7 @@ import { JobApplication, SkillRequirement } from "@/types/jobSeeker";
 
 export const useApplications = () => {
   const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [pastApplications, setPastApplications] = useState<JobApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Helper function to normalize status for case-insensitive comparison
@@ -90,8 +91,22 @@ export const useApplications = () => {
       
       console.log("Processed applications:", processedApplications);
       
-      // No longer filtering applications by status - returning all of them
-      setApplications(processedApplications);
+      // Filter applications by status using case-insensitive comparison with normalizeStatus
+      const current = processedApplications.filter((app: JobApplication) => {
+        const status = normalizeStatus(app.status);
+        return status === 'pending' || status === 'in review' || status === 'negotiation' || status === 'accepted';
+      });
+      
+      const past = processedApplications.filter((app: JobApplication) => {
+        const status = normalizeStatus(app.status);
+        return status === 'rejected' || status === 'withdrawn';
+      });
+      
+      console.log("Current applications count:", current.length);
+      console.log("Past applications count:", past.length, "with statuses:", past.map((app: JobApplication) => app.status));
+      
+      setApplications(current);
+      setPastApplications(past);
     } catch (error) {
       console.error("Error loading applications:", error);
       toast.error("Failed to load applications");
@@ -102,6 +117,7 @@ export const useApplications = () => {
 
   return {
     applications,
+    pastApplications,
     isLoading,
     loadApplications
   };
