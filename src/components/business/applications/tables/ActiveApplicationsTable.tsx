@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight, Loader2, MessageCircle, Bell, CheckCircle } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, MessageCircle, Bell, CheckCircle, ExternalLink, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +35,7 @@ export const ActiveApplicationsTable = ({
 }: ActiveApplicationsTableProps) => {
   const [message, setMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const handleSendMessage = async (applicationId: string) => {
     if (!message.trim()) return;
@@ -83,20 +84,46 @@ export const ActiveApplicationsTable = ({
     }
   };
 
+  const toggleExpand = (applicationId: string) => {
+    if (expandedId === applicationId) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(applicationId);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {applications.map(application => (
         <Card key={application.job_app_id} className="shadow-sm hover:shadow transition-shadow">
           <Collapsible 
-            open={expandedApplications.has(application.job_app_id)}
-            onOpenChange={() => toggleApplicationExpanded(application.job_app_id)}
+            open={expandedId === application.job_app_id}
+            onOpenChange={() => toggleExpand(application.job_app_id)}
           >
-            <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
-              <div className="flex flex-1 flex-col space-y-1.5">
-                <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <h3 className="text-md font-semibold line-clamp-1">
-                    {application.business_roles?.title || "Untitled Role"}
-                  </h3>
+            <CardHeader className="p-4 pb-3 flex flex-col space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold">Applicant:</span>
+                  <span>{application.profile?.first_name} {application.profile?.last_name}</span>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold">Role:</span>
+                  <span>{application.business_roles?.title || "Untitled Role"}</span>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold">Description:</span>
+                  <span className="truncate">{application.business_roles?.description || "No description"}</span>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold">Equity:</span>
+                  <span>{application.business_roles?.equity_allocation ? `${application.business_roles.equity_allocation}%` : "N/A"}</span>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold">Status:</span>
                   <Badge className={
                     application.status.toLowerCase() === 'accepted' 
                       ? 'bg-green-100 text-green-800 border-green-300'
@@ -106,34 +133,16 @@ export const ActiveApplicationsTable = ({
                   </Badge>
                 </div>
                 
-                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  <span className="inline-flex items-center">
-                    {application.profile?.first_name} {application.profile?.last_name}
-                  </span>
-                  <span className="inline-flex items-center">
-                    Project: {application.business_roles?.project?.title || "Untitled Project"}
-                  </span>
-                  <span className="inline-flex items-center">
-                    {application.business_roles?.equity_allocation && `${application.business_roles.equity_allocation}% equity`}
-                  </span>
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold">Jobseeker Accepted:</span>
+                  <span>{application.accepted_jobseeker ? "Yes" : "No"}</span>
                 </div>
               </div>
               
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  {expandedApplications.has(application.job_app_id) ? 
-                    <ChevronDown className="h-4 w-4" /> : 
-                    <ChevronRight className="h-4 w-4" />
-                  }
-                </Button>
-              </CollapsibleTrigger>
-            </CardHeader>
-            
-            <CardContent className="px-4 py-2">
-              <div className="grid grid-cols-1 gap-4 mb-2 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Skills Required</p>
-                  <div className="flex flex-wrap gap-1 mt-1">
+              <div className="flex flex-col mt-2 space-y-2">
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold">Skills Required:</span>
+                  <div className="flex flex-wrap gap-1">
                     {application.business_roles?.skill_requirements?.map((skill, index) => (
                       <Badge key={index} variant="outline" className="bg-slate-50">
                         {typeof skill === 'string' ? skill : skill.skill}
@@ -149,43 +158,93 @@ export const ActiveApplicationsTable = ({
                   </div>
                 </div>
                 
-                <div>
-                  <div className="flex justify-between items-center">
-                    <p className="text-muted-foreground">Communication</p>
-                    <div className="flex gap-2">
-                      {application.status === 'accepted' && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="h-8 px-2"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openAcceptJobDialog(application);
-                                }}
-                                disabled={application.accepted_business}
-                              >
-                                {application.accepted_business ? (
-                                  <CheckCircle className="h-4 w-4 mr-1 text-green-500" />
-                                ) : (
-                                  <Bell className="h-4 w-4 mr-1" />
-                                )}
-                                {application.accepted_business ? "Accepted" : "Accept Contract"}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {application.accepted_business 
-                                ? "You have accepted this job contract" 
-                                : "Accept job contract and finalize equity agreement"}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold">Timeframe:</span>
+                  <span>{application.business_roles?.timeframe || "Not specified"}</span>
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-center mt-1">
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="flex items-center">
+                    {expandedId === application.job_app_id ? (
+                      <>
+                        <ChevronDown className="h-4 w-4 mr-1" />
+                        Hide Details
+                      </>
+                    ) : (
+                      <>
+                        <ChevronRight className="h-4 w-4 mr-1" />
+                        Show Details
+                      </>
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                
+                {application.status === 'accepted' && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-8 px-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openAcceptJobDialog(application);
+                          }}
+                          disabled={application.accepted_business}
+                        >
+                          {application.accepted_business ? (
+                            <CheckCircle className="h-4 w-4 mr-1 text-green-500" />
+                          ) : (
+                            <Bell className="h-4 w-4 mr-1" />
+                          )}
+                          {application.accepted_business ? "Accepted" : "Accept Contract"}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {application.accepted_business 
+                          ? "You have accepted this job contract" 
+                          : "Accept job contract and finalize equity agreement"}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
+            </CardHeader>
+            
+            <CollapsibleContent>
+              <CardContent className="px-4 pb-4 space-y-4">
+                {application.message && (
+                  <div>
+                    <h4 className="text-sm font-semibold mb-1">Application Message:</h4>
+                    <div className="bg-muted/30 p-3 rounded-md text-sm">
+                      {application.message}
                     </div>
                   </div>
-                  <div className="border rounded-md p-3 my-2 max-h-32 overflow-y-auto bg-slate-50">
+                )}
+                
+                {application.cv_url && (
+                  <div>
+                    <h4 className="text-sm font-semibold mb-1">CV:</h4>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-sm"
+                      asChild
+                    >
+                      <a href={application.cv_url} target="_blank" rel="noopener noreferrer">
+                        <FileText className="h-4 w-4 mr-1" />
+                        View CV
+                      </a>
+                    </Button>
+                  </div>
+                )}
+                
+                <div>
+                  <h4 className="text-sm font-semibold mb-1">Communication History:</h4>
+                  <div className="border rounded-md p-3 max-h-32 overflow-y-auto bg-slate-50">
                     {application.task_discourse ? (
                       <div className="space-y-2 text-xs">
                         {application.task_discourse.split('\n\n').map((msg, i) => {
@@ -234,8 +293,8 @@ export const ActiveApplicationsTable = ({
                     </Button>
                   </div>
                 </div>
-              </div>
-            </CardContent>
+              </CardContent>
+            </CollapsibleContent>
           </Collapsible>
         </Card>
       ))}

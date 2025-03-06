@@ -352,6 +352,7 @@ export const ProjectApplicationsSection = () => {
       if (newExpanded.has(applicationId)) {
         newExpanded.delete(applicationId);
       } else {
+        newExpanded.clear();
         newExpanded.add(applicationId);
       }
       return newExpanded;
