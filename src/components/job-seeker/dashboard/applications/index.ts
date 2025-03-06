@@ -14,4 +14,12 @@ export { PastApplicationsList } from './PastApplicationsList';
 export { PastApplicationItem } from './PastApplicationItem';
 export { CreateMessageDialog } from './CreateMessageDialog';
 // Export new component exports
-export { MessageActions, ApplicationStatus, StatusChangeDialog } from './components';
+export { 
+  MessageActions, 
+  ApplicationStatus, 
+  StatusChangeDialog,
+  ProjectActions,
+  ProjectInfo,
+  ProjectDetails,
+  ProjectHeader
+} from './components';
