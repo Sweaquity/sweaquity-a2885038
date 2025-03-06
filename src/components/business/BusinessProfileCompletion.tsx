@@ -105,13 +105,34 @@ export const BusinessProfileCompletion = () => {
       console.log("Updating business profile for user:", session.user.id);
       console.log("Form data:", formData);
 
-      const { error } = await supabase
+      // Check if this is a new record or update
+      const { data: existingProfile } = await supabase
         .from('businesses')
-        .update({
-          ...formData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('businesses_id', session.user.id);
+        .select('businesses_id')
+        .eq('businesses_id', session.user.id)
+        .maybeSingle();
+
+      let error;
+      
+      if (existingProfile) {
+        // Update existing profile
+        ({ error } = await supabase
+          .from('businesses')
+          .update({
+            ...formData,
+            updated_at: new Date().toISOString()
+          })
+          .eq('businesses_id', session.user.id));
+      } else {
+        // Insert new profile
+        ({ error } = await supabase
+          .from('businesses')
+          .insert({
+            businesses_id: session.user.id,
+            ...formData,
+            updated_at: new Date().toISOString()
+          }));
+      }
 
       if (error) {
         console.error('Error updating business profile:', error);
@@ -123,7 +144,7 @@ export const BusinessProfileCompletion = () => {
       // Ensure we navigate to the dashboard after successful submission
       setTimeout(() => {
         navigate("/business/dashboard");
-      }, 500);
+      }, 1000);
     } catch (error) {
       console.error('Error updating profile:', error);
       toast.error("Failed to update profile. Please try again.");

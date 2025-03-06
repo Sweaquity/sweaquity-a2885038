@@ -844,7 +844,7 @@ export type Database = {
       business_type: "startup" | "small" | "medium" | "large" | "enterprise"
       employment_preference: "equity_only" | "salary_only" | "both" | "equity"
       equity_preference: "yes" | "no" | "negotiable"
-      project_stage: "idea" | "prototype" | "mvp" | "growth" | "scale"
+      project_stage: "idea" | "prototype" | "mvp" | "growth" | "scale" | "early"
       time_commitment: "part_time" | "full_time" | "contract" | "flexible"
     }
     CompositeTypes: {
