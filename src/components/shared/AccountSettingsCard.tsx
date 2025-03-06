@@ -34,7 +34,21 @@ export const AccountSettingsCard = ({ userType }: AccountSettingsCardProps) => {
             </Button>
           </div>
           
-          <div className="md:col-span-2">
+          <div>
+            <h3 className="text-base font-semibold">Account Security</h3>
+            <p className="text-sm text-muted-foreground mb-2">
+              Manage your account security settings
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => {/* Add security dialog logic here */}}
+              className="w-full"
+            >
+              Update Security Settings
+            </Button>
+          </div>
+          
+          <div>
             <h3 className="text-base font-semibold text-destructive">Danger Zone</h3>
             <p className="text-sm text-muted-foreground mb-2">
               Delete your account and all your data
@@ -42,7 +56,7 @@ export const AccountSettingsCard = ({ userType }: AccountSettingsCardProps) => {
             <Button
               variant="destructive"
               onClick={() => setIsDeleteDialogOpen(true)}
-              className="w-full md:w-auto"
+              className="w-full"
             >
               Delete My Account
             </Button>

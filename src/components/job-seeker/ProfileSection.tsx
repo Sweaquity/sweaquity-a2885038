@@ -45,7 +45,7 @@ export const ProfileSection = ({
       <CareerHistoryCard 
         careerHistory={parsedCvData?.career_history || []}
       />
-      {/* AccountSettingsCard has been removed from here to avoid duplication */}
+      {/* AccountSettingsCard has been completely removed from here to avoid duplication */}
     </div>
   );
 };

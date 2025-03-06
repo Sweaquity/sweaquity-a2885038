@@ -334,6 +334,7 @@ export type Database = {
           career_history: Json | null
           created_at: string | null
           cv_upload_date: string | null
+          cv_url: string | null
           id: string
           skills: string[] | null
           updated_at: string | null
@@ -343,6 +344,7 @@ export type Database = {
           career_history?: Json | null
           created_at?: string | null
           cv_upload_date?: string | null
+          cv_url?: string | null
           id?: string
           skills?: string[] | null
           updated_at?: string | null
@@ -352,6 +354,7 @@ export type Database = {
           career_history?: Json | null
           created_at?: string | null
           cv_upload_date?: string | null
+          cv_url?: string | null
           id?: string
           skills?: string[] | null
           updated_at?: string | null

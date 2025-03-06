@@ -66,6 +66,29 @@ export const useCVData = () => {
         
         // Mark default CV
         const defaultCVUrl = profileData?.cv_url;
+        
+        // If we have a default CV URL but no files match, we need to clear the default CV
+        if (defaultCVUrl && cvFiles.length > 0) {
+          const fileName = defaultCVUrl.split('/').pop();
+          const fileExists = cvFiles.some(file => file.name === fileName);
+          
+          if (!fileExists) {
+            // The default CV file no longer exists, clear it from the profile
+            await supabase
+              .from('profiles')
+              .update({ cv_url: null })
+              .eq('id', userId);
+              
+            // Also update CV parsed data if it exists
+            await supabase
+              .from('cv_parsed_data')
+              .update({ cv_url: null })
+              .eq('user_id', userId);
+              
+            setCvUrl(null);
+          }
+        }
+        
         const filesWithDefault = cvFiles.map(file => ({
           ...file,
           isDefault: defaultCVUrl ? defaultCVUrl.includes(file.name) : false
@@ -83,6 +106,12 @@ export const useCVData = () => {
               .from('profiles')
               .update({ cv_url: null })
               .eq('id', userId);
+              
+            // Also update CV parsed data if it exists
+            await supabase
+              .from('cv_parsed_data')
+              .update({ cv_url: null })
+              .eq('user_id', userId);
           }
         }
       } catch (error) {
