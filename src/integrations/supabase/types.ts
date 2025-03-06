@@ -359,6 +359,30 @@ export type Database = {
         }
         Relationships: []
       }
+      gdpr_deleted_data: {
+        Row: {
+          data: Json
+          deleted_at: string
+          id: string
+          user_id: string
+          user_type: string
+        }
+        Insert: {
+          data: Json
+          deleted_at?: string
+          id?: string
+          user_id: string
+          user_type: string
+        }
+        Update: {
+          data?: Json
+          deleted_at?: string
+          id?: string
+          user_id?: string
+          user_type?: string
+        }
+        Relationships: []
+      }
       job_applications: {
         Row: {
           accepted_business: boolean | null

@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { LinkedIn } from "lucide-react";
+import { Linkedin } from "lucide-react";
 import { Skill } from "@/types/jobSeeker";
 
 interface LinkedInImportDialogProps {
@@ -131,7 +131,7 @@ export const LinkedInImportDialog = ({ isOpen, onClose }: LinkedInImportDialogPr
               disabled={isImporting}
               className="flex items-center gap-2"
             >
-              <LinkedIn className="h-4 w-4" />
+              <Linkedin className="h-4 w-4" />
               {isImporting ? "Importing..." : "Import Skills from LinkedIn"}
             </Button>
           </div>
