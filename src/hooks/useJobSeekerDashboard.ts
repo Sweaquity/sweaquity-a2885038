@@ -19,7 +19,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
   const logsDisabledRef = useRef(true);
 
   const { profile, skills, loadProfile, handleSkillsUpdate } = useProfile();
-  const { applications, pastApplications, loadApplications } = useApplications();
+  const { applications, loadApplications } = useApplications();
   const { equityProjects, setEquityProjects, logEffort, setLogEffort, transformToEquityProjects } = useEquityProjects();
   const { cvUrl, setCvUrl, parsedCvData, setParsedCvData, loadCVData } = useCVData();
 
@@ -330,7 +330,6 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     applications,
     equityProjects,
     availableOpportunities,
-    pastApplications,
     parsedCvData,
     skills,
     logEffort,
