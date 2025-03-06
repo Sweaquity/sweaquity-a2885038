@@ -21,7 +21,7 @@ export const useUserSkills = () => {
       const skills = profileData?.skills || [];
       setUserSkills(skills);
     } catch (error) {
-      console.error("Error loading user skills:", error);
+      // Error handling without console log
     } finally {
       setIsLoading(false);
     }

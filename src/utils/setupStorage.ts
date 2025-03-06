@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -20,8 +19,7 @@ export const listUserCVs = async (userId: string) => {
     // Filter out folder objects, keep only files
     return data?.filter(item => !item.id.endsWith('/')) || [];
     
-  } catch (error) {
-    console.error("Error listing user CVs:", error);
+  } catch (error: any) {
     toast.error("Failed to retrieve CV list");
     return [];
   }
@@ -53,8 +51,7 @@ export const downloadCV = async (userId: string, fileName: string) => {
     URL.revokeObjectURL(url);
     
     return true;
-  } catch (error) {
-    console.error("Error downloading CV:", error);
+  } catch (error: any) {
     toast.error("Failed to download CV");
     return false;
   }
@@ -91,8 +88,7 @@ export const deleteCV = async (userId: string, fileName: string) => {
     
     toast.success("CV deleted successfully");
     return true;
-  } catch (error) {
-    console.error("Error deleting CV:", error);
+  } catch (error: any) {
     toast.error("Failed to delete CV");
     return false;
   }
@@ -112,8 +108,7 @@ export const previewCV = async (userId: string, fileName: string) => {
     }
     
     return false;
-  } catch (error) {
-    console.error("Error previewing CV:", error);
+  } catch (error: any) {
     toast.error("Failed to preview CV");
     return false;
   }
@@ -156,8 +151,7 @@ export const setDefaultCV = async (userId: string, fileName: string) => {
     
     toast.success("Default CV updated successfully");
     return urlData.publicUrl;
-  } catch (error) {
-    console.error("Error setting default CV:", error);
+  } catch (error: any) {
     toast.error("Failed to set default CV");
     return null;
   }

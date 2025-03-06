@@ -40,8 +40,6 @@ export const useApplications = () => {
       
       if (error) throw error;
       
-      console.log("Raw application data from supabase:", data);
-      
       // Process the data to make it fit our JobApplication type
       const processedApplications = data.map((app: any) => {
         // Get company name from businesses relation
@@ -83,12 +81,9 @@ export const useApplications = () => {
         };
       });
       
-      console.log("Processed applications:", processedApplications);
-      
       // Set all applications without filtering
       setApplications(processedApplications);
     } catch (error) {
-      console.error("Error loading applications:", error);
       toast.error("Failed to load applications");
     } finally {
       setIsLoading(false);
