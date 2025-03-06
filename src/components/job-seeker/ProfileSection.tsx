@@ -2,6 +2,7 @@
 import { CVUploadCard } from "./cv/CVUploadCard";
 import { SkillsCard } from "./skills/SkillsCard";
 import { CareerHistoryCard } from "./career/CareerHistoryCard";
+import { EducationCard } from "./career/EducationCard";
 import { ProfileEditor } from "./profile/ProfileEditor";
 import { Profile, Skill } from "@/types/jobSeeker";
 import { CVFile } from "@/hooks/job-seeker/useCVData";
@@ -44,6 +45,9 @@ export const ProfileSection = ({
       />
       <CareerHistoryCard 
         careerHistory={parsedCvData?.career_history || []}
+      />
+      <EducationCard 
+        education={parsedCvData?.education || []}
       />
       {/* AccountSettingsCard has been completely removed from here to avoid duplication */}
     </div>

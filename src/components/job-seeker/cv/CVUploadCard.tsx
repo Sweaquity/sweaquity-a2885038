@@ -1,28 +1,22 @@
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { 
-  FileUp, 
-  Loader2, 
-  ExternalLink, 
-  Download, 
-  Trash2, 
-  Check,
-  Eye
-} from "lucide-react";
-import { Label } from "@/components/ui/label";
 import { 
   downloadCV,
   deleteCV,
   previewCV,
   setDefaultCV
 } from "@/utils/setupStorage";
-import { Progress } from "@/components/ui/progress";
-import { Checkbox } from "@/components/ui/checkbox";
 import { CVFile } from "@/hooks/job-seeker/useCVData";
+
+// Import refactored components
+import { CVCardHeader } from "./CVCardHeader";
+import { DefaultCVDisplay } from "./DefaultCVDisplay";
+import { CVUploadForm } from "./CVUploadForm";
+import { CVLibrary } from "./CVLibrary";
+import { CVEmptyState } from "./CVEmptyState";
 
 interface CVUploadCardProps {
   cvUrl: string | null;
@@ -31,215 +25,18 @@ interface CVUploadCardProps {
   onCvListUpdated?: () => void;
 }
 
-export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdated }: CVUploadCardProps) => {
-  const [file, setFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isParsing, setIsParsing] = useState(false);
+export const CVUploadCard = ({ 
+  cvUrl, 
+  parsedCvData, 
+  userCVs = [], 
+  onCvListUpdated 
+}: CVUploadCardProps) => {
   const [displayUrl, setDisplayUrl] = useState<string | null>(null);
   const [processingAction, setProcessingAction] = useState<{type: string, fileName: string} | null>(null);
 
   useEffect(() => {
-    if (cvUrl) {
-      setDisplayUrl(cvUrl);
-    } else {
-      setDisplayUrl(null);
-    }
+    setDisplayUrl(cvUrl || null);
   }, [cvUrl]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const selectedFile = e.target.files[0];
-      // Only accept PDF files
-      if (selectedFile.type !== 'application/pdf') {
-        toast.error("Please upload a PDF file");
-        return;
-      }
-      setFile(selectedFile);
-    }
-  };
-
-  // Helper function to simulate progress updates
-  const simulateProgress = () => {
-    // Reset progress
-    setUploadProgress(0);
-    
-    // Simulate progress updates
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        // Start slow, accelerate in the middle, then slow down approaching 90%
-        const increment = prev < 30 ? 5 : prev < 70 ? 10 : 2;
-        const newValue = Math.min(prev + increment, 90);
-        
-        // Stop at 90% - the final 10% will be set after upload completes
-        if (newValue >= 90) {
-          clearInterval(interval);
-        }
-        
-        return newValue;
-      });
-    }, 300);
-    
-    // Return the interval ID so it can be cleared
-    return interval;
-  };
-
-  const parseCV = async (userId: string, cvUrl: string) => {
-    try {
-      setIsParsing(true);
-      toast.info("Analysing your CV for skills and experience...");
-      
-      console.log("Processing CV for parsing:", cvUrl);
-      
-      // Get authentication token
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error("Authentication required");
-      }
-      
-      // Create FormData with just the userId and cvUrl
-      const formData = new FormData();
-      formData.append('userId', userId);
-      formData.append('cvUrl', cvUrl);
-      
-      console.log("Calling parse-cv function with userId and cvUrl");
-      
-      // Call the parse-cv function with userId and cvUrl
-      const { data, error } = await supabase.functions.invoke('parse-cv', {
-        body: formData
-      });
-      
-      if (error) {
-        console.error("CV parsing function error:", error);
-        throw error;
-      }
-      
-      console.log("CV parsed successfully:", data);
-      toast.success("CV analysed successfully! Your skills have been updated.");
-      
-      // Refresh the page after a short delay to show the parsed data
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-      
-    } catch (error: any) {
-      console.error("Error parsing CV:", error);
-      toast.error("Failed to analyse CV. Please try again later.");
-    } finally {
-      setIsParsing(false);
-    }
-  };
-
-  const uploadCV = async () => {
-    if (!file) {
-      toast.error("Please select a file to upload");
-      return;
-    }
-    
-    try {
-      setIsUploading(true);
-      
-      // Start simulating progress updates
-      const progressInterval = simulateProgress();
-      
-      // Get the current user's ID
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        clearInterval(progressInterval);
-        toast.error("You must be logged in to upload a CV");
-        return;
-      }
-      
-      const userId = session.user.id;
-      
-      // Set the file path to include the user ID as a folder
-      const filePath = `${userId}/${file.name}`;
-      
-      // Upload the file
-      const { data, error } = await supabase.storage
-        .from('cvs')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-        
-      // Clear the progress simulation interval
-      clearInterval(progressInterval);
-        
-      if (error) {
-        throw error;
-      }
-      
-      // Set progress to 100% when upload is done
-      setUploadProgress(100);
-      
-      // Create a public URL for the uploaded file
-      const { data: publicUrlData } = supabase.storage
-        .from('cvs')
-        .getPublicUrl(filePath);
-        
-      const publicUrl = publicUrlData.publicUrl;
-      
-      // If this is the first CV, set it as default
-      if (!cvUrl) {
-        // Save the CV URL to the profile
-        await supabase
-          .from('profiles')
-          .update({ cv_url: publicUrl })
-          .eq('id', userId);
-          
-        // Check if we need to create a CV parsed data entry
-        const { data: existingData } = await supabase
-          .from('cv_parsed_data')
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle();
-          
-        if (!existingData) {
-          await supabase
-            .from('cv_parsed_data')
-            .insert({
-              user_id: userId,
-              cv_url: publicUrl
-            });
-        } else {
-          await supabase
-            .from('cv_parsed_data')
-            .update({ cv_url: publicUrl })
-            .eq('user_id', userId);
-        }
-        
-        setDisplayUrl(publicUrl);
-      }
-      
-      toast.success("CV uploaded successfully");
-      
-      // Now trigger the CV parsing function
-      await parseCV(userId, publicUrl);
-      
-      if (onCvListUpdated) {
-        onCvListUpdated();
-      }
-      
-    } catch (error: any) {
-      console.error("Error uploading CV:", error);
-      toast.error(error.message || "Failed to upload CV");
-    } finally {
-      setIsUploading(false);
-      setFile(null);
-      
-      // Reset the progress after a short delay
-      setTimeout(() => {
-        setUploadProgress(0);
-      }, 2000);
-      
-      // Reset the file input
-      const fileInput = document.getElementById('cv-upload') as HTMLInputElement;
-      if (fileInput) {
-        fileInput.value = '';
-      }
-    }
-  };
 
   const handleDownload = async (fileName: string) => {
     setProcessingAction({ type: 'downloading', fileName });
@@ -316,189 +113,32 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
     }
   };
 
-  const handleManualParse = async () => {
-    if (!displayUrl) {
-      toast.error("No CV available to analyse. Please upload a CV first.");
-      return;
-    }
-    
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        toast.error("You must be logged in to analyse your CV");
-        return;
-      }
-      
-      await parseCV(session.user.id, displayUrl);
-    } catch (error) {
-      console.error("Error triggering CV parsing:", error);
-      toast.error("Failed to analyse CV");
-    }
-  };
-
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>CV / Resume</CardTitle>
-      </CardHeader>
+      <CVCardHeader />
       <CardContent className="space-y-4">
         <div className="space-y-4">
-          {displayUrl && (
-            <div>
-              <Label className="text-muted-foreground">Default CV</Label>
-              <div className="flex items-center justify-between mt-2">
-                <p className="text-sm truncate max-w-[250px]">{displayUrl.split('/').pop()}</p>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={handleManualParse} 
-                    disabled={isParsing}
-                  >
-                    {isParsing ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Analysing...
-                      </>
-                    ) : (
-                      <>
-                        <Check className="h-4 w-4 mr-2" />
-                        Analyse CV
-                      </>
-                    )}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => handlePreview(displayUrl.split('/').pop() || '')}
-                  >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    View CV
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
+          <DefaultCVDisplay 
+            displayUrl={displayUrl} 
+            onPreview={handlePreview} 
+          />
           
-          <div>
-            <Label>Upload new CV</Label>
-            <div className="mt-2 flex items-end gap-3">
-              <div className="flex-1">
-                <input
-                  id="cv-upload"
-                  type="file"
-                  className="block w-full text-sm text-slate-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-md file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-primary file:text-primary-foreground
-                    hover:file:bg-primary/90"
-                  onChange={handleFileChange}
-                  accept="application/pdf"
-                />
-              </div>
-              <Button 
-                onClick={uploadCV} 
-                disabled={!file || isUploading}
-                variant="secondary"
-              >
-                {isUploading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {uploadProgress}%
-                  </>
-                ) : (
-                  <>
-                    <FileUp className="h-4 w-4 mr-2" />
-                    Upload
-                  </>
-                )}
-              </Button>
-            </div>
-            
-            {/* Show progress bar when uploading */}
-            {isUploading && (
-              <div className="mt-2">
-                <Progress value={uploadProgress} className="h-2" />
-              </div>
-            )}
-          </div>
+          <CVUploadForm 
+            cvUrl={cvUrl} 
+            onUploadComplete={() => onCvListUpdated?.()}
+          />
         </div>
         
-        {/* Show list of user's CVs */}
-        {userCVs.length > 0 && (
-          <div className="mt-6">
-            <Label>My CV Library</Label>
-            <div className="mt-2 border rounded-md divide-y">
-              {userCVs.map((cv) => (
-                <div key={cv.id} className="p-3 flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id={`default-${cv.id}`}
-                      checked={cv.isDefault}
-                      onCheckedChange={() => {
-                        if (!cv.isDefault) {
-                          handleSetDefault(cv.name);
-                        }
-                      }}
-                      disabled={cv.isDefault || Boolean(processingAction)}
-                    />
-                    <Label 
-                      htmlFor={`default-${cv.id}`}
-                      className={`text-sm ${cv.isDefault ? 'font-semibold' : ''}`}
-                    >
-                      {cv.name}
-                      {cv.isDefault && <span className="text-xs text-muted-foreground ml-2">(Default)</span>}
-                    </Label>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handlePreview(cv.name)}
-                      disabled={Boolean(processingAction)}
-                    >
-                      {processingAction?.type === 'previewing' && processingAction.fileName === cv.name ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleDownload(cv.name)}
-                      disabled={Boolean(processingAction)}
-                    >
-                      {processingAction?.type === 'downloading' && processingAction.fileName === cv.name ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Download className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleDelete(cv.name)}
-                      disabled={Boolean(processingAction)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      {processingAction?.type === 'deleting' && processingAction.fileName === cv.name ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <CVLibrary 
+          userCVs={userCVs}
+          processingAction={processingAction}
+          onSetDefault={handleSetDefault}
+          onPreview={handlePreview}
+          onDownload={handleDownload}
+          onDelete={handleDelete}
+        />
         
-        {userCVs.length === 0 && !displayUrl && (
-          <div className="text-sm text-muted-foreground">
-            <p>Upload your CV to help us understand your skills and experience. We'll automatically extract information to enhance your profile.</p>
-          </div>
-        )}
+        <CVEmptyState displayUrl={displayUrl} userCVs={userCVs} />
       </CardContent>
     </Card>
   );
