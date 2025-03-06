@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -83,6 +84,12 @@ export const deleteCV = async (userId: string, fileName: string) => {
           .from('profiles')
           .update({ cv_url: null })
           .eq('id', userId);
+          
+        // Also update the CV parsed data if it exists
+        await supabase
+          .from('cv_parsed_data')
+          .update({ cv_url: null })
+          .eq('user_id', userId);
       }
     }
     

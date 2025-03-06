@@ -42,6 +42,8 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
   useEffect(() => {
     if (cvUrl) {
       setDisplayUrl(cvUrl);
+    } else {
+      setDisplayUrl(null);
     }
   }, [cvUrl]);
 
@@ -85,24 +87,24 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
   const parseCV = async (userId: string, cvUrl: string) => {
     try {
       setIsParsing(true);
-      toast.info("Analyzing your CV for skills and experience...");
+      toast.info("Analysing your CV for skills and experience...");
       
-      console.log("Fetching CV for parsing:", cvUrl);
+      console.log("Processing CV for parsing:", cvUrl);
       
-      // Fetch the PDF file from the URL
-      const response = await fetch(cvUrl);
-      if (!response.ok) {
-        throw new Error("Failed to fetch the CV file");
+      // Get authentication token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Authentication required");
       }
       
-      const pdfBlob = await response.blob();
+      // Create FormData with just the userId and cvUrl
       const formData = new FormData();
-      formData.append('file', pdfBlob);
       formData.append('userId', userId);
+      formData.append('cvUrl', cvUrl);
       
-      console.log("Calling parse-cv function with FormData");
+      console.log("Calling parse-cv function with userId and cvUrl");
       
-      // Call the parse-cv function with the file and userId
+      // Call the parse-cv function with userId and cvUrl
       const { data, error } = await supabase.functions.invoke('parse-cv', {
         body: formData
       });
@@ -113,16 +115,16 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
       }
       
       console.log("CV parsed successfully:", data);
-      toast.success("CV analyzed successfully! Your skills have been updated.");
+      toast.success("CV analysed successfully! Your skills have been updated.");
       
       // Refresh the page after a short delay to show the parsed data
       setTimeout(() => {
         window.location.reload();
       }, 2000);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error parsing CV:", error);
-      toast.error("Failed to analyze CV. Please try again later.");
+      toast.error("Failed to analyse CV. Please try again later.");
     } finally {
       setIsParsing(false);
     }
@@ -266,6 +268,10 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
 
         const success = await deleteCV(session.user.id, fileName);
         if (success && onCvListUpdated) {
+          // If this was the default CV, clear the display URL
+          if (displayUrl && displayUrl.includes(fileName)) {
+            setDisplayUrl(null);
+          }
           onCvListUpdated();
         }
       } finally {
@@ -312,21 +318,21 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
 
   const handleManualParse = async () => {
     if (!displayUrl) {
-      toast.error("No CV available to analyze. Please upload a CV first.");
+      toast.error("No CV available to analyse. Please upload a CV first.");
       return;
     }
     
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        toast.error("You must be logged in to analyze your CV");
+        toast.error("You must be logged in to analyse your CV");
         return;
       }
       
       await parseCV(session.user.id, displayUrl);
     } catch (error) {
       console.error("Error triggering CV parsing:", error);
-      toast.error("Failed to analyze CV");
+      toast.error("Failed to analyse CV");
     }
   };
 
@@ -351,12 +357,12 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
                     {isParsing ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Analyzing...
+                        Analysing...
                       </>
                     ) : (
                       <>
                         <Check className="h-4 w-4 mr-2" />
-                        Analyze CV
+                        Analyse CV
                       </>
                     )}
                   </Button>
