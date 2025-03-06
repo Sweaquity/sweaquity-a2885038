@@ -45,13 +45,26 @@ export const AcceptJobDialog = ({
 
   if (!application) return null;
 
+  // Extract applicant name from various possible sources
+  // It could be in application.profile or directly in the business_roles data
+  const applicantFirstName = application.profile?.first_name || "";
+  const applicantLastName = application.profile?.last_name || "";
+  const applicantName = (applicantFirstName || applicantLastName) 
+    ? `${applicantFirstName} ${applicantLastName}`.trim() 
+    : "Applicant";
+
+  // Extract project title from various possible sources
+  const projectTitle = application.business_roles?.project_title || 
+                     (application.business_roles?.project && application.business_roles.project.title) || 
+                     "Untitled Project";
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Accept Job Contract</DialogTitle>
           <DialogDescription>
-            You are accepting the job contract for "{application.business_roles?.title}" for {application.profile?.first_name} {application.profile?.last_name}.
+            You are accepting the job contract for "{application.business_roles?.title}" for {applicantName}.
             This will confirm your agreement to the equity terms.
           </DialogDescription>
         </DialogHeader>
@@ -62,7 +75,7 @@ export const AcceptJobDialog = ({
             <p className="text-sm">{application.business_roles?.equity_allocation}% equity stake</p>
             
             <h4 className="font-medium mt-4 mb-2">Project:</h4>
-            <p className="text-sm">{application.business_roles?.project_title || application.business_roles?.project?.title}</p>
+            <p className="text-sm">{projectTitle}</p>
             
             <h4 className="font-medium mt-4 mb-2">Role:</h4>
             <p className="text-sm">{application.business_roles?.title}</p>
