@@ -18,7 +18,7 @@ export const DashboardContent = ({
   refreshApplications
 }: DashboardContentProps) => {
   return (
-    <div className="container mx-auto p-4 md:p-6">
+    <div className="container mx-auto p-4 md:p-6 overflow-container dashboard-container">
       <Tabs defaultValue={activeTab} className="w-full">
         <TabsContent value="profile" className="space-y-6">
           <ProfileSection 

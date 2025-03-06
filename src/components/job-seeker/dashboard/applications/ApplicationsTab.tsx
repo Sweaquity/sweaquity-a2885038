@@ -21,26 +21,31 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
   // Debug the incoming applications
   console.log("All applications in ApplicationsTab:", applications);
   
-  // Filter applications by status - ensuring case-insensitive comparison
+  // Safely normalize status to lowercase for case-insensitive comparison
+  const normalizeStatus = (status: string | null | undefined): string => {
+    return (status || "").toString().toLowerCase().trim();
+  };
+  
+  // Filter applications by status - using the normalized status comparison
   const pendingApplications = applications.filter(app => {
-    const status = String(app.status || "").toLowerCase();
+    const status = normalizeStatus(app.status);
     return status === 'pending' || status === 'in review';
   });
   
   const equityProjects = applications.filter(app => {
-    const status = String(app.status || "").toLowerCase();
+    const status = normalizeStatus(app.status);
     return status === 'negotiation' || status === 'accepted';
   });
   
   // Specifically filter for withdrawn applications
   const withdrawnApplications = applications.filter(app => {
-    const status = String(app.status || "").toLowerCase();
+    const status = normalizeStatus(app.status);
     return status === 'withdrawn';
   });
   
   // Filter for rejected applications
   const rejectedApplications = applications.filter(app => {
-    const status = String(app.status || "").toLowerCase();
+    const status = normalizeStatus(app.status);
     return status === 'rejected';
   });
   
@@ -65,7 +70,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
         if (lastMessageMatch) {
           try {
             const msgDate = new Date(lastMessageMatch[1]);
-            if (msgDate > oneDayAgo && ['negotiation', 'accepted'].includes(String(app.status || "").toLowerCase())) {
+            if (msgDate > oneDayAgo && ['negotiation', 'accepted'].includes(normalizeStatus(app.status))) {
               newMsgs++;
             }
           } catch (e) {
@@ -108,36 +113,33 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
   };
 
   return (
-    <Card>
+    <Card className="dashboard-card">
       <CardHeader>
         <h2 className="text-lg font-semibold">Projects that you've applied for</h2>
         <p className="text-muted-foreground text-sm">View and manage your applications</p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="overflow-container">
         <Tabs defaultValue="pending" className="space-y-4" onValueChange={handleTabChange}>
-          {/* Fix the tab layout for mobile - use flex-wrap and make each row clear */}
-          <div className="flex flex-col space-y-2">
-            <div className="flex flex-wrap gap-2">
-              <TabsList className="h-auto p-1 w-full grid grid-cols-2 md:grid-cols-4">
-                <TabsTrigger value="pending" className="px-3 py-1.5">
-                  Pending ({pendingApplications.length})
-                </TabsTrigger>
-                <TabsTrigger value="equity" className="px-3 py-1.5 relative">
-                  Current Equity ({equityProjects.length})
-                  {newMessagesCount > 0 && (
-                    <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
-                      {newMessagesCount}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="withdrawn" className="px-3 py-1.5">
-                  Withdrawn ({withdrawnApplications.length})
-                </TabsTrigger>
-                <TabsTrigger value="rejected" className="px-3 py-1.5">
-                  Rejected ({rejectedApplications.length})
-                </TabsTrigger>
-              </TabsList>
-            </div>
+          <div className="overflow-x-hidden">
+            <TabsList className="responsive-tabs h-auto p-1 w-full grid grid-cols-2 md:grid-cols-4 gap-1">
+              <TabsTrigger value="pending" className="px-3 py-1.5">
+                Pending ({pendingApplications.length})
+              </TabsTrigger>
+              <TabsTrigger value="equity" className="px-3 py-1.5 relative">
+                Current Equity ({equityProjects.length})
+                {newMessagesCount > 0 && (
+                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                    {newMessagesCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="withdrawn" className="px-3 py-1.5">
+                Withdrawn ({withdrawnApplications.length})
+              </TabsTrigger>
+              <TabsTrigger value="rejected" className="px-3 py-1.5">
+                Rejected ({rejectedApplications.length})
+              </TabsTrigger>
+            </TabsList>
           </div>
           
           <TabsContent value="pending" className="space-y-4 mt-4">

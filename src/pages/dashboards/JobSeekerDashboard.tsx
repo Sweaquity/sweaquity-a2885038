@@ -86,7 +86,7 @@ const JobSeekerDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6">
+    <div className="min-h-screen overflow-container dashboard-container">
       <div className="max-w-7xl mx-auto">
         <DashboardHeaderWithActions
           profile={profile}

@@ -9,6 +9,11 @@ export const useApplications = () => {
   const [pastApplications, setPastApplications] = useState<JobApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Helper function to normalize status for case-insensitive comparison
+  const normalizeStatus = (status: string | null | undefined): string => {
+    return (status || "").toString().toLowerCase().trim();
+  };
+
   const loadApplications = async (userId: string) => {
     try {
       setIsLoading(true);
@@ -86,14 +91,14 @@ export const useApplications = () => {
       
       console.log("Processed applications:", processedApplications);
       
-      // Filter applications by status using case-insensitive comparison
+      // Filter applications by status using case-insensitive comparison with normalizeStatus
       const current = processedApplications.filter((app: JobApplication) => {
-        const status = String(app.status || "").toLowerCase();
+        const status = normalizeStatus(app.status);
         return status === 'pending' || status === 'in review' || status === 'negotiation' || status === 'accepted';
       });
       
       const past = processedApplications.filter((app: JobApplication) => {
-        const status = String(app.status || "").toLowerCase();
+        const status = normalizeStatus(app.status);
         return status === 'rejected' || status === 'withdrawn';
       });
       

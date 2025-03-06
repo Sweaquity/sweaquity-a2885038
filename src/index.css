@@ -27,6 +27,24 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    overflow-x: hidden; /* Prevent horizontal scrolling at the body level */
+    width: 100%;
+    max-width: 100vw;
+  }
+  
+  /* Prevent overflow containers */
+  .overflow-container {
+    @apply max-w-full overflow-x-hidden;
+  }
+
+  /* Responsive button groups */
+  .responsive-button-group {
+    @apply flex flex-wrap gap-2;
+  }
+  
+  /* Responsive tabs layout */
+  .responsive-tabs {
+    @apply w-full flex-wrap;
   }
 }
 
@@ -45,4 +63,24 @@
 
 .landing-card:hover::before {
   @apply opacity-100;
+}
+
+/* Dashboard specific styles to prevent horizontal scrolling */
+.dashboard-container {
+  @apply w-full max-w-full overflow-x-hidden px-2 sm:px-4;
+}
+
+/* Responsive card layouts */
+.dashboard-card {
+  @apply w-full overflow-hidden;
+}
+
+/* Force wrap for flex containers */
+.flex-wrap-always {
+  @apply flex-wrap !important;
+}
+
+/* Responsive action buttons for cards */
+.card-actions {
+  @apply flex w-full flex-wrap gap-2;
 }

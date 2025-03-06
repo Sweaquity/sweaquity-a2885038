@@ -44,6 +44,9 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(application.status);
   
+  // Ensure we have a valid ID for our application
+  const applicationId = application.job_app_id || application.id || `app-${Math.random()}`;
+  
   const { 
     isWithdrawDialogOpen, 
     setIsWithdrawDialogOpen, 
@@ -66,7 +69,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
   };
 
   const handleWithdraw = async (reason?: string) => {
-    await handleWithdrawApplication(application.job_app_id, reason);
+    await handleWithdrawApplication(applicationId, reason);
     return Promise.resolve();
   };
   
@@ -82,7 +85,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
       const { data: applicationData, error: fetchError } = await supabase
         .from('job_applications')
         .select('task_discourse')
-        .eq('job_app_id', application.job_app_id)
+        .eq('job_app_id', applicationId)
         .single();
 
       if (fetchError) throw fetchError;
@@ -100,7 +103,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
       const { error: updateError } = await supabase
         .from('job_applications')
         .update({ task_discourse: updatedDiscourse })
-        .eq('job_app_id', application.job_app_id);
+        .eq('job_app_id', applicationId);
 
       if (updateError) throw updateError;
 
@@ -126,7 +129,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
   };
   
   const confirmStatusChange = async () => {
-    await updateApplicationStatus(application.job_app_id, selectedStatus);
+    await updateApplicationStatus(applicationId, selectedStatus);
     setStatusDialogOpen(false);
   };
   
@@ -138,7 +141,8 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
   const showAcceptButton = application.status === 'accepted' && !application.accepted_jobseeker;
 
   return (
-    <div className="border rounded-md overflow-hidden bg-card">
+    <div className="border rounded-md overflow-hidden bg-card dashboard-card">
+      {/* Top section */}
       <div className="p-4">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
           {application.business_roles && (
@@ -155,11 +159,11 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
               <StatusBadge status={application.status} />
             ) : (
               <div className="flex flex-col items-end space-y-2">
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-wrap gap-2 items-center justify-end">
                   <Select 
-                    value={application.status} 
+                    value={String(application.status) || "pending"} 
                     onValueChange={handleStatusChange}
-                    disabled={isUpdatingStatus === application.job_app_id}
+                    disabled={isUpdatingStatus === applicationId}
                   >
                     <SelectTrigger className="w-[140px]">
                       <SelectValue placeholder="Status" />
@@ -216,6 +220,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
         </div>
       </div>
 
+      {/* Expanded content */}
       {isExpanded && (
         <div className="border-t p-4">
           {application.business_roles && (
@@ -227,7 +232,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
             />
           )}
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 card-actions">
             <Button 
               variant="outline" 
               size="sm" 
@@ -264,7 +269,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
       <CreateMessageDialog
         isOpen={isCreateMessageOpen}
         onOpenChange={setIsCreateMessageOpen}
-        applicationId={application.job_app_id}
+        applicationId={applicationId}
         existingMessage={application.task_discourse}
         onMessageSent={onApplicationUpdated}
       />
@@ -277,19 +282,19 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
       />
       
       <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Update Application Status</DialogTitle>
             <DialogDescription>
               Are you sure you want to change the status to "{selectedStatus}"?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row sm:justify-end gap-2">
             <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={confirmStatusChange} disabled={isUpdatingStatus === application.job_app_id}>
-              {isUpdatingStatus === application.job_app_id ? (
+            <Button onClick={confirmStatusChange} disabled={isUpdatingStatus === applicationId}>
+              {isUpdatingStatus === applicationId ? (
                 <>
                   <Clock className="mr-2 h-4 w-4 animate-spin" />
                   Updating...
