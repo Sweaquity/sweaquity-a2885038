@@ -44,7 +44,7 @@ export const BusinessProfileCompletion = () => {
           .from('businesses')
           .select('*')
           .eq('businesses_id', session.user.id)
-          .single();
+          .maybeSingle();
 
         if (error) {
           if (error.code === 'PGRST116') {
@@ -119,7 +119,11 @@ export const BusinessProfileCompletion = () => {
       }
       
       toast.success("Profile updated successfully");
-      navigate("/business/dashboard");
+      
+      // Ensure we navigate to the dashboard after successful submission
+      setTimeout(() => {
+        navigate("/business/dashboard");
+      }, 500);
     } catch (error) {
       console.error('Error updating profile:', error);
       toast.error("Failed to update profile. Please try again.");
@@ -189,8 +193,8 @@ export const BusinessProfileCompletion = () => {
                   <SelectContent>
                     <SelectItem value="idea">Idea Stage</SelectItem>
                     <SelectItem value="mvp">MVP</SelectItem>
-                    <SelectItem value="live">Live</SelectItem>
-                    <SelectItem value="scaling_up">Scaling Up</SelectItem>
+                    <SelectItem value="early">Early Stage</SelectItem>
+                    <SelectItem value="growth">Growth</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -207,6 +211,8 @@ export const BusinessProfileCompletion = () => {
                     <SelectItem value="startup">Start Up</SelectItem>
                     <SelectItem value="scaleup">Scale Up</SelectItem>
                     <SelectItem value="enterprise">Enterprise</SelectItem>
+                    <SelectItem value="non_profit">Non-Profit</SelectItem>
+                    <SelectItem value="public_sector">Public Sector</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
