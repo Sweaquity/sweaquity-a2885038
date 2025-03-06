@@ -2,6 +2,7 @@
 import { ProjectsOverview } from "@/components/job-seeker/ProjectsOverview";
 import { DashboardContent } from "@/components/job-seeker/dashboard/DashboardContent";
 import { EquityProject, JobApplication, Profile, Skill } from "@/types/jobSeeker";
+import { CVFile } from "@/hooks/job-seeker/useCVData";
 
 interface DashboardTabProps {
   activeTab: string;
@@ -15,6 +16,8 @@ interface DashboardTabProps {
   handleSkillsUpdate: (updatedSkills: Skill[]) => Promise<void>;
   refreshApplications: () => void;
   onDocumentAction: (projectId: string, action: 'edit' | 'approve') => void;
+  userCVs?: CVFile[];
+  onCvListUpdated?: () => void;
 }
 
 export const DashboardTab = ({
@@ -29,6 +32,8 @@ export const DashboardTab = ({
   handleSkillsUpdate,
   refreshApplications,
   onDocumentAction,
+  userCVs = [],
+  onCvListUpdated = () => {},
 }: DashboardTabProps) => {
   return (
     <div className="space-y-6">
@@ -52,7 +57,9 @@ export const DashboardTab = ({
           equityProjects,
           logEffort: null,
           onLogEffort: () => {},
-          onLogEffortChange: () => {}
+          onLogEffortChange: () => {},
+          userCVs,
+          onCvListUpdated
         }}
         refreshApplications={refreshApplications}
       />
