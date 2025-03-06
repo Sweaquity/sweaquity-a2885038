@@ -1,4 +1,3 @@
-<lov-code>
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -571,12 +570,6 @@ const PendingApplicationsTable = ({
   toggleApplicationExpanded, 
   handleStatusChange, 
   isUpdatingStatus 
-}: { 
-  applications: Application[], 
-  expandedApplications: Set<string>, 
-  toggleApplicationExpanded: (id: string) => void,
-  handleStatusChange: (id: string, status: string) => void,
-  isUpdatingStatus: string | null
 }) => {
   return (
     <Table>
@@ -677,7 +670,6 @@ const PendingApplicationsTable = ({
                     <p className="text-sm">{application.profile?.employment_preference || "Not specified"}</p>
                   </div>
                   {application.cv_url && (
-                    
                     <Button
                       variant="outline"
                       size="sm"
@@ -749,17 +741,11 @@ const ActiveApplicationsTable = ({
   toggleApplicationExpanded, 
   handleStatusChange, 
   isUpdatingStatus 
-}: { 
-  applications: Application[], 
-  expandedApplications: Set<string>, 
-  toggleApplicationExpanded: (id: string) => void,
-  handleStatusChange: (id: string, status: string) => void,
-  isUpdatingStatus: string | null
 }) => {
   const [message, setMessage] = useState("");
-  const [sendingMessage, setSendingMessage] = useState<string | null>(null);
+  const [sendingMessage, setSendingMessage] = useState(null);
 
-  const handleSendMessage = async (applicationId: string) => {
+  const handleSendMessage = async (applicationId) => {
     if (!message.trim()) return;
     
     try {
@@ -924,4 +910,347 @@ const ActiveApplicationsTable = ({
                           </>
                         ) : (
                           <>
-                            <MessageCircle className="mr-
+                            <MessageCircle className="mr-1 h-4 w-4" />
+                            Send
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                
+                {application.cv_url && (
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(application.cv_url!, '_blank');
+                      }}
+                    >
+                      <FileText className="mr-1 h-4 w-4" />
+                      Download CV
+                    </Button>
+                  </div>
+                )}
+              </CollapsibleContent>
+            </CardContent>
+          </Collapsible>
+        </Card>
+      ))}
+    </div>
+  );
+};
+
+const WithdrawnApplicationsTable = ({ 
+  applications, 
+  expandedApplications, 
+  toggleApplicationExpanded
+}) => {
+  return (
+    <div className="space-y-4">
+      {applications.map(application => (
+        <Card key={application.job_app_id} className="shadow-sm hover:shadow transition-shadow">
+          <Collapsible 
+            open={expandedApplications.has(application.job_app_id)}
+            onOpenChange={() => toggleApplicationExpanded(application.job_app_id)}
+          >
+            <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
+              <div className="flex flex-1 flex-col space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <h3 className="text-md font-semibold line-clamp-1">
+                    {application.business_roles?.title || "Untitled Role"}
+                  </h3>
+                  <Badge className={
+                    application.status.toLowerCase() === 'accepted' 
+                      ? 'bg-green-100 text-green-800 border-green-300'
+                      : 'bg-amber-100 text-amber-800 border-amber-300'
+                  }>
+                    {application.status}
+                  </Badge>
+                </div>
+                
+                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center">
+                    {application.profile?.first_name} {application.profile?.last_name}
+                  </span>
+                  <span className="inline-flex items-center">
+                    Project: {application.business_roles?.project.title || "Untitled Project"}
+                  </span>
+                  <span className="inline-flex items-center">
+                    {application.business_roles?.equity_allocation && `${application.business_roles.equity_allocation}% equity`}
+                  </span>
+                </div>
+              </div>
+              
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  {expandedApplications.has(application.job_app_id) ? 
+                    <ChevronDown className="h-4 w-4" /> : 
+                    <ChevronRight className="h-4 w-4" />
+                  }
+                </Button>
+              </CollapsibleTrigger>
+            </CardHeader>
+            
+            <CardContent className="px-4 py-2">
+              <div className="grid grid-cols-1 gap-4 mb-2 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Skills Required</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {application.business_roles?.skill_requirements?.map((skill, index) => (
+                      <Badge key={index} variant="outline" className="bg-slate-50">
+                        {typeof skill === 'string' ? skill : skill.skill}
+                        {typeof skill !== 'string' && skill.level && 
+                          <span className="ml-1 opacity-70">({skill.level})</span>
+                        }
+                      </Badge>
+                    ))}
+                    {(!application.business_roles?.skill_requirements || 
+                      application.business_roles.skill_requirements.length === 0) && 
+                      <span className="text-muted-foreground">No specific skills required</span>
+                    }
+                  </div>
+                </div>
+                
+                <select 
+                  className="w-full md:w-1/3 px-2 py-1 border rounded text-xs self-start"
+                  value={application.status}
+                  onChange={(e) => handleStatusChange(application.job_app_id, e.target.value)}
+                  disabled={isUpdatingStatus === application.job_app_id}
+                >
+                  <option value="negotiation">Negotiation</option>
+                  <option value="accepted">Accepted</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="in review">Return to In Review</option>
+                </select>
+              </div>
+              
+              <CollapsibleContent className="mt-4 space-y-4">
+                <div>
+                  <h4 className="font-medium mb-1">Application Message</h4>
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">
+                    {application.message || "No application message provided."}
+                  </p>
+                </div>
+                
+                {application.task_discourse && (
+                  <div className="mt-3 p-3 bg-slate-50 rounded-md border">
+                    <h4 className="font-medium mb-2">Message History</h4>
+                    <pre className="text-sm whitespace-pre-wrap font-sans">
+                      {application.task_discourse}
+                    </pre>
+                  </div>
+                )}
+                
+                <div className="mt-4 space-y-2">
+                  <div className="flex flex-col space-y-2">
+                    <h4 className="text-sm font-medium">Send Message</h4>
+                    <textarea 
+                      className="min-h-[100px] p-2 border rounded-md text-sm w-full"
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder="Type your message here..."
+                    />
+                    <div className="flex justify-end">
+                      <Button 
+                        size="sm"
+                        onClick={() => handleSendMessage(application.job_app_id)} 
+                        disabled={!message.trim() || sendingMessage === application.job_app_id}
+                      >
+                        {sendingMessage === application.job_app_id ? (
+                          <>
+                            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <MessageCircle className="mr-1 h-4 w-4" />
+                            Send
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                
+                {application.cv_url && (
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(application.cv_url!, '_blank');
+                      }}
+                    >
+                      <FileText className="mr-1 h-4 w-4" />
+                      Download CV
+                    </Button>
+                  </div>
+                )}
+              </CollapsibleContent>
+            </CardContent>
+          </Collapsible>
+        </Card>
+      ))}
+    </div>
+  );
+};
+
+const RejectedApplicationsTable = ({ 
+  applications, 
+  expandedApplications, 
+  toggleApplicationExpanded
+}) => {
+  return (
+    <div className="space-y-4">
+      {applications.map(application => (
+        <Card key={application.job_app_id} className="shadow-sm hover:shadow transition-shadow">
+          <Collapsible 
+            open={expandedApplications.has(application.job_app_id)}
+            onOpenChange={() => toggleApplicationExpanded(application.job_app_id)}
+          >
+            <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
+              <div className="flex flex-1 flex-col space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <h3 className="text-md font-semibold line-clamp-1">
+                    {application.business_roles?.title || "Untitled Role"}
+                  </h3>
+                  <Badge className={
+                    application.status.toLowerCase() === 'accepted' 
+                      ? 'bg-green-100 text-green-800 border-green-300'
+                      : 'bg-amber-100 text-amber-800 border-amber-300'
+                  }>
+                    {application.status}
+                  </Badge>
+                </div>
+                
+                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center">
+                    {application.profile?.first_name} {application.profile?.last_name}
+                  </span>
+                  <span className="inline-flex items-center">
+                    Project: {application.business_roles?.project.title || "Untitled Project"}
+                  </span>
+                  <span className="inline-flex items-center">
+                    {application.business_roles?.equity_allocation && `${application.business_roles.equity_allocation}% equity`}
+                  </span>
+                </div>
+              </div>
+              
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  {expandedApplications.has(application.job_app_id) ? 
+                    <ChevronDown className="h-4 w-4" /> : 
+                    <ChevronRight className="h-4 w-4" />
+                  }
+                </Button>
+              </CollapsibleTrigger>
+            </CardHeader>
+            
+            <CardContent className="px-4 py-2">
+              <div className="grid grid-cols-1 gap-4 mb-2 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Skills Required</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {application.business_roles?.skill_requirements?.map((skill, index) => (
+                      <Badge key={index} variant="outline" className="bg-slate-50">
+                        {typeof skill === 'string' ? skill : skill.skill}
+                        {typeof skill !== 'string' && skill.level && 
+                          <span className="ml-1 opacity-70">({skill.level})</span>
+                        }
+                      </Badge>
+                    ))}
+                    {(!application.business_roles?.skill_requirements || 
+                      application.business_roles.skill_requirements.length === 0) && 
+                      <span className="text-muted-foreground">No specific skills required</span>
+                    }
+                  </div>
+                </div>
+                
+                <select 
+                  className="w-full md:w-1/3 px-2 py-1 border rounded text-xs self-start"
+                  value={application.status}
+                  onChange={(e) => handleStatusChange(application.job_app_id, e.target.value)}
+                  disabled={isUpdatingStatus === application.job_app_id}
+                >
+                  <option value="negotiation">Negotiation</option>
+                  <option value="accepted">Accepted</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="in review">Return to In Review</option>
+                </select>
+              </div>
+              
+              <CollapsibleContent className="mt-4 space-y-4">
+                <div>
+                  <h4 className="font-medium mb-1">Application Message</h4>
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">
+                    {application.message || "No application message provided."}
+                  </p>
+                </div>
+                
+                {application.task_discourse && (
+                  <div className="mt-3 p-3 bg-slate-50 rounded-md border">
+                    <h4 className="font-medium mb-2">Message History</h4>
+                    <pre className="text-sm whitespace-pre-wrap font-sans">
+                      {application.task_discourse}
+                    </pre>
+                  </div>
+                )}
+                
+                <div className="mt-4 space-y-2">
+                  <div className="flex flex-col space-y-2">
+                    <h4 className="text-sm font-medium">Send Message</h4>
+                    <textarea 
+                      className="min-h-[100px] p-2 border rounded-md text-sm w-full"
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder="Type your message here..."
+                    />
+                    <div className="flex justify-end">
+                      <Button 
+                        size="sm"
+                        onClick={() => handleSendMessage(application.job_app_id)} 
+                        disabled={!message.trim() || sendingMessage === application.job_app_id}
+                      >
+                        {sendingMessage === application.job_app_id ? (
+                          <>
+                            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <MessageCircle className="mr-1 h-4 w-4" />
+                            Send
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                
+                {application.cv_url && (
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(application.cv_url!, '_blank');
+                      }}
+                    >
+                      <FileText className="mr-1 h-4 w-4" />
+                      Download CV
+                    </Button>
+                  </div>
+                )}
+              </CollapsibleContent>
+            </CardContent>
+          </Collapsible>
+        </Card>
+      ))}
+    </div>
+  );
+};
