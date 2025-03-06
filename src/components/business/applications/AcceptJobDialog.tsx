@@ -45,8 +45,8 @@ export const AcceptJobDialog = ({
 
   if (!application) return null;
 
-  // Extract applicant name from various possible sources
-  // It could be in application.profile or directly in the business_roles data
+  // Extract applicant name - handle potentially missing profile property
+  // It could be in application.profile or directly in application
   const applicantFirstName = application.profile?.first_name || "";
   const applicantLastName = application.profile?.last_name || "";
   const applicantName = (applicantFirstName || applicantLastName) 
@@ -55,8 +55,8 @@ export const AcceptJobDialog = ({
 
   // Extract project title from various possible sources
   const projectTitle = application.business_roles?.project_title || 
-                     (application.business_roles?.project?.title) || 
-                     "Untitled Project";
+                    (application.business_roles?.project?.title) || 
+                    "Untitled Project";
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
