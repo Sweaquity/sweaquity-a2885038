@@ -35,6 +35,7 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
   const [file, setFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
   const [displayUrl, setDisplayUrl] = useState<string | null>(null);
   const [processingAction, setProcessingAction] = useState<{type: string, fileName: string} | null>(null);
 
@@ -79,6 +80,52 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
     
     // Return the interval ID so it can be cleared
     return interval;
+  };
+
+  const parseCV = async (userId: string, cvUrl: string) => {
+    try {
+      setIsParsing(true);
+      toast.info("Analyzing your CV for skills and experience...");
+      
+      console.log("Fetching CV for parsing:", cvUrl);
+      
+      // Fetch the PDF file from the URL
+      const response = await fetch(cvUrl);
+      if (!response.ok) {
+        throw new Error("Failed to fetch the CV file");
+      }
+      
+      const pdfBlob = await response.blob();
+      const formData = new FormData();
+      formData.append('file', pdfBlob);
+      formData.append('userId', userId);
+      
+      console.log("Calling parse-cv function with FormData");
+      
+      // Call the parse-cv function with the file and userId
+      const { data, error } = await supabase.functions.invoke('parse-cv', {
+        body: formData
+      });
+      
+      if (error) {
+        console.error("CV parsing function error:", error);
+        throw error;
+      }
+      
+      console.log("CV parsed successfully:", data);
+      toast.success("CV analyzed successfully! Your skills have been updated.");
+      
+      // Refresh the page after a short delay to show the parsed data
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      
+    } catch (error) {
+      console.error("Error parsing CV:", error);
+      toast.error("Failed to analyze CV. Please try again later.");
+    } finally {
+      setIsParsing(false);
+    }
   };
 
   const uploadCV = async () => {
@@ -160,20 +207,13 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
             .eq('user_id', userId);
         }
         
-        // Trigger CV parsing function (if available)
-        try {
-          await supabase.functions.invoke('parse-cv', {
-            body: { userId, cvUrl: publicUrl }
-          });
-        } catch (parseError) {
-          console.error("CV parsing function error:", parseError);
-          // Continue even if parsing fails
-        }
-        
         setDisplayUrl(publicUrl);
       }
       
       toast.success("CV uploaded successfully");
+      
+      // Now trigger the CV parsing function
+      await parseCV(userId, publicUrl);
       
       if (onCvListUpdated) {
         onCvListUpdated();
@@ -270,6 +310,26 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
     }
   };
 
+  const handleManualParse = async () => {
+    if (!displayUrl) {
+      toast.error("No CV available to analyze. Please upload a CV first.");
+      return;
+    }
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        toast.error("You must be logged in to analyze your CV");
+        return;
+      }
+      
+      await parseCV(session.user.id, displayUrl);
+    } catch (error) {
+      console.error("Error triggering CV parsing:", error);
+      toast.error("Failed to analyze CV");
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -282,10 +342,32 @@ export const CVUploadCard = ({ cvUrl, parsedCvData, userCVs = [], onCvListUpdate
               <Label className="text-muted-foreground">Default CV</Label>
               <div className="flex items-center justify-between mt-2">
                 <p className="text-sm truncate max-w-[250px]">{displayUrl.split('/').pop()}</p>
-                <Button variant="outline" onClick={() => handlePreview(displayUrl.split('/').pop() || '')}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  View CV
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleManualParse} 
+                    disabled={isParsing}
+                  >
+                    {isParsing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Analyze CV
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handlePreview(displayUrl.split('/').pop() || '')}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    View CV
+                  </Button>
+                </div>
               </div>
             </div>
           )}

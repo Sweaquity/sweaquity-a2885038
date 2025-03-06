@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DeleteProfileDialog } from "./DeleteProfileDialog";
 import { MarketingPreferencesDialog } from "./MarketingPreferencesDialog";
-import { LinkedInImportDialog } from "./LinkedInImportDialog";
 
 interface AccountSettingsCardProps {
   userType: 'business' | 'job_seeker';
@@ -13,7 +12,6 @@ interface AccountSettingsCardProps {
 export const AccountSettingsCard = ({ userType }: AccountSettingsCardProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isMarketingDialogOpen, setIsMarketingDialogOpen] = useState(false);
-  const [isLinkedInDialogOpen, setIsLinkedInDialogOpen] = useState(false);
 
   return (
     <Card>
@@ -34,21 +32,6 @@ export const AccountSettingsCard = ({ userType }: AccountSettingsCardProps) => {
               Update Marketing Preferences
             </Button>
           </div>
-          
-          {userType === 'job_seeker' && (
-            <div>
-              <h3 className="text-base font-semibold">LinkedIn Integration</h3>
-              <p className="text-sm text-muted-foreground mb-2">
-                Import your skills and experience from LinkedIn
-              </p>
-              <Button
-                variant="outline"
-                onClick={() => setIsLinkedInDialogOpen(true)}
-              >
-                Import from LinkedIn
-              </Button>
-            </div>
-          )}
           
           <div>
             <h3 className="text-base font-semibold text-destructive">Danger Zone</h3>
@@ -75,13 +58,6 @@ export const AccountSettingsCard = ({ userType }: AccountSettingsCardProps) => {
           onClose={() => setIsMarketingDialogOpen(false)}
           userType={userType}
         />
-        
-        {userType === 'job_seeker' && (
-          <LinkedInImportDialog
-            isOpen={isLinkedInDialogOpen}
-            onClose={() => setIsLinkedInDialogOpen(false)}
-          />
-        )}
       </CardContent>
     </Card>
   );
