@@ -3,7 +3,8 @@ import { useAcceptedJobsCore, AcceptedJob } from "./jobs/useAcceptedJobsCore";
 import { useJobAcceptance } from "./jobs/useJobAcceptance";
 import { useContractManagement } from "./jobs/useContractManagement";
 
-export { AcceptedJob } from "./jobs/useAcceptedJobsCore";
+// Re-export the type with the correct syntax
+export type { AcceptedJob } from "./jobs/useAcceptedJobsCore";
 
 export const useAcceptedJobs = (onUpdate?: () => void) => {
   const { getAcceptedJob } = useAcceptedJobsCore(onUpdate);
