@@ -50,6 +50,48 @@ export type Database = {
           },
         ]
       }
+      business_invitations: {
+        Row: {
+          accepted_at: string | null
+          business_id: string
+          company_name: string | null
+          created_at: string | null
+          first_name: string | null
+          id: string
+          invited_email: string
+          is_child_account: boolean | null
+          last_name: string | null
+          status: string
+          title: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          business_id: string
+          company_name?: string | null
+          created_at?: string | null
+          first_name?: string | null
+          id?: string
+          invited_email: string
+          is_child_account?: boolean | null
+          last_name?: string | null
+          status?: string
+          title?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          business_id?: string
+          company_name?: string | null
+          created_at?: string | null
+          first_name?: string | null
+          id?: string
+          invited_email?: string
+          is_child_account?: boolean | null
+          last_name?: string | null
+          status?: string
+          title?: string | null
+        }
+        Relationships: []
+      }
       business_members: {
         Row: {
           business_id: string | null
