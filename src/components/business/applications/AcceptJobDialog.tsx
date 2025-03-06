@@ -45,17 +45,18 @@ export const AcceptJobDialog = ({
 
   if (!application) return null;
 
-  // Extract applicant name - handle potentially missing profile property
-  // It could be in application.profile or directly in application
-  const applicantFirstName = application.profile?.first_name || "";
-  const applicantLastName = application.profile?.last_name || "";
+  // Extract applicant name - using null coalescing for safety
+  const applicantProfile = 'profile' in application ? application.profile : null;
+  const applicantFirstName = applicantProfile?.first_name || "";
+  const applicantLastName = applicantProfile?.last_name || "";
   const applicantName = (applicantFirstName || applicantLastName) 
     ? `${applicantFirstName} ${applicantLastName}`.trim() 
     : "Applicant";
 
-  // Extract project title from various possible sources
-  const projectTitle = application.business_roles?.project_title || 
-                    (application.business_roles?.project?.title) || 
+  // Extract project title from various possible sources safely
+  const businessRoles = application.business_roles || {};
+  const projectTitle = businessRoles.project_title || 
+                    (businessRoles.project?.title) || 
                     "Untitled Project";
 
   return (
@@ -64,7 +65,7 @@ export const AcceptJobDialog = ({
         <DialogHeader>
           <DialogTitle>Accept Job Contract</DialogTitle>
           <DialogDescription>
-            You are accepting the job contract for "{application.business_roles?.title}" for {applicantName}.
+            You are accepting the job contract for "{businessRoles.title || 'Untitled Role'}" for {applicantName}.
             This will confirm your agreement to the equity terms.
           </DialogDescription>
         </DialogHeader>
@@ -72,16 +73,16 @@ export const AcceptJobDialog = ({
         <div className="py-4">
           <div className="rounded-md bg-muted p-4 mb-4">
             <h4 className="font-medium mb-2">Equity Terms:</h4>
-            <p className="text-sm">{application.business_roles?.equity_allocation}% equity stake</p>
+            <p className="text-sm">{businessRoles.equity_allocation}% equity stake</p>
             
             <h4 className="font-medium mt-4 mb-2">Project:</h4>
             <p className="text-sm">{projectTitle}</p>
             
             <h4 className="font-medium mt-4 mb-2">Role:</h4>
-            <p className="text-sm">{application.business_roles?.title}</p>
+            <p className="text-sm">{businessRoles.title || "Untitled Role"}</p>
             
             <h4 className="font-medium mt-4 mb-2">Description:</h4>
-            <p className="text-sm">{application.business_roles?.description}</p>
+            <p className="text-sm">{businessRoles.description || "No description available"}</p>
           </div>
           
           <p className="text-sm text-muted-foreground">
