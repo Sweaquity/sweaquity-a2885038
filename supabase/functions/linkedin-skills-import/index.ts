@@ -1,119 +1,142 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    // Get request body
-    const requestData = await req.json();
-    const { user_id } = requestData;
+    const { userId, linkedInData } = await req.json()
 
-    if (!user_id) {
-      console.error("Missing user_id in request");
+    if (!userId || !linkedInData) {
       return new Response(
-        JSON.stringify({ error: "Missing user_id" }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      );
+        JSON.stringify({ error: 'Missing userId or linkedInData' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      )
     }
 
-    console.log("Received request for user_id:", user_id);
-
-    // Initialize Supabase client with service role to access auth data
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
-
-    // Log if credentials are missing
-    if (!Deno.env.get("SUPABASE_URL") || !Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
-      console.error("Missing Supabase credentials");
-      return new Response(
-        JSON.stringify({ error: "Server configuration error" }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      );
-    }
-
-    // Get user auth data to check for LinkedIn provider
-    const { data: userData, error: userError } = await supabaseAdmin.auth
-      .admin.getUserById(user_id);
-
-    if (userError || !userData) {
-      console.error("Error fetching user:", userError);
-      return new Response(
-        JSON.stringify({ error: "User not found" }),
-        { 
-          status: 404, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      );
-    }
-
-    console.log("User found:", userData.user.id);
-
-    // For demonstration purposes - return mock skills
-    // In a real implementation, you would use the LinkedIn API
-    const mockSkills = [
-      "JavaScript",
-      "React",
-      "TypeScript",
-      "Node.js",
-      "HTML",
-      "CSS",
-      "SQL",
-      "Project Management",
-      "Team Leadership",
-      "Communication",
-      "Problem Solving",
-    ];
+    console.log("Processing LinkedIn data import for user:", userId);
     
-    // Randomly select 5-8 skills to simulate a real LinkedIn profile
-    const selectedSkills = [];
-    const numberOfSkills = 5 + Math.floor(Math.random() * 4); // Between 5 and 8 skills
+    // Extract skills from LinkedIn data
+    let skills = [];
     
-    const availableSkills = [...mockSkills]; // Create a copy to avoid modifying the original
-    for (let i = 0; i < numberOfSkills; i++) {
-      if (availableSkills.length === 0) break;
-      const randomIndex = Math.floor(Math.random() * availableSkills.length);
-      const skill = availableSkills.splice(randomIndex, 1)[0];
-      if (skill) selectedSkills.push(skill);
+    try {
+      if (linkedInData.skills && Array.isArray(linkedInData.skills)) {
+        // Direct skills array
+        skills = linkedInData.skills.map(skill => {
+          // Handle different possible data structures
+          if (typeof skill === 'string') {
+            return { skill: skill, level: 'Intermediate' };
+          } else if (skill && typeof skill === 'object') {
+            const skillName = skill.name || skill.skill || '';
+            const skillLevel = skill.level || 'Intermediate';
+            return { skill: skillName, level: skillLevel };
+          }
+          return null;
+        }).filter(Boolean); // Remove any null entries
+      } else if (linkedInData.elements && Array.isArray(linkedInData.elements)) {
+        // LinkedIn API response structure
+        skills = linkedInData.elements
+          .filter(item => item && item.name)
+          .map(item => ({ 
+            skill: item.name, 
+            level: item.proficiency || 'Intermediate' 
+          }));
+      }
+    } catch (parseError) {
+      console.error("Error parsing LinkedIn skills:", parseError);
+      return new Response(
+        JSON.stringify({ error: 'Error parsing LinkedIn skills data' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
     }
 
-    console.log("Returning skills:", selectedSkills);
+    if (skills.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'No skills found in LinkedIn data' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    console.log(`Found ${skills.length} skills from LinkedIn data`);
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    // Get existing profile data
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('skills')
+      .eq('id', userId)
+      .single();
+
+    if (profileError && profileError.code !== 'PGRST116') {
+      console.error("Error fetching profile:", profileError);
+      throw profileError;
+    }
+
+    // Merge with existing skills if any
+    let updatedSkills = skills;
+    
+    if (profileData && profileData.skills) {
+      const existingSkills = Array.isArray(profileData.skills) 
+        ? profileData.skills 
+        : (typeof profileData.skills === 'object' ? Object.values(profileData.skills) : []);
+      
+      // Create a set of existing skill names for faster lookup
+      const existingSkillNames = new Set(
+        existingSkills.map(s => 
+          typeof s === 'string' ? s.toLowerCase() : (s.skill || '').toLowerCase()
+        ).filter(Boolean)
+      );
+      
+      // Only add LinkedIn skills that don't already exist
+      const newSkills = skills.filter(skill => 
+        !existingSkillNames.has((skill.skill || '').toLowerCase())
+      );
+      
+      updatedSkills = [...existingSkills, ...newSkills];
+      console.log(`Adding ${newSkills.length} new skills to ${existingSkills.length} existing skills`);
+    }
+
+    // Update profile with merged skills
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ 
+        skills: updatedSkills,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId);
+
+    if (updateError) {
+      console.error("Error updating profile with LinkedIn skills:", updateError);
+      throw updateError;
+    }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        skills: selectedSkills 
+        message: `Successfully imported ${skills.length} skills from LinkedIn`,
+        skills: updatedSkills
       }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
-      }
-    );
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+
   } catch (error) {
-    console.error("Error processing request:", error);
-    
+    console.error('Error in linkedin-skills-import function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
-      }
-    );
+      JSON.stringify({ error: error.message || 'Unknown error occurred' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+    )
   }
-});
+})
