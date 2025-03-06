@@ -11,11 +11,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { JobApplication } from "@/types/jobSeeker";
 import { Loader2 } from "lucide-react";
+import { Application } from "@/types/business";
 
 interface AcceptJobDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  application: JobApplication | null;
+  application: JobApplication | Application | null;
   onAccept: (application: JobApplication) => Promise<void>;
   isLoading?: boolean;
 }
@@ -34,7 +35,7 @@ export const AcceptJobDialog = ({
     
     try {
       setAcceptingJob(true);
-      await onAccept(application);
+      await onAccept(application as JobApplication);
       onOpenChange(false);
     } catch (error) {
       console.error("Error accepting job:", error);
@@ -45,19 +46,39 @@ export const AcceptJobDialog = ({
 
   if (!application) return null;
 
-  // Extract applicant name - using null coalescing for safety
-  const applicantProfile = 'profile' in application ? application.profile : null;
-  const applicantFirstName = applicantProfile?.first_name || "";
-  const applicantLastName = applicantProfile?.last_name || "";
+  // Extract applicant name safely with type guards
+  const profile = 'profile' in application ? application.profile : null;
+  const applicantFirstName = profile && typeof profile === 'object' ? (profile as any).first_name || "" : "";
+  const applicantLastName = profile && typeof profile === 'object' ? (profile as any).last_name || "" : "";
   const applicantName = (applicantFirstName || applicantLastName) 
     ? `${applicantFirstName} ${applicantLastName}`.trim() 
     : "Applicant";
 
+  // Extract business role information safely
+  const businessRoles = 'business_roles' in application ? application.business_roles || {} : {};
+  
   // Extract project title from various possible sources safely
-  const businessRoles = application.business_roles || {};
-  const projectTitle = businessRoles.project_title || 
-                    (businessRoles.project?.title) || 
-                    "Untitled Project";
+  let projectTitle = "Untitled Project";
+  if (typeof businessRoles === 'object') {
+    if (businessRoles && 'project_title' in businessRoles && businessRoles.project_title) {
+      projectTitle = businessRoles.project_title;
+    } else if (businessRoles && 'project' in businessRoles && 
+               typeof businessRoles.project === 'object' && 
+               businessRoles.project && 
+               'title' in businessRoles.project) {
+      projectTitle = (businessRoles.project as any).title;
+    }
+  }
+
+  // Safely extract other business role properties
+  const roleTitle = typeof businessRoles === 'object' && 'title' in businessRoles ? 
+    (businessRoles as any).title || "Untitled Role" : "Untitled Role";
+    
+  const equityAllocation = typeof businessRoles === 'object' && 'equity_allocation' in businessRoles ? 
+    (businessRoles as any).equity_allocation : null;
+    
+  const roleDescription = typeof businessRoles === 'object' && 'description' in businessRoles ? 
+    (businessRoles as any).description || "No description available" : "No description available";
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -65,7 +86,7 @@ export const AcceptJobDialog = ({
         <DialogHeader>
           <DialogTitle>Accept Job Contract</DialogTitle>
           <DialogDescription>
-            You are accepting the job contract for "{businessRoles.title || 'Untitled Role'}" for {applicantName}.
+            You are accepting the job contract for "{roleTitle}" for {applicantName}.
             This will confirm your agreement to the equity terms.
           </DialogDescription>
         </DialogHeader>
@@ -73,16 +94,16 @@ export const AcceptJobDialog = ({
         <div className="py-4">
           <div className="rounded-md bg-muted p-4 mb-4">
             <h4 className="font-medium mb-2">Equity Terms:</h4>
-            <p className="text-sm">{businessRoles.equity_allocation}% equity stake</p>
+            <p className="text-sm">{equityAllocation ? `${equityAllocation}% equity stake` : "No equity information available"}</p>
             
             <h4 className="font-medium mt-4 mb-2">Project:</h4>
             <p className="text-sm">{projectTitle}</p>
             
             <h4 className="font-medium mt-4 mb-2">Role:</h4>
-            <p className="text-sm">{businessRoles.title || "Untitled Role"}</p>
+            <p className="text-sm">{roleTitle}</p>
             
             <h4 className="font-medium mt-4 mb-2">Description:</h4>
-            <p className="text-sm">{businessRoles.description || "No description available"}</p>
+            <p className="text-sm">{roleDescription}</p>
           </div>
           
           <p className="text-sm text-muted-foreground">

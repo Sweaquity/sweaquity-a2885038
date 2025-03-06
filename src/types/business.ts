@@ -31,7 +31,7 @@ export interface Application {
     skill_requirements?: SkillRequirement[];
     equity_allocation?: number;
     timeframe?: string;
-    project: {
+    project?: {
       title: string;
     }
     project_title?: string;
