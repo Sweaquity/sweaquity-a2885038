@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail } from "lucide-react";
+import { Mail, Linkedin } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
@@ -15,6 +15,7 @@ interface LoginFormProps {
 export const LoginForm = ({ type }: LoginFormProps) => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [isLinkedInLoading, setIsLinkedInLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -102,6 +103,30 @@ export const LoginForm = ({ type }: LoginFormProps) => {
       toast.error("An error occurred during login");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleLinkedInLogin = async () => {
+    setIsLinkedInLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'linkedin_oidc',
+        options: {
+          redirectTo: `${window.location.origin}/auth/${type}`,
+          queryParams: {
+            userType: type
+          }
+        }
+      });
+      
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
+      console.error('LinkedIn login error:', error);
+      toast.error("Failed to sign in with LinkedIn");
+    } finally {
+      setIsLinkedInLoading(false);
     }
   };
 
@@ -202,6 +227,23 @@ export const LoginForm = ({ type }: LoginFormProps) => {
       </div>
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? "Logging in..." : "Log in"}
+      </Button>
+      
+      <div className="relative flex items-center py-2">
+        <div className="flex-grow border-t border-gray-300"></div>
+        <span className="flex-shrink mx-4 text-sm text-gray-600">or</span>
+        <div className="flex-grow border-t border-gray-300"></div>
+      </div>
+      
+      <Button 
+        type="button" 
+        variant="outline" 
+        className="w-full flex items-center justify-center gap-2"
+        onClick={handleLinkedInLogin}
+        disabled={isLinkedInLoading}
+      >
+        <Linkedin className="h-4 w-4" />
+        {isLinkedInLoading ? "Connecting..." : "Sign in with LinkedIn"}
       </Button>
     </form>
   );

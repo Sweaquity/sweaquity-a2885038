@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail } from "lucide-react";
+import { Mail, Linkedin } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
@@ -13,6 +13,7 @@ interface RegisterFormProps {
 
 export const RegisterForm = ({ type }: RegisterFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isLinkedInLoading, setIsLinkedInLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isParentAccount, setIsParentAccount] = useState(true);
@@ -86,6 +87,37 @@ export const RegisterForm = ({ type }: RegisterFormProps) => {
       toast.error(error instanceof Error ? error.message : "An error occurred during registration");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleLinkedInSignUp = async () => {
+    setIsLinkedInLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'linkedin_oidc',
+        options: {
+          redirectTo: `${window.location.origin}/auth/${type}`,
+          queryParams: {
+            userType: type,
+            isParent: isParentAccount.toString(),
+            ...(isParentAccount && (type === 'business' || type === 'recruiter') ? { companyName } : {}),
+            ...(!isParentAccount ? { 
+              organizationId,
+              firstName, 
+              lastName 
+            } : {})
+          }
+        }
+      });
+      
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
+      console.error('LinkedIn signup error:', error);
+      toast.error("Failed to sign up with LinkedIn");
+    } finally {
+      setIsLinkedInLoading(false);
     }
   };
 
@@ -200,6 +232,23 @@ export const RegisterForm = ({ type }: RegisterFormProps) => {
       </div>
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? "Creating account..." : "Create account"}
+      </Button>
+
+      <div className="relative flex items-center py-2">
+        <div className="flex-grow border-t border-gray-300"></div>
+        <span className="flex-shrink mx-4 text-sm text-gray-600">or</span>
+        <div className="flex-grow border-t border-gray-300"></div>
+      </div>
+      
+      <Button 
+        type="button" 
+        variant="outline" 
+        className="w-full flex items-center justify-center gap-2"
+        onClick={handleLinkedInSignUp}
+        disabled={isLinkedInLoading}
+      >
+        <Linkedin className="h-4 w-4" />
+        {isLinkedInLoading ? "Connecting..." : "Sign up with LinkedIn"}
       </Button>
     </form>
   );
