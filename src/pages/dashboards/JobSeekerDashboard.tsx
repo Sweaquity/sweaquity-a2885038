@@ -32,7 +32,6 @@ const JobSeekerDashboard = () => {
     applications,
     equityProjects,
     availableOpportunities,
-    pastApplications,
     parsedCvData,
     skills,
     handleSignOut,
