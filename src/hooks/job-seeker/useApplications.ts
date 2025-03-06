@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -46,8 +45,6 @@ export const useApplications = () => {
       
       if (error) throw error;
       
-      console.log("Raw application data from supabase:", data);
-      
       // Process the data to make it fit our JobApplication type
       const processedApplications = data.map((app: any) => {
         // Get company name from businesses relation
@@ -89,21 +86,17 @@ export const useApplications = () => {
         };
       });
       
-      console.log("Processed applications:", processedApplications);
-      
       // Filter applications by status using case-insensitive comparison with normalizeStatus
       const current = processedApplications.filter((app: JobApplication) => {
         const status = normalizeStatus(app.status);
         return status === 'pending' || status === 'in review' || status === 'negotiation' || status === 'accepted';
       });
       
+      // We're still keeping track of past applications in case they're needed elsewhere
       const past = processedApplications.filter((app: JobApplication) => {
         const status = normalizeStatus(app.status);
         return status === 'rejected' || status === 'withdrawn';
       });
-      
-      console.log("Current applications count:", current.length);
-      console.log("Past applications count:", past.length, "with statuses:", past.map((app: JobApplication) => app.status));
       
       setApplications(current);
       setPastApplications(past);

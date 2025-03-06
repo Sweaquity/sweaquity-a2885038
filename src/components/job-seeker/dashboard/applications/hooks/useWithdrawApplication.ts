@@ -19,8 +19,6 @@ export const useWithdrawApplication = (onApplicationUpdated?: () => void) => {
         updateData.notes = reason;
       }
       
-      console.log(`Withdrawing application ${applicationId}${reason ? ` with reason: ${reason}` : ''}`);
-      
       const { error } = await supabase
         .from('job_applications')
         .update(updateData)
