@@ -1,6 +1,7 @@
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { TermsAndConditionsLink } from "@/components/shared/TermsAndConditionsLink";
 
 interface ConsentCheckboxesProps {
   marketingConsent: boolean;
@@ -48,7 +49,7 @@ export const ConsentCheckboxes = ({
             onCheckedChange={handleTermsChange}
           />
           <Label htmlFor="terms" className="text-sm font-normal">
-            I accept the terms and conditions *
+            I accept the <TermsAndConditionsLink /> *
           </Label>
         </div>
         

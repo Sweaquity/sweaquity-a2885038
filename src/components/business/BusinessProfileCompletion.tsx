@@ -5,8 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { TermsAndConditionsLink } from "@/components/shared/TermsAndConditionsLink";
 
 export const BusinessProfileCompletion = () => {
   const [formData, setFormData] = useState({
@@ -137,14 +139,17 @@ export const BusinessProfileCompletion = () => {
               </div>
             </div>
             <div className="flex items-center space-x-2 pt-4">
-              <input
-                type="checkbox"
+              <Checkbox
                 id="terms"
                 checked={formData.terms_accepted}
-                onChange={(e) => setFormData(prev => ({ ...prev, terms_accepted: e.target.checked }))}
+                onCheckedChange={(checked) => 
+                  setFormData(prev => ({ ...prev, terms_accepted: checked as boolean }))
+                }
                 required
               />
-              <Label htmlFor="terms">I accept the terms and conditions *</Label>
+              <Label htmlFor="terms" className="text-sm">
+                I accept the <TermsAndConditionsLink /> *
+              </Label>
             </div>
             <Button type="submit" className="w-full">Complete Profile</Button>
           </form>

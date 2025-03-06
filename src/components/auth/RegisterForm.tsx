@@ -93,20 +93,29 @@ export const RegisterForm = ({ type }: RegisterFormProps) => {
   const handleLinkedInSignUp = async () => {
     setIsLinkedInLoading(true);
     try {
+      // Construct query parameters based on account type
+      const queryParams: Record<string, string> = {
+        userType: type,
+        isParent: isParentAccount.toString(),
+      };
+
+      // Add company name for parent business/recruiter accounts
+      if (isParentAccount && (type === 'business' || type === 'recruiter') && companyName) {
+        queryParams.companyName = companyName;
+      }
+
+      // Add member account details if not a parent account
+      if (!isParentAccount) {
+        if (organizationId) queryParams.organizationId = organizationId;
+        if (firstName) queryParams.firstName = firstName;
+        if (lastName) queryParams.lastName = lastName;
+      }
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'linkedin_oidc',
         options: {
           redirectTo: `${window.location.origin}/auth/${type}`,
-          queryParams: {
-            userType: type,
-            isParent: isParentAccount.toString(),
-            ...(isParentAccount && (type === 'business' || type === 'recruiter') ? { companyName } : {}),
-            ...(!isParentAccount ? { 
-              organizationId,
-              firstName, 
-              lastName 
-            } : {})
-          }
+          queryParams
         }
       });
       
