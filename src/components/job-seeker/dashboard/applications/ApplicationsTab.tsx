@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { ApplicationsList } from "./ApplicationsList";
 import { PendingApplicationsList } from "./PendingApplicationsList";
 import { EquityProjectsList } from "./EquityProjectsList";
-import { PastApplicationsList } from "./PastApplicationsList";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -36,26 +35,6 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     const status = normalizeStatus(app.status);
     return status === 'negotiation' || status === 'accepted';
   });
-  
-  // Specifically filter for withdrawn applications
-  const withdrawnApplications = applications.filter(app => {
-    const status = normalizeStatus(app.status);
-    return status === 'withdrawn';
-  });
-  
-  // Filter for rejected applications
-  const rejectedApplications = applications.filter(app => {
-    const status = normalizeStatus(app.status);
-    return status === 'rejected';
-  });
-  
-  // Log filtered applications for debugging
-  console.log(
-    "Filtered applications - Pending:", pendingApplications.length, 
-    "Equity:", equityProjects.length,
-    "Withdrawn:", withdrawnApplications.length,
-    "Rejected:", rejectedApplications.length
-  );
   
   useEffect(() => {
     // Count new messages from the past 24 hours
@@ -121,7 +100,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
       <CardContent className="overflow-container">
         <Tabs defaultValue="pending" className="space-y-4" onValueChange={handleTabChange}>
           <div className="overflow-x-hidden">
-            <TabsList className="responsive-tabs h-auto p-1 w-full grid grid-cols-2 md:grid-cols-4 gap-1">
+            <TabsList className="responsive-tabs h-auto p-1 w-full grid grid-cols-2 gap-1">
               <TabsTrigger value="pending" className="px-3 py-1.5">
                 Pending ({pendingApplications.length})
               </TabsTrigger>
@@ -132,12 +111,6 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
                     {newMessagesCount}
                   </Badge>
                 )}
-              </TabsTrigger>
-              <TabsTrigger value="withdrawn" className="px-3 py-1.5">
-                Withdrawn ({withdrawnApplications.length})
-              </TabsTrigger>
-              <TabsTrigger value="rejected" className="px-3 py-1.5">
-                Rejected ({rejectedApplications.length})
               </TabsTrigger>
             </TabsList>
           </div>
@@ -160,28 +133,6 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
               <EquityProjectsList 
                 applications={equityProjects} 
                 onApplicationUpdated={onApplicationUpdated} 
-              />
-            )}
-          </TabsContent>
-          
-          <TabsContent value="withdrawn" className="space-y-4 mt-4">
-            {withdrawnApplications.length === 0 ? (
-              <p className="text-muted-foreground text-center p-4">No withdrawn applications found.</p>
-            ) : (
-              <PastApplicationsList 
-                applications={withdrawnApplications}
-                onApplicationUpdated={onApplicationUpdated}
-              />
-            )}
-          </TabsContent>
-          
-          <TabsContent value="rejected" className="space-y-4 mt-4">
-            {rejectedApplications.length === 0 ? (
-              <p className="text-muted-foreground text-center p-4">No rejected applications found.</p>
-            ) : (
-              <PastApplicationsList 
-                applications={rejectedApplications}
-                onApplicationUpdated={onApplicationUpdated}
               />
             )}
           </TabsContent>

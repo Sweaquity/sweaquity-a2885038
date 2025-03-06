@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -97,6 +96,7 @@ export const useApplications = () => {
         return status === 'pending' || status === 'in review' || status === 'negotiation' || status === 'accepted';
       });
       
+      // We're still keeping track of past applications in case they're needed elsewhere
       const past = processedApplications.filter((app: JobApplication) => {
         const status = normalizeStatus(app.status);
         return status === 'rejected' || status === 'withdrawn';
