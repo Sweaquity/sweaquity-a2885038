@@ -48,8 +48,10 @@ export const AcceptJobDialog = ({
 
   // Extract applicant name safely with type guards
   const profile = 'profile' in application ? application.profile : null;
-  const applicantFirstName = profile && typeof profile === 'object' ? (profile as any).first_name || "" : "";
-  const applicantLastName = profile && typeof profile === 'object' ? (profile as any).last_name || "" : "";
+  const applicantFirstName = profile && typeof profile === 'object' && 'first_name' in profile ? 
+    String(profile.first_name || "") : "";
+  const applicantLastName = profile && typeof profile === 'object' && 'last_name' in profile ? 
+    String(profile.last_name || "") : "";
   const applicantName = (applicantFirstName || applicantLastName) 
     ? `${applicantFirstName} ${applicantLastName}`.trim() 
     : "Applicant";
@@ -61,24 +63,24 @@ export const AcceptJobDialog = ({
   let projectTitle = "Untitled Project";
   if (typeof businessRoles === 'object') {
     if (businessRoles && 'project_title' in businessRoles && businessRoles.project_title) {
-      projectTitle = businessRoles.project_title;
+      projectTitle = String(businessRoles.project_title || "Untitled Project");
     } else if (businessRoles && 'project' in businessRoles && 
                typeof businessRoles.project === 'object' && 
                businessRoles.project && 
                'title' in businessRoles.project) {
-      projectTitle = (businessRoles.project as any).title;
+      projectTitle = String(businessRoles.project.title || "Untitled Project");
     }
   }
 
   // Safely extract other business role properties
   const roleTitle = typeof businessRoles === 'object' && 'title' in businessRoles ? 
-    (businessRoles as any).title || "Untitled Role" : "Untitled Role";
+    String(businessRoles.title || "Untitled Role") : "Untitled Role";
     
   const equityAllocation = typeof businessRoles === 'object' && 'equity_allocation' in businessRoles ? 
-    (businessRoles as any).equity_allocation : null;
+    businessRoles.equity_allocation : null;
     
   const roleDescription = typeof businessRoles === 'object' && 'description' in businessRoles ? 
-    (businessRoles as any).description || "No description available" : "No description available";
+    String(businessRoles.description || "No description available") : "No description available";
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
