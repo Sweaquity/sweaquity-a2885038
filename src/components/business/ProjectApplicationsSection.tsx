@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight, FileText, Loader2, MessageCircle, Bell } from "lucide-react";
+import { ChevronDown, ChevronRight, FileText, Loader2, MessageCircle, Bell, CheckCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,14 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skill } from "@/types/jobSeeker";
+import { Skill, JobApplication } from "@/types/jobSeeker";
 import { useApplicationActions } from "@/components/job-seeker/dashboard/applications/hooks/useApplicationActions";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { RejectApplicationDialog } from "./applications/RejectApplicationDialog";
+import { AcceptJobDialog } from "./applications/AcceptJobDialog";
 import { Textarea } from "@/components/ui/textarea";
+import { useAcceptedJobs } from "@/hooks/useAcceptedJobs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Application {
   job_app_id: string;
@@ -64,9 +67,13 @@ export const ProjectApplicationsSection = () => {
   const [newMessagesCount, setNewMessagesCount] = useState(0);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
-  
+  const [acceptJobDialogOpen, setAcceptJobDialogOpen] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
   const { isUpdatingStatus, updateApplicationStatus } = useApplicationActions(() => {
     loadProjectsWithApplications();
+  });
+  const { acceptJobAsBusiness, isLoading: isAcceptingJobLoading } = useAcceptedJobs(() => {
+    window.location.reload();
   });
 
   useEffect(() => {
@@ -565,6 +572,14 @@ export const ProjectApplicationsSection = () => {
           }
         }}
       />
+      
+      <AcceptJobDialog
+        isOpen={acceptJobDialogOpen}
+        onOpenChange={setAcceptJobDialogOpen}
+        application={selectedApplication}
+        onAccept={handleAcceptJob}
+        isLoading={isAcceptingJobLoading}
+      />
     </Card>
   );
 };
@@ -761,6 +776,11 @@ const ActiveApplicationsTable = ({
 }) => {
   const [message, setMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState<string | null>(null);
+  const [acceptJobDialogOpen, setAcceptJobDialogOpen] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
+  const { acceptJobAsBusiness, isLoading: isAcceptingJobLoading } = useAcceptedJobs(() => {
+    window.location.reload();
+  });
 
   const handleSendMessage = async (applicationId: string) => {
     if (!message.trim()) return;
@@ -806,6 +826,22 @@ const ActiveApplicationsTable = ({
       toast.error("Failed to send message");
     } finally {
       setSendingMessage(null);
+    }
+  };
+
+  const openAcceptJobDialog = (application: JobApplication) => {
+    setSelectedApplication(application);
+    setAcceptJobDialogOpen(true);
+  };
+
+  const handleAcceptJob = async (application: JobApplication) => {
+    try {
+      await acceptJobAsBusiness(application);
+      toast.success("Job accepted successfully");
+      window.location.reload();
+    } catch (error) {
+      console.error("Error accepting job:", error);
+      toast.error("Failed to accept job");
     }
   };
 
@@ -875,17 +911,57 @@ const ActiveApplicationsTable = ({
                   </div>
                 </div>
                 
-                <select 
-                  className="w-full md:w-1/3 px-2 py-1 border rounded text-xs self-start"
-                  value={application.status}
-                  onChange={(e) => handleStatusChange(application.job_app_id, e.target.value)}
-                  disabled={isUpdatingStatus === application.job_app_id}
-                >
-                  <option value="negotiation">Negotiation</option>
-                  <option value="accepted">Accepted</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="in review">Return to In Review</option>
-                </select>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <select 
+                    className="w-full md:w-1/3 px-2 py-1 border rounded text-xs self-start"
+                    value={application.status}
+                    onChange={(e) => handleStatusChange(application.job_app_id, e.target.value)}
+                    disabled={isUpdatingStatus === application.job_app_id}
+                  >
+                    <option value="negotiation">Negotiation</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="in review">Return to In Review</option>
+                  </select>
+                  
+                  {application.status.toLowerCase() === 'accepted' && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="ml-2"
+                              disabled={application.accepted_business || isAcceptingJobLoading}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openAcceptJobDialog(application as JobApplication);
+                              }}
+                            >
+                              {application.accepted_business ? (
+                                <>
+                                  <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                                  Job Accepted
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="mr-2 h-4 w-4" />
+                                  Accept Job
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {application.accepted_business 
+                            ? "You have already accepted this job" 
+                            : "Jobs can be accepted once either party updates the status to 'accepted'"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
               </div>
               
               <CollapsibleContent className="mt-4 space-y-4">
