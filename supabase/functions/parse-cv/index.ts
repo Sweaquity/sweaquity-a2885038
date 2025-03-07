@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
@@ -34,11 +35,26 @@ serve(async (req) => {
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
       )
       
-      // Instead of trying to fetch and parse the PDF directly, which is complex,
-      // we'll use a simulated approach that works for any PDF file
-      const skills = simulateSkillExtraction();
-      const careerHistory = simulateCareerHistoryExtraction();
-      const education = simulateEducationExtraction();
+      // Extract the data from CV
+      // Note: For now, we'll use example data since actual PDF parsing is complex
+      // In a production environment, you would integrate with a CV parsing service
+      const skills = extractSkills("javascript typescript react node.js sql project management communication teamwork");
+      const careerHistory = extractCareerHistory(`
+        Senior Developer
+        Tech Solutions Ltd
+        2019 - Present
+        Leading development team and implementing new features.
+        
+        Web Developer
+        Digital Agency
+        2016 - 2019
+        Built websites and web applications for various clients.
+      `);
+      const education = extractEducation(`
+        Bachelor of Science in Computer Science
+        University of Technology
+        2012 - 2016
+      `);
       
       console.log(`Extracted ${skills.length} skills and ${careerHistory.length} career entries`);
 
