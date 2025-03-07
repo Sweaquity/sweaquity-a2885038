@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import mammoth from "https://esm.sh/mammoth@1.4.2";
+import docx4js from "https://esm.sh/docx4js@3.1.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,10 +59,10 @@ serve(async (req) => {
     const fileExtension = filePath.split('.').pop()?.toLowerCase();
 
     if (["doc", "docx"].includes(fileExtension || "")) {
-      console.log("Word document detected, extracting text with mammoth");
+      console.log("Word document detected, extracting text with docx4js");
       const arrayBuffer = await fileData.arrayBuffer();
-      const { value } = await mammoth.extractRawText({ buffer: arrayBuffer });
-      extractedText = value;
+      const doc = await docx4js.load(arrayBuffer);
+      extractedText = doc.content(); // Extract raw text from the document
     } else {
       console.error("Unsupported file type (Only .docx is allowed):", fileExtension);
       return new Response(JSON.stringify({ error: 'Unsupported file type (Only .docx is allowed)' }), {
@@ -112,7 +112,7 @@ function extractSkills(text: string): string[] {
     "aws", "azure", "gcp", "docker", "kubernetes", "terraform",
     "project management", "agile", "scrum", "communication", "teamwork"
   ];
-  return skillKeywords.filter(skill => new RegExp(`\b${skill}\b`, 'i').test(text));
+  return skillKeywords.filter(skill => new RegExp(`\\b${skill}\\b`, 'i').test(text));
 }
 
 function extractCareerHistory(text: string): any[] {
