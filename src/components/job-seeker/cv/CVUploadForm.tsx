@@ -20,9 +20,10 @@ export const CVUploadForm = ({ cvUrl, onUploadComplete }: CVUploadFormProps) => 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFile = e.target.files[0];
-      // Only accept PDF files
-      if (selectedFile.type !== 'application/pdf') {
-        toast.error("Please upload a PDF file");
+      // Accept PDF and Word documents
+      const validFileTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!validFileTypes.includes(selectedFile.type)) {
+        toast.error("Please upload a PDF or Word document (.doc, .docx)");
         return;
       }
       setFile(selectedFile);
@@ -213,7 +214,7 @@ export const CVUploadForm = ({ cvUrl, onUploadComplete }: CVUploadFormProps) => 
               file:bg-primary file:text-primary-foreground
               hover:file:bg-primary/90"
             onChange={handleFileChange}
-            accept="application/pdf"
+            accept="application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           />
         </div>
         <Button 
