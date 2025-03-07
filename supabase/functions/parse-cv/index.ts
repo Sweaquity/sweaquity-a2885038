@@ -182,9 +182,10 @@ function extractSkills(text: string): string[] {
   const skillCategories = {
     // Programming Languages
     programmingLanguages: [
-      'javascript', 'typescript', 'python', 'java', 'c++', 'c#', 'ruby', 'php', 'swift', 'kotlin', 
+      'javascript', 'typescript', 'python', 'java', 'c\\+\\+', 'c#', 'ruby', 'php', 'swift', 'kotlin', 
       'golang', 'rust', 'scala', 'perl', 'haskell', 'dart', 'r', 'matlab'
     ],
+    // Rest of your categories remain the same
     // Web Technologies
     webTech: [
       'html', 'css', 'react', 'angular', 'vue', 'node.js', 'express', 'next.js', 'gatsby',
@@ -241,8 +242,11 @@ function extractSkills(text: string): string[] {
   // Look for direct mentions
   const foundSkills = new Set<string>();
   allSkills.forEach(skill => {
+    // Escape special regex characters in the skill
+    const escapedSkill = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    
     // Exact match (with word boundaries)
-    const wordBoundaryRegex = new RegExp(`\\b${skill}\\b`, 'i');
+    const wordBoundaryRegex = new RegExp(`\\b${escapedSkill}\\b`, 'i');
     if (wordBoundaryRegex.test(textLower)) {
       foundSkills.add(skill);
     }
