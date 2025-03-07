@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import mammoth from "https://esm.sh/mammoth@1.6.0";
@@ -240,18 +241,23 @@ function extractSkills(text: string): string[] {
 
   // Look for direct mentions
   const foundSkills = new Set<string>();
+  
   allSkills.forEach(skill => {
-    // BEFORE (problematic code):
-    // const wordBoundaryRegex = new RegExp(`\\b${skill}\\b`, 'i');
-    
-    // AFTER (fixed code):
-    // Escape special regex characters in the skill
-    const escapedSkill = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    // Exact match (with word boundaries)
-    const wordBoundaryRegex = new RegExp(`\\b${escapedSkill}\\b`, 'i');
-    
-    if (wordBoundaryRegex.test(textLower)) {
-      foundSkills.add(skill);
+    try {
+      // Escape special regex characters in the skill name
+      const escapedSkill = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // Create a regex to match the skill as a whole word
+      const wordBoundaryRegex = new RegExp(`\\b${escapedSkill}\\b`, 'i');
+      
+      if (wordBoundaryRegex.test(textLower)) {
+        foundSkills.add(skill);
+      }
+    } catch (error) {
+      console.error(`Error creating regex for skill '${skill}':`, error);
+      // Try a simple string match as fallback
+      if (textLower.includes(skill)) {
+        foundSkills.add(skill);
+      }
     }
   });
   

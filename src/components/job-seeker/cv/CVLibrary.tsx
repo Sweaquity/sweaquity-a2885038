@@ -20,24 +20,30 @@ export const CVLibrary = ({
   onDownload,
   onDelete
 }: CVLibraryProps) => {
-  if (userCVs.length === 0) return null;
-
+  // Don't return null even if userCVs is empty - render the container
+  // to prevent flashing/disappearing
   return (
     <div className="mt-6">
       <Label>My CV Library</Label>
-      <div className="mt-2 border rounded-md divide-y">
-        {userCVs.map((cv) => (
-          <CVLibraryItem
-            key={cv.id}
-            cv={cv}
-            processingAction={processingAction}
-            onSetDefault={onSetDefault}
-            onPreview={onPreview}
-            onDownload={onDownload}
-            onDelete={onDelete}
-          />
-        ))}
-      </div>
+      {userCVs.length > 0 ? (
+        <div className="mt-2 border rounded-md divide-y">
+          {userCVs.map((cv) => (
+            <CVLibraryItem
+              key={cv.id}
+              cv={cv}
+              processingAction={processingAction}
+              onSetDefault={onSetDefault}
+              onPreview={onPreview}
+              onDownload={onDownload}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-2 border rounded-md p-4 text-center text-muted-foreground">
+          No CVs uploaded yet
+        </div>
+      )}
     </div>
   );
 };

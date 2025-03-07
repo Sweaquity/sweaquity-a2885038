@@ -21,16 +21,16 @@ export const listUserCVs = async (userId: string) => {
     return data?.filter(item => !item.id.endsWith('/')) || [];
     
   } catch (error: any) {
-    toast.error("Failed to retrieve CV list");
+    console.error("Failed to retrieve CV list:", error);
     return [];
   }
 };
 
-export const downloadCV = async (userId: string, fileName: string) => {
+export const downloadCV = async (userId: string, fileName: string, bucketName = 'cvs') => {
   try {
     const filePath = `${userId}/${fileName}`;
     const { data, error } = await supabase.storage
-      .from('cvs')
+      .from(bucketName)
       .download(filePath);
       
     if (error) {
@@ -53,7 +53,24 @@ export const downloadCV = async (userId: string, fileName: string) => {
     
     return true;
   } catch (error: any) {
+    console.error(`Failed to download CV from ${bucketName}:`, error);
     toast.error("Failed to download CV");
+    return false;
+  }
+};
+
+export const downloadApplicationCV = async (cvUrl: string) => {
+  try {
+    // Extract the user ID and filename from the URL
+    const urlParts = new URL(cvUrl);
+    const pathParts = urlParts.pathname.split('/');
+    const fileName = pathParts[pathParts.length - 1];
+    const userId = pathParts[pathParts.length - 2];
+    
+    return await downloadCV(userId, fileName, 'job_applications');
+  } catch (error: any) {
+    console.error("Failed to download application CV:", error);
+    toast.error("Failed to download application CV");
     return false;
   }
 };
@@ -96,16 +113,17 @@ export const deleteCV = async (userId: string, fileName: string) => {
     toast.success("CV deleted successfully");
     return true;
   } catch (error: any) {
+    console.error("Failed to delete CV:", error);
     toast.error("Failed to delete CV");
     return false;
   }
 };
 
-export const previewCV = async (userId: string, fileName: string) => {
+export const previewCV = async (userId: string, fileName: string, bucketName = 'cvs') => {
   try {
     const filePath = `${userId}/${fileName}`;
     const { data } = supabase.storage
-      .from('cvs')
+      .from(bucketName)
       .getPublicUrl(filePath);
       
     if (data?.publicUrl) {
@@ -116,7 +134,22 @@ export const previewCV = async (userId: string, fileName: string) => {
     
     return false;
   } catch (error: any) {
+    console.error(`Failed to preview CV from ${bucketName}:`, error);
     toast.error("Failed to preview CV");
+    return false;
+  }
+};
+
+export const previewApplicationCV = async (cvUrl: string) => {
+  try {
+    if (!cvUrl) return false;
+    
+    // Open the file directly in a new tab
+    window.open(cvUrl, '_blank', 'noopener,noreferrer');
+    return true;
+  } catch (error: any) {
+    console.error("Failed to preview application CV:", error);
+    toast.error("Failed to preview application CV");
     return false;
   }
 };
@@ -159,6 +192,7 @@ export const setDefaultCV = async (userId: string, fileName: string) => {
     toast.success("Default CV updated successfully");
     return urlData.publicUrl;
   } catch (error: any) {
+    console.error("Failed to set default CV:", error);
     toast.error("Failed to set default CV");
     return null;
   }

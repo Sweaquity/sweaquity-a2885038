@@ -4,6 +4,7 @@ import { SkillsCard } from "./skills/SkillsCard";
 import { CareerHistoryCard } from "./career/CareerHistoryCard";
 import { EducationCard } from "./career/EducationCard";
 import { ProfileEditor } from "./profile/ProfileEditor";
+import { CurrentPositionCard } from "./career/CurrentPositionCard";
 import { Profile, Skill } from "@/types/jobSeeker";
 import { CVFile } from "@/hooks/job-seeker/useCVData";
 
@@ -30,6 +31,13 @@ export const ProfileSection = ({
   userCVs = [],
   onCvListUpdated = () => {}
 }: ProfileSectionProps) => {
+  // Extract current position (first item from career history if available)
+  const currentPosition = parsedCvData?.career_history && 
+                         Array.isArray(parsedCvData.career_history) && 
+                         parsedCvData.career_history.length > 0 
+                           ? parsedCvData.career_history[0] 
+                           : null;
+
   return (
     <div className="space-y-6">
       <ProfileEditor profile={profile} />
@@ -39,6 +47,9 @@ export const ProfileSection = ({
         userCVs={userCVs}
         onCvListUpdated={onCvListUpdated}
       />
+      {currentPosition && (
+        <CurrentPositionCard currentPosition={currentPosition} />
+      )}
       <SkillsCard 
         skills={skills}
         onSkillsUpdate={onSkillsUpdate}
@@ -49,7 +60,6 @@ export const ProfileSection = ({
       <EducationCard 
         education={parsedCvData?.education || []}
       />
-      {/* AccountSettingsCard has been completely removed from here to avoid duplication */}
     </div>
   );
 };

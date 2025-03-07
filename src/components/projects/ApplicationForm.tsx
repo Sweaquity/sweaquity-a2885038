@@ -110,6 +110,60 @@ export const ApplicationForm = ({
     loadUserCVs();
   }, []);
 
+  const copyCVToApplicationsBucket = async (userId: string, originalUrl: string): Promise<string | null> => {
+    try {
+      if (!originalUrl) return null;
+      
+      // Extract the CV filename from the URL
+      const fileName = originalUrl.split('/').pop();
+      if (!fileName) return null;
+      
+      // Create a unique filename for the application
+      const applicationFileName = `${userId}/${Date.now()}_${fileName}`;
+      
+      // First, download the file from the cvs bucket
+      const originalFilePath = `${userId}/${fileName}`;
+      
+      console.log("Downloading CV from path:", originalFilePath);
+      const { data: fileBlob, error: downloadError } = await supabase
+        .storage
+        .from('cvs')
+        .download(originalFilePath);
+        
+      if (downloadError || !fileBlob) {
+        console.error("Error downloading CV for application:", downloadError);
+        return null;
+      }
+      
+      // Upload to job_applications bucket
+      console.log("Uploading CV to job_applications bucket:", applicationFileName);
+      const { data: uploadData, error: uploadError } = await supabase
+        .storage
+        .from('job_applications')
+        .upload(applicationFileName, fileBlob, {
+          cacheControl: '3600',
+          upsert: false
+        });
+        
+      if (uploadError) {
+        console.error("Error copying CV to job_applications bucket:", uploadError);
+        return null;
+      }
+      
+      // Get URL of the copied file
+      const { data: urlData } = supabase
+        .storage
+        .from('job_applications')
+        .getPublicUrl(applicationFileName);
+        
+      console.log("CV copied to job_applications successfully:", urlData.publicUrl);
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error("Error in copyCVToApplicationsBucket:", error);
+      return null;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -132,12 +186,24 @@ export const ApplicationForm = ({
         throw new Error("Task ID is missing or invalid");
       }
       
+      // First copy the CV to the job_applications bucket for record-keeping
+      let applicationCvUrl = null;
+      if (selectedCvUrl) {
+        applicationCvUrl = await copyCVToApplicationsBucket(userId, selectedCvUrl);
+        
+        if (!applicationCvUrl) {
+          toast.warning("Could not save a copy of your CV, but continuing with application");
+          // Fall back to the original CV URL if copying fails
+          applicationCvUrl = selectedCvUrl;
+        }
+      }
+      
       console.log("Submitting application with:", {
         projectId,
         taskId,
         userId,
         message,
-        selectedCvUrl
+        applicationCvUrl
       });
       
       // Submit the application - using the message field instead of notes
@@ -145,8 +211,8 @@ export const ApplicationForm = ({
         project_id: projectId,
         task_id: taskId,
         user_id: userId,
-        message: message, // Use message field
-        cv_url: selectedCvUrl,
+        message: message, 
+        cv_url: applicationCvUrl, // Use the copied CV URL
         status: 'pending'
       });
       

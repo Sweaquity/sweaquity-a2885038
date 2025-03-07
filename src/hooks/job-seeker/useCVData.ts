@@ -61,8 +61,9 @@ export const useCVData = () => {
       }
       
       try {
-        // Get list of user's CVs
+        // Always list user's CVs even if there are no default CVs
         const cvFiles = await listUserCVs(userId);
+        console.log("CV files loaded:", cvFiles.length);
         
         // Mark default CV
         const defaultCVUrl = profileData?.cv_url;
@@ -94,6 +95,7 @@ export const useCVData = () => {
           isDefault: defaultCVUrl ? defaultCVUrl.includes(file.name) : false
         }));
         
+        console.log("Setting userCVs:", filesWithDefault.length);
         setUserCVs(filesWithDefault);
         
         // If there are no CVs, make sure cvUrl is null
@@ -115,9 +117,11 @@ export const useCVData = () => {
           }
         }
       } catch (error) {
+        console.error("Error loading CV list:", error);
         toast.error('Error loading CV list');
       }
     } catch (error) {
+      console.error("Failed to load CV data:", error);
       toast.error("Failed to load CV data");
     } finally {
       setIsLoading(false);
