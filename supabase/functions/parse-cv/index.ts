@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import docx4js from "https://esm.sh/docx4js@3.1.1";
+import { readDocx } from "https://esm.sh/docx-wasm@1.0.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,10 +59,9 @@ serve(async (req) => {
     const fileExtension = filePath.split('.').pop()?.toLowerCase();
 
     if (["doc", "docx"].includes(fileExtension || "")) {
-      console.log("Word document detected, extracting text with docx4js");
+      console.log("Word document detected, extracting text with docx-wasm");
       const arrayBuffer = await fileData.arrayBuffer();
-      const doc = await docx4js.load(arrayBuffer);
-      extractedText = doc.content(); // Extract raw text from the document
+      extractedText = await readDocx(arrayBuffer);
     } else {
       console.error("Unsupported file type (Only .docx is allowed):", fileExtension);
       return new Response(JSON.stringify({ error: 'Unsupported file type (Only .docx is allowed)' }), {
