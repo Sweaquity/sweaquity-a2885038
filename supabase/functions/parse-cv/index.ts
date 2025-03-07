@@ -108,6 +108,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true, data: { skills, careerHistory, education } }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
   } catch (error) {
     console.error("Error in parse-cv function:", error);
     return new Response(JSON.stringify({ error: error.message || 'Unknown error occurred' }), {
@@ -124,7 +125,7 @@ function extractSkills(text: string): string[] {
     "aws", "azure", "gcp", "docker", "kubernetes", "terraform",
     "project management", "agile", "scrum", "communication", "teamwork"
   ];
-  return skillKeywords.filter(skill => new RegExp(`\b${skill}\b`, 'i').test(text));
+  return skillKeywords.filter(skill => new RegExp(`\\b${skill}\\b`, 'i').test(text));
 }
 
 function extractCareerHistory(text: string): any[] {
