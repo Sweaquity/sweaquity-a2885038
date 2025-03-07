@@ -167,45 +167,49 @@ export const previewApplicationCV = async (cvUrl: string) => {
   try {
     if (!cvUrl) return false;
     
-    // We can either use the existing URL directly or get a fresh one
-    // For consistency, let's extract the path and get a fresh URL
-    try {
-      // Try to extract user ID and filename
-      let userId, fileName;
+    console.log("Original CV URL:", cvUrl); // For debugging
+    
+    // Extract just the application ID and filename
+    const match = cvUrl.match(/job_applications\/([^\/]+)\/([^\/\?]+)/);
+    
+    if (match && match.length >= 3) {
+      const applicationId = match[1];
+      const encodedFileName = match[2];
       
-      if (cvUrl.includes('/job_applications/')) {
-        // Parse from URL format
-        const urlParts = cvUrl.split('/job_applications/');
-        const pathPart = urlParts[urlParts.length - 1];
-        const pathSegments = pathPart.split('/');
+      // Decode the filename (only once)
+      const fileName = decodeURIComponent(encodedFileName);
+      
+      console.log("ApplicationID:", applicationId, "Filename:", fileName);
+      
+      // Construct the correct path
+      const filePath = `${applicationId}/${fileName}`;
+      
+      console.log("Attempting to access path:", filePath);
+      
+      // Get a signed URL (works better for various file types)
+      const { data, error } = await supabase.storage
+        .from('job_applications')
+        .createSignedUrl(filePath, 300); // 5 minutes validity
         
-        if (pathSegments.length >= 2) {
-          userId = pathSegments[0];
-          fileName = pathSegments[1].split('?')[0]; // Remove any query params
-          
-          // Get fresh URL from storage
-          const filePath = `${userId}/${fileName}`;
-          const { data } = supabase.storage
-            .from('job_applications')
-            .getPublicUrl(filePath);
-            
-          if (data?.publicUrl) {
-            window.open(data.publicUrl, '_blank', 'noopener,noreferrer');
-            return true;
-          }
-        }
+      if (error) {
+        console.error("Signed URL error:", error);
+        throw error;
       }
-    } catch (extractError) {
-      console.error("Error extracting CV path:", extractError);
-      // Fall back to using the original URL
+      
+      if (data?.signedUrl) {
+        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+        return true;
+      }
+    } else {
+      // As fallback, try with original URL
+      window.open(cvUrl, '_blank', 'noopener,noreferrer');
+      return true;
     }
     
-    // If extraction failed or URL wasn't in expected format, use original URL
-    window.open(cvUrl, '_blank', 'noopener,noreferrer');
-    return true;
+    return false;
   } catch (error: any) {
     console.error("Failed to preview application CV:", error);
-    toast.error("Failed to preview application CV");
+    toast.error("Failed to preview CV: " + (error.message || "Unknown error"));
     return false;
   }
 };
