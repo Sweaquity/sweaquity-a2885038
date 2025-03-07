@@ -33,25 +33,33 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-// Extract the correct file path from the public URL
-const urlParts = new URL(cvUrl);
-const filePath = urlParts.pathname.replace("/storage/v1/object/public/", "");
-
-// Debugging log to ensure correct extraction
-console.log("Extracted file path for download:", filePath);
-
-// Download the CV file from Supabase storage
-const { data: fileData, error: downloadError } = await supabase
-  .storage.from('cvs')  // Ensure this is your actual bucket name
-  .download(filePath);
-
-if (downloadError) {
-  console.error("Error downloading CV:", downloadError);
-  return new Response(JSON.stringify({ error: 'Error downloading CV' }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    status: 500,
-  });
-}
+    // Extract the correct file path from the public URL
+    const urlParts = new URL(cvUrl);
+    let filePath = urlParts.pathname.replace("/storage/v1/object/public/", "");
+    
+    // Debugging logs
+    console.log("Original cvUrl:", cvUrl);
+    console.log("Extracted filePath:", filePath);
+    
+    // Ensure the filePath does not contain bucket name (cvs/cvs issue)
+    if (filePath.startsWith("cvs/")) {
+      filePath = filePath.replace("cvs/", "");
+    }
+    
+    console.log("Final filePath for download:", filePath);
+    
+    // Download the CV file from Supabase storage
+    const { data: fileData, error: downloadError } = await supabase
+      .storage.from('cvs')  // Ensure this matches your actual bucket name
+      .download(filePath);
+    
+    if (downloadError) {
+      console.error("Error downloading CV:", downloadError);
+      return new Response(JSON.stringify({ error: 'Error downloading CV', details: downloadError.message }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      });
+    }
 
     // Convert file blob to ArrayBuffer and extract text using Mammoth
     const arrayBuffer = await fileData.arrayBuffer();
