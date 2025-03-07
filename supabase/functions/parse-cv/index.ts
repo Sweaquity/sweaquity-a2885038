@@ -1,7 +1,7 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import mammoth from "https://esm.sh/mammoth@1.4.2";
+import pdfParse from "https://esm.sh/pdf-parse@1.1.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -28,53 +28,44 @@ serve(async (req) => {
     console.log("Processing CV for user:", userId);
     console.log("CV URL:", cvUrl);
 
-    // Create Supabase client
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Extract the correct file path from the public URL
     const urlParts = new URL(cvUrl);
     let filePath = urlParts.pathname.replace("/storage/v1/object/public/", "");
-    
-    // Debugging logs
+
     console.log("Original cvUrl:", cvUrl);
     console.log("Extracted filePath:", filePath);
-    
-    // Ensure the filePath does not contain bucket name (cvs/cvs issue)
+
     if (filePath.startsWith("cvs/")) {
       filePath = filePath.replace("cvs/", "");
     }
-    
+
     console.log("Final filePath for download:", filePath);
-    
-    // Download the CV file from Supabase storage
+
     const { data: fileData, error: downloadError } = await supabase
-      .storage.from('cvs')  // Ensure this matches your actual bucket name
+      .storage.from('cvs')
       .download(filePath);
-    
-    if (downloadError) {
+
+    if (downloadError || !fileData) {
       console.error("Error downloading CV:", downloadError);
-      return new Response(JSON.stringify({ error: 'Error downloading CV', details: downloadError.message }), {
+      return new Response(JSON.stringify({ error: 'Error downloading CV' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
       });
     }
 
     let extractedText = "";
-    
-    // Check file extension to determine how to process it
     const fileExtension = filePath.split('.').pop()?.toLowerCase();
-    
+
     if (fileExtension === 'pdf') {
-      // For PDF files, we need to use a different approach since mammoth doesn't support PDF
-      // This would be where you'd use a PDF extraction library
-      // For now, we'll use a sample text for demonstration
-      console.log("PDF file detected, using sample text for extraction");
-      extractedText = getSampleCVText();
-    } else if (['doc', 'docx'].includes(fileExtension || '')) {
-      // For Word documents, use mammoth to extract text
+      console.log("PDF file detected, extracting text with pdf-parse");
+      const arrayBuffer = await fileData.arrayBuffer();
+      const pdfText = await pdfParse(Buffer.from(arrayBuffer));
+      extractedText = pdfText.text;
+    } else if (["doc", "docx"].includes(fileExtension || "")) {
       console.log("Word document detected, extracting text with mammoth");
       const arrayBuffer = await fileData.arrayBuffer();
       const { value } = await mammoth.extractRawText({ buffer: arrayBuffer });
@@ -87,16 +78,14 @@ serve(async (req) => {
       });
     }
 
-    console.log("Extracted text from CV:", extractedText.substring(0, 500)); // Log first 500 chars
+    console.log("Extracted text from CV:", extractedText.substring(0, 500));
 
-    // Extract data from CV text
     const skills = extractSkills(extractedText);
     const careerHistory = extractCareerHistory(extractedText);
     const education = extractEducation(extractedText);
 
     console.log(`Extracted ${skills.length} skills, ${careerHistory.length} jobs, ${education.length} education entries`);
 
-    // Save parsed data to Supabase
     const { error: upsertError } = await supabase.from('cv_parsed_data').upsert({
       user_id: userId,
       skills,
@@ -123,99 +112,28 @@ serve(async (req) => {
   }
 });
 
-// Sample CV text for testing when a real parser isn't available
-function getSampleCVText() {
-  return `
-  John Doe
-  Software Developer
-  
-  CONTACT
-  Email: john.doe@example.com
-  Phone: (123) 456-7890
-  LinkedIn: linkedin.com/in/johndoe
-  
-  SKILLS
-  JavaScript, TypeScript, Python, SQL, Excel, Power BI, RPA, VBA, SAP, TM1, React, Node.js
-  
-  EXPERIENCE
-  Senior Developer - Tech Solutions Ltd - 2019-2023
-  • Led development team of 5 engineers
-  • Implemented new features for enterprise clients
-  • Reduced application load time by 40%
-  
-  Web Developer - Digital Agency - 2016-2019
-  • Built websites and web applications for various clients
-  • Collaborated with design team to implement UI/UX improvements
-  
-  EDUCATION
-  Bachelor of Science in Computer Science - University of Technology - 2012-2016
-  • GPA: 3.8/4.0
-  • Relevant coursework: Data Structures, Algorithms, Database Systems
-  
-  CERTIFICATIONS
-  AWS Certified Developer - 2020
-  Scrum Master Certification - 2019
-  `;
-}
-
-// Extract skills from text
 function extractSkills(text: string): string[] {
-  // Define common skills to look for
   const skillKeywords = [
-    "javascript", "typescript", "python", "sql", "excel", 
-    "power bi", "rpa", "vba", "sap", "tm1", "react", "node.js",
-    "html", "css", "java", "c#", "rust", "go", "ruby", "php",
+    "javascript", "typescript", "python", "sql", "excel", "power bi", "rpa", "vba", "sap", "tm1",
+    "react", "node.js", "html", "css", "java", "c#", "rust", "go", "ruby", "php",
     "aws", "azure", "gcp", "docker", "kubernetes", "terraform",
     "project management", "agile", "scrum", "communication", "teamwork"
   ];
-  
-  try {
-    // Find skills that are mentioned in the CV text
-    return skillKeywords.filter(skill => {
-      // Create a regex to match the skill as a whole word, case insensitive
-      // Escape special characters in skill names (like c++)
-      const escapedSkill = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`\\b${escapedSkill}\\b`, 'i');
-      return regex.test(text.toLowerCase());
-    });
-  } catch (error) {
-    console.error("Error in skill extraction:", error);
-    return [];
-  }
+  return skillKeywords.filter(skill => new RegExp(`\\b${skill}\\b`, 'i').test(text));
 }
 
-// Extract career history
 function extractCareerHistory(text: string): any[] {
-  try {
-    const jobMatches = text.match(/(\b[A-Z][a-z]+ [A-Za-z]+\b)\s*-\s*(.*?)\s*-\s*(\d{4}.*?(?:\d{4}|Present))/g);
-    return jobMatches ? jobMatches.map(entry => {
-      const parts = entry.split(" - ");
-      return { 
-        title: parts[0], 
-        company: parts[1], 
-        duration: parts[2] 
-      };
-    }) : [];
-  } catch (error) {
-    console.error("Error extracting career history:", error);
-    return [];
-  }
+  const jobMatches = text.match(/(\b[A-Z][a-z]+ [A-Za-z]+\b)\s*-\s*(.*?)\s*-\s*(\d{4}.*?(?:\d{4}|Present))/g);
+  return jobMatches ? jobMatches.map(entry => {
+    const parts = entry.split(" - ");
+    return { title: parts[0], company: parts[1], duration: parts[2] };
+  }) : [];
 }
 
-// Extract education details
 function extractEducation(text: string): any[] {
-  try {
-    const educationMatches = text.match(/(Bachelor|Master|PhD|MBA|BSc|MSc|BA|MA).*?\s*-\s*(.*?)\s*-\s*(\d{4}.*?(?:\d{4}|Present))/g);
-    return educationMatches ? educationMatches.map(entry => {
-      const parts = entry.split(" - ");
-      return { 
-        degree: parts[0], 
-        institution: parts[1], 
-        year: parts[2] 
-      };
-    }) : [];
-  } catch (error) {
-    console.error("Error extracting education:", error);
-    return [];
-  }
+  const educationMatches = text.match(/(Bachelor|Master|PhD|MBA|BSc|MSc|BA|MA).*?\s*-\s*(.*?)\s*-\s*(\d{4}.*?(?:\d{4}|Present))/g);
+  return educationMatches ? educationMatches.map(entry => {
+    const parts = entry.split(" - ");
+    return { degree: parts[0], institution: parts[1], year: parts[2] };
+  }) : [];
 }
