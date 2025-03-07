@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import mammoth from "https://esm.sh/mammoth@1.4.2";
-import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,19 +58,14 @@ serve(async (req) => {
     let extractedText = "";
     const fileExtension = filePath.split('.').pop()?.toLowerCase();
 
-    if (fileExtension === 'pdf') {
-      console.log("PDF file detected, extracting text with pdf-lib");
-      const arrayBuffer = await fileData.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer);
-      extractedText = pdfDoc.getPages().map(page => page.getTextContent()).join("\n");
-    } else if (["doc", "docx"].includes(fileExtension || "")) {
+    if (["doc", "docx"].includes(fileExtension || "")) {
       console.log("Word document detected, extracting text with mammoth");
       const arrayBuffer = await fileData.arrayBuffer();
       const { value } = await mammoth.extractRawText({ buffer: arrayBuffer });
       extractedText = value;
     } else {
-      console.error("Unsupported file type:", fileExtension);
-      return new Response(JSON.stringify({ error: 'Unsupported file type' }), {
+      console.error("Unsupported file type (Only .docx is allowed):", fileExtension);
+      return new Response(JSON.stringify({ error: 'Unsupported file type (Only .docx is allowed)' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       });
@@ -118,7 +112,7 @@ function extractSkills(text: string): string[] {
     "aws", "azure", "gcp", "docker", "kubernetes", "terraform",
     "project management", "agile", "scrum", "communication", "teamwork"
   ];
-  return skillKeywords.filter(skill => new RegExp(`\\b${skill}\\b`, 'i').test(text));
+  return skillKeywords.filter(skill => new RegExp(`\b${skill}\b`, 'i').test(text));
 }
 
 function extractCareerHistory(text: string): any[] {
