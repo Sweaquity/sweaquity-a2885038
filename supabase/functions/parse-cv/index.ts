@@ -33,23 +33,25 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Extract the correct file path from the public URL
-    const filePath = new URL(cvUrl).pathname.replace("/storage/v1/object/public/", "");
+// Extract the correct file path from the public URL
+const urlParts = new URL(cvUrl);
+const filePath = urlParts.pathname.replace("/storage/v1/object/public/", "");
 
-    console.log("Extracted file path:", filePath);
+// Debugging log to ensure correct extraction
+console.log("Extracted file path for download:", filePath);
 
-    // Download the CV file from Supabase storage
-    const { data: fileData, error: downloadError } = await supabase
-      .storage.from('cvs')  // Ensure this matches your actual bucket name
-      .download(filePath);
+// Download the CV file from Supabase storage
+const { data: fileData, error: downloadError } = await supabase
+  .storage.from('cvs')  // Ensure this is your actual bucket name
+  .download(filePath);
 
-    if (downloadError) {
-      console.error("Error downloading CV:", downloadError);
-      return new Response(JSON.stringify({ error: 'Error downloading CV' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      });
-    }
+if (downloadError) {
+  console.error("Error downloading CV:", downloadError);
+  return new Response(JSON.stringify({ error: 'Error downloading CV' }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    status: 500,
+  });
+}
 
     // Convert file blob to ArrayBuffer and extract text using Mammoth
     const arrayBuffer = await fileData.arrayBuffer();
