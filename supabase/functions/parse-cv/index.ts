@@ -237,15 +237,19 @@ function extractSkills(text: string): string[] {
 
   // Flatten the categories into one array for initial search
   const allSkills = Object.values(skillCategories).flat();
-  
+
   // Look for direct mentions
   const foundSkills = new Set<string>();
   allSkills.forEach(skill => {
+    // BEFORE (problematic code):
+    // const wordBoundaryRegex = new RegExp(`\\b${skill}\\b`, 'i');
+    
+    // AFTER (fixed code):
     // Escape special regex characters in the skill
     const escapedSkill = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    
     // Exact match (with word boundaries)
     const wordBoundaryRegex = new RegExp(`\\b${escapedSkill}\\b`, 'i');
+    
     if (wordBoundaryRegex.test(textLower)) {
       foundSkills.add(skill);
     }
