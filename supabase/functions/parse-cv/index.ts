@@ -33,16 +33,14 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Extract the file path from the public URL
-    const filePath = cvUrl.split("/object/public/")[1];
+    // Extract the correct file path from the public URL
+    const filePath = new URL(cvUrl).pathname.replace("/storage/v1/object/public/", "");
 
-    if (!filePath) {
-      throw new Error("Invalid file path extracted from cvUrl");
-    }
+    console.log("Extracted file path:", filePath);
 
     // Download the CV file from Supabase storage
     const { data: fileData, error: downloadError } = await supabase
-      .storage.from('cvs')  // Use your actual bucket name
+      .storage.from('cvs')  // Ensure this matches your actual bucket name
       .download(filePath);
 
     if (downloadError) {
