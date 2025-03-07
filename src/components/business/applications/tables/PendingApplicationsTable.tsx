@@ -1,4 +1,3 @@
-
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ChevronDown, ChevronRight, FileText } from "lucide-react";
@@ -65,9 +64,9 @@ export const PendingApplicationsTable = ({
               </Badge>
             </TableCell>
             <TableCell>
-              <div className="w-full">
+              <div className="w-full flex justify-center">
                 <select 
-                  className="w-full px-2 py-1 border rounded text-xs"
+                  className="w-full px-2 py-1 border rounded text-sm bg-white"
                   value={application.status}
                   onChange={(e) => {
                     e.stopPropagation();

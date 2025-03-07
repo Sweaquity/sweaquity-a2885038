@@ -45,7 +45,7 @@ export const ApplicationStatus = ({
               onValueChange={onStatusChange}
               disabled={isUpdatingStatus}
             >
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[140px] bg-white">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent className="bg-white">

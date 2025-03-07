@@ -18,7 +18,7 @@ export const useCVData = () => {
   const [cvUrl, setCvUrl] = useState<string | null>(null);
   const [parsedCvData, setParsedCvData] = useState<any>(null);
   const [userCVs, setUserCVs] = useState<CVFile[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const loadCVData = async (userId: string) => {
     try {
@@ -29,7 +29,7 @@ export const useCVData = () => {
         .from('profiles')
         .select('cv_url')
         .eq('id', userId)
-        .maybeSingle(); // Use maybeSingle instead of single
+        .maybeSingle();
         
       if (profileError) {
         if (profileError.code !== 'PGRST116') {  // Ignore "no rows returned" error
