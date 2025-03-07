@@ -182,10 +182,9 @@ function extractSkills(text: string): string[] {
   const skillCategories = {
     // Programming Languages
     programmingLanguages: [
-      'javascript', 'typescript', 'python', 'java', 'c\\+\\+', 'c#', 'ruby', 'php', 'swift', 'kotlin', 
+      'javascript', 'typescript', 'python', 'java', 'c++', 'c#', 'ruby', 'php', 'swift', 'kotlin', 
       'golang', 'rust', 'scala', 'perl', 'haskell', 'dart', 'r', 'matlab'
     ],
-    // Rest of your categories remain the same
     // Web Technologies
     webTech: [
       'html', 'css', 'react', 'angular', 'vue', 'node.js', 'express', 'next.js', 'gatsby',
