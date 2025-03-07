@@ -1,6 +1,8 @@
+Updated CV Parser with Mammoth
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import { readDocx } from "https://esm.sh/docx-wasm@1.0.0";
+import mammoth from "https://esm.sh/mammoth@1.6.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,6 +10,7 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -32,6 +35,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Extract the file path from the URL
     const urlParts = new URL(cvUrl);
     let filePath = urlParts.pathname.replace("/storage/v1/object/public/", "");
 
@@ -43,6 +47,7 @@ serve(async (req) => {
 
     console.log("Final filePath for download:", filePath);
 
+    // Download the file from Supabase Storage
     const { data: fileData, error: downloadError } = await supabase
       .storage.from('cvs')
       .download(filePath);
@@ -55,42 +60,32 @@ serve(async (req) => {
       });
     }
 
-    console.log("File successfully downloaded. File size:", fileData.size);
-
-    const arrayBuffer = await fileData.arrayBuffer();
-    console.log("Converted file to ArrayBuffer. Size:", arrayBuffer.byteLength);
-
     let extractedText = "";
     const fileExtension = filePath.split('.').pop()?.toLowerCase();
 
-    if (["doc", "docx"].includes(fileExtension || "")) {
-      console.log("Attempting to extract text with docx-wasm...");
-      try {
-        extractedText = await readDocx(arrayBuffer);
-        console.log("Extraction complete. Extracted text length:", extractedText.length);
-      } catch (wasmError) {
-        console.error("docx-wasm extraction failed:", wasmError);
-        return new Response(JSON.stringify({ error: "docx-wasm extraction failed", details: wasmError.message }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
-        });
-      }
+    if (fileExtension === "docx") {
+      console.log("Word document detected, extracting text with mammoth");
+      const arrayBuffer = await fileData.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer });
+      extractedText = result.value;
     } else {
-      console.error("Unsupported file type:", fileExtension);
-      return new Response(JSON.stringify({ error: "Unsupported file type (Only .docx allowed)" }), {
+      console.error("Unsupported file type (Only .docx is allowed):", fileExtension);
+      return new Response(JSON.stringify({ error: 'Unsupported file type (Only .docx is allowed)' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       });
     }
 
-    console.log("Extracted text from CV (first 500 chars):", extractedText.substring(0, 500));
+    console.log("Extracted text from CV:", extractedText.substring(0, 500));
 
+    // Extract information from the CV
     const skills = extractSkills(extractedText);
     const careerHistory = extractCareerHistory(extractedText);
     const education = extractEducation(extractedText);
 
     console.log(`Extracted ${skills.length} skills, ${careerHistory.length} jobs, ${education.length} education entries`);
 
+    // Save the parsed data to Supabase
     const { error: upsertError } = await supabase.from('cv_parsed_data').upsert({
       user_id: userId,
       skills,
@@ -108,7 +103,6 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true, data: { skills, careerHistory, education } }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-
   } catch (error) {
     console.error("Error in parse-cv function:", error);
     return new Response(JSON.stringify({ error: error.message || 'Unknown error occurred' }), {
