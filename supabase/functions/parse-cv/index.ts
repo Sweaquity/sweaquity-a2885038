@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import mammoth from "https://esm.sh/mammoth@1.4.2";
-import pdfParse from "https://esm.sh/pdf-parse@1.1.1";
+import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,7 +36,6 @@ serve(async (req) => {
     const urlParts = new URL(cvUrl);
     let filePath = urlParts.pathname.replace("/storage/v1/object/public/", "");
 
-    console.log("Original cvUrl:", cvUrl);
     console.log("Extracted filePath:", filePath);
 
     if (filePath.startsWith("cvs/")) {
@@ -61,10 +60,10 @@ serve(async (req) => {
     const fileExtension = filePath.split('.').pop()?.toLowerCase();
 
     if (fileExtension === 'pdf') {
-      console.log("PDF file detected, extracting text with pdf-parse");
+      console.log("PDF file detected, extracting text with pdf-lib");
       const arrayBuffer = await fileData.arrayBuffer();
-      const pdfText = await pdfParse(Buffer.from(arrayBuffer));
-      extractedText = pdfText.text;
+      const pdfDoc = await PDFDocument.load(arrayBuffer);
+      extractedText = pdfDoc.getPages().map(page => page.getTextContent()).join("\n");
     } else if (["doc", "docx"].includes(fileExtension || "")) {
       console.log("Word document detected, extracting text with mammoth");
       const arrayBuffer = await fileData.arrayBuffer();
