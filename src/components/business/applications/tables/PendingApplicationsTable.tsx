@@ -5,6 +5,7 @@ import { Loader2, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Application } from "@/types/business";
+import { downloadApplicationCV, previewApplicationCV } from "@/utils/setupStorage";
 
 interface PendingApplicationsTableProps {
   applications: Application[];
@@ -64,25 +65,27 @@ export const PendingApplicationsTable = ({
               </Badge>
             </TableCell>
             <TableCell>
-              <select 
-                className="w-full px-2 py-1 border rounded text-xs"
-                value={application.status}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  handleStatusChange(application.job_app_id, e.target.value);
-                }}
-                onClick={(e) => e.stopPropagation()}
-                disabled={isUpdatingStatus === application.job_app_id}
-              >
-                <option value="pending">Pending</option>
-                <option value="in review">In Review</option>
-                <option value="negotiation">Negotiation</option>
-                <option value="accepted">Accepted</option>
-                <option value="rejected">Rejected</option>
-              </select>
-              {isUpdatingStatus === application.job_app_id && (
-                <Loader2 className="animate-spin ml-2 h-4 w-4" />
-              )}
+              <div className="w-full">
+                <select 
+                  className="w-full px-2 py-1 border rounded text-xs"
+                  value={application.status}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleStatusChange(application.job_app_id, e.target.value);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  disabled={isUpdatingStatus === application.job_app_id}
+                >
+                  <option value="pending">Pending</option>
+                  <option value="in review">In Review</option>
+                  <option value="negotiation">Negotiation</option>
+                  <option value="accepted">Accepted</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                {isUpdatingStatus === application.job_app_id && (
+                  <Loader2 className="animate-spin ml-2 h-4 w-4" />
+                )}
+              </div>
             </TableCell>
             <TableCell>
               {expandedApplications.has(application.job_app_id) ? 
@@ -120,17 +123,29 @@ export const PendingApplicationsTable = ({
                     <p className="text-sm">{application.profile?.employment_preference || "Not specified"}</p>
                   </div>
                   {application.cv_url && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(application.cv_url!, '_blank');
-                      }}
-                    >
-                      <FileText className="mr-1 h-4 w-4" />
-                      Download CV
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          downloadApplicationCV(application.cv_url!);
+                        }}
+                      >
+                        <FileText className="mr-1 h-4 w-4" />
+                        Download CV
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          previewApplicationCV(application.cv_url!);
+                        }}
+                      >
+                        View CV
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>

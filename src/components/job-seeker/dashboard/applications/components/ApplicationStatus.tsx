@@ -1,7 +1,7 @@
 
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '../StatusBadge';
-import { ChevronUp, ChevronDown, Check } from 'lucide-react';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -48,7 +48,7 @@ export const ApplicationStatus = ({
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white">
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="negotiation">Negotiation</SelectItem>
                 <SelectItem value="accepted">Accepted</SelectItem>

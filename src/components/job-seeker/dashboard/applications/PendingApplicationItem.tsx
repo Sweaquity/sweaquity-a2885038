@@ -11,6 +11,7 @@ import { useWithdrawApplication } from "./hooks/useWithdrawApplication";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
 import { StatusBadge } from "./StatusBadge";
+import { previewApplicationCV } from "@/utils/setupStorage";
 
 interface PendingApplicationItemProps {
   application: JobApplication;
@@ -119,7 +120,7 @@ export const PendingApplicationItem = ({
                     size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      window.open(application.cv_url as string, '_blank');
+                      previewApplicationCV(application.cv_url as string);
                     }}
                   >
                     <FileText className="mr-2 h-4 w-4" /> View CV

@@ -5,10 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Application } from "@/types/business";
-import { ChevronDown, ChevronRight, Bell, CheckCircle } from "lucide-react";
+import { ChevronDown, ChevronRight, Bell, CheckCircle, FileText } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAcceptedJobsCore, AcceptedJob } from "@/hooks/jobs/useAcceptedJobsCore";
 import { ExpandedApplicationContent } from "./ExpandedApplicationContent";
+import { downloadApplicationCV, previewApplicationCV } from "@/utils/setupStorage";
 
 interface ApplicationCardProps {
   application: Application;
@@ -83,6 +84,35 @@ export const ApplicationCard = ({
               <span className="font-semibold">Jobseeker Accepted:</span>
               <span>{application.accepted_jobseeker ? "Yes" : "No"}</span>
             </div>
+
+            {application.cv_url && (
+              <div className="flex items-center space-x-2">
+                <span className="font-semibold">CV:</span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      downloadApplicationCV(application.cv_url!);
+                    }}
+                  >
+                    <FileText className="mr-1 h-4 w-4" />
+                    Download
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      previewApplicationCV(application.cv_url!);
+                    }}
+                  >
+                    View
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
           
           {/* Second row */}

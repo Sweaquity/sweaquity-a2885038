@@ -61,12 +61,35 @@ export const downloadCV = async (userId: string, fileName: string, bucketName = 
 
 export const downloadApplicationCV = async (cvUrl: string) => {
   try {
-    // Extract the user ID and filename from the URL
-    const urlParts = new URL(cvUrl);
-    const pathParts = urlParts.pathname.split('/');
-    const fileName = pathParts[pathParts.length - 1];
-    const userId = pathParts[pathParts.length - 2];
+    // Extract the file path from the URL
+    // This should handle both public URLs and direct storage paths
+    let userId, fileName;
     
+    if (cvUrl.includes('/job_applications/')) {
+      // Parse from URL format
+      const urlParts = cvUrl.split('/job_applications/');
+      const pathPart = urlParts[urlParts.length - 1];
+      const pathSegments = pathPart.split('/');
+      
+      if (pathSegments.length >= 2) {
+        userId = pathSegments[0];
+        fileName = pathSegments[1].split('?')[0]; // Remove any query params
+      } else {
+        throw new Error("Invalid CV URL format");
+      }
+    } else {
+      // Try direct extraction as fallback
+      const urlObj = new URL(cvUrl);
+      const pathParts = urlObj.pathname.split('/');
+      userId = pathParts[pathParts.length - 2];
+      fileName = pathParts[pathParts.length - 1];
+    }
+    
+    if (!userId || !fileName) {
+      throw new Error("Could not determine user ID or filename from URL");
+    }
+    
+    console.log("Downloading CV for user:", userId, "filename:", fileName);
     return await downloadCV(userId, fileName, 'job_applications');
   } catch (error: any) {
     console.error("Failed to download application CV:", error);
@@ -144,7 +167,40 @@ export const previewApplicationCV = async (cvUrl: string) => {
   try {
     if (!cvUrl) return false;
     
-    // Open the file directly in a new tab
+    // We can either use the existing URL directly or get a fresh one
+    // For consistency, let's extract the path and get a fresh URL
+    try {
+      // Try to extract user ID and filename
+      let userId, fileName;
+      
+      if (cvUrl.includes('/job_applications/')) {
+        // Parse from URL format
+        const urlParts = cvUrl.split('/job_applications/');
+        const pathPart = urlParts[urlParts.length - 1];
+        const pathSegments = pathPart.split('/');
+        
+        if (pathSegments.length >= 2) {
+          userId = pathSegments[0];
+          fileName = pathSegments[1].split('?')[0]; // Remove any query params
+          
+          // Get fresh URL from storage
+          const filePath = `${userId}/${fileName}`;
+          const { data } = supabase.storage
+            .from('job_applications')
+            .getPublicUrl(filePath);
+            
+          if (data?.publicUrl) {
+            window.open(data.publicUrl, '_blank', 'noopener,noreferrer');
+            return true;
+          }
+        }
+      }
+    } catch (extractError) {
+      console.error("Error extracting CV path:", extractError);
+      // Fall back to using the original URL
+    }
+    
+    // If extraction failed or URL wasn't in expected format, use original URL
     window.open(cvUrl, '_blank', 'noopener,noreferrer');
     return true;
   } catch (error: any) {
