@@ -164,7 +164,7 @@ function extractSkills(text: string): string[] {
   const skillCategories = {
     // Programming Languages
     programmingLanguages: [
-      'javascript', 'typescript', 'python', 'java', 'c++', 'c#', 'ruby', 'php', 'swift', 'kotlin', 
+      'javascript', 'typescript', 'python', 'java', 'c\\+\\+', 'c#', 'ruby', 'php', 'swift', 'kotlin', 
       'golang', 'rust', 'scala', 'perl', 'haskell', 'dart', 'r', 'matlab'
     ],
     // Web Technologies
@@ -224,9 +224,13 @@ function extractSkills(text: string): string[] {
   const foundSkills = new Set<string>();
   allSkills.forEach(skill => {
     // Exact match (with word boundaries)
-    const wordBoundaryRegex = new RegExp(`\\b${skill}\\b`, 'i');
-    if (wordBoundaryRegex.test(textLower)) {
-      foundSkills.add(skill);
+    try {
+      const wordBoundaryRegex = new RegExp(`\\b${skill}\\b`, 'i');
+      if (wordBoundaryRegex.test(textLower)) {
+        foundSkills.add(skill);
+      }
+    } catch (e) {
+      console.error(`Error creating regex for skill: ${skill}`, e);
     }
   });
   
