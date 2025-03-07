@@ -183,7 +183,7 @@ function extractSkills(text: string): string[] {
     // Programming Languages
     programmingLanguages: [
       'javascript', 'typescript', 'python', 'java', 'c\\+\\+', 'c#', 'ruby', 'php', 'swift', 'kotlin', 
-      'golang', 'rust', 'scala', 'perl', 'haskell', 'dart', 'r', 'matlab'
+      'golang', ' rust', 'scala', 'perl', 'haskell', 'dart', ' r', 'matlab'
     ],
     // Web Technologies
     webTech: [
@@ -229,9 +229,9 @@ function extractSkills(text: string): string[] {
     ],
     // Business & Soft Skills
     businessSkills: [
-      'leadership', 'communication', 'teamwork', 'problem solving', 'critical thinking',
-      'time management', 'negotiation', 'presentation', 'public speaking', 'stakeholder management',
-      'business development', 'sales', 'marketing', 'finance', 'accounting', 'hr'
+      'leadership', 'leadershing', 'communication', 'communicating', 'teamwork', 'problem solving', 'critical thinking',
+      'time management', 'managing teams', 'negotiation', 'negotiating', 'presentation', 'presentating', 'public speaking', 'stakeholder management',
+      'managing stakeholders', 'business development', 'sales', 'marketing', 'finance', 'accounting', 'hr', 'human resourses'
     ]
   };
 
@@ -258,7 +258,7 @@ function extractSkills(text: string): string[] {
   // Look for contextual mentions (skills with additional words)
   const contextualIndicators = [
     'proficient in', 'skilled in', 'experienced with', 'knowledge of', 'expertise in',
-    'familiar with', 'worked with', 'developed with', 'using', 'utilized', 'implemented'
+    'familiar with', 'worked with', 'developed with', 'using', 'utilized', 'implemented', 'achievements', 'achieved'
   ];
   
   contextualIndicators.forEach(indicator => {
@@ -327,7 +327,7 @@ function extractCareerHistory(text: string): any[] {
   // Look for a work experience section
   const workExperienceHeaders = [
     'work experience', 'professional experience', 'employment history', 
-    'career history', 'experience', 'employment', 'work history'
+    'career history', 'experience', 'employment', 'work history', 'career summary'
   ];
 
   // Regex patterns for dates
