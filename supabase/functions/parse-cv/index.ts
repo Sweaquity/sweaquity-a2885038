@@ -140,43 +140,6 @@ serve(async (req) => {
   }
 })
 
-// Simulate skill extraction for testing
-function simulateSkillExtraction(): string[] {
-  return [
-    'javascript', 'typescript', 'react', 'node.js', 'sql',
-    'project management', 'communication', 'teamwork'
-  ];
-}
-
-// Simulate career history extraction for testing
-function simulateCareerHistoryExtraction(): any[] {
-  return [
-    {
-      title: "Senior Developer",
-      company: "Tech Solutions Ltd",
-      duration: "2019 - Present",
-      description: "Leading development team and implementing new features."
-    },
-    {
-      title: "Web Developer",
-      company: "Digital Agency",
-      duration: "2016 - 2019",
-      description: "Built websites and web applications for various clients."
-    }
-  ];
-}
-
-// Simulate education extraction for testing
-function simulateEducationExtraction(): any[] {
-  return [
-    {
-      degree: "Bachelor of Science in Computer Science",
-      institution: "University of Technology",
-      year: "2012 - 2016"
-    }
-  ];
-}
-
 function extractSkills(text: string): string[] {
   // Enhanced skill extraction with more comprehensive list and contextual understanding
   const textLower = text.toLowerCase();
