@@ -8,49 +8,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Set up the worker source for PDF.js
-if (typeof globalThis.window === 'undefined') {
-  // We're in Deno, not a browser
-  // Create minimal required browser environment for PDF.js
-  globalThis.window = {
-    document: {
-      documentElement: {
-        style: {}
-      },
-      getElementsByTagName: () => [],
-      createElement: () => ({
-        style: {},
-        getContext: () => null,
-        appendChild: () => {},
-      }),
-    },
-    navigator: {
-      userAgent: 'Deno',
-      platform: 'Deno',
-      includes: () => false
-    },
-    location: {},
-    setTimeout: setTimeout,
-    clearTimeout: clearTimeout,
-    DOMParser: class DOMParser {
-      parseFromString() {
-        return {
-          getElementsByTagName: () => []
-        };
-      }
-    },
-    Image: class Image {},
-    URL: URL,
-  };
-  globalThis.document = globalThis.window.document;
-  globalThis.navigator = globalThis.window.navigator;
-}
-
-// Initialize PDF.js
-const pdfjsLib = pdfjs;
-pdfjsLib.GlobalWorkerOptions = pdfjsLib.GlobalWorkerOptions || {};
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.worker.min.js';
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -283,6 +240,9 @@ async function convertDocToText(arrayBuffer) {
 
 // Function to extract text from PDF using PDF.js
 async function extractTextFromPdf(arrayBuffer) {
+  // Initialize PDF.js (may need to adjust based on environment)
+  const pdfjsLib = pdfjs;
+  
   try {
     // Load the PDF document
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
