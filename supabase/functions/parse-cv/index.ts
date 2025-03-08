@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import mammoth from "https://esm.sh/mammoth@1.6.0";
@@ -63,17 +62,40 @@ serve(async (req) => {
     const fileExtension = filePath.split('.').pop()?.toLowerCase();
 
     if (fileExtension === "docx") {
-      console.log("Word document detected, extracting text with mammoth");
+      console.log("Word DOCX document detected, extracting text with mammoth");
       const arrayBuffer = await fileData.arrayBuffer();
       const result = await mammoth.extractRawText({ arrayBuffer });
       extractedText = result.value;
       
-      // Log the full extracted text for debugging (note: this can be large)
       console.log("Full extracted text length:", extractedText.length);
       console.log("First 500 chars:", extractedText.substring(0, 500));
+    } 
+    else if (fileExtension === "doc") {
+      console.log("Word DOC document detected, using alternative parsing method");
+      try {
+        // Attempt to use mammoth for .doc files
+        const arrayBuffer = await fileData.arrayBuffer();
+        const result = await convertDocToText(arrayBuffer);
+        extractedText = result;
+      } catch (docError) {
+        console.error("Error parsing .doc file:", docError);
+        return new Response(JSON.stringify({ error: 'Error parsing .doc file format. Please convert to DOCX format for better compatibility.' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
+    }
+    else if (fileExtension === "pdf") {
+      console.log("PDF document detected - PDF processing is disabled");
+      return new Response(JSON.stringify({ 
+        error: 'PDF processing is currently disabled. Please upload your CV in DOCX format.' 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
     } else {
-      console.error("Unsupported file type (Only .docx is allowed):", fileExtension);
-      return new Response(JSON.stringify({ error: 'Unsupported file type (Only .docx is allowed)' }), {
+      console.error("Unsupported file type:", fileExtension);
+      return new Response(JSON.stringify({ error: `Unsupported file type: ${fileExtension}. Please upload your CV in DOCX format.` }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       });
@@ -161,7 +183,8 @@ serve(async (req) => {
         data: {
           skills,
           careerHistory,
-          education
+          education,
+          fileType: fileExtension
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -174,6 +197,32 @@ serve(async (req) => {
     });
   }
 });
+
+// Function to handle .doc files (Word 97-2003)
+async function convertDocToText(arrayBuffer) {
+  // Attempt to use mammoth with basic options
+  try {
+    // Try the standard mammoth extraction method first
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return result.value;
+  } catch (e) {
+    console.error("Standard mammoth extraction failed for .doc file", e);
+    
+    // If the standard method fails, try a more permissive approach
+    try {
+      // Some versions of mammoth support options for legacy formats
+      const result = await mammoth.extractRawText({ 
+        arrayBuffer,
+        // Using ignore errors option to be more permissive
+        options: { ignoreEmptyParagraphs: true }
+      });
+      return result.value;
+    } catch (innerError) {
+      console.error("Alternative .doc extraction failed:", innerError);
+      throw new Error("Unable to parse .DOC format. Please convert to DOCX format.");
+    }
+  }
+}
 
 function extractSkills(text: string): string[] {
   // Enhanced skill extraction with more comprehensive list and contextual understanding
