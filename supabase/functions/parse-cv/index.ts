@@ -1,7 +1,7 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import mammoth from "https://esm.sh/mammoth@1.6.0";
-import * as pdfjs from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.min.js';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -63,50 +63,17 @@ serve(async (req) => {
     const fileExtension = filePath.split('.').pop()?.toLowerCase();
 
     if (fileExtension === "docx") {
-      console.log("Word DOCX document detected, extracting text with mammoth");
+      console.log("Word document detected, extracting text with mammoth");
       const arrayBuffer = await fileData.arrayBuffer();
       const result = await mammoth.extractRawText({ arrayBuffer });
       extractedText = result.value;
       
+      // Log the full extracted text for debugging (note: this can be large)
       console.log("Full extracted text length:", extractedText.length);
       console.log("First 500 chars:", extractedText.substring(0, 500));
-    } 
-    else if (fileExtension === "doc") {
-      console.log("Word DOC document detected, using alternative parsing method");
-      // For .doc files we'll use a conversion service or fallback
-      try {
-        // First attempt: Try to use mammoth with a conversion wrapper
-        const arrayBuffer = await fileData.arrayBuffer();
-        // Note: Standard mammoth doesn't directly support .doc, but we can try
-        // This may require additional handling or conversion steps
-        const result = await convertDocToText(arrayBuffer);
-        extractedText = result;
-      } catch (docError) {
-        console.error("Error parsing .doc file:", docError);
-        return new Response(JSON.stringify({ error: 'Error parsing .doc file format' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        });
-      }
-    }
-    else if (fileExtension === "pdf") {
-      console.log("PDF document detected, extracting text with PDF.js");
-      try {
-        const arrayBuffer = await fileData.arrayBuffer();
-        extractedText = await extractTextFromPdf(arrayBuffer);
-        
-        console.log("Full extracted PDF text length:", extractedText.length);
-        console.log("First 500 chars from PDF:", extractedText.substring(0, 500));
-      } catch (pdfError) {
-        console.error("Error parsing PDF:", pdfError);
-        return new Response(JSON.stringify({ error: 'Error parsing PDF file' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        });
-      }
     } else {
-      console.error("Unsupported file type:", fileExtension);
-      return new Response(JSON.stringify({ error: `Unsupported file type: ${fileExtension}. Supported formats are .docx, .doc, and .pdf` }), {
+      console.error("Unsupported file type (Only .docx is allowed):", fileExtension);
+      return new Response(JSON.stringify({ error: 'Unsupported file type (Only .docx is allowed)' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       });
@@ -194,8 +161,7 @@ serve(async (req) => {
         data: {
           skills,
           careerHistory,
-          education,
-          fileType: fileExtension
+          education
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -208,64 +174,6 @@ serve(async (req) => {
     });
   }
 });
-
-// Function to handle .doc files (Word 97-2003)
-async function convertDocToText(arrayBuffer) {
-  // This is a placeholder for DOC conversion
-  // You'll need to implement or integrate a specific .doc parser
-  // Options include:
-  // 1. Using a service like textract (require Node.js environment)
-  // 2. Using a conversion API
-  // 3. Using a workaround with mammoth (if possible)
-  
-  // For now, we'll use a basic conversion approach
-  // This implementation depends on what's available in your environment
-  try {
-    // Try using mammoth with a compatibility wrapper if available
-    const result = await mammoth.extractRawText({ 
-      arrayBuffer,
-      // Some implementations support convertOldDoc option
-      convertOldDoc: true 
-    });
-    return result.value;
-  } catch (e) {
-    console.error("Basic .doc conversion failed, trying alternative method", e);
-    
-    // Alternative approach could be implemented here
-    // For example, using a specific .doc format parser library
-    
-    throw new Error("DOC format parsing not fully implemented. Consider converting to DOCX format.");
-  }
-}
-
-// Function to extract text from PDF using PDF.js
-async function extractTextFromPdf(arrayBuffer) {
-  // Initialize PDF.js (may need to adjust based on environment)
-  const pdfjsLib = pdfjs;
-  
-  try {
-    // Load the PDF document
-    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-    const pdf = await loadingTask.promise;
-    
-    let extractedText = '';
-    
-    // Iterate through each page to extract text
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      
-      // Join all the text items from the page
-      const pageText = textContent.items.map(item => item.str).join(' ');
-      extractedText += pageText + '\n\n';
-    }
-    
-    return extractedText;
-  } catch (error) {
-    console.error("PDF extraction error:", error);
-    throw error;
-  }
-}
 
 function extractSkills(text: string): string[] {
   // Enhanced skill extraction with more comprehensive list and contextual understanding
