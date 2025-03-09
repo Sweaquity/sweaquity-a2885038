@@ -76,18 +76,21 @@ export const ExpandedApplicationContent = ({
       {/* CV Link */}
       {application.cv_url && (
         <div>
-          <h4 className="text-sm font-semibold mb-1">CV:</h4>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="text-sm"
-            asChild
-          >
-            <a href={application.cv_url} target="_blank" rel="noopener noreferrer">
-              <FileText className="h-4 w-4 mr-1" />
-              View CV
-            </a>
-          </Button>
+         {application.cv_url && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          previewApplicationCV(application.cv_url!);
+                        }}
+                      >
+                        <FileText className="mr-1 h-4 w-4" />
+                        Download Application CV
+                      </Button>
+                    </div>
+                  )}
         </div>
       )}
       
