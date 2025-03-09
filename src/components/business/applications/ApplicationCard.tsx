@@ -9,7 +9,7 @@ import { ChevronDown, ChevronRight, Bell, CheckCircle, FileText } from "lucide-r
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAcceptedJobsCore, AcceptedJob } from "@/hooks/jobs/useAcceptedJobsCore";
 import { ExpandedApplicationContent } from "./ExpandedApplicationContent";
-import { downloadApplicationCV, previewApplicationCV } from "@/utils/setupStorage";
+import { previewApplicationCV } from "@/utils/setupStorage";
 
 interface ApplicationCardProps {
   application: Application;
@@ -94,21 +94,11 @@ export const ApplicationCard = ({
                     size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      downloadApplicationCV(application.cv_url!);
-                    }}
-                  >
-                    <FileText className="mr-1 h-4 w-4" />
-                    Download
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
                       previewApplicationCV(application.cv_url!);
                     }}
                   >
-                    View
+                    <FileText className="mr-1 h-4 w-4" />
+                    Download Application CV
                   </Button>
                 </div>
               </div>

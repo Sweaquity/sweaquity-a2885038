@@ -258,7 +258,7 @@ const BusinessDashboard = () => {
         </div>
 
         <Tabs defaultValue="account" className="space-y-6" onValueChange={handleTabChange}>
-          <TabsList className="h-auto p-1 grid grid-cols-1 md:flex md:flex-row md:justify-start w-full">
+          <TabsList className="w-full grid grid-cols-5 md:flex md:w-auto">
             <TabsTrigger value="account" className="px-3 py-1.5">
               Account
             </TabsTrigger>

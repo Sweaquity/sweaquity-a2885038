@@ -24,8 +24,8 @@ export const RejectedApplicationsTable = ({
       <TableHeader>
         <TableRow>
           <TableHead className="w-[200px]">Applicant</TableHead>
-          <TableHead>Role</TableHead>
-          <TableHead className="text-center">Date Rejected</TableHead>
+          <TableHead className="w-[200px]">Role</TableHead>
+          <TableHead className="text-center w-[150px]">Date Rejected</TableHead>
           <TableHead className="w-[80px]"></TableHead>
         </TableRow>
       </TableHeader>

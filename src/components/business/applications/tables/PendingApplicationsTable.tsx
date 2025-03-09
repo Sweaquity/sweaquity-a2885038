@@ -1,10 +1,11 @@
+
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Application } from "@/types/business";
-import { downloadApplicationCV, previewApplicationCV } from "@/utils/setupStorage";
+import { previewApplicationCV } from "@/utils/setupStorage";
 
 interface PendingApplicationsTableProps {
   applications: Application[];
@@ -28,7 +29,7 @@ export const PendingApplicationsTable = ({
           <TableHead className="w-[200px]">Applicant</TableHead>
           <TableHead>Role</TableHead>
           <TableHead className="text-center">Skills Match</TableHead>
-          <TableHead className="text-center">Status</TableHead>
+          <TableHead className="text-center w-[150px]">Status</TableHead>
           <TableHead className="w-[80px]"></TableHead>
         </TableRow>
       </TableHeader>
@@ -128,21 +129,11 @@ export const PendingApplicationsTable = ({
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          downloadApplicationCV(application.cv_url!);
-                        }}
-                      >
-                        <FileText className="mr-1 h-4 w-4" />
-                        Download CV
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
                           previewApplicationCV(application.cv_url!);
                         }}
                       >
-                        View CV
+                        <FileText className="mr-1 h-4 w-4" />
+                        Download Application CV
                       </Button>
                     </div>
                   )}

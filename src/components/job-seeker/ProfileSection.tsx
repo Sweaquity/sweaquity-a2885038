@@ -5,6 +5,7 @@ import { CareerHistoryCard } from "./career/CareerHistoryCard";
 import { EducationCard } from "./career/EducationCard";
 import { ProfileEditor } from "./profile/ProfileEditor";
 import { CurrentPositionCard } from "./career/CurrentPositionCard";
+import { CareerHistoryDisplay } from "./career/CareerHistoryDisplay";
 import { Profile, Skill } from "@/types/jobSeeker";
 import { CVFile } from "@/hooks/job-seeker/useCVData";
 
@@ -54,10 +55,9 @@ export const ProfileSection = ({
         skills={skills}
         onSkillsUpdate={onSkillsUpdate}
       />
-      <CareerHistoryCard 
+      <CareerHistoryDisplay
         careerHistory={parsedCvData?.career_history || []}
-      />
-      <EducationCard 
+        skills={skills}
         education={parsedCvData?.education || []}
       />
     </div>

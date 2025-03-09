@@ -61,39 +61,87 @@ export const downloadCV = async (userId: string, fileName: string, bucketName = 
 
 export const downloadApplicationCV = async (cvUrl: string) => {
   try {
-    // Extract the file path from the URL
-    // This should handle both public URLs and direct storage paths
-    let userId, fileName;
+    if (!cvUrl) {
+      toast.error("CV URL is not available");
+      return false;
+    }
     
-    if (cvUrl.includes('/job_applications/')) {
-      // Parse from URL format
-      const urlParts = cvUrl.split('/job_applications/');
-      const pathPart = urlParts[urlParts.length - 1];
-      const pathSegments = pathPart.split('/');
-      
-      if (pathSegments.length >= 2) {
-        userId = pathSegments[0];
-        fileName = pathSegments[1].split('?')[0]; // Remove any query params
-      } else {
-        throw new Error("Invalid CV URL format");
+    console.log("Downloading CV from URL:", cvUrl);
+    
+    // For direct download, try to fetch the file directly
+    try {
+      const response = await fetch(cvUrl);
+      if (response.ok) {
+        const blob = await response.blob();
+        const fileName = cvUrl.split('/').pop()?.split('?')[0] || 'cv.pdf';
+        
+        // Create a temporary URL for the blob
+        const url = URL.createObjectURL(blob);
+        
+        // Create a temporary link to trigger download
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        
+        // Clean up
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        return true;
       }
+    } catch (fetchError) {
+      console.log("Direct fetch failed, trying storage API:", fetchError);
+    }
+    
+    // If direct fetch failed, try to use the Supabase storage API
+    // Extract the application ID and filename from the URL
+    const match = cvUrl.match(/job_applications\/([^\/]+)\/([^\/\?]+)/);
+    
+    if (match && match.length >= 3) {
+      const applicationId = match[1];
+      const encodedFileName = match[2];
+      
+      // Decode the filename (only once)
+      const fileName = decodeURIComponent(encodedFileName);
+      
+      console.log("Downloading from job_applications bucket:", applicationId, fileName);
+      
+      // Construct the path for the storage download
+      const filePath = `${applicationId}/${fileName}`;
+      
+      // Download using the storage API
+      const { data, error } = await supabase.storage
+        .from('job_applications')
+        .download(filePath);
+        
+      if (error) {
+        throw error;
+      }
+      
+      // Create a temporary URL for the blob
+      const url = URL.createObjectURL(data);
+      
+      // Create a temporary link to trigger download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      return true;
     } else {
-      // Try direct extraction as fallback
-      const urlObj = new URL(cvUrl);
-      const pathParts = urlObj.pathname.split('/');
-      userId = pathParts[pathParts.length - 2];
-      fileName = pathParts[pathParts.length - 1];
+      toast.error("Invalid CV URL format");
+      return false;
     }
-    
-    if (!userId || !fileName) {
-      throw new Error("Could not determine user ID or filename from URL");
-    }
-    
-    console.log("Downloading CV for user:", userId, "filename:", fileName);
-    return await downloadCV(userId, fileName, 'job_applications');
   } catch (error: any) {
     console.error("Failed to download application CV:", error);
-    toast.error("Failed to download application CV");
+    toast.error("Failed to download CV: " + (error.message || "Unknown error"));
     return false;
   }
 };
@@ -164,52 +212,17 @@ export const previewCV = async (userId: string, fileName: string, bucketName = '
 };
 
 export const previewApplicationCV = async (cvUrl: string) => {
-  try {
-    if (!cvUrl) return false;
-    
-    console.log("Original CV URL:", cvUrl); // For debugging
-    
-    // Extract just the application ID and filename
-    const match = cvUrl.match(/job_applications\/([^\/]+)\/([^\/\?]+)/);
-    
-    if (match && match.length >= 3) {
-      const applicationId = match[1];
-      const encodedFileName = match[2];
-      
-      // Decode the filename (only once)
-      const fileName = decodeURIComponent(encodedFileName);
-      
-      console.log("ApplicationID:", applicationId, "Filename:", fileName);
-      
-      // Construct the correct path
-      const filePath = `${applicationId}/${fileName}`;
-      
-      console.log("Attempting to access path:", filePath);
-      
-      // Get a signed URL (works better for various file types)
-      const { data, error } = await supabase.storage
-        .from('job_applications')
-        .createSignedUrl(filePath, 300); // 5 minutes validity
-        
-      if (error) {
-        console.error("Signed URL error:", error);
-        throw error;
-      }
-      
-      if (data?.signedUrl) {
-        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
-        return true;
-      }
-    } else {
-      // As fallback, try with original URL
-      window.open(cvUrl, '_blank', 'noopener,noreferrer');
-      return true;
-    }
-    
+  if (!cvUrl) {
+    toast.error("CV URL is not available");
     return false;
+  }
+  
+  try {
+    // Try to download the CV instead of previewing
+    return await downloadApplicationCV(cvUrl);
   } catch (error: any) {
-    console.error("Failed to preview application CV:", error);
-    toast.error("Failed to preview CV: " + (error.message || "Unknown error"));
+    console.error("Failed to download application CV:", error);
+    toast.error("Failed to download CV: " + (error.message || "Unknown error"));
     return false;
   }
 };
