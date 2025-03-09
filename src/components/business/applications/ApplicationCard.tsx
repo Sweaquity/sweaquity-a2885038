@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Application } from "@/types/business";
-import { ChevronDown, ChevronRight, Bell, CheckCircle, FileText } from "lucide-react";
+import { ChevronDown, ChevronRight, Bell, CheckCircle, FileText, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAcceptedJobsCore, AcceptedJob } from "@/hooks/jobs/useAcceptedJobsCore";
 import { ExpandedApplicationContent } from "./ExpandedApplicationContent";
@@ -15,15 +15,18 @@ interface ApplicationCardProps {
   isExpanded: boolean;
   toggleExpand: () => void;
   openAcceptJobDialog: (application: Application) => void;
+  handleStatusChange: (applicationId: string, newStatus: string) => Promise<void>;
 }
 
 export const ApplicationCard = ({
   application,
   isExpanded,
   toggleExpand,
-  openAcceptJobDialog
+  openAcceptJobDialog,
+  handleStatusChange
 }: ApplicationCardProps) => {
   const [acceptedJob, setAcceptedJob] = useState<AcceptedJob | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null);
   const { getAcceptedJob } = useAcceptedJobsCore(() => {
     loadAcceptedJob();
   });
@@ -50,6 +53,17 @@ export const ApplicationCard = ({
     e.stopPropagation();
     if (application.cv_url) {
       previewApplicationCV(application.cv_url);
+    }
+  };
+
+  // Handle status change with loading state
+  const onStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.stopPropagation();
+    setIsUpdatingStatus(application.job_app_id);
+    try {
+      await handleStatusChange(application.job_app_id, e.target.value);
+    } finally {
+      setIsUpdatingStatus(null);
     }
   };
   
@@ -82,13 +96,22 @@ export const ApplicationCard = ({
             
             <div className="flex items-center space-x-2">
               <span className="font-semibold">Status:</span>
-              <Badge className={
-                application.status.toLowerCase() === 'accepted' 
-                  ? 'bg-green-100 text-green-800 border-green-300'
-                  : 'bg-amber-100 text-amber-800 border-amber-300'
-              }>
-                {application.status}
-              </Badge>
+              <div className="flex items-center">
+                <select 
+                  className="px-2 py-1 border rounded text-sm bg-white"
+                  value={application.status}
+                  onChange={onStatusChange}
+                  onClick={(e) => e.stopPropagation()}
+                  disabled={isUpdatingStatus === application.job_app_id}
+                >
+                  <option value="negotiation">Negotiation</option>
+                  <option value="accepted">Accepted</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                {isUpdatingStatus === application.job_app_id && (
+                  <Loader2 className="animate-spin ml-2 h-4 w-4" />
+                )}
+              </div>
             </div>
             
             <div className="flex items-center space-x-2">
