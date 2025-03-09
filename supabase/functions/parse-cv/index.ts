@@ -647,23 +647,53 @@ function extractEducation(text: string): any[] {
   let currentEducation: any = {};
   let inEducationSection = false;
   
-  // Education keywords
+  // Education keywords - expanded
   const educationKeywords = [
     'bachelor', 'master', 'phd', 'doctorate', 'mba', 'bsc', 'ba', 'ma', 'ms', 'msc',
     'degree', 'diploma', 'certificate', 'certification', 'university', 'college', 'school',
-    'institute', 'academy'
+    'institute', 'academy', 'b.a.', 'b.s.', 'b.sc.', 'm.a.', 'm.s.', 'm.sc.', 'ph.d.', 
+    'postgraduate', 'undergraduate', 'graduate', 'high school', 'secondary school',
+    'technical college', 'vocational training', 'hnd', 'btec', 'associate', 'a.a.',
+    'continuing education', 'professional development', 'fellowship', 'scholarship',
+    'honors', 'honours', 'cum laude', 'magna cum laude', 'summa cum laude',
+    'first class', 'second class', 'upper second', 'lower second', 'third class', 'distinction'
   ];
   
-  // Education section headers
+  // Education section headers - expanded
   const educationHeaders = [
     'education', 'academic background', 'qualifications', 'academic qualifications',
-    'educational background', 'academic history'
+    'educational background', 'academic history', 'training', 'formal education',
+    'educational qualifications', 'academic training', 'academic credentials',
+    'education and training', 'academic achievements', 'certifications',
+    'course work', 'coursework', 'degrees', 'academic degrees'
   ];
   
-  // Date patterns
+  // Field of study keywords
+  const fieldOfStudyKeywords = [
+    'computer science', 'engineering', 'business', 'management', 'economics', 'finance',
+    'marketing', 'psychology', 'biology', 'chemistry', 'physics', 'mathematics', 'law',
+    'medicine', 'nursing', 'pharmacy', 'education', 'arts', 'humanities', 'social sciences',
+    'political science', 'international relations', 'communication', 'graphic design',
+    'mechanical', 'electrical', 'civil', 'information technology', 'data science',
+    'artificial intelligence', 'machine learning', 'cybersecurity', 'networking',
+    'systems', 'software engineering', 'web development', 'multimedia', 'architecture'
+  ];
+  
+  // Types of degrees and qualifications
+  const degreeTypes = [
+    'bachelor of', 'master of', 'doctor of', 'bachelor\'s in', 'master\'s in', 'doctorate in',
+    'phd in', 'certificate in', 'diploma in', 'degree in', 'studies in'
+  ];
+  
+  // Expanded date patterns
   const datePatterns = [
     /\b\d{4}\s*(-|–|to)\s*\d{4}\b/,
-    /\b\d{4}\s*(-|–|to)\s*present\b/i
+    /\b\d{4}\s*(-|–|to)\s*present\b/i,
+    /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* \d{4}\s*(-|–|to)\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* \d{4}\b/i,
+    /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* \d{4}\s*(-|–|to)\s*present\b/i,
+    /\b\d{1,2}\/\d{4}\s*(-|–|to)\s*\d{1,2}\/\d{4}\b/,
+    /\b\d{1,2}\/\d{4}\s*(-|–|to)\s*present\b/i,
+    /\b\d{4}\b/ // Single year that might indicate graduation date
   ];
   
   for (let i = 0; i < lines.length; i++) {
