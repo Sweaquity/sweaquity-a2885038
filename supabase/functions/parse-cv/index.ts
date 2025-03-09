@@ -298,7 +298,7 @@ function extractSkills(text: string): string[] {
       'verbal communication', 'written communication', 'adaptability', 'resilience', 'creativity',
       'innovation', 'persuasion', 'influencing', 'networking', 'relationship building', 
       'cultural intelligence', 'organizational skills', 'self-motivation', 'work ethic', 'integrity',
-      'attention to detail', 'active listening', 'empathy', 'flexibility'
+      'attention to detail', 'active listening', 'empathy', 'flexibility', 'modelling', 'delivery'
     ],
     // Cybersecurity & Information Security
     security: [
