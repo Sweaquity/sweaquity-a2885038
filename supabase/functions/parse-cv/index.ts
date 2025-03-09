@@ -193,58 +193,134 @@ function extractSkills(text: string): string[] {
   
   // Define skill categories with related terms
   const skillCategories = {
+   const skillCategories = {
     // Programming Languages
     programmingLanguages: [
       'javascript', 'typescript', 'python', 'java', 'c\\+\\+', 'c#', 'ruby', 'php', 'swift', 'kotlin', 
-      'golang', ' rust', 'scala', 'perl', 'haskell', 'dart', ' r', 'matlab'
+      'golang', 'go', 'rust', 'scala', 'perl', 'haskell', 'dart', 'r', 'matlab', 'fortran', 'cobol',
+      'assembly', 'objective-c', 'lua', 'clojure', 'groovy', 'powershell', 'bash', 'shell', 'vba',
+      'lisp', 'delphi', 'abap', 'apex', 'crystal', 'erlang', 'f#', 'ocaml', 'solidity', 'elm'
     ],
     // Web Technologies
     webTech: [
-      'html', 'css', 'react', 'angular', 'vue', 'node.js', 'express', 'next.js', 'gatsby',
-      'jquery', 'bootstrap', 'tailwind', 'material-ui', 'webpack', 'graphql', 'apollo', 'redux',
-      'svelte', 'ember', 'backbone', 'sass', 'less', 'styled-components', 'pwa'
+      'html', 'css', 'html5', 'css3', 'react', 'angular', 'vue', 'node.js', 'express', 'next.js', 'gatsby',
+      'jquery', 'bootstrap', 'tailwind', 'material-ui', 'mui', 'webpack', 'graphql', 'apollo', 'redux',
+      'svelte', 'ember', 'backbone', 'sass', 'less', 'styled-components', 'pwa', 'jamstack', 'storybook',
+      'parcel', 'rollup', 'vite', 'astro', 'webgl', 'three.js', 'web components', 'web assembly', 'wasm',
+      'axios', 'fetch api', 'websockets', 'service workers', 'pwa', 'ssr', 'ssg', 'csr', 'oauth',
+      'jwt', 'web accessibility', 'responsive design', 'web security', 'cors', 'rest api', 'restful',
+      'seo', 'amp', 'babel', 'handlebars', 'ejs', 'pug', 'jade', 'nuxt.js', 'remix', 'webpack 5',
+      'json', 'xml', 'yaml', 'markdown', 'tailwindcss', 'bulma', 'chakra ui', 'ant design', 'radix ui'
     ],
     // Databases
     databases: [
       'mongodb', 'sql', 'postgresql', 'mysql', 'oracle', 'redis', 'elasticsearch',
-      'mariadb', 'sqlite', 'dynamodb', 'cassandra', 'couchdb', 'firebase', 'supabase'
+      'mariadb', 'sqlite', 'dynamodb', 'cassandra', 'couchdb', 'firebase', 'supabase',
+      'neo4j', 'graphdb', 'influxdb', 'timescaledb', 'cosmosdb', 'cockroachdb', 'mssql',
+      'sql server', 'bigtable', 'firestore', 'realm', 'objectbox', 'couchbase', 'rethinkdb',
+      'snowflake', 'clickhouse', 'bigtable', 'hbase', 'nosql', 'jdbc', 'jpa', 'hibernate',
+      'sequelize', 'prisma', 'typeorm', 'mongoose', 'database design', 'data modeling',
+      'database administration', 'dba', 'planetscale', 'database optimization', 'database migration'
     ],
     // Cloud & DevOps
     cloudDevOps: [
-      'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'jenkins', 'terraform',
+      'aws', 'azure', 'gcp', 'google cloud', 'cloud computing', 'docker', 'kubernetes', 'k8s', 'jenkins', 'terraform',
       'gitlab ci', 'github actions', 'travis ci', 'circle ci', 'ansible', 'chef', 'puppet',
-      'prometheus', 'grafana', 'istio', 'envoy', 'consul'
+      'prometheus', 'grafana', 'istio', 'envoy', 'consul', 'vault', 'nomad', 'pulumi', 'cloudformation',
+      'serverless', 'lambda', 'azure functions', 'cloud functions', 'heroku', 'digital ocean', 'linode',
+      'vercel', 'netlify', 'aws amplify', 'cloudflare', 'cdn', 'ci/cd', 'continuous integration', 'continuous delivery',
+      'infrastructure as code', 'iac', 'site reliability engineering', 'sre', 'devops', 'devsecops', 'gitops',
+      'platform engineering', 'argocd', 'aws ec2', 's3', 'rds', 'vpc', 'aws iam', 'aws cloudfront',
+      'aws lambda', 'azure vm', 'azure storage', 'gcp compute engine', 'gcp big query', 'cloud storage',
+      'service mesh', 'logging', 'monitoring', 'observability', 'chaos engineering', 'container orchestration',
+      'helm', 'openshift', 'rancher', 'cloud native'
     ],
     // Version Control
     versionControl: [
-      'git', 'github', 'gitlab', 'bitbucket', 'mercurial', 'svn'
+      'git', 'github', 'gitlab', 'bitbucket', 'mercurial', 'svn', 'subversion', 'cvs',
+      'perforce', 'azure devops', 'tfs', 'version control', 'source control', 'gitflow',
+      'trunk based development', 'merge', 'rebase', 'branch', 'commit', 'pull request', 'code review'
     ],
     // Project Management
     projectManagement: [
       'agile', 'scrum', 'kanban', 'jira', 'trello', 'asana', 'basecamp', 'monday',
-      'waterfall', 'prince2', 'pmp', 'lean', 'six sigma'
+      'waterfall', 'prince2', 'pmp', 'lean', 'six sigma', 'itil', 'pmbok', 'product management',
+      'product owner', 'project manager', 'scrum master', 'sprint planning', 'retrospective', 'daily standup',
+      'okrs', 'kpis', 'requirements gathering', 'user stories', 'epics', 'roadmap', 'sprint', 'backlog',
+      'confluence', 'notion', 'smartsheet', 'project planning', 'resource allocation', 'gantt chart',
+      'risk management', 'stakeholder management', 'delivery management', 'clickup', 'linear', 'aha',
+      'project scheduling', 'wrike', 'atlassian', 'program management', 'portfolio management'
     ],
     // Design
     design: [
       'photoshop', 'illustrator', 'figma', 'sketch', 'adobe xd', 'indesign', 'ui design',
-      'ux design', 'user research', 'wireframing', 'prototyping'
+      'ux design', 'user research', 'wireframing', 'prototyping', 'graphic design', 'visual design',
+      'interaction design', 'user interface', 'user experience', 'usability testing', 'a/b testing',
+      'product design', 'web design', 'mobile design', 'responsive design', 'accessibility', 'wcag',
+      'typography', 'color theory', 'design systems', 'design thinking', 'information architecture',
+      'user journey', 'user flow', 'persona', 'storyboarding', 'adobe creative suite', 'zeplin',
+      'invision', 'principle', 'framer', 'after effects', 'motion design', 'animation',
+      'design tokens', 'atomic design', 'affinity designer', 'procreate', 'blender', 'cinema 4d'
     ],
     // Mobile Development
     mobileDev: [
       'android', 'ios', 'react native', 'flutter', 'xamarin', 'ionic', 'cordova',
-      'objective-c', 'swift ui', 'kotlin multiplatform', 'jetpack compose'
+      'objective-c', 'swift ui', 'kotlin multiplatform', 'jetpack compose', 'android studio',
+      'xcode', 'mobile app development', 'app store', 'google play', 'push notifications',
+      'deep linking', 'mobile ui', 'mobile ux', 'responsive design', 'progressive web app',
+      'offline first', 'mobile testing', 'app performance', 'app accessibility', 'app security',
+      'in-app purchase', 'mobile analytics', 'firebase', 'appium', 'test flight', 'mobile ci/cd',
+      'arkit', 'arcore', 'widgets', 'mobile gestures', 'location services', 'bluetooth', 'nfc'
     ],
     // Data Science & AI
     dataScience: [
-      'machine learning', 'deep learning', 'natural language processing', 'computer vision',
+      'machine learning', 'deep learning', 'natural language processing', 'nlp', 'computer vision',
       'data mining', 'data visualization', 'statistical analysis', 'tensorflow', 'pytorch',
-      'scikit-learn', 'pandas', 'numpy', 'keras', 'opencv', 'spacy', 'nltk'
+      'scikit-learn', 'pandas', 'numpy', 'keras', 'opencv', 'spacy', 'nltk', 'hugging face',
+      'transformers', 'bert', 'gpt', 'neural networks', 'reinforcement learning', 'supervised learning',
+      'unsupervised learning', 'feature engineering', 'data preprocessing', 'big data', 'hadoop',
+      'spark', 'tableau', 'power bi', 'looker', 'data studio', 'jupyter', 'r studio', 'data science',
+      'predictive modeling', 'regression', 'classification', 'clustering', 'anomaly detection',
+      'time series analysis', 'recommendation systems', 'a/b testing', 'statistics', 'probability',
+      'ai ethics', 'responsible ai', 'data ethics', 'chatgpt', 'llm', 'large language models',
+      'generative ai', 'artificial intelligence', 'ai', 'ml ops', 'data pipeline', 'etl',
+      'model deployment', 'feature store', 'model monitoring', 'experiment tracking', 'mlflow'
     ],
     // Business & Soft Skills
     businessSkills: [
-      'leadership', 'leadershing', 'communication', 'communicating', 'teamwork', 'problem solving', 'critical thinking',
-      'time management', 'managing teams', 'negotiation', 'negotiating', 'presentation', 'presentating', 'public speaking', 'stakeholder management',
-      'managing stakeholders', 'business development', 'sales', 'marketing', 'finance', 'accounting', 'hr', 'human resourses'
+      'leadership', 'communication', 'teamwork', 'problem solving', 'critical thinking',
+      'time management', 'managing teams', 'negotiation', 'presentation', 'public speaking', 
+      'stakeholder management', 'business development', 'sales', 'marketing', 'finance', 'accounting', 
+      'hr', 'human resources', 'strategic planning', 'decision making', 'change management', 
+      'conflict resolution', 'emotional intelligence', 'coaching', 'mentoring', 'delegation', 
+      'cross-functional collaboration', 'cultural awareness', 'client relations', 'customer service',
+      'business analysis', 'process improvement', 'strategic thinking', 'analytical thinking',
+      'verbal communication', 'written communication', 'adaptability', 'resilience', 'creativity',
+      'innovation', 'persuasion', 'influencing', 'networking', 'relationship building', 
+      'cultural intelligence', 'organizational skills', 'self-motivation', 'work ethic', 'integrity',
+      'attention to detail', 'active listening', 'empathy', 'flexibility'
+    ],
+    // Cybersecurity & Information Security
+    security: [
+      'cybersecurity', 'infosec', 'security', 'penetration testing', 'pen testing', 'ethical hacking',
+      'vulnerability assessment', 'siem', 'incident response', 'threat hunting', 'security architecture',
+      'web application security', 'network security', 'cloud security', 'devsecops', 'security compliance',
+      'gdpr', 'ccpa', 'hipaa', 'pci dss', 'iso 27001', 'soc 2', 'risk assessment', 'security audit',
+      'cryptography', 'encryption', 'identity management', 'access control', 'oauth', 'oidc', 'saml',
+      'firewall', 'vpn', 'ips', 'ids', 'dlp', 'security awareness', 'security operations', 'soc',
+      'blue team', 'red team', 'purple team', 'osint', 'security+', 'cissp', 'ceh', 'oscp', 'zero trust'
+    ],
+    // Testing & QA
+    testing: [
+      'quality assurance', 'qa', 'testing', 'test automation', 'manual testing', 'selenium',
+      'cypress', 'playwright', 'puppeteer', 'jest', 'mocha', 'jasmine', 'pytest', 'junit',
+      'testng', 'test cases', 'test plans', 'test strategy', 'test management', 'bug tracking',
+      'regression testing', 'functional testing', 'performance testing', 'load testing', 'stress testing',
+      'security testing', 'penetration testing', 'accessibility testing', 'usability testing',
+      'test-driven development', 'tdd', 'behavior-driven development', 'bdd', 'cucumber', 'gherkin',
+      'end-to-end testing', 'e2e testing', 'unit testing', 'integration testing', 'api testing',
+      'postman', 'soapui', 'jmeter', 'gatling', 'locust', 'test automation framework', 'continuous testing',
+      'shift left testing', 'quality engineering', 'testcontainers', 'mock testing', 'stub testing'
     ]
   };
 
@@ -274,16 +350,21 @@ function extractSkills(text: string): string[] {
   });
   
   // Look for contextual mentions (skills with additional words)
-  const contextualIndicators = [
+ const contextualIndicators = [
     'proficient in', 'skilled in', 'experienced with', 'knowledge of', 'expertise in',
-    'familiar with', 'worked with', 'developed with', 'using', 'utilized', 'implemented', 'achievements', 'achieved'
+    'familiar with', 'worked with', 'developed with', 'using', 'utilized', 'implemented', 
+    'achievements', 'achieved', 'responsible for', 'accountable for', 'managed', 'built', 
+    'created', 'designed', 'developed', 'deployed', 'maintained', 'optimized', 'advanced', 
+    'expert in', 'certified in', 'trained in', 'competent in', 'comfortable with', 'delivered',
+    'led', 'coordinated', 'orchestrated', 'spearheaded', 'drove', 'executed', 'hands-on',
+    'technical skills', 'tech stack', 'technology stack'
   ];
   
   contextualIndicators.forEach(indicator => {
     const indicatorPos = textLower.indexOf(indicator);
     if (indicatorPos !== -1) {
       // Look at the text following the indicator
-      const followingText = textLower.substring(indicatorPos + indicator.length, indicatorPos + indicator.length + 100);
+      const followingText = textLower.substring(indicatorPos + indicator.length, indicatorPos + indicator.length + 150);
       allSkills.forEach(skill => {
         if (followingText.includes(skill)) {
           foundSkills.add(skill);
@@ -291,6 +372,41 @@ function extractSkills(text: string): string[] {
       });
     }
   });
+
+  
+  // Add skills from common CV sections
+  const skillSectionHeaders = [
+    'skills', 'technical skills', 'core competencies', 'competencies', 'expertise',
+    'technologies', 'key skills', 'professional skills', 'qualifications',
+    'technical expertise', 'proficiencies', 'specialties', 'strengths',
+    'capabilities', 'tech stack', 'tools', 'technical tools', 'software'
+  ];
+  
+  for (const header of skillSectionHeaders) {
+    const pattern = new RegExp(`${header}[:\\s]*([^]*?)(?:\\n\\n|\\n[A-Z]|$)`, 'i');
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      const skillSection = match[1].toLowerCase();
+      allSkills.forEach(skill => {
+        if (skillSection.includes(skill)) {
+          foundSkills.add(skill);
+        }
+      });
+    }
+  }
+
+  // Extract skills from bullet points in job descriptions
+  const bulletMatches = text.match(/(?:•|-|\*|\d+\.)\s*([^\n]+)/g);
+  if (bulletMatches) {
+    bulletMatches.forEach(bullet => {
+      const bulletText = bullet.toLowerCase();
+      allSkills.forEach(skill => {
+        if (bulletText.includes(skill)) {
+          foundSkills.add(skill);
+        }
+      });
+    });
+  }
   
   // Add skills from skill sections (where "Skills" is mentioned)
   const skillSectionMatch = text.match(/skills[:\s]*([^]*?)(?:\n\n|\n[A-Z]|$)/i);
@@ -306,14 +422,26 @@ function extractSkills(text: string): string[] {
   // Add frameworks and libraries based on language mentions
   // For instance, if "JavaScript" is found, we might infer React, Angular, etc.
   const frameworkAssociations: Record<string, string[]> = {
-    'javascript': ['react', 'angular', 'vue', 'node.js', 'express'],
-    'python': ['django', 'flask', 'fastapi', 'pandas', 'numpy'],
-    'java': ['spring', 'hibernate', 'junit', 'maven', 'gradle'],
-    'c#': ['asp.net', '.net core', 'xamarin', 'unity'],
-    'php': ['laravel', 'symfony', 'wordpress', 'drupal']
+    'javascript': ['react', 'angular', 'vue', 'node.js', 'express', 'next.js', 'typescript'],
+    'python': ['django', 'flask', 'fastapi', 'pandas', 'numpy', 'tensorflow', 'pytorch'],
+    'java': ['spring', 'hibernate', 'junit', 'maven', 'gradle', 'spring boot', 'microservices'],
+    'c#': ['asp.net', '.net core', '.net', 'xamarin', 'unity', 'blazor', 'entity framework'],
+    'php': ['laravel', 'symfony', 'wordpress', 'drupal', 'composer', 'magento', 'zend'],
+    'ruby': ['rails', 'sinatra', 'rspec', 'capybara', 'rake', 'gems'],
+    'go': ['gin', 'echo', 'gorilla', 'gorm', 'cobra', 'buffalo'],
+    'rust': ['actix', 'rocket', 'tokio', 'serde', 'wasm'],
+    'kotlin': ['spring boot', 'android', 'ktor', 'coroutines', 'retrofit'],
+    'swift': ['ios', 'uikit', 'swiftui', 'core data', 'combine', 'cocoapods'],
+    'html': ['css', 'javascript', 'responsive design', 'bootstrap', 'tailwind'],
+    'css': ['sass', 'less', 'styled-components', 'css modules', 'css-in-js'],
+    'aws': ['lambda', 's3', 'ec2', 'dynamodb', 'cloudformation', 'iam', 'cloudfront'],
+    'azure': ['azure functions', 'azure devops', 'app service', 'cosmos db', 'azure storage'],
+    'gcp': ['cloud functions', 'app engine', 'big query', 'cloud storage', 'gke'],
+    'android': ['kotlin', 'java', 'jetpack', 'room', 'compose', 'material design'],
+    'ios': ['swift', 'objective-c', 'swiftui', 'uikit', 'core data']
   };
   
-  // For each language found, check if frameworks are mentioned
+  // For each language found, check if frameworks are mentioned in the text or can be inferred
   foundSkills.forEach(skill => {
     const frameworks = frameworkAssociations[skill];
     if (frameworks) {
@@ -328,39 +456,37 @@ function extractSkills(text: string): string[] {
   return Array.from(foundSkills);
 }
 
-function extractCareerHistory(text: string): any[] {
-  const careerHistory = [];
-  const lines = text.split('\n');
-  let currentRole: any = {};
-  let inJobSection = false;
-  
-  // Common job title keywords
-  const jobTitleKeywords = [
-    'engineer', 'developer', 'manager', 'director', 'lead', 'architect', 'consultant',
-    'specialist', 'analyst', 'coordinator', 'associate', 'executive', 'administrator',
-    'designer', 'researcher', 'officer', 'supervisor', 'head of', 'chief', 'vp',
-    'president', 'founder', 'co-founder', 'intern', 'assistant'
-  ];
-  
-  // Look for a work experience section
-  const workExperienceHeaders = [
-    'work experience', 'professional experience', 'employment history', 
-    'career history', 'experience', 'employment', 'work history', 'career summary'
-  ];
+  return Array.from(foundSkills);
 
   // Regex patterns for dates
   const datePatterns = [
     /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* \d{4}\s*(-|–|to)\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* \d{4}\b/i,
     /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* \d{4}\s*(-|–|to)\s*present\b/i,
     /\b\d{4}\s*(-|–|to)\s*\d{4}\b/,
-    /\b\d{4}\s*(-|–|to)\s*present\b/i
+    /\b\d{4}\s*(-|–|to)\s*present\b/i,
+      // MM/YYYY - MM/YYYY
+    /\b\d{1,2}\/\d{4}\s*(-|–|—|to|through|until)\s*\d{1,2}\/\d{4}\b/i,
+    // MM/YYYY - Present
+    /\b\d{1,2}\/\d{4}\s*(-|–|—|to|through|until|-)?\s*(present|current|now|ongoing)\b/i,
+    // YYYY/MM - YYYY/MM
+    /\b\d{4}\/\d{1,2}\s*(-|–|—|to|through|until)\s*\d{4}\/\d{1,2}\b/i,
+    // YYYY/MM - Present
+    /\b\d{4}\/\d{1,2}\s*(-|–|—|to|through|until|-)?\s*(present|current|now|ongoing)\b/i
   ];
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     
     // Skip empty lines
-    if (!line) continue;
+    if (!line) {
+      // If we're collecting job description and hit an empty line, it might be the end of the section
+      if (jobDescriptionMode && jobDescriptionBullets.length > 0) {
+        jobDescriptionMode = false;
+        currentRole.descriptionBullets = [...jobDescriptionBullets];
+        jobDescriptionBullets = [];
+      }
+      continue;
+    }
     
     // Check if we're entering a work experience section
     if (!inJobSection) {
@@ -373,36 +499,90 @@ function extractCareerHistory(text: string): any[] {
     
     // Look for date patterns that often indicate job entries
     const hasDatePattern = datePatterns.some(pattern => pattern.test(line));
+
+     // Look for date patterns that often indicate job entries
+    const hasDatePattern = datePatterns.some(pattern => pattern.test(line));
+    
+    // Look for bullet points indicating job responsibilities/achievements
+    if (line.match(/^[•\-*]|^\d+\./) && currentRole.title) {
+      jobDescriptionBullets.push(line.replace(/^[•\-*]|^\d+\./, '').trim());
+      jobDescriptionMode = true;
+      continue;
+    }
     
     // Look for lines that might contain job titles
     const isJobTitle = jobTitleKeywords.some(keyword => 
       line.toLowerCase().includes(keyword)
-    );
+    ) && !line.startsWith('•') && !line.startsWith('-') && !line.startsWith('*');
     
     if ((isJobTitle || hasDatePattern) && (inJobSection || !currentRole.title)) {
       // If we've collected information about a previous role, save it
       if (currentRole.title && (currentRole.company || currentRole.duration)) {
+        // Save any remaining description bullets
+        if (jobDescriptionBullets.length > 0) {
+          currentRole.descriptionBullets = [...jobDescriptionBullets];
+          jobDescriptionBullets = [];
+        }
+        
+        // Try to detect job location if not already found
+        if (!currentRole.location) {
+          // Look for common location patterns in the description or title
+          for (const field of ['title', 'company', 'duration', 'description']) {
+            if (currentRole[field]) {
+              const locationMatch = currentRole[field].match(/(remote|hybrid|on-site|in-house|work from home|wfh|[\w\s]+,\s*[A-Z]{2}|[\w\s]+,\s*[A-Za-z\s]+)/i);
+              if (locationMatch) {
+                currentRole.location = locationMatch[0].trim();
+                break;
+              }
+            }
+          }
+        }
+        
         careerHistory.push({...currentRole});
         currentRole = {};
+        jobDescriptionMode = false;
       }
       
       // Start a new role
       if (isJobTitle) {
         currentRole.title = line;
-      }
-      
-      // Look for company name in the surrounding lines
-      for (let j = Math.max(0, i - 1); j <= Math.min(i + 1, lines.length - 1); j++) {
-        const nearbyLine = lines[j].trim();
-        if (j !== i && nearbyLine && !jobTitleKeywords.some(kw => nearbyLine.toLowerCase().includes(kw)) && !datePatterns.some(p => p.test(nearbyLine))) {
-          currentRole.company = nearbyLine;
-          break;
+        
+        // Check if the title line also contains the company
+        const titleParts = line.split(/\s*(?:at|@|,|-|with|for)\s+/i);
+        if (titleParts.length > 1) {
+          currentRole.title = titleParts[0].trim();
+          currentRole.company = titleParts[1].trim();
         }
       }
       
+      // Look for company name in the surrounding lines
+      if (!currentRole.company) {
+        for (let j = Math.max(0, i - 1); j <= Math.min(i + 1, lines.length - 1); j++) {
+          const nearbyLine = lines[j].trim();
+          if (j !== i && nearbyLine && !nearbyLine.match(/^[•\-*]|^\d+\./) && 
+              !jobTitleKeywords.some(kw => nearbyLine.toLowerCase().includes(kw)) && 
+              !datePatterns.some(p => p.test(nearbyLine))) {
+            currentRole.company = nearbyLine;
+            break;
+          }
+        }
+      }
+      
+   
       // Look for dates
       if (hasDatePattern) {
         currentRole.duration = line;
+        
+        // Try to extract start and end dates as separate fields
+        const dateMatch = line.match(/(jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december|\d{1,2}\/\d{4}|\d{4})[a-z\s\/]*\d{4}\s*(-|–|—|to|through|until)\s*(jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december|\d{1,2}\/\d{4}|\d{4})[a-z\s\/]*\d{4}|present|current|now|ongoing/i);
+        
+        if (dateMatch) {
+          const dateParts = line.split(/(-|–|—|to|through|until)/i);
+          if (dateParts.length >= 2) {
+            currentRole.startDate = dateParts[0].trim();
+            currentRole.endDate = dateParts[dateParts.length - 1].trim();
+          }
+        }
       } else {
         // Look for dates in the surrounding lines
         for (let j = Math.max(0, i - 1); j <= Math.min(i + 2, lines.length - 1); j++) {
@@ -414,10 +594,36 @@ function extractCareerHistory(text: string): any[] {
         }
       }
       
-      // Look for job description in the following lines
+      // Look for job location
+      const locationPatterns = [
+        /\b([A-Za-z\s]+,\s*[A-Z]{2})\b/, // City, State
+        /\b([A-Za-z\s]+,\s*[A-Za-z\s]+)\b/, // City, Country
+        /\b(Remote|Hybrid|On-site|In-house|Work from home|WFH)\b/i // Work arrangement
+      ];
+      
+      for (let j = Math.max(0, i - 1); j <= Math.min(i + 2, lines.length - 1); j++) {
+        const possibleLocationLine = lines[j].trim();
+        for (const pattern of locationPatterns) {
+          const locationMatch = possibleLocationLine.match(pattern);
+          if (locationMatch && !possibleLocationLine.match(/^[•\-*]|^\d+\./)) {
+            currentRole.location = locationMatch[0].trim();
+            break;
+          }
+        }
+        if (currentRole.location) break;
+      }
+      
+ // Look for job description in the following lines
       let description = '';
       let k = i + 1;
-      while (k < lines.length && lines[k].trim() && !jobTitleKeywords.some(kw => lines[k].toLowerCase().includes(kw)) && !datePatterns.some(p => p.test(lines[k]))) {
+      while (k < lines.length && 
+             lines[k].trim() && 
+             !lines[k].trim().match(/^[•\-*]|^\d+\./) && 
+             !jobTitleKeywords.some(kw => 
+                // Make sure we're matching whole words, not parts of words
+                new RegExp(`\\b${kw}\\b`, 'i').test(lines[k])
+             ) && 
+             !datePatterns.some(p => p.test(lines[k]))) {
         description += lines[k].trim() + ' ';
         k++;
       }
