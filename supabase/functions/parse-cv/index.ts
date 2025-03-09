@@ -198,29 +198,17 @@ serve(async (req) => {
   }
 });
 
-// Function to handle .doc files (Word 97-2003)
 async function convertDocToText(arrayBuffer) {
-  // Attempt to use mammoth with basic options
+  // This function needs a complete rewrite as mammoth doesn't fully support .doc files
   try {
-    // Try the standard mammoth extraction method first
+    // First attempt with standard mammoth
     const result = await mammoth.extractRawText({ arrayBuffer });
     return result.value;
   } catch (e) {
     console.error("Standard mammoth extraction failed for .doc file", e);
     
-    // If the standard method fails, try a more permissive approach
-    try {
-      // Some versions of mammoth support options for legacy formats
-      const result = await mammoth.extractRawText({ 
-        arrayBuffer,
-        // Using ignore errors option to be more permissive
-        options: { ignoreEmptyParagraphs: true }
-      });
-      return result.value;
-    } catch (innerError) {
-      console.error("Alternative .doc extraction failed:", innerError);
-      throw new Error("Unable to parse .DOC format. Please convert to DOCX format.");
-    }
+    // Since mammoth doesn't properly support .doc files, we should inform the user
+    throw new Error("The .DOC format cannot be reliably parsed. Please convert your file to DOCX format for better compatibility.");
   }
 }
 
