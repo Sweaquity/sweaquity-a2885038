@@ -2,7 +2,7 @@
 import { Skill } from "@/types/jobSeeker";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarClock, Briefcase, GraduationCap, ChevronRight } from "lucide-react";
+import { CalendarClock, Briefcase, GraduationCap } from "lucide-react";
 
 interface CareerHistoryDisplayProps {
   careerHistory: any[];
@@ -93,7 +93,7 @@ export const CareerHistoryDisplay = ({
         </Card>
       )}
 
-      {education.length > 0 && (
+      {education && education.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center">

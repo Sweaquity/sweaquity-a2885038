@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -66,8 +65,6 @@ export const downloadApplicationCV = async (cvUrl: string) => {
       return false;
     }
     
-    console.log("Downloading CV from URL:", cvUrl);
-    
     // For direct download, try to fetch the file directly
     try {
       const response = await fetch(cvUrl);
@@ -95,21 +92,21 @@ export const downloadApplicationCV = async (cvUrl: string) => {
       console.log("Direct fetch failed, trying storage API:", fetchError);
     }
     
-    // If direct fetch failed, try to use the Supabase storage API
-    // Extract the application ID and filename from the URL
-    const match = cvUrl.match(/job_applications\/([^\/]+)\/([^\/\?]+)/);
+    // If direct fetch failed, try to extract the application ID and filename
+    // Use regex to extract application ID and filename from various URL formats
+    const match = cvUrl.match(/\/([^\/]+)\/([^\/\?]+)(?:\?.*)?$/);
     
     if (match && match.length >= 3) {
-      const applicationId = match[1];
+      const possibleApplicationId = match[1];
       const encodedFileName = match[2];
       
-      // Decode the filename (only once)
+      // Decode the filename
       const fileName = decodeURIComponent(encodedFileName);
       
-      console.log("Downloading from job_applications bucket:", applicationId, fileName);
+      console.log("Attempting to download from job_applications bucket:", possibleApplicationId, fileName);
       
       // Construct the path for the storage download
-      const filePath = `${applicationId}/${fileName}`;
+      const filePath = `${possibleApplicationId}/${fileName}`;
       
       // Download using the storage API
       const { data, error } = await supabase.storage

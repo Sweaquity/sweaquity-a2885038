@@ -29,8 +29,8 @@ export const PendingApplicationsTable = ({
           <TableHead className="w-[200px]">Applicant</TableHead>
           <TableHead>Role</TableHead>
           <TableHead className="text-center">Skills Match</TableHead>
-          <TableHead className="text-center w-[150px]">Status</TableHead>
-          <TableHead className="w-[80px]"></TableHead>
+          <TableHead className="text-center w-[120px]">Status</TableHead>
+          <TableHead className="w-[50px]"></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -157,7 +157,7 @@ export const PendingApplicationsTable = ({
                         return (
                           <Badge key={index} variant={hasSkill ? "default" : "outline"} className="text-xs">
                             {typeof skillReq === 'object' ? skillReq.skill : skillReq} 
-                            {typeof skillReq === 'object' && (
+                            {typeof skillReq === 'object' && skillReq.level && (
                               <span>({skillReq.level})</span>
                             )} 
                             {hasSkill && "✓"}

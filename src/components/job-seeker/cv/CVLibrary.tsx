@@ -24,36 +24,44 @@ export const CVLibrary = ({
   const [mounted, setMounted] = useState(false);
   
   useEffect(() => {
-    setMounted(true);
+    // Set mounted after a short delay to ensure user CVs are loaded
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, []);
 
-  if (!mounted) {
-    return null;
+  if (!mounted || userCVs.length === 0) {
+    return (
+      <div className="mt-6">
+        <Label>My CV Library</Label>
+        <div className="mt-2 border rounded-md">
+          <div className="p-4 text-center text-muted-foreground">
+            {!mounted ? "Loading CV library..." : "No CVs uploaded yet"}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="mt-6">
       <Label>My CV Library</Label>
       <div className="mt-2 border rounded-md">
-        {userCVs && userCVs.length > 0 ? (
-          <div className="divide-y">
-            {userCVs.map((cv) => (
-              <CVLibraryItem
-                key={cv.id}
-                cv={cv}
-                processingAction={processingAction}
-                onSetDefault={onSetDefault}
-                onPreview={onPreview}
-                onDownload={onDownload}
-                onDelete={onDelete}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="p-4 text-center text-muted-foreground">
-            No CVs uploaded yet
-          </div>
-        )}
+        <div className="divide-y">
+          {userCVs.map((cv) => (
+            <CVLibraryItem
+              key={cv.id}
+              cv={cv}
+              processingAction={processingAction}
+              onSetDefault={onSetDefault}
+              onPreview={onPreview}
+              onDownload={onDownload}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
