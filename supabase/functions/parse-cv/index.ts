@@ -45,6 +45,19 @@ serve(async (req) => {
 
     console.log("Final filePath for download:", filePath);
 
+    // Check file extension before downloading
+    const fileExtension = filePath.split('.').pop()?.toLowerCase();
+    
+    // Only allow DOCX files
+    if (fileExtension !== "docx") {
+      return new Response(JSON.stringify({ 
+        error: 'Only DOCX files are supported. Please convert your document to DOCX format.' 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
+    }
+
     // Download the file from Supabase Storage
     const { data: fileData, error: downloadError } = await supabase
       .storage.from('cvs')
@@ -58,44 +71,20 @@ serve(async (req) => {
       });
     }
 
+    // Process DOCX file with mammoth
+    console.log("Word DOCX document detected, extracting text with mammoth");
     let extractedText = "";
-    const fileExtension = filePath.split('.').pop()?.toLowerCase();
-
-    if (fileExtension === "docx") {
-      console.log("Word DOCX document detected, extracting text with mammoth");
+    
+    try {
       const arrayBuffer = await fileData.arrayBuffer();
       const result = await mammoth.extractRawText({ arrayBuffer });
       extractedText = result.value;
       
       console.log("Full extracted text length:", extractedText.length);
       console.log("First 500 chars:", extractedText.substring(0, 500));
-    } 
-    else if (fileExtension === "doc") {
-      console.log("Word DOC document detected, using alternative parsing method");
-      try {
-        // Attempt to use mammoth for .doc files
-        const arrayBuffer = await fileData.arrayBuffer();
-        const result = await convertDocToText(arrayBuffer);
-        extractedText = result;
-      } catch (docError) {
-        console.error("Error parsing .doc file:", docError);
-        return new Response(JSON.stringify({ error: 'Error parsing .doc file format. Please convert to DOCX format for better compatibility.' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        });
-      }
-    }
-    else if (fileExtension === "pdf") {
-      console.log("PDF document detected - PDF processing is disabled");
-      return new Response(JSON.stringify({ 
-        error: 'PDF processing is currently disabled. Please upload your CV in DOCX format.' 
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      });
-    } else {
-      console.error("Unsupported file type:", fileExtension);
-      return new Response(JSON.stringify({ error: `Unsupported file type: ${fileExtension}. Please upload your CV in DOCX format.` }), {
+    } catch (extractError) {
+      console.error("Error extracting text from DOCX:", extractError);
+      return new Response(JSON.stringify({ error: 'Error parsing document content. Please ensure the DOCX file is not corrupted.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       });
@@ -197,20 +186,6 @@ serve(async (req) => {
     });
   }
 });
-
-async function convertDocToText(arrayBuffer) {
-  // This function needs a complete rewrite as mammoth doesn't fully support .doc files
-  try {
-    // First attempt with standard mammoth
-    const result = await mammoth.extractRawText({ arrayBuffer });
-    return result.value;
-  } catch (e) {
-    console.error("Standard mammoth extraction failed for .doc file", e);
-    
-    // Since mammoth doesn't properly support .doc files, we should inform the user
-    throw new Error("The .DOC format cannot be reliably parsed. Please convert your file to DOCX format for better compatibility.");
-  }
-}
 
 function extractSkills(text: string): string[] {
   // Enhanced skill extraction with more comprehensive list and contextual understanding
