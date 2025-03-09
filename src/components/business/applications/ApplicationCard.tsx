@@ -41,8 +41,12 @@ export const ApplicationCard = ({
     }
   }, [isExpanded, application.accepted_business, application.accepted_jobseeker]);
   
+  // Check if CV exists and is from the job_applications bucket
+  const hasCvInJobApplicationsBucket = application.cv_url && 
+    (application.cv_url.includes('job_applications/') || application.cv_url.includes('job-applications/'));
+  
   // Handle CV download safely
-  const handleCVDownload = (e: React.MouseEvent) => {
+  const handleCvDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (application.cv_url) {
       previewApplicationCV(application.cv_url);
@@ -92,19 +96,19 @@ export const ApplicationCard = ({
               <span>{application.accepted_jobseeker ? "Yes" : "No"}</span>
             </div>
 
-            {application.cv_url && (
+            {/* Only show CV download button if CV exists in job_applications bucket */}
+            {hasCvInJobApplicationsBucket && (
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleCVDownload}
+                  onClick={handleCvDownload}
                 >
                   <FileText className="mr-1 h-4 w-4" />
                   Download Application CV
                 </Button>
               </div>
             )}
-
           </div>
           
           {/* Second row */}
