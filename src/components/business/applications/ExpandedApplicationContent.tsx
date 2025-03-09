@@ -73,26 +73,7 @@ export const ExpandedApplicationContent = ({
         </div>
       )}
       
-      {/* CV Link */}
-      {application.cv_url && (
-        <div>
-         {application.cv_url && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          previewApplicationCV(application.cv_url!);
-                        }}
-                      >
-                        <FileText className="mr-1 h-4 w-4" />
-                        Download Application CV
-                      </Button>
-                    </div>
-                  )}
-        </div>
-      )}
+
       
       {/* Communication History */}
       <div>
