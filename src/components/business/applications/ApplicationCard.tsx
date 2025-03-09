@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +40,14 @@ export const ApplicationCard = ({
       loadAcceptedJob();
     }
   }, [isExpanded, application.accepted_business, application.accepted_jobseeker]);
+  
+  // Handle CV download safely
+  const handleCVDownload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (application.cv_url) {
+      previewApplicationCV(application.cv_url);
+    }
+  };
   
   return (
     <Card className="shadow-sm hover:shadow transition-shadow">
@@ -90,10 +97,7 @@ export const ApplicationCard = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    previewApplicationCV(application.cv_url!);
-                  }}
+                  onClick={handleCVDownload}
                 >
                   <FileText className="mr-1 h-4 w-4" />
                   Download Application CV
