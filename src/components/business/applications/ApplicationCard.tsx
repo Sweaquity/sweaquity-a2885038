@@ -86,23 +86,21 @@ export const ApplicationCard = ({
             </div>
 
             {application.cv_url && (
-              <div className="flex items-center space-x-2">
-                <span className="font-semibold">CV:</span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      previewApplicationCV(application.cv_url!);
-                    }}
-                  >
-                    <FileText className="mr-1 h-4 w-4" />
-                    Download Application CV
-                  </Button>
-                </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    previewApplicationCV(application.cv_url!);
+                  }}
+                >
+                  <FileText className="mr-1 h-4 w-4" />
+                  Download Application CV
+                </Button>
               </div>
             )}
+
           </div>
           
           {/* Second row */}
