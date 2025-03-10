@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Application } from "@/types/business";
 import { AcceptJobDialog } from "../AcceptJobDialog";
@@ -8,27 +7,23 @@ import { Table, TableBody } from "@/components/ui/table";
 
 interface ActiveApplicationsTableProps {
   applications: Application[];
+  expandedApplications: Set<string>;  // Added expandedApplications prop
+  toggleApplicationExpanded: (id: string) => void; // Added toggle function prop
   onApplicationUpdate: () => void;
   handleStatusChange: (id: string, status: string) => Promise<void>;
+  openAcceptJobDialog: (application: Application) => Promise<void>; // Ensuring the correct type
 }
 
 export const ActiveApplicationsTable = ({
   applications,
+  expandedApplications,
+  toggleApplicationExpanded,
   onApplicationUpdate,
-  handleStatusChange
+  handleStatusChange,
+  openAcceptJobDialog
 }: ActiveApplicationsTableProps) => {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [acceptJobDialogOpen, setAcceptJobDialogOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
-
-  const toggleExpand = (id: string) => {
-    setExpandedId(expandedId === id ? null : id);
-  };
-
-  const openAcceptJobDialog = (application: Application) => {
-    setSelectedApplication(application);
-    setAcceptJobDialogOpen(true);
-  };
 
   if (applications.length === 0) {
     return <div className="text-center p-4">No active applications found.</div>;
@@ -42,9 +37,9 @@ export const ActiveApplicationsTable = ({
             <ApplicationCard
               key={application.id}
               application={application}
-              isExpanded={expandedId === application.id}
-              toggleExpand={() => toggleExpand(application.id)}
-              openAcceptJobDialog={openAcceptJobDialog}
+              isExpanded={expandedApplications.has(application.id)} // Use Set for tracking expansion
+              toggleExpand={() => toggleApplicationExpanded(application.id)} // Use the provided function
+              openAcceptJobDialog={(app) => openAcceptJobDialog(app).catch(console.error)} // Ensuring Promise<void>
               handleStatusChange={handleStatusChange}
             />
           ))}
@@ -62,3 +57,4 @@ export const ActiveApplicationsTable = ({
     </ScrollArea>
   );
 };
+
