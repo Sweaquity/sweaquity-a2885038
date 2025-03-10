@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { 
   Dialog, 
@@ -43,54 +42,50 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       
       const userId = sessionData.session.user.id;
       
-      // Determine which table and ID field to use
-      const table = userType === 'business' ? 'businesses' : 'profiles';
-      const idField = userType === 'business' ? 'businesses_id' : 'id';
-      
-      // First, check if the user exists in the table
-      const { data: userData, error: fetchError } = await supabase
-        .from(table)
-        .select('*')
-        .eq(idField, userId)
-        .single();
-        
-      if (fetchError) {
-        if (fetchError.code === 'PGRST116') {
-          toast.error(`No ${userType} profile found for this account`);
-        } else {
-          toast.error(`Error fetching profile: ${fetchError.message}`);
-        }
-        console.error("Error fetching user data:", fetchError);
-        return;
-      }
-      
-      if (!userData) {
-        toast.error(`No ${userType} profile found to delete`);
-        return;
-      }
-      
-      // Save the data to the gdpr_deleted_data table using service role (bypass RLS)
-      // This is the key change - using insert directly and relying on RLS instead
-      const { error: insertError } = await supabase
-        .from('gdpr_deleted_data')
-        .insert({
-          user_id: userId,
-          user_type: userType,
-          data: userData,
-          deleted_at: new Date().toISOString()
-        });
-        
-      if (insertError) {
-        console.error("Error saving deleted data:", insertError);
-        toast.error(`Error backing up profile data: ${insertError.message}`);
-        return;
-      }
-      
-      // Now anonymize the data in the original table
-      let updateError;
-      
       if (userType === 'business') {
-        const { error } = await supabase
+        // Fetch business ID from profiles table
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', userId)
+          .single();
+
+        if (profileError || !profileData) {
+          toast.error("No business profile found to delete");
+          return;
+        }
+
+        const businessId = profileData.id;
+
+        // Fetch business data
+        const { data: businessData, error: businessError } = await supabase
+          .from('businesses')
+          .select('*')
+          .eq('business_id', businessId)
+          .single();
+        
+        if (businessError || !businessData) {
+          toast.error("No business data found to delete");
+          return;
+        }
+        
+        // Save data to gdpr_deleted_data
+        const { error: insertError } = await supabase
+          .from('gdpr_deleted_data')
+          .insert({
+            user_id: userId,
+            user_type: userType,
+            data: { profile: profileData, business: businessData },
+            deleted_at: new Date().toISOString()
+          });
+        
+        if (insertError) {
+          toast.error("Error backing up profile data: " + insertError.message);
+          return;
+        }
+        
+        // Anonymize business data
+        const { error: updateError } = await supabase
           .from('businesses')
           .update({
             company_name: 'Deleted Account',
@@ -98,11 +93,42 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
             contact_phone: null,
             is_anonymized: true
           })
-          .eq('businesses_id', userId);
-          
-        updateError = error;
+          .eq('business_id', businessId);
+        
+        if (updateError) {
+          toast.error("Failed to anonymize business profile: " + updateError.message);
+          return;
+        }
       } else {
-        const { error } = await supabase
+        // Fetch user profile
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        
+        if (profileError || !profileData) {
+          toast.error("No job seeker profile found to delete");
+          return;
+        }
+        
+        // Save data to gdpr_deleted_data
+        const { error: insertError } = await supabase
+          .from('gdpr_deleted_data')
+          .insert({
+            user_id: userId,
+            user_type: userType,
+            data: profileData,
+            deleted_at: new Date().toISOString()
+          });
+        
+        if (insertError) {
+          toast.error("Error backing up profile data: " + insertError.message);
+          return;
+        }
+        
+        // Anonymize profile data
+        const { error: updateError } = await supabase
           .from('profiles')
           .update({
             first_name: 'Deleted',
@@ -112,14 +138,11 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
             is_anonymized: true
           })
           .eq('id', userId);
-          
-        updateError = error;
-      }
-      
-      if (updateError) {
-        console.error("Error anonymizing profile:", updateError);
-        toast.error(`Failed to anonymize profile: ${updateError.message}`);
-        return;
+        
+        if (updateError) {
+          toast.error("Failed to anonymize profile: " + updateError.message);
+          return;
+        }
       }
       
       toast.success("Profile deleted successfully");
@@ -131,7 +154,6 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       navigate('/');
       
     } catch (error: any) {
-      console.error("Error in delete profile process:", error);
       toast.error(`Failed to delete profile: ${error?.message || "Unknown error"}`);
     } finally {
       setIsDeleting(false);
@@ -153,11 +175,7 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
         </p>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isDeleting}>Cancel</Button>
-          <Button 
-            variant="destructive" 
-            onClick={handleDeleteProfile}
-            disabled={isDeleting}
-          >
+          <Button variant="outline" onClick={handleDeleteProfile} disabled={isDeleting} >
             {isDeleting ? "Deleting..." : "Delete Profile"}
           </Button>
         </DialogFooter>
