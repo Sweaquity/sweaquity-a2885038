@@ -6,7 +6,6 @@ import { ProfileEditor } from "./profile/ProfileEditor";
 import { CurrentPositionCard } from "./career/CurrentPositionCard";
 import { Profile, Skill } from "@/types/jobSeeker";
 import { CVFile } from "@/hooks/job-seeker/useCVData";
-import { AccountSettingsCard } from "@/components/shared/AccountSettingsCard";
 
 interface ProfileSectionProps {
   profile?: Profile;
