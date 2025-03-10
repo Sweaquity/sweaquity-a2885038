@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Tabs,
@@ -6,36 +7,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import { format } from "date-fns"
-import { CalendarIcon } from "lucide-react"
-import { Project, Application } from "@/types/business";
+import { Application } from "@/types/business";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ActiveApplicationsTable } from './applications/tables/ActiveApplicationsTable';
@@ -95,7 +67,10 @@ export const ProjectApplicationsSection = ({ project }: ProjectApplicationsSecti
             business_role_id,
             title,
             description,
-            skill_requirements
+            skill_requirements,
+            equity_allocation,
+            timeframe,
+            project_title
           ),
           profiles (
             id,
@@ -104,7 +79,10 @@ export const ProjectApplicationsSection = ({ project }: ProjectApplicationsSecti
             headline,
             skills,
             experience,
-            education
+            education,
+            title,
+            location,
+            employment_preference
           )
         `)
         .eq('project_id', project?.project_id || '');
@@ -118,6 +96,7 @@ export const ProjectApplicationsSection = ({ project }: ProjectApplicationsSecti
       if (applicationsData) {
         // Transform the data to match Application type
         const transformedApplications: Application[] = applicationsData.map(app => ({
+          id: app.job_app_id, // Add id as an alias of job_app_id
           job_app_id: app.job_app_id,
           task_id: app.task_id,
           user_id: app.user_id,
@@ -128,8 +107,32 @@ export const ProjectApplicationsSection = ({ project }: ProjectApplicationsSecti
           task_discourse: app.task_discourse,
           accepted_business: app.accepted_business,
           accepted_jobseeker: app.accepted_jobseeker,
-          business_roles: app.business_roles,
-          profile: app.profiles[0] || null
+          notes: app.notes,
+          business_roles: Array.isArray(app.business_roles) && app.business_roles.length > 0 
+            ? app.business_roles[0] 
+            : {
+                title: "Untitled Role",
+                description: "",
+                skill_requirements: [],
+                equity_allocation: 0,
+                timeframe: ""
+              },
+          profile: app.profiles && app.profiles.length > 0
+            ? {
+                first_name: app.profiles[0]?.first_name || "",
+                last_name: app.profiles[0]?.last_name || "",
+                title: app.profiles[0]?.title || app.profiles[0]?.headline || "",
+                location: app.profiles[0]?.location || "",
+                employment_preference: app.profiles[0]?.employment_preference || "",
+                skills: app.profiles[0]?.skills || []
+              }
+            : {
+                first_name: "",
+                last_name: "",
+                title: "",
+                location: "",
+                employment_preference: ""
+              }
         }));
 
         setApplications(transformedApplications);
@@ -174,16 +177,13 @@ export const ProjectApplicationsSection = ({ project }: ProjectApplicationsSecti
   };
 
   const openAcceptJobDialog = async (application: Application) => {
-    // Convert Application type to JobApplication type if needed
-    // We need to provide any missing required properties from JobApplication type
+    // Make sure application has the project_id property
     const jobApp = {
       ...application,
-      // Add any required properties that might be missing
-      project_id: application.projectId || null, // Assuming projectId exists in Application
-      // Add any other required fields from JobApplication type that are missing in Application
+      project_id: project?.project_id || null
     };
     
-    setSelectedApplication(application);
+    setSelectedApplication(jobApp);
     setAcceptJobDialogOpen(true);
   };
 
@@ -223,7 +223,7 @@ export const ProjectApplicationsSection = ({ project }: ProjectApplicationsSecti
       
       {selectedApplication && (
         <AcceptJobDialog
-          open={acceptJobDialogOpen}
+          isOpen={acceptJobDialogOpen}
           onOpenChange={setAcceptJobDialogOpen}
           application={selectedApplication}
           onAccept={onApplicationUpdate}

@@ -9,7 +9,7 @@ interface ArchivedApplicationsTableProps {
   applications: Application[];
   expandedApplications: Set<string>;
   toggleApplicationExpanded: (id: string) => void;
-  onApplicationUpdate: () => void;
+  onApplicationUpdate: () => Promise<void>;
   handleStatusChange: (id: string, status: string) => Promise<void>;
 }
 
@@ -24,17 +24,20 @@ export const ArchivedApplicationsTable = ({
     return <div className="text-center p-4">No archived applications found.</div>;
   }
 
+  // Empty function for openAcceptJobDialog since it's not needed for archived applications
+  const dummyOpenAcceptJobDialog = async () => {};
+
   return (
     <ScrollArea className="w-full max-h-[500px] rounded-md border">
       <Table>
         <TableBody>
           {applications.map((application) => (
             <ApplicationCard
-              key={application.job_app_id}
+              key={application.id || application.job_app_id}
               application={application}
-              isExpanded={expandedApplications.has(application.job_app_id)}
-              toggleExpand={() => toggleApplicationExpanded(application.job_app_id)}
-              openAcceptJobDialog={async () => {}} // Not needed for archived applications
+              isExpanded={expandedApplications.has(application.id || application.job_app_id)}
+              toggleExpand={() => toggleApplicationExpanded(application.id || application.job_app_id)}
+              openAcceptJobDialog={dummyOpenAcceptJobDialog}
               handleStatusChange={handleStatusChange}
             />
           ))}

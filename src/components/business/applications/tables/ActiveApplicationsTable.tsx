@@ -41,10 +41,10 @@ export const ActiveApplicationsTable = ({
         <TableBody>
           {applications.map((application) => (
             <ApplicationCard
-              key={application.id}
+              key={application.id || application.job_app_id}
               application={application}
-              isExpanded={expandedApplications.has(application.id)}
-              toggleExpand={() => toggleApplicationExpanded(application.id)}
+              isExpanded={expandedApplications.has(application.id || application.job_app_id)}
+              toggleExpand={() => toggleApplicationExpanded(application.id || application.job_app_id)}
               openAcceptJobDialog={handleOpenAcceptJobDialog}
               handleStatusChange={handleStatusChange}
             />
@@ -54,7 +54,7 @@ export const ActiveApplicationsTable = ({
       
       {selectedApplication && (
         <AcceptJobDialog
-          open={acceptJobDialogOpen}
+          isOpen={acceptJobDialogOpen}
           onOpenChange={setAcceptJobDialogOpen}
           application={selectedApplication}
           onAccept={onApplicationUpdate}

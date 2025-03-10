@@ -17,7 +17,7 @@ interface AcceptJobDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   application: JobApplication | Application | null;
-  onAccept: (application: JobApplication) => Promise<void>;
+  onAccept: () => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -35,7 +35,7 @@ export const AcceptJobDialog = ({
     
     try {
       setAcceptingJob(true);
-      await onAccept(application as JobApplication);
+      await onAccept();
       onOpenChange(false);
     } catch (error) {
       console.error("Error accepting job:", error);
