@@ -374,8 +374,7 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
           )}
         </CardContent>
       </Card>
-      
-      <AccountSettingsCard userType="job_seeker" />
+
     </div>
   );
 };
