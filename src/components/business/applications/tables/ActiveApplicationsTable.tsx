@@ -10,7 +10,7 @@ interface ActiveApplicationsTableProps {
   applications: Application[];
   expandedApplications: Set<string>;
   toggleApplicationExpanded: (id: string) => void;
-  onApplicationUpdate: () => void;
+  onApplicationUpdate: () => Promise<void>; // Update to return Promise
   handleStatusChange: (id: string, status: string) => Promise<void>;
   openAcceptJobDialog: (application: Application) => Promise<void>;
 }

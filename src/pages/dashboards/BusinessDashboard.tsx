@@ -393,7 +393,7 @@ const BusinessDashboard = () => {
           </TabsContent>
 
           <TabsContent value="applications">
-            <ProjectApplicationsSection />
+            <ProjectApplicationsSection project={undefined} />
           </TabsContent>
         </Tabs>
       </div>

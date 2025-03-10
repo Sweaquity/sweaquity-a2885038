@@ -43,7 +43,7 @@ import { ArchivedApplicationsTable } from './applications/tables/ArchivedApplica
 import { AcceptJobDialog } from './applications/AcceptJobDialog';
 
 interface ProjectApplicationsSectionProps {
-  project: Project;
+  project?: Project; // Make project optional since it's not always available
 }
 
 export const ProjectApplicationsSection = ({ project }: ProjectApplicationsSectionProps) => {
@@ -56,7 +56,7 @@ export const ProjectApplicationsSection = ({ project }: ProjectApplicationsSecti
   const [acceptJobDialogOpen, setAcceptJobDialogOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
 
-  const projectId = project.project_id;
+  const projectId = project?.project_id;
 
   const toggleApplicationExpanded = (id: string) => {
     setExpandedApplications((prevExpanded) => {
@@ -82,6 +82,15 @@ export const ProjectApplicationsSection = ({ project }: ProjectApplicationsSecti
           created_at,
           status,
           notes,
+          message,
+          task_id,
+          project_id,
+          user_id,
+          applied_at,
+          cv_url,
+          task_discourse,
+          accepted_business,
+          accepted_jobseeker,
           business_roles (
             business_role_id,
             title,
@@ -98,7 +107,7 @@ export const ProjectApplicationsSection = ({ project }: ProjectApplicationsSecti
             education
           )
         `)
-        .eq('project_id', projectId);
+        .eq('project_id', project?.project_id || '');
 
       if (applicationsError) {
         console.error("Error fetching applications:", applicationsError);
@@ -107,10 +116,25 @@ export const ProjectApplicationsSection = ({ project }: ProjectApplicationsSecti
       }
 
       if (applicationsData) {
-        const typedApplications = applicationsData as Application[];
-        setApplications(typedApplications);
-        setActiveApplications(typedApplications.filter(app => app.status === 'active'));
-        setArchivedApplications(typedApplications.filter(app => app.status !== 'active'));
+        // Transform the data to match Application type
+        const transformedApplications: Application[] = applicationsData.map(app => ({
+          job_app_id: app.job_app_id,
+          task_id: app.task_id,
+          user_id: app.user_id,
+          applied_at: app.applied_at,
+          status: app.status,
+          message: app.message || '',
+          cv_url: app.cv_url,
+          task_discourse: app.task_discourse,
+          accepted_business: app.accepted_business,
+          accepted_jobseeker: app.accepted_jobseeker,
+          business_roles: app.business_roles,
+          profile: app.profiles[0] || null
+        }));
+
+        setApplications(transformedApplications);
+        setActiveApplications(transformedApplications.filter(app => app.status === 'active'));
+        setArchivedApplications(transformedApplications.filter(app => app.status !== 'active'));
       }
     } catch (err: any) {
       console.error("Error fetching data:", err);
@@ -118,7 +142,7 @@ export const ProjectApplicationsSection = ({ project }: ProjectApplicationsSecti
     } finally {
       setIsLoading(false);
     }
-  }, [projectId]);
+  }, [project?.project_id]);
 
   useEffect(() => {
     fetchData();
@@ -145,8 +169,8 @@ export const ProjectApplicationsSection = ({ project }: ProjectApplicationsSecti
     }
   };
 
-  const onApplicationUpdate = () => {
-    fetchData();
+  const onApplicationUpdate = async () => {
+    await fetchData();
   };
 
   const openAcceptJobDialog = async (application: Application) => {
