@@ -249,6 +249,7 @@ export type Database = {
           geographic_scope: Json | null
           industry: string | null
           is_also_job_seeker: boolean | null
+          is_anonymized: boolean | null
           is_parent: boolean | null
           location: string | null
           marketing_consent: boolean | null
@@ -275,6 +276,7 @@ export type Database = {
           geographic_scope?: Json | null
           industry?: string | null
           is_also_job_seeker?: boolean | null
+          is_anonymized?: boolean | null
           is_parent?: boolean | null
           location?: string | null
           marketing_consent?: boolean | null
@@ -303,6 +305,7 @@ export type Database = {
           geographic_scope?: Json | null
           industry?: string | null
           is_also_job_seeker?: boolean | null
+          is_anonymized?: boolean | null
           is_parent?: boolean | null
           location?: string | null
           marketing_consent?: boolean | null
@@ -844,7 +847,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      delete_user_profile: {
+        Args: {
+          user_type: string
+          user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       business_type: "startup" | "small" | "medium" | "large" | "enterprise"

@@ -40,7 +40,7 @@ export const ActiveApplicationsTable = ({
               application={application}
               isExpanded={expandedApplications.has(application.id)}
               toggleExpand={() => toggleApplicationExpanded(application.id)}
-              openAcceptJobDialog={app => openAcceptJobDialog(app)}
+              openAcceptJobDialog={async (app) => await openAcceptJobDialog(app)}
               handleStatusChange={handleStatusChange}
             />
           ))}
