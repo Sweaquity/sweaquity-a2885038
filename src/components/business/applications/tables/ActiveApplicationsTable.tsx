@@ -1,47 +1,64 @@
-import { useState } from "react";
+
+import React, { useState } from "react";
 import { Application } from "@/types/business";
-import { JobApplication } from "@/types/jobSeeker";
+import { AcceptJobDialog } from "../AcceptJobDialog";
 import { ApplicationCard } from "../ApplicationCard";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Table, TableBody } from "@/components/ui/table";
 
 interface ActiveApplicationsTableProps {
   applications: Application[];
-  expandedApplications: Set<string>;
-  toggleApplicationExpanded: (id: string) => void;
-  handleStatusChange: (applicationId: string, newStatus: string) => Promise<void>;
-  isUpdatingStatus: string | null;
-  openAcceptJobDialog: (application: Application) => void;
-  handleAcceptJob: (application: JobApplication) => Promise<void>;
-  isAcceptingJobLoading: boolean;
+  onApplicationUpdate: () => void;
+  handleStatusChange: (id: string, status: string) => Promise<void>;
 }
 
-export const ActiveApplicationsTable = ({ 
+export const ActiveApplicationsTable = ({
   applications,
-  openAcceptJobDialog,
-  handleStatusChange,
-  isUpdatingStatus,
+  onApplicationUpdate,
+  handleStatusChange
 }: ActiveApplicationsTableProps) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  
-  const toggleExpand = (applicationId: string) => {
-    if (expandedId === applicationId) {
-      setExpandedId(null);
-    } else {
-      setExpandedId(applicationId);
-    }
+  const [acceptJobDialogOpen, setAcceptJobDialogOpen] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+
+  const toggleExpand = (id: string) => {
+    setExpandedId(expandedId === id ? null : id);
   };
-  
+
+  const openAcceptJobDialog = (application: Application) => {
+    setSelectedApplication(application);
+    setAcceptJobDialogOpen(true);
+  };
+
+  if (applications.length === 0) {
+    return <div className="text-center p-4">No active applications found.</div>;
+  }
+
   return (
-    <div className="space-y-4">
-      {applications.map(application => (
-        <ApplicationCard
-          key={application.job_app_id}
-          application={application}
-          isExpanded={expandedId === application.job_app_id}
-          toggleExpand={() => toggleExpand(application.job_app_id)}
-          openAcceptJobDialog={openAcceptJobDialog}
-          handleStatusChange={handleStatusChange}
+    <ScrollArea className="w-full max-h-[500px] rounded-md border">
+      <Table>
+        <TableBody>
+          {applications.map((application) => (
+            <ApplicationCard
+              key={application.id}
+              application={application}
+              isExpanded={expandedId === application.id}
+              toggleExpand={() => toggleExpand(application.id)}
+              openAcceptJobDialog={openAcceptJobDialog}
+              handleStatusChange={handleStatusChange}
+            />
+          ))}
+        </TableBody>
+      </Table>
+      
+      {selectedApplication && (
+        <AcceptJobDialog
+          open={acceptJobDialogOpen}
+          onOpenChange={setAcceptJobDialogOpen}
+          application={selectedApplication}
+          onAccept={onApplicationUpdate}
         />
-      ))}
-    </div>
+      )}
+    </ScrollArea>
   );
 };
