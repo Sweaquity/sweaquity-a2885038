@@ -18,6 +18,8 @@ interface ActiveApplicationsTableProps {
 export const ActiveApplicationsTable = ({ 
   applications,
   openAcceptJobDialog,
+  handleStatusChange,
+  isUpdatingStatus,
 }: ActiveApplicationsTableProps) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -38,6 +40,7 @@ export const ActiveApplicationsTable = ({
           isExpanded={expandedId === application.job_app_id}
           toggleExpand={() => toggleExpand(application.job_app_id)}
           openAcceptJobDialog={openAcceptJobDialog}
+          handleStatusChange={handleStatusChange}
         />
       ))}
     </div>
