@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { 
   Dialog, 
@@ -27,33 +26,53 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
     try {
       setIsDeleting(true);
       
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("No active session found");
+      // Get current session
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        toast.error("Authentication error: " + sessionError.message);
         return;
       }
       
-      // Call the appropriate table based on user type
+      if (!sessionData?.session) {
+        toast.error("No active session found. Please log in again.");
+        navigate('/login');
+        return;
+      }
+      
+      const userId = sessionData.session.user.id;
+      
+      // Determine which table and ID field to use
       const table = userType === 'business' ? 'businesses' : 'profiles';
       const idField = userType === 'business' ? 'businesses_id' : 'id';
       
-      // First, fetch the user data
+      // First, check if the user exists in the table
       const { data: userData, error: fetchError } = await supabase
         .from(table)
         .select('*')
-        .eq(idField, session.user.id)
+        .eq(idField, userId)
         .single();
         
       if (fetchError) {
+        if (fetchError.code === 'PGRST116') {
+          toast.error(`No ${userType} profile found for this account`);
+        } else {
+          toast.error(`Error fetching profile: ${fetchError.message}`);
+        }
         console.error("Error fetching user data:", fetchError);
-        throw fetchError;
+        return;
+      }
+      
+      if (!userData) {
+        toast.error(`No ${userType} profile found to delete`);
+        return;
       }
       
       // Save the data to the gdpr_deleted_data table
       const { error: insertError } = await supabase
         .from('gdpr_deleted_data')
         .insert({
-          user_id: session.user.id,
+          user_id: userId,
           user_type: userType,
           data: userData,
           deleted_at: new Date().toISOString()
@@ -61,12 +80,15 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
         
       if (insertError) {
         console.error("Error saving deleted data:", insertError);
-        throw insertError;
+        toast.error(`Error backing up profile data: ${insertError.message}`);
+        return;
       }
       
-      // Now delete/anonymize the data in the original table
+      // Now anonymize the data in the original table
+      let updateError;
+      
       if (userType === 'business') {
-        const { error: deleteError } = await supabase
+        const { error } = await supabase
           .from('businesses')
           .update({
             company_name: 'Deleted Account',
@@ -74,11 +96,11 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
             contact_phone: null,
             is_anonymized: true
           })
-          .eq('businesses_id', session.user.id);
+          .eq('businesses_id', userId);
           
-        if (deleteError) throw deleteError;
+        updateError = error;
       } else {
-        const { error: deleteError } = await supabase
+        const { error } = await supabase
           .from('profiles')
           .update({
             first_name: 'Deleted',
@@ -87,9 +109,15 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
             skills: null,
             is_anonymized: true
           })
-          .eq('id', session.user.id);
+          .eq('id', userId);
           
-        if (deleteError) throw deleteError;
+        updateError = error;
+      }
+      
+      if (updateError) {
+        console.error("Error anonymizing profile:", updateError);
+        toast.error(`Failed to anonymize profile: ${updateError.message}`);
+        return;
       }
       
       toast.success("Profile deleted successfully");
@@ -100,9 +128,9 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       // Redirect to home page
       navigate('/');
       
-    } catch (error) {
-      console.error("Error deleting profile:", error);
-      toast.error("Failed to delete profile");
+    } catch (error: any) {
+      console.error("Error in delete profile process:", error);
+      toast.error(`Failed to delete profile: ${error?.message || "Unknown error"}`);
     } finally {
       setIsDeleting(false);
       onClose();
@@ -110,19 +138,19 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => !isDeleting && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Delete Profile</DialogTitle>
           <DialogDescription>
-            This will permanently delete your profile. All your data will be removed and cannot be recovered.
+            This will permanently delete your {userType === 'business' ? 'business' : 'job seeker'} profile. Your data will be anonymized and personal information removed.
           </DialogDescription>
         </DialogHeader>
-        <p className="text-destructive">
+        <p className="text-destructive font-medium">
           Are you sure you want to delete your profile? This action cannot be undone.
         </p>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose} disabled={isDeleting}>Cancel</Button>
           <Button 
             variant="destructive" 
             onClick={handleDeleteProfile}
