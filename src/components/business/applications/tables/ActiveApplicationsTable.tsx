@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Application } from "@/types/business";
 import { JobApplication } from "@/types/jobSeeker";
@@ -8,7 +7,7 @@ interface ActiveApplicationsTableProps {
   applications: Application[];
   expandedApplications: Set<string>;
   toggleApplicationExpanded: (id: string) => void;
-  handleStatusChange: (id: string, status: string) => void;
+  handleStatusChange: (applicationId: string, newStatus: string) => Promise<void>;
   isUpdatingStatus: string | null;
   openAcceptJobDialog: (application: Application) => void;
   handleAcceptJob: (application: JobApplication) => Promise<void>;
@@ -22,7 +21,7 @@ export const ActiveApplicationsTable = ({
   isUpdatingStatus,
 }: ActiveApplicationsTableProps) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
-
+  
   const toggleExpand = (applicationId: string) => {
     if (expandedId === applicationId) {
       setExpandedId(null);
@@ -30,7 +29,7 @@ export const ActiveApplicationsTable = ({
       setExpandedId(applicationId);
     }
   };
-
+  
   return (
     <div className="space-y-4">
       {applications.map(application => (
