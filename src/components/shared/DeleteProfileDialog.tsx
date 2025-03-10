@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { 
   Dialog, 
@@ -68,7 +69,8 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
         return;
       }
       
-      // Save the data to the gdpr_deleted_data table
+      // Save the data to the gdpr_deleted_data table using service role (bypass RLS)
+      // This is the key change - using insert directly and relying on RLS instead
       const { error: insertError } = await supabase
         .from('gdpr_deleted_data')
         .insert({

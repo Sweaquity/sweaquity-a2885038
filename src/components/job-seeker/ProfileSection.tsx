@@ -30,25 +30,13 @@ export const ProfileSection = ({
   userCVs = [],
   onCvListUpdated = () => {}
 }: ProfileSectionProps) => {
-// Extract current position with better validation
-const currentPosition = parsedCvData?.career_history && 
-                       Array.isArray(parsedCvData.career_history) && 
-                       parsedCvData.career_history.length > 0 && 
-                       typeof parsedCvData.career_history[0] === 'object'
-                         ? parsedCvData.career_history[0] 
-                         : null;
-
-// Add this console log to debug
-console.log("Current position data:", currentPosition);
-
-// Then in your JSX, add a fallback message
-{currentPosition ? (
-  <CurrentPositionCard currentPosition={currentPosition} />
-) : parsedCvData?.career_history ? (
-  <div className="p-4 border rounded bg-gray-50">
-    No valid current position found in career history data
-  </div>
-) : null}
+  // Extract current position with better validation
+  const currentPosition = parsedCvData?.career_history && 
+                         Array.isArray(parsedCvData.career_history) && 
+                         parsedCvData.career_history.length > 0 && 
+                         typeof parsedCvData.career_history[0] === 'object'
+                           ? parsedCvData.career_history[0] 
+                           : null;
 
   return (
     <div className="space-y-6">
