@@ -491,38 +491,40 @@ export const ProjectApplicationsSection = () => {
               {activeApplications.length === 0 ? (
                 <p className="text-muted-foreground text-center p-4">No active projects found.</p>
               ) : (
-                <ActiveApplicationsTable 
-                  applications={activeApplications}
-                  expandedApplications={expandedApplications}
-                  toggleApplicationExpanded={toggleApplicationExpanded}
-                  handleStatusChange={handleStatusChange}
-                  isUpdatingStatus={isUpdatingStatus}
-                  openAcceptJobDialog={(app) => {
-                    const jobApp: JobApplication = {
-                      ...app,
-                      role_id: app.role_id || "",
-                      project_id: app.task_id,
-                      notes: app.notes || "",
-                      id: app.job_app_id,
-                      business_roles: {
-                        ...app.business_roles,
-                        skill_requirements: app.business_roles?.skill_requirements?.map(req => {
-                          if (typeof req === 'string') {
-                            return req;
+                    <ActiveApplicationsTable 
+                      applications={activeApplications}
+                      expandedApplications={expandedApplications}  // Ensure this is declared in ActiveApplicationsTableProps
+                      toggleApplicationExpanded={toggleApplicationExpanded}
+                      handleStatusChange={handleStatusChange}
+                      isUpdatingStatus={isUpdatingStatus}
+                      openAcceptJobDialog={(app: JobApplication) => {  // Explicitly type the parameter
+                        const jobApp: JobApplication = {
+                          ...app,
+                          role_id: app.role_id || "",
+                          project_id: app.task_id,
+                          notes: app.notes || "",
+                          id: app.job_app_id,
+                          business_roles: {
+                            ...app.business_roles,
+                            skill_requirements: app.business_roles?.skill_requirements?.map(req => {
+                              if (typeof req === 'string') {
+                                return req;
+                              }
+                              return {
+                                skill: req.skill,
+                                level: req.level as 'Beginner' | 'Intermediate' | 'Expert'
+                              };
+                            }) || []
                           }
-                          return {
-                            skill: req.skill,
-                            level: req.level as 'Beginner' | 'Intermediate' | 'Expert'
-                          };
-                        }) || []
-                      }
-                    };
-                    setSelectedApplication(jobApp);
-                    setAcceptJobDialogOpen(true);
-                  }}
-                  handleAcceptJob={handleAcceptJob}
-                  isAcceptingJobLoading={isAcceptingJobLoading}
-                />
+                        };
+                        setSelectedApplication(jobApp);
+                        setAcceptJobDialogOpen(true);
+                        return Promise.resolve();  // Ensure it returns a Promise<void>
+                      }}
+                      handleAcceptJob={handleAcceptJob}
+                      isAcceptingJobLoading={isAcceptingJobLoading}
+                    />
+
               )}
             </TabsContent>
 
