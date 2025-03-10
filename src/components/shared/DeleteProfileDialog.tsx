@@ -43,6 +43,8 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       
       const userId = sessionData.session.user.id;
       
+      console.log(`Attempting to delete ${userType} profile for user ${userId}`);
+      
       // Call the RPC function to handle the deletion securely
       const { error: rpcError } = await supabase.rpc('delete_user_profile', { 
         user_type: userType,
