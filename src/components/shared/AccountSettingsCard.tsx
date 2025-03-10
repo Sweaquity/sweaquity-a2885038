@@ -1,80 +1,81 @@
-
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DeleteProfileDialog } from "./DeleteProfileDialog";
 import { MarketingPreferencesDialog } from "./MarketingPreferencesDialog";
+import { DeleteProfileDialog } from "./DeleteProfileDialog";
+import { TermsAndConditionsLink } from "./TermsAndConditionsLink";
 
 interface AccountSettingsCardProps {
   userType: 'business' | 'job_seeker';
 }
 
 export const AccountSettingsCard = ({ userType }: AccountSettingsCardProps) => {
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isMarketingDialogOpen, setIsMarketingDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  const openMarketingDialog = () => setIsMarketingDialogOpen(true);
+  const closeMarketingDialog = () => setIsMarketingDialogOpen(false);
+  
+  const openDeleteDialog = () => setIsDeleteDialogOpen(true);
+  const closeDeleteDialog = () => setIsDeleteDialogOpen(false);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Account Settings</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <>
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Account Settings</CardTitle>
+          <CardDescription>
+            Manage your account settings and preferences
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <div>
-            <h3 className="text-base font-semibold">Marketing Preferences</h3>
-            <p className="text-sm text-muted-foreground mb-2">
-              Manage how we communicate with you
+            <h3 className="text-lg font-medium">Marketing Preferences</h3>
+            <p className="text-sm text-muted-foreground">
+              Control how we communicate with you
             </p>
-            <Button
-              variant="outline"
-              onClick={() => setIsMarketingDialogOpen(true)}
-              className="w-full"
+            <Button 
+              variant="outline" 
+              className="mt-2"
+              onClick={openMarketingDialog}
             >
-              Update Marketing Preferences
+              Manage Preferences
             </Button>
           </div>
           
-          <div>
-            <h3 className="text-base font-semibold">Account Security</h3>
-            <p className="text-sm text-muted-foreground mb-2">
-              Manage your account security settings
+          <div className="pt-4 border-t">
+            <h3 className="text-lg font-medium text-destructive">Danger Zone</h3>
+            <p className="text-sm text-muted-foreground">
+              Delete your account and all associated data. This action cannot be undone.
             </p>
-            <Button
-              variant="outline"
-              onClick={() => {/* Add security dialog logic here */}}
-              className="w-full"
+            <Button 
+              variant="destructive" 
+              className="mt-2"
+              onClick={openDeleteDialog}
             >
-              Update Security Settings
+              Delete Account
             </Button>
           </div>
-          
-          <div>
-            <h3 className="text-base font-semibold text-destructive">Danger Zone</h3>
-            <p className="text-sm text-muted-foreground mb-2">
-              Delete your account and all your data
-            </p>
-            <Button
-              variant="destructive"
-              onClick={() => setIsDeleteDialogOpen(true)}
-              className="w-full"
-            >
-              Delete My Account
-            </Button>
-          </div>
-        </div>
-        
-        <DeleteProfileDialog 
-          isOpen={isDeleteDialogOpen}
-          onClose={() => setIsDeleteDialogOpen(false)}
-          userType={userType}
-        />
-        
-        <MarketingPreferencesDialog
-          isOpen={isMarketingDialogOpen}
-          onClose={() => setIsMarketingDialogOpen(false)}
-          userType={userType}
-        />
-      </CardContent>
-    </Card>
+        </CardContent>
+        <CardFooter className="flex flex-col items-start border-t pt-4">
+          <p className="text-sm text-muted-foreground">
+            By using our platform, you agree to our <TermsAndConditionsLink />
+          </p>
+        </CardFooter>
+      </Card>
+
+      {/* Dialogs */}
+      <MarketingPreferencesDialog 
+        isOpen={isMarketingDialogOpen}
+        onClose={closeMarketingDialog}
+        userType={userType}
+      />
+      
+      <DeleteProfileDialog 
+        isOpen={isDeleteDialogOpen}
+        onClose={closeDeleteDialog}
+        userType={userType}
+      />
+    </>
   );
 };
