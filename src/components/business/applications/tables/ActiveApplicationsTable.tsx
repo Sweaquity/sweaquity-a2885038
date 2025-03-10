@@ -30,6 +30,11 @@ export const ActiveApplicationsTable = ({
     return <div className="text-center p-4">No active applications found.</div>;
   }
 
+  // Create a wrapper function that matches the expected type
+  const handleOpenAcceptJobDialog = async (application: Application) => {
+    await openAcceptJobDialog(application);
+  };
+
   return (
     <ScrollArea className="w-full max-h-[500px] rounded-md border">
       <Table>
@@ -40,7 +45,7 @@ export const ActiveApplicationsTable = ({
               application={application}
               isExpanded={expandedApplications.has(application.id)}
               toggleExpand={() => toggleApplicationExpanded(application.id)}
-              openAcceptJobDialog={async (app) => await openAcceptJobDialog(app)}
+              openAcceptJobDialog={handleOpenAcceptJobDialog}
               handleStatusChange={handleStatusChange}
             />
           ))}

@@ -49,7 +49,8 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       
       console.log(`Anonymizing ${userType} profile for user ${userId}`);
       
-      // Call the delete_user_profile RPC function
+      // Call the delete_user_profile RPC function with named parameters
+      // This avoids the ambiguous column reference error
       const { error: rpcError } = await supabase.rpc('delete_user_profile', { 
         user_type: userType,
         user_id: userId
