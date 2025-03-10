@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { 
   Dialog, 
@@ -12,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { AlertCircle } from "lucide-react";
 
 interface DeleteProfileDialogProps {
   isOpen: boolean;
@@ -20,12 +20,15 @@ interface DeleteProfileDialogProps {
 }
 
 export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfileDialogProps) => {
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
 
-  const handleDeleteProfile = async () => {
+  const getProfileTypeLabel = () => 
+    userType === 'business' ? 'business' : 'job seeker';
+
+  const handleRemoveProfile = async () => {
     try {
-      setIsDeleting(true);
+      setIsProcessing(true);
       
       // Get current session
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -43,21 +46,26 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       
       const userId = sessionData.session.user.id;
       
-      console.log(`Attempting to delete ${userType} profile for user ${userId}`);
+      console.log(`Anonymizing ${userType} profile for user ${userId}`);
       
-      // Call the RPC function to handle the deletion securely
-      const { error: rpcError } = await supabase.rpc('delete_user_profile', { 
+      // Call the renamed RPC function to handle the anonymization securely
+      const { data, error: rpcError } = await supabase.rpc('anonymize_user_profile', { 
         user_type: userType,
         user_id: userId
       });
       
       if (rpcError) {
-        console.error("Error deleting profile:", rpcError);
-        toast.error("Failed to delete profile: " + rpcError.message);
+        console.error("Error anonymizing profile:", rpcError);
+        toast.error("Failed to remove profile data: " + rpcError.message);
         return;
       }
       
-      toast.success("Profile deleted successfully");
+      if (!data?.success) {
+        toast.error("Failed to remove profile data. Please contact support.");
+        return;
+      }
+      
+      toast.success("Your profile data has been successfully removed");
       
       // Sign out the user
       await supabase.auth.signOut();
@@ -66,34 +74,43 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       navigate('/');
       
     } catch (error: any) {
-      console.error("Delete profile error:", error);
-      toast.error(`Failed to delete profile: ${error?.message || "Unknown error"}`);
+      console.error("Profile anonymization error:", error);
+      toast.error(`Failed to remove profile data: ${error?.message || "Unknown error"}`);
     } finally {
-      setIsDeleting(false);
+      setIsProcessing(false);
       onClose();
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !isDeleting && !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !isProcessing && !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Delete Profile</DialogTitle>
+          <DialogTitle>Remove Account Data</DialogTitle>
           <DialogDescription>
-            This will permanently delete your {userType === 'business' ? 'business' : 'job seeker'} profile. Your data will be anonymized and personal information removed.
+            This will remove your personal information from your {getProfileTypeLabel()} profile. Your account will be deactivated and your data will be anonymized in accordance with GDPR regulations.
           </DialogDescription>
         </DialogHeader>
+        
+        <div className="bg-amber-50 p-4 rounded-md border border-amber-200 flex gap-2">
+          <AlertCircle className="text-amber-500 h-5 w-5" />
+          <p className="text-sm text-amber-800">
+            Note: This will preserve anonymized records for system integrity, but all your personal identifying information will be removed.
+          </p>
+        </div>
+        
         <p className="text-destructive font-medium">
-          Are you sure you want to delete your profile? This action cannot be undone.
+          Are you sure you want to proceed? This action cannot be undone.
         </p>
+        
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isDeleting}>Cancel</Button>
+          <Button variant="outline" onClick={onClose} disabled={isProcessing}>Cancel</Button>
           <Button 
             variant="destructive" 
-            onClick={handleDeleteProfile} 
-            disabled={isDeleting}
+            onClick={handleRemoveProfile} 
+            disabled={isProcessing}
           >
-            {isDeleting ? "Deleting..." : "Delete Profile"}
+            {isProcessing ? "Processing..." : "Remove My Data"}
           </Button>
         </DialogFooter>
       </DialogContent>
