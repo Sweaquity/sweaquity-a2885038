@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -27,9 +27,11 @@ export const useCVData = () => {
   });
   const [userCVs, setUserCVs] = useState<CVFile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const hasLogged = useRef<boolean>(false);
+  const dataLoadedRef = useRef<boolean>(false);
 
   const loadCVData = async (userId: string) => {
-    if (!userId) return;
+    if (!userId || dataLoadedRef.current) return;
     
     setIsLoading(true);
     try {
@@ -66,47 +68,60 @@ export const useCVData = () => {
       }
 
       // Fetch the user's CV files
-      const { data: cvFiles, error: cvFilesError } = await supabase
-        .storage
-        .from('cvs')
-        .list(`${userId}`);
+      try {
+        const { data: cvFiles, error: cvFilesError } = await supabase
+          .storage
+          .from('cvs')
+          .list(`${userId}`);
 
-      if (cvFilesError) {
-        console.error("Error fetching CV files:", cvFilesError);
-        return;
-      }
-
-      // Transform the data to include full URLs
-      if (cvFiles && cvFiles.length > 0) {
-        const transformedCVs: CVFile[] = await Promise.all(
-          cvFiles.map(async (file) => {
-            const { data: urlData } = await supabase
-              .storage
-              .from('cvs')
-              .createSignedUrl(`${userId}/${file.name}`, 60 * 60); // 1 hour expiry
-
-            return {
-              id: `${userId}_${file.name}`,
-              name: file.name,
-              url: urlData?.signedUrl || '',
-              created_at: file.created_at || new Date().toISOString(),
-              size: file.metadata?.size,
-              is_default: profileData?.cv_url?.includes(file.name) || false
-            };
-          })
-        );
-
-        console.info("CV files loaded:", transformedCVs.length);
-        setUserCVs(transformedCVs);
-        console.info("Setting userCVs:", transformedCVs.length);
-      } else {
-        // If no files were found, set an empty array and don't log repeatedly
-        if (userCVs.length !== 0) {
-          console.info("CV files loaded: 0");
+        if (cvFilesError) {
+          console.error("Error fetching CV files:", cvFilesError);
           setUserCVs([]);
-          console.info("Setting userCVs: 0");
+          return;
         }
+
+        // Transform the data to include full URLs
+        if (cvFiles && cvFiles.length > 0) {
+          const transformedCVs: CVFile[] = await Promise.all(
+            cvFiles.map(async (file) => {
+              const { data: urlData } = await supabase
+                .storage
+                .from('cvs')
+                .createSignedUrl(`${userId}/${file.name}`, 60 * 60); // 1 hour expiry
+
+              return {
+                id: `${userId}_${file.name}`,
+                name: file.name,
+                url: urlData?.signedUrl || '',
+                created_at: file.created_at || new Date().toISOString(),
+                size: file.metadata?.size,
+                is_default: profileData?.cv_url?.includes(file.name) || false
+              };
+            })
+          );
+
+          if (!hasLogged.current) {
+            console.info("CV files loaded:", transformedCVs.length);
+            hasLogged.current = true;
+          }
+          
+          setUserCVs(transformedCVs);
+        } else {
+          // If no files were found, set an empty array and only log once
+          if (!hasLogged.current) {
+            console.info("CV files loaded: 0");
+            hasLogged.current = true;
+          }
+          setUserCVs([]);
+        }
+      } catch (error) {
+        // Handle storage errors gracefully
+        console.error("Storage error:", error);
+        setUserCVs([]);
       }
+      
+      // Mark data as loaded to prevent redundant fetches
+      dataLoadedRef.current = true;
     } catch (error) {
       console.error("Error loading CV data:", error);
       toast.error("Failed to load CV data");
@@ -114,6 +129,14 @@ export const useCVData = () => {
       setIsLoading(false);
     }
   };
+
+  // Reset the dataLoadedRef when the component unmounts
+  useEffect(() => {
+    return () => {
+      dataLoadedRef.current = false;
+      hasLogged.current = false;
+    };
+  }, []);
 
   return {
     cvUrl,
