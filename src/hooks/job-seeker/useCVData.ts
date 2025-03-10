@@ -1,148 +1,138 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { listUserCVs } from "@/utils/setupStorage";
 
 export interface CVFile {
   id: string;
   name: string;
-  url: string;
   created_at: string;
-  size?: number;
-  is_default?: boolean;
-}
-
-export interface ParsedCVData {
-  skills: any[];
-  career_history: any[];
-  education: any[];
+  updated_at: string;
+  last_accessed_at: string;
+  metadata: any;
+  isDefault?: boolean;
 }
 
 export const useCVData = () => {
   const [cvUrl, setCvUrl] = useState<string | null>(null);
-  const [parsedCvData, setParsedCvData] = useState<ParsedCVData>({
-    skills: [],
-    career_history: [],
-    education: []
-  });
+  const [parsedCvData, setParsedCvData] = useState<any>(null);
   const [userCVs, setUserCVs] = useState<CVFile[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const hasLogged = useRef<boolean>(false);
-  const dataLoadedRef = useRef<boolean>(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const loadCVData = async (userId: string) => {
-    if (!userId || dataLoadedRef.current) return;
-    
-    setIsLoading(true);
     try {
-      // Fetch the user's profile to get their CV URL
+      setIsLoading(true);
+      
+      // Get user's profile data to check for CV URL
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('cv_url')
         .eq('id', userId)
-        .single();
-
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error("Error fetching profile CV URL:", profileError);
+        .maybeSingle();
+        
+      if (profileError) {
+        if (profileError.code !== 'PGRST116') {  // Ignore "no rows returned" error
+          toast.error("Error fetching profile data");
+        }
       } else if (profileData?.cv_url) {
         setCvUrl(profileData.cv_url);
+      } else {
+        // Explicitly set to null if no CV URL is found in the profile
+        setCvUrl(null);
       }
 
-      // Fetch parsed CV data
-      const { data: parsedData, error: parsedError } = await supabase
+      // Get parsed CV data if available
+      const { data: cvData, error: cvError } = await supabase
         .from('cv_parsed_data')
-        .select('skills, career_history, education')
+        .select('*')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
         .maybeSingle();
 
-      if (parsedError && parsedError.code !== 'PGRST116') {
-        console.error("Error fetching parsed CV data:", parsedError);
-      } else if (parsedData) {
-        setParsedCvData({
-          skills: parsedData.skills || [],
-          career_history: parsedData.career_history || [],
-          education: parsedData.education || []
-        });
-      }
-
-      // Fetch the user's CV files
-      try {
-        const { data: cvFiles, error: cvFilesError } = await supabase
-          .storage
-          .from('cvs')
-          .list(`${userId}`);
-
-        if (cvFilesError) {
-          console.error("Error fetching CV files:", cvFilesError);
-          setUserCVs([]);
-          return;
+      if (cvError) {
+        if (cvError.code !== 'PGRST116') {  // Ignore "no rows returned" error
+          toast.error("Error fetching CV data");
         }
-
-        // Transform the data to include full URLs
-        if (cvFiles && cvFiles.length > 0) {
-          const transformedCVs: CVFile[] = await Promise.all(
-            cvFiles.map(async (file) => {
-              const { data: urlData } = await supabase
-                .storage
-                .from('cvs')
-                .createSignedUrl(`${userId}/${file.name}`, 60 * 60); // 1 hour expiry
-
-              return {
-                id: `${userId}_${file.name}`,
-                name: file.name,
-                url: urlData?.signedUrl || '',
-                created_at: file.created_at || new Date().toISOString(),
-                size: file.metadata?.size,
-                is_default: profileData?.cv_url?.includes(file.name) || false
-              };
-            })
-          );
-
-          if (!hasLogged.current) {
-            console.info("CV files loaded:", transformedCVs.length);
-            hasLogged.current = true;
-          }
-          
-          setUserCVs(transformedCVs);
-        } else {
-          // If no files were found, set an empty array and only log once
-          if (!hasLogged.current) {
-            console.info("CV files loaded: 0");
-            hasLogged.current = true;
-          }
-          setUserCVs([]);
-        }
-      } catch (error) {
-        // Handle storage errors gracefully
-        console.error("Storage error:", error);
-        setUserCVs([]);
+      } else if (cvData) {
+        setParsedCvData(cvData);
+      } else {
+        // Explicitly set to null if no parsed data is found
+        setParsedCvData(null);
       }
       
-      // Mark data as loaded to prevent redundant fetches
-      dataLoadedRef.current = true;
+      try {
+        // Always list user's CVs even if there are no default CVs
+        const cvFiles = await listUserCVs(userId);
+        console.log("CV files loaded:", cvFiles.length);
+        
+        // Mark default CV
+        const defaultCVUrl = profileData?.cv_url;
+        
+        // If we have a default CV URL but no files match, we need to clear the default CV
+        if (defaultCVUrl && cvFiles.length > 0) {
+          const fileName = defaultCVUrl.split('/').pop();
+          const fileExists = cvFiles.some(file => file.name === fileName);
+          
+          if (!fileExists) {
+            // The default CV file no longer exists, clear it from the profile
+            await supabase
+              .from('profiles')
+              .update({ cv_url: null })
+              .eq('id', userId);
+              
+            // Also update CV parsed data if it exists
+            await supabase
+              .from('cv_parsed_data')
+              .update({ cv_url: null })
+              .eq('user_id', userId);
+              
+            setCvUrl(null);
+          }
+        }
+        
+        const filesWithDefault = cvFiles.map(file => ({
+          ...file,
+          isDefault: defaultCVUrl ? defaultCVUrl.includes(file.name) : false
+        }));
+        
+        console.log("Setting userCVs:", filesWithDefault.length);
+        setUserCVs(filesWithDefault);
+        
+        // If there are no CVs, make sure cvUrl is null
+        if (cvFiles.length === 0) {
+          setCvUrl(null);
+          
+          // Also update the profile if needed
+          if (profileData?.cv_url) {
+            await supabase
+              .from('profiles')
+              .update({ cv_url: null })
+              .eq('id', userId);
+              
+            // Also update CV parsed data if it exists
+            await supabase
+              .from('cv_parsed_data')
+              .update({ cv_url: null })
+              .eq('user_id', userId);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading CV list:", error);
+        toast.error('Error loading CV list');
+      }
     } catch (error) {
-      console.error("Error loading CV data:", error);
+      console.error("Failed to load CV data:", error);
       toast.error("Failed to load CV data");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Reset the dataLoadedRef when the component unmounts
-  useEffect(() => {
-    return () => {
-      dataLoadedRef.current = false;
-      hasLogged.current = false;
-    };
-  }, []);
-
-  return {
-    cvUrl,
-    setCvUrl,
-    parsedCvData,
-    setParsedCvData,
+  return { 
+    cvUrl, 
+    setCvUrl, 
+    parsedCvData, 
+    setParsedCvData, 
     loadCVData,
     userCVs,
     setUserCVs,

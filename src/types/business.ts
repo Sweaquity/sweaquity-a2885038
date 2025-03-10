@@ -2,7 +2,6 @@
 import { Skill, SkillRequirement } from "./jobSeeker";
 
 export interface Application {
-  id?: string;
   job_app_id: string;
   task_id: string;
   user_id: string;
@@ -17,7 +16,7 @@ export interface Application {
   accepted_jobseeker?: boolean;
   notes?: string;
   role_id?: string;
-  project_id?: string;
+  id?: string;
   profile: {
     first_name: string;
     last_name: string;
