@@ -28,29 +28,33 @@ export const AccountSettingsCard = ({ userType }: AccountSettingsCardProps) => {
             Manage your account settings and preferences
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="grid grid-cols-2 gap-4 items-center">
           <div>
             <h3 className="text-lg font-medium">Marketing Preferences</h3>
             <p className="text-sm text-muted-foreground">
               Control how we communicate with you
             </p>
+          </div>
+          <div className="flex justify-end">
             <Button 
               variant="outline" 
-              className="mt-2"
               onClick={openMarketingDialog}
             >
               Manage Preferences
             </Button>
           </div>
           
-          <div className="pt-4 border-t">
+          <div className="pt-4 border-t col-span-2" />
+          
+          <div>
             <h3 className="text-lg font-medium text-destructive">Danger Zone</h3>
             <p className="text-sm text-muted-foreground">
               Delete your account and all associated data. This action cannot be undone.
             </p>
+          </div>
+          <div className="flex justify-end">
             <Button 
               variant="destructive" 
-              className="mt-2"
               onClick={openDeleteDialog}
             >
               Delete Account
