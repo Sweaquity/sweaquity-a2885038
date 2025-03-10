@@ -238,12 +238,16 @@ export type Database = {
       }
       businesses: {
         Row: {
+          anonymized_at: string | null
           banking_details: Json | null
           business_type: Database["public"]["Enums"]["business_type"]
           businesses_id: string
+          company_address: string | null
           company_name: string | null
           company_size: number | null
-          contact_email: string
+          company_website: string | null
+          contact_email: string | null
+          contact_person: string | null
           contact_phone: string | null
           created_at: string | null
           geographic_scope: Json | null
@@ -259,18 +263,23 @@ export type Database = {
           project_stage: Database["public"]["Enums"]["project_stage"] | null
           project_timeline: Json | null
           required_skills: Json | null
+          social_media: Json | null
           terms_accepted: boolean | null
           time_commitment: Database["public"]["Enums"]["time_commitment"] | null
           updated_at: string | null
           website: string | null
         }
         Insert: {
+          anonymized_at?: string | null
           banking_details?: Json | null
           business_type?: Database["public"]["Enums"]["business_type"]
           businesses_id: string
+          company_address?: string | null
           company_name?: string | null
           company_size?: number | null
-          contact_email: string
+          company_website?: string | null
+          contact_email?: string | null
+          contact_person?: string | null
           contact_phone?: string | null
           created_at?: string | null
           geographic_scope?: Json | null
@@ -286,6 +295,7 @@ export type Database = {
           project_stage?: Database["public"]["Enums"]["project_stage"] | null
           project_timeline?: Json | null
           required_skills?: Json | null
+          social_media?: Json | null
           terms_accepted?: boolean | null
           time_commitment?:
             | Database["public"]["Enums"]["time_commitment"]
@@ -294,12 +304,16 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          anonymized_at?: string | null
           banking_details?: Json | null
           business_type?: Database["public"]["Enums"]["business_type"]
           businesses_id?: string
+          company_address?: string | null
           company_name?: string | null
           company_size?: number | null
-          contact_email?: string
+          company_website?: string | null
+          contact_email?: string | null
+          contact_person?: string | null
           contact_phone?: string | null
           created_at?: string | null
           geographic_scope?: Json | null
@@ -315,6 +329,7 @@ export type Database = {
           project_stage?: Database["public"]["Enums"]["project_stage"] | null
           project_timeline?: Json | null
           required_skills?: Json | null
+          social_media?: Json | null
           terms_accepted?: boolean | null
           time_commitment?:
             | Database["public"]["Enums"]["time_commitment"]
@@ -396,6 +411,8 @@ export type Database = {
         Row: {
           accepted_business: boolean | null
           accepted_jobseeker: boolean | null
+          applicant_anonymized: boolean | null
+          applicant_id: string | null
           applied_at: string | null
           created_at: string | null
           cv_url: string | null
@@ -411,6 +428,8 @@ export type Database = {
         Insert: {
           accepted_business?: boolean | null
           accepted_jobseeker?: boolean | null
+          applicant_anonymized?: boolean | null
+          applicant_id?: string | null
           applied_at?: string | null
           created_at?: string | null
           cv_url?: string | null
@@ -426,6 +445,8 @@ export type Database = {
         Update: {
           accepted_business?: boolean | null
           accepted_jobseeker?: boolean | null
+          applicant_anonymized?: boolean | null
+          applicant_id?: string | null
           applied_at?: string | null
           created_at?: string | null
           cv_url?: string | null
@@ -459,6 +480,35 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "project_sub_tasks"
             referencedColumns: ["task_id"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          business_id: string | null
+          id: string
+          is_hidden: boolean | null
+          status: string | null
+        }
+        Insert: {
+          business_id?: string | null
+          id?: string
+          is_hidden?: boolean | null
+          status?: string | null
+        }
+        Update: {
+          business_id?: string | null
+          id?: string
+          is_hidden?: boolean | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["businesses_id"]
           },
         ]
       }
@@ -511,7 +561,10 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address: string | null
+          anonymized_at: string | null
           availability: string | null
+          bio: string | null
           created_at: string | null
           cv_url: string | null
           email: string | null
@@ -524,14 +577,19 @@ export type Database = {
           last_name: string | null
           location: string | null
           marketing_consent: boolean | null
+          phone: string | null
           project_updates_consent: boolean | null
           skills: Json | null
+          social_links: Json | null
           terms_accepted: boolean | null
           title: string | null
           updated_at: string | null
         }
         Insert: {
+          address?: string | null
+          anonymized_at?: string | null
           availability?: string | null
+          bio?: string | null
           created_at?: string | null
           cv_url?: string | null
           email?: string | null
@@ -544,14 +602,19 @@ export type Database = {
           last_name?: string | null
           location?: string | null
           marketing_consent?: boolean | null
+          phone?: string | null
           project_updates_consent?: boolean | null
           skills?: Json | null
+          social_links?: Json | null
           terms_accepted?: boolean | null
           title?: string | null
           updated_at?: string | null
         }
         Update: {
+          address?: string | null
+          anonymized_at?: string | null
           availability?: string | null
+          bio?: string | null
           created_at?: string | null
           cv_url?: string | null
           email?: string | null
@@ -564,8 +627,10 @@ export type Database = {
           last_name?: string | null
           location?: string | null
           marketing_consent?: boolean | null
+          phone?: string | null
           project_updates_consent?: boolean | null
           skills?: Json | null
+          social_links?: Json | null
           terms_accepted?: boolean | null
           title?: string | null
           updated_at?: string | null

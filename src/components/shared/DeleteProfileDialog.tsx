@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { 
   Dialog, 
@@ -48,8 +49,8 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       
       console.log(`Anonymizing ${userType} profile for user ${userId}`);
       
-      // Call the renamed RPC function to handle the anonymization securely
-      const { data, error: rpcError } = await supabase.rpc('anonymize_user_profile', { 
+      // Call the delete_user_profile RPC function
+      const { error: rpcError } = await supabase.rpc('delete_user_profile', { 
         user_type: userType,
         user_id: userId
       });
@@ -57,11 +58,6 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       if (rpcError) {
         console.error("Error anonymizing profile:", rpcError);
         toast.error("Failed to remove profile data: " + rpcError.message);
-        return;
-      }
-      
-      if (!data?.success) {
-        toast.error("Failed to remove profile data. Please contact support.");
         return;
       }
       
