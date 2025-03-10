@@ -54,7 +54,7 @@ export const AccountSettingsCard = ({ userType }: AccountSettingsCardProps) => {
           </div>
           <div className="flex justify-end">
             <Button 
-              variant="destructive" 
+              variant="outline" 
               onClick={openDeleteDialog}
             >
               Delete Account
