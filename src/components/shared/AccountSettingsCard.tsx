@@ -49,7 +49,7 @@ export const AccountSettingsCard = ({ userType }: AccountSettingsCardProps) => {
           <div>
             <h3 className="text-lg font-medium text-destructive">Danger Zone</h3>
             <p className="text-sm text-muted-foreground">
-              Delete your account and all associated data. This action cannot be undone.
+              Remove your personal data and deactivate your account. This action cannot be undone.
             </p>
           </div>
           <div className="flex justify-end">
@@ -57,7 +57,7 @@ export const AccountSettingsCard = ({ userType }: AccountSettingsCardProps) => {
               variant="outline" 
               onClick={openDeleteDialog}
             >
-              Delete Account
+              Remove My Data
             </Button>
           </div>
         </CardContent>
