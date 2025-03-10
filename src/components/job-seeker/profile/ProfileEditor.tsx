@@ -11,7 +11,6 @@ import { ConsentCheckboxes } from "./ConsentCheckboxes";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Check } from "lucide-react";
-import { AccountSettingsCard } from "@/components/shared/AccountSettingsCard";
 
 interface ProfileEditorProps {
   profile: Profile | null;
