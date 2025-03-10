@@ -7,7 +7,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Application } from "@/types/business";
+import { Application, Project } from "@/types/business";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ActiveApplicationsTable } from './applications/tables/ActiveApplicationsTable';
@@ -27,8 +27,6 @@ export const ProjectApplicationsSection = ({ project }: ProjectApplicationsSecti
   const [expandedApplications, setExpandedApplications] = useState<Set<string>>(new Set());
   const [acceptJobDialogOpen, setAcceptJobDialogOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
-
-  const projectId = project?.project_id;
 
   const toggleApplicationExpanded = (id: string) => {
     setExpandedApplications((prevExpanded) => {
@@ -51,19 +49,19 @@ export const ProjectApplicationsSection = ({ project }: ProjectApplicationsSecti
         .from('job_applications')
         .select(`
           job_app_id,
+          task_id,
+          user_id,
+          applied_at,
           created_at,
           status,
           notes,
           message,
-          task_id,
-          project_id,
-          user_id,
-          applied_at,
           cv_url,
           task_discourse,
           accepted_business,
           accepted_jobseeker,
-          business_roles (
+          project_id,
+          business_roles:project_sub_tasks (
             business_role_id,
             title,
             description,
@@ -108,6 +106,7 @@ export const ProjectApplicationsSection = ({ project }: ProjectApplicationsSecti
           accepted_business: app.accepted_business,
           accepted_jobseeker: app.accepted_jobseeker,
           notes: app.notes,
+          project_id: app.project_id,
           business_roles: Array.isArray(app.business_roles) && app.business_roles.length > 0 
             ? app.business_roles[0] 
             : {
@@ -180,7 +179,7 @@ export const ProjectApplicationsSection = ({ project }: ProjectApplicationsSecti
     // Make sure application has the project_id property
     const jobApp = {
       ...application,
-      project_id: project?.project_id || null
+      project_id: project?.project_id || application.project_id || null
     };
     
     setSelectedApplication(jobApp);

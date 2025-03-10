@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -251,11 +252,14 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
 
       await checkBusinessProfile(session.user.id);
 
-      await Promise.all([
-        loadProfile(session.user.id),
-        loadApplications(session.user.id),
-        loadCVData(session.user.id)
-      ]);
+      // Load data in sequence to avoid race conditions
+      await loadProfile(session.user.id);
+      await loadApplications(session.user.id);
+      
+      // Only load CV data if we don't already have it or if forced by refresh trigger
+      if (userCVs.length === 0 || refreshTrigger > 0) {
+        await loadCVData(session.user.id);
+      }
 
       const opportunities = await loadOpportunities(session.user.id, skills);
       setAvailableOpportunities(opportunities);
@@ -273,7 +277,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
       setIsLoading(false);
       loadingRef.current = false;
     }
-  }, [checkSession, checkProfileCompletion, checkBusinessProfile, loadProfile, loadApplications, loadCVData, loadOpportunities, skills, applications, navigate, transformToEquityProjects]);
+  }, [checkSession, checkProfileCompletion, checkBusinessProfile, loadProfile, loadApplications, loadCVData, loadOpportunities, skills, applications, navigate, transformToEquityProjects, userCVs.length, refreshTrigger]);
 
   useEffect(() => {
     if (refreshTrigger > 0) {
@@ -288,6 +292,7 @@ export const useJobSeekerDashboard = (refreshTrigger = 0) => {
     
     loadDashboardData();
     
+    // Set up the session check interval
     const sessionCheckInterval = setInterval(async () => {
       await checkSession();
     }, 300000); // 5 minute interval
