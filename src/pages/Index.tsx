@@ -122,8 +122,28 @@ const Index = () => {
           </h1>
           <p className="text-xl md:text-2xl mb-8 max-w-3xl mx-auto">
             Connect job seekers with businesses looking to offer equity in exchange for skills and experience.
-            Let's start by registering or logging in.
+             <br /> 
+             <br /> Let's start by registering or logging in.
           </p>
+                    <div className="grid md:grid-cols-2 gap-6 w-full max-w-4xl mx-auto mb-12">
+            {userTypes.map((type) => (
+              <Card
+                key={type.type}
+                className="p-6 landing-card hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => navigate(type.path)}
+              >
+                <div className="flex flex-col items-center text-center h-full">
+                  <div className="mb-4 p-3 rounded-full bg-accent/10 text-accent">
+                    <type.icon size={24} />
+                  </div>
+                  <h2 className="text-xl font-semibold mb-2">{type.title}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {type.description}
+                  </p>
+                </div>
+              </Card>
+            ))}
+          </div>
         </div>
       </header>
 
