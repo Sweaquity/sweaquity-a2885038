@@ -511,8 +511,8 @@ export const ProjectApplicationsSection = () => {
                       cv_url: application.cv_url,
                       task_discourse: application.task_discourse,
                       id: application.job_app_id,
-                      accepted_jobseeker: application.accepted_jobseeker,
-                      accepted_business: application.accepted_business,
+                      accepted_jobseeker: application.accepted_jobseeker || false,
+                      accepted_business: application.accepted_business || false,
                       business_roles: {
                         title: application.business_roles?.title || "",
                         description: application.business_roles?.description || "",

@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Loader2, MessageCircle } from "lucide-react";
+import { FileText, Loader2, MessageCircle, X } from "lucide-react";
 import { Application } from "@/types/business";
 import { AcceptedJob } from "@/hooks/jobs/useAcceptedJobsCore";
 import { supabase } from "@/lib/supabase";
@@ -11,14 +11,16 @@ import { ContractActionsSection } from "./ContractActionsSection";
 
 interface ExpandedApplicationContentProps {
   application: Application;
-  acceptedJob: AcceptedJob | null;
-  onUpdate: () => void;
+  acceptedJob?: AcceptedJob | null;
+  onUpdate?: () => void;
+  onClose?: () => void;
 }
 
 export const ExpandedApplicationContent = ({
   application,
-  acceptedJob,
-  onUpdate
+  acceptedJob = null,
+  onUpdate = () => {},
+  onClose
 }: ExpandedApplicationContentProps) => {
   const [message, setMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
@@ -63,6 +65,20 @@ export const ExpandedApplicationContent = ({
   
   return (
     <div className="space-y-4 px-4 pb-4">
+      {onClose && (
+        <div className="flex justify-end">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onClose} 
+            className="h-8 w-8 p-0"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </Button>
+        </div>
+      )}
+      
       {/* Application Message */}
       {application.message && (
         <div>
@@ -72,8 +88,6 @@ export const ExpandedApplicationContent = ({
           </div>
         </div>
       )}
-      
-
       
       {/* Communication History */}
       <div>

@@ -191,6 +191,8 @@ export const ActiveApplicationsTable = ({
             <ExpandedApplicationContent 
               application={app} 
               onClose={() => toggleApplicationExpanded(appId)}
+              onUpdate={onApplicationUpdate}
+              acceptedJob={null}
             />
           </div>
         );
