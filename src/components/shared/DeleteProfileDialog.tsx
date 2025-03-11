@@ -47,7 +47,7 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       
       const userId = sessionData.session.user.id;
       
-      console.log(`Anonymizing ${userType} profile for user ${userId}`);
+      console.log(`Removing ${userType} profile for user ${userId}`);
       
       // Get profile data before anonymization for GDPR backup
       const profileData = userType === 'job_seeker' 
@@ -74,80 +74,26 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
         
       if (gdprError) {
         console.error("Error storing GDPR data:", gdprError);
-        // Continue with anonymization despite GDPR storage error
+        // Continue with deletion despite GDPR storage error
       }
       
-      // Direct anonymization approach for the specific profile type
-      if (userType === 'job_seeker') {
-        // Anonymize the profile data
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            first_name: 'Deleted Account',
-            last_name: '',
-            email: null,
-            phone: null,
-            address: null,
-            bio: 'This account has been anonymized',
-            is_anonymized: true,
-            anonymized_at: new Date().toISOString()
-          })
-          .eq('id', userId);
-          
-        if (profileError) {
-          console.error("Error anonymizing profile:", profileError);
-          toast.error("Failed to anonymize profile data: " + profileError.message);
-          return;
+      // Call the delete_user_profile function that will handle the actual deletion
+      // This is a server-side function that will delete the user profile and related data
+      const { error: deletionError } = await supabase.rpc(
+        'delete_user_profile',
+        { 
+          user_type: userType,
+          user_id: userId
         }
-        
-        // Update job applications status to withdrawn
-        const { error: applicationsError } = await supabase
-          .from('job_applications')
-          .update({
-            status: 'withdrawn',
-            applicant_anonymized: true
-          })
-          .eq('user_id', userId);
-          
-        if (applicationsError && applicationsError.code !== 'PGRST116') {
-          console.error("Error updating applications:", applicationsError);
-        }
-        
-      } else if (userType === 'business') {
-        // Anonymize business profile
-        const { error: businessError } = await supabase
-          .from('businesses')
-          .update({
-            company_name: 'Deleted Business',
-            contact_email: null,
-            contact_phone: null,
-            contact_person: null,
-            website: null,
-            is_anonymized: true,
-            anonymized_at: new Date().toISOString()
-          })
-          .eq('businesses_id', userId);
-          
-        if (businessError) {
-          console.error("Error anonymizing business:", businessError);
-          toast.error("Failed to anonymize business data: " + businessError.message);
-          return;
-        }
-        
-        // Mark business projects as inactive
-        const { error: projectsError } = await supabase
-          .from('business_projects')
-          .update({
-            status: 'inactive'
-          })
-          .eq('business_id', userId);
-          
-        if (projectsError && projectsError.code !== 'PGRST116') {
-          console.error("Error updating projects:", projectsError);
-        }
+      );
+      
+      if (deletionError) {
+        console.error("Error deleting profile:", deletionError);
+        toast.error("Failed to delete profile: " + deletionError.message);
+        return;
       }
       
-      toast.success("Your profile has been successfully anonymized in accordance with GDPR regulations");
+      toast.success("Your profile has been successfully deleted in accordance with GDPR regulations");
       
       // Sign out the user
       await supabase.auth.signOut();
@@ -156,8 +102,8 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       navigate('/');
       
     } catch (error: any) {
-      console.error("Profile anonymization error:", error);
-      toast.error(`Failed to anonymize profile data: ${error?.message || "Unknown error"}`);
+      console.error("Profile deletion error:", error);
+      toast.error(`Failed to delete profile: ${error?.message || "Unknown error"}`);
     } finally {
       setIsProcessing(false);
       onClose();
@@ -168,9 +114,9 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
     <Dialog open={isOpen} onOpenChange={(open) => !isProcessing && !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Anonymize Account Data</DialogTitle>
+          <DialogTitle>Delete Account Data</DialogTitle>
           <DialogDescription>
-            This will anonymize your personal information from your {getProfileTypeLabel()} profile in accordance with GDPR regulations.
+            This will delete your {getProfileTypeLabel()} profile data in accordance with GDPR regulations.
           </DialogDescription>
         </DialogHeader>
         
@@ -179,14 +125,13 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
           <div className="text-sm text-amber-800">
             <p className="font-medium mb-1">What happens to your data:</p>
             <ul className="list-disc ml-4 space-y-1">
-              <li>Personal information will be replaced with "Deleted Account"</li>
-              <li>Contact details will be removed</li>
+              <li>Your account and personal information will be completely deleted</li>
               <li>A backup of your data will be securely stored as required by GDPR</li>
               {userType === 'business' && (
-                <li>Your job listings will be marked as inactive</li>
+                <li>Your job listings and project data will be removed</li>
               )}
               {userType === 'job_seeker' && (
-                <li>Your job applications will be marked as withdrawn</li>
+                <li>Your job applications and skills data will be removed</li>
               )}
             </ul>
           </div>
@@ -196,13 +141,10 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
           <Info className="text-blue-500 h-5 w-5 shrink-0 mt-0.5" />
           <div className="text-sm text-blue-800">
             <p className="mb-2">
-              You will be signed out after your data is anonymized. This action preserves system records but removes all personally identifiable information.
+              You will be signed out after your data is deleted. This action cannot be undone.
             </p>
             <p className="font-medium">
-              Important: This only anonymizes your {getProfileTypeLabel()} profile data. If you have both job seeker and business accounts, you will need to anonymize each account type separately by logging in to each account type.
-            </p>
-            <p className="mt-2 font-medium">
-              Note: Your login credentials will remain active. To completely remove your account, please contact support.
+              Important: This only deletes your {getProfileTypeLabel()} profile data. If you have both job seeker and business accounts, you will need to delete each account type separately by logging in to each account type.
             </p>
           </div>
         </div>
@@ -219,7 +161,7 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
             disabled={isProcessing}
             className="border border-destructive"
           >
-            {isProcessing ? "Processing..." : "Anonymize My Data"}
+            {isProcessing ? "Processing..." : "Delete My Data"}
           </Button>
         </DialogFooter>
       </DialogContent>
