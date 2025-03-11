@@ -49,7 +49,27 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       
       console.log(`Removing ${userType} profile for user ${userId}`);
       
-      // Call the delete_user_profile function that will handle the deletion and auth user removal
+      // Before attempting the delete, log some database information to help debug
+      if (userType === 'business') {
+        const { data: businessData } = await supabase
+          .from('businesses')
+          .select('*')
+          .eq('businesses_id', userId)
+          .single();
+        
+        console.log("Business profile check:", businessData);
+      } else {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        
+        console.log("Job seeker profile check:", profileData);
+      }
+      
+      // Call the delete_user_profile function with the correct parameter names
+      // The column name that's failing is likely in the Supabase function, not directly in our code
       const { error: deletionError } = await supabase.rpc(
         'delete_user_profile',
         { 
