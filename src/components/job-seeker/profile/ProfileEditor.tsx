@@ -1,172 +1,88 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Profile } from "@/types/jobSeeker";
-import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
-import { PersonalInfoFields } from "./PersonalInfoFields";
-import { AvailabilitySelector } from "./AvailabilitySelector";
-import { ConsentCheckboxes } from "./ConsentCheckboxes";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Check } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
+import { Pencil, Save } from "lucide-react";
+import { AvailabilitySelector } from "./AvailabilitySelector";
+import { PersonalInfoFields } from "./PersonalInfoFields";
+import { ConsentCheckboxes } from "./ConsentCheckboxes";
 
-interface ProfileEditorProps {
-  profile: Profile | null;
-  onProfileUpdate?: () => void;
-}
-
-export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEditorProps) => {
+export function ProfileEditor({ profileData, onProfileUpdate }: { profileData: any, onProfileUpdate: () => void }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
-    title: '',
-    email: '',
-    location: '',
-    availability: [] as string[],
-    employment_preference: 'both' as 'salary_only' | 'equity_only' | 'both',
-    terms_accepted: false,
-    marketing_consent: false,
-    project_updates_consent: false,
+    full_name: profileData?.full_name || "",
+    email: profileData?.email || "",
+    location: profileData?.location || "",
+    phone: profileData?.phone || "",
+    summary: profileData?.summary || "",
+    availability: profileData?.availability || "full-time",
+    open_to_recruiters: profileData?.open_to_recruiters || false,
+    marketing_consent: profileData?.marketing_consent || false,
+    terms_accepted: profileData?.terms_accepted || false
   });
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (profile) {
-      loadProfileData();
-    }
-  }, [profile]);
-
-  const loadProfileData = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-        
-      if (error) throw error;
-      
-      let availabilityArray = [];
-      
-      // Parse availability properly
-      if (data.availability) {
-        if (typeof data.availability === 'string') {
-          try {
-            // Try to parse JSON string
-            availabilityArray = JSON.parse(data.availability);
-          } catch (e) {
-            // If not valid JSON, treat as a single item
-            availabilityArray = [data.availability];
-          }
-        } else if (Array.isArray(data.availability)) {
-          availabilityArray = data.availability;
-        }
-      }
-      
+    if (profileData) {
       setFormData({
-        first_name: data.first_name || '',
-        last_name: data.last_name || '',
-        title: data.title || '',
-        email: data.email || '',
-        location: data.location || '',
-        availability: availabilityArray,
-        employment_preference: data.employment_preference || 'both',
-        terms_accepted: !!data.terms_accepted,
-        marketing_consent: !!data.marketing_consent,
-        project_updates_consent: !!data.project_updates_consent,
+        full_name: profileData.full_name || "",
+        email: profileData.email || "",
+        location: profileData.location || "",
+        phone: profileData.phone || "",
+        summary: profileData.summary || "",
+        availability: profileData.availability || "full-time",
+        open_to_recruiters: profileData.open_to_recruiters || false,
+        marketing_consent: profileData.marketing_consent || false,
+        terms_accepted: profileData.terms_accepted || true // If they already have a profile, they've accepted terms
       });
-    } catch (error) {
-      console.error('Error loading profile data:', error);
-      toast.error("Failed to load profile data");
     }
+  }, [profileData]);
+
+  const handleEdit = () => {
+    setIsEditing(true);
   };
 
-  const handleFieldChange = (field: string, value: string | string[]) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  const handleChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleTermsAcceptedChange = (checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      terms_accepted: checked
-    }));
-  };
-
-  const handleMarketingConsentChange = (checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      marketing_consent: checked
-    }));
-  };
-
-  const handleProjectUpdatesConsentChange = (checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      project_updates_consent: checked
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSave = async () => {
     if (!formData.terms_accepted) {
       toast.error("You must accept the terms and conditions");
       return;
     }
 
-    if (formData.availability.length === 0) {
-      toast.error("Please select at least one availability option");
-      return;
-    }
-
-    setIsSaving(true);
-
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error("No authenticated session");
-      }
-
-      // Convert availability to string if needed for storage
-      const availabilityData = 
-        Array.isArray(formData.availability) 
-          ? JSON.stringify(formData.availability) 
-          : formData.availability;
-
+      setIsSaving(true);
+      
       const { error } = await supabase
         .from('profiles')
         .update({
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          title: formData.title,
-          email: formData.email,
-          location: formData.location, 
-          availability: availabilityData,
-          employment_preference: formData.employment_preference,
-          terms_accepted: formData.terms_accepted,
+          full_name: formData.full_name,
+          location: formData.location,
+          phone: formData.phone,
+          summary: formData.summary,
+          availability: formData.availability,
+          open_to_recruiters: formData.open_to_recruiters,
           marketing_consent: formData.marketing_consent,
-          project_updates_consent: formData.project_updates_consent,
+          terms_accepted: formData.terms_accepted,
           updated_at: new Date().toISOString()
         })
-        .eq('id', session.user.id);
-
+        .eq('id', profileData.id);
+      
       if (error) throw error;
-
+      
       toast.success("Profile updated successfully");
       setIsEditing(false);
-      if (onProfileUpdate) onProfileUpdate();
+      onProfileUpdate();
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error("Error updating profile:", error);
       toast.error("Failed to update profile");
     } finally {
       setIsSaving(false);
@@ -174,159 +90,136 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
   };
 
   const handleCancel = () => {
+    setFormData({
+      full_name: profileData?.full_name || "",
+      email: profileData?.email || "",
+      location: profileData?.location || "",
+      phone: profileData?.phone || "",
+      summary: profileData?.summary || "",
+      availability: profileData?.availability || "full-time",
+      open_to_recruiters: profileData?.open_to_recruiters || false,
+      marketing_consent: profileData?.marketing_consent || false,
+      terms_accepted: profileData?.terms_accepted || true
+    });
     setIsEditing(false);
-    loadProfileData(); // Reload the data when canceling edits
   };
 
-  if (!profile) {
-    return <div>Loading profile...</div>;
+  if (!isEditing) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium">Personal Information</h3>
+          <Button variant="outline" size="sm" onClick={handleEdit}>
+            <Pencil className="h-4 w-4 mr-2" />
+            Edit Profile
+          </Button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label className="text-muted-foreground text-sm">Full Name</Label>
+            <p className="font-medium">{profileData?.full_name || "Not specified"}</p>
+          </div>
+          
+          <div>
+            <Label className="text-muted-foreground text-sm">Email</Label>
+            <p className="font-medium">{profileData?.email || "Not specified"}</p>
+          </div>
+          
+          <div>
+            <Label className="text-muted-foreground text-sm">Location</Label>
+            <p className="font-medium">{profileData?.location || "Not specified"}</p>
+          </div>
+          
+          <div>
+            <Label className="text-muted-foreground text-sm">Phone</Label>
+            <p className="font-medium">{profileData?.phone || "Not specified"}</p>
+          </div>
+          
+          <div className="col-span-2">
+            <Label className="text-muted-foreground text-sm">Summary</Label>
+            <p className="font-medium">{profileData?.summary || "No summary provided"}</p>
+          </div>
+          
+          <div>
+            <Label className="text-muted-foreground text-sm">Availability</Label>
+            <p className="font-medium">
+              {profileData?.availability === "full-time" && "Full-time"}
+              {profileData?.availability === "part-time" && "Part-time"}
+              {profileData?.availability === "contract" && "Contract"}
+              {profileData?.availability === "freelance" && "Freelance"}
+              {!profileData?.availability && "Not specified"}
+            </p>
+          </div>
+          
+          <div>
+            <Label className="text-muted-foreground text-sm">Open to Recruiters</Label>
+            <p className="font-medium">{profileData?.open_to_recruiters ? "Yes" : "No"}</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Personal Information</CardTitle>
-          {!isEditing ? (
-            <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
-          ) : (
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleCancel}>Cancel</Button>
-              <Button onClick={handleSubmit} disabled={isSaving}>
-                {isSaving ? "Saving..." : "Save Changes"}
-              </Button>
-            </div>
-          )}
-        </CardHeader>
-        <CardContent>
-          {isEditing ? (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <PersonalInfoFields
-                firstName={formData.first_name}
-                lastName={formData.last_name}
-                title={formData.title}
-                email={formData.email}
-                location={formData.location}
-                onFieldChange={handleFieldChange}
-              />
-
-              <AvailabilitySelector
-                selected={formData.availability}
-                onSelect={(value) => handleFieldChange('availability', value)}
-              />
-
-              <div className="space-y-2">
-                <Label htmlFor="employment_preference">Employment Preference</Label>
-                <Select
-                  value={formData.employment_preference}
-                  onValueChange={(value: 'salary_only' | 'equity_only' | 'both') => 
-                    handleFieldChange('employment_preference', value)
-                  }
-                >
-                  <SelectTrigger id="employment_preference" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="equity_only">Equity only</SelectItem>
-                    <SelectItem value="both">Both Equity and Salary</SelectItem>
-                    <SelectItem value="salary_only">Salary only</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <ConsentCheckboxes
-                termsAccepted={formData.terms_accepted}
-                marketingConsent={formData.marketing_consent}
-                projectUpdatesConsent={formData.project_updates_consent}
-                onTermsAcceptedChange={handleTermsAcceptedChange}
-                onMarketingConsentChange={handleMarketingConsentChange}
-                onProjectUpdatesConsentChange={handleProjectUpdatesConsentChange}
-              />
-
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" type="button" onClick={handleCancel}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? "Saving..." : "Save Changes"}
-                </Button>
-              </div>
-            </form>
-          ) : (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">First Name</Label>
-                  <p className="font-medium">{formData.first_name}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Last Name</Label>
-                  <p className="font-medium">{formData.last_name}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Professional Title</Label>
-                  <p className="font-medium">{formData.title}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Email</Label>
-                  <p className="font-medium">{formData.email}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Location</Label>
-                  <p className="font-medium">{formData.location}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Employment Preference</Label>
-                  <p className="font-medium">
-                    {formData.employment_preference === 'both' ? 'Both Equity and Salary' :
-                     formData.employment_preference === 'equity_only' ? 'Equity only' :
-                     'Salary only'}
-                  </p>
-                </div>
-              </div>
-              
-              <div>
-                <Label className="text-muted-foreground">Availability</Label>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {formData.availability && formData.availability.length > 0 ? (
-                    formData.availability.map((item, index) => (
-                      <Badge key={index} variant="secondary" className="px-2 py-1 text-sm">
-                        {item}
-                      </Badge>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground text-sm">No availability specified</p>
-                  )}
-                </div>
-              </div>
-              
-              <div>
-                <Label className="text-muted-foreground">Consents</Label>
-                <div className="grid grid-cols-3 gap-2 mt-1">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded-sm border flex items-center justify-center ${formData.terms_accepted ? 'bg-primary border-primary text-primary-foreground' : 'border-gray-300'}`}>
-                      {formData.terms_accepted && <Check className="h-3 w-3" />}
-                    </div>
-                    <span className="text-sm">Terms & Conditions</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded-sm border flex items-center justify-center ${formData.marketing_consent ? 'bg-primary border-primary text-primary-foreground' : 'border-gray-300'}`}>
-                      {formData.marketing_consent && <Check className="h-3 w-3" />}
-                    </div>
-                    <span className="text-sm">Marketing Communications</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded-sm border flex items-center justify-center ${formData.project_updates_consent ? 'bg-primary border-primary text-primary-foreground' : 'border-gray-300'}`}>
-                      {formData.project_updates_consent && <Check className="h-3 w-3" />}
-                    </div>
-                    <span className="text-sm">Project Updates</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-medium">Edit Profile</h3>
+      </div>
+      
+      <form className="space-y-4">
+        <PersonalInfoFields formData={formData} setFormData={setFormData} />
+        
+        <div className="space-y-2">
+          <Label htmlFor="summary">Professional Summary</Label>
+          <Textarea 
+            id="summary"
+            placeholder="Write a brief summary about your professional background, skills, and career goals"
+            value={formData.summary}
+            onChange={(e) => handleChange("summary", e.target.value)}
+            className="min-h-[100px]"
+          />
+        </div>
+        
+        <AvailabilitySelector 
+          availability={formData.availability} 
+          onChange={(value) => handleChange("availability", value)} 
+        />
+        
+        <ConsentCheckboxes 
+          openToRecruiters={formData.open_to_recruiters}
+          marketingConsent={formData.marketing_consent}
+          termsAccepted={formData.terms_accepted}
+          onOpenToRecruitersChange={(checked) => handleChange("open_to_recruiters", checked)}
+          onMarketingConsentChange={(checked) => handleChange("marketing_consent", checked)}
+          onTermsAcceptedChange={(checked) => handleChange("terms_accepted", checked)}
+        />
+        
+        <div className="flex justify-end gap-2 pt-4">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isSaving}
+          >
+            Cancel
+          </Button>
+          <Button 
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              "Saving..."
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </div>
+      </form>
     </div>
   );
-};
+}
