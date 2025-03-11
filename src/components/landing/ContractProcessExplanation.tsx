@@ -87,13 +87,13 @@ export const ContractProcessExplanation = () => {
         </div>
         
         <div className="mt-12 border p-6 rounded-lg bg-slate-50">
-          <h3 className="text-xl font-semibold mb-4">Future Development: Task Management</h3>
+                    {/*}  <h3 className="text-xl font-semibold mb-4">Future Development: Task Management</h3>
           <div className="space-y-4">
             <p>
               The Sweaquity platform is actively developing enhanced project management features to better track and manage equity projects:
             </p>
-            
-            <ul className="list-disc ml-6 space-y-2">
+
+             <ul className="list-disc ml-6 space-y-2">
               <li>Advanced Kanban board for visual task management</li>
               <li>Gantt charts for timeline visualization and project planning</li>
               <li>Time tracking integration for accurate equity calculations</li>
@@ -104,6 +104,7 @@ export const ContractProcessExplanation = () => {
             
             <div className="flex items-center gap-2 text-primary font-medium mt-4">
               <span>Stay tuned for these upcoming features</span>
+              */}
               <ArrowRight className="h-4 w-4" />
             </div>
           </div>
