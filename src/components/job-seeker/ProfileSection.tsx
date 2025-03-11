@@ -40,12 +40,7 @@ export const ProfileSection = ({
 
   return (
     <div className="space-y-6">
-      {profile && (
-        <ProfileEditor 
-          profileData={profile} 
-          onProfileUpdate={() => {}} 
-        />
-      )}
+      <ProfileEditor profile={profile} />
       <CVUploadCard 
         cvUrl={cvUrl}
         parsedCvData={parsedCvData}

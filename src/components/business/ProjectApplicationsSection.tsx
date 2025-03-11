@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableFooter, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -13,8 +13,9 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { CheckCircle, Loader2, MessageCircle } from "lucide-react";
+import { CheckCircle, Loader2, MessageCircle, UserCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Application } from "@/types/business";
@@ -53,19 +54,11 @@ export const ProjectApplicationsSection = () => {
     setError(null);
 
     try {
-      // Fix: Use getUser() instead of currentUser
-      const { data: { user } } = await supabase.auth.getUser();
-      const userId = user?.id;
-      
-      if (!userId) {
-        throw new Error("User not authenticated");
-      }
-
       const { data: applicationsData, error: applicationsError, count } = await supabase
         .from('job_applications')
         .select('*, business_roles (equity_allocation)', { count: 'exact' })
-        .eq('business_id', userId)
-        .ilike('title', `%${searchTerm}%`) // Using title instead of job_title
+        .eq('business_id', supabase.auth.currentUser?.id)
+        .ilike('job_title', `%${searchTerm}%`)
         .eq('status', filterStatus)
         .order('applied_at', { ascending: sortOrder === 'asc' })
         .range((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE - 1);
@@ -107,14 +100,7 @@ export const ProjectApplicationsSection = () => {
   const handleAccept = async (application: Application) => {
     setAcceptingId(application.job_app_id);
     try {
-      // Fix: Add required properties for JobApplication compatibility
-      const jobApplication = {
-        ...application,
-        role_id: application.role_id || application.job_app_id, // Ensure role_id is set
-        id: application.id || application.job_app_id // Ensure id is set
-      };
-      
-      await acceptJobAsBusiness(jobApplication);
+      await acceptJobAsBusiness(application);
       toast.success("Application accepted successfully");
       setForceRefresh(prev => prev + 1);
     } catch (e: any) {
@@ -193,7 +179,7 @@ export const ProjectApplicationsSection = () => {
         <div className="mb-4 flex items-center space-x-4">
           <Input
             type="text"
-            placeholder="Search by title..."
+            placeholder="Search by job title..."
             value={searchTerm}
             onChange={handleSearchChange}
             className="max-w-sm"
@@ -228,7 +214,7 @@ export const ProjectApplicationsSection = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Role Title</TableHead>
+                  <TableHead>Job Title</TableHead>
                   <TableHead className="hidden md:table-cell">Applicant</TableHead>
                   <TableHead>Applied At</TableHead>
                   <TableHead className="hidden md:table-cell">Status</TableHead>
@@ -238,12 +224,8 @@ export const ProjectApplicationsSection = () => {
               <TableBody>
                 {applications.map((application) => (
                   <TableRow key={application.job_app_id}>
-                    <TableCell className="font-medium">
-                      {application.business_roles?.title || "Unknown Role"}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {application.profile?.first_name} {application.profile?.last_name}
-                    </TableCell>
+                    <TableCell className="font-medium">{application.job_title}</TableCell>
+                    <TableCell className="hidden md:table-cell">{application.jobseeker_id}</TableCell>
                     <TableCell>
                       {new Date(application.applied_at).toLocaleDateString()}
                     </TableCell>
@@ -339,6 +321,9 @@ export const ProjectApplicationsSection = () => {
                   )}
                 </Button>
                 
+                {/* When sending the Boolean parameter, ensure it's a boolean value: */}
+                {/* const isAcceptingApplication = application.job_app_id === acceptingId; */}
+                
                 <Button
                   onClick={() => handleAccept(selectedApplication)}
                   disabled={acceptingId === selectedApplication.job_app_id}
@@ -361,14 +346,12 @@ export const ProjectApplicationsSection = () => {
         </DialogContent>
       </Dialog>
       
-      {selectedApplicationForMessage && (
-        <CreateMessageDialog
-          isOpen={isMessageDialogOpen}
-          onOpenChange={setIsMessageDialogOpen}
-          applicationId={selectedApplicationForMessage.job_app_id}
-          onMessageSent={handleMessageSent}
-        />
-      )}
+      <CreateMessageDialog
+        isOpen={isMessageDialogOpen}
+        onOpenChange={setIsMessageDialogOpen}
+        applicationId={selectedApplicationForMessage?.job_app_id}
+        onMessageSent={handleMessageSent}
+      />
     </Card>
   );
 };
