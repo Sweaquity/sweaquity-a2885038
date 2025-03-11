@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,56 +35,58 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
   });
 
   useEffect(() => {
-    const loadProfileData = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
-        
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-          
-        if (error) throw error;
-        
-        let availabilityArray = [];
-        
-        // Parse availability properly
-        if (data.availability) {
-          if (typeof data.availability === 'string') {
-            try {
-              // Try to parse JSON string
-              availabilityArray = JSON.parse(data.availability);
-            } catch (e) {
-              // If not valid JSON, treat as a single item
-              availabilityArray = [data.availability];
-            }
-          } else if (Array.isArray(data.availability)) {
-            availabilityArray = data.availability;
-          }
-        }
-        
-        setFormData({
-          first_name: data.first_name || '',
-          last_name: data.last_name || '',
-          title: data.title || '',
-          email: data.email || '',
-          location: data.location || '',
-          availability: availabilityArray,
-          employment_preference: data.employment_preference || 'both',
-          terms_accepted: !!data.terms_accepted,
-          marketing_consent: !!data.marketing_consent,
-          project_updates_consent: !!data.project_updates_consent,
-        });
-      } catch (error) {
-        console.error('Error loading profile data:', error);
-        toast.error("Failed to load profile data");
-      }
-    };
-    
-    loadProfileData();
+    if (profile) {
+      loadProfileData();
+    }
   }, [profile]);
+
+  const loadProfileData = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+        
+      if (error) throw error;
+      
+      let availabilityArray = [];
+      
+      // Parse availability properly
+      if (data.availability) {
+        if (typeof data.availability === 'string') {
+          try {
+            // Try to parse JSON string
+            availabilityArray = JSON.parse(data.availability);
+          } catch (e) {
+            // If not valid JSON, treat as a single item
+            availabilityArray = [data.availability];
+          }
+        } else if (Array.isArray(data.availability)) {
+          availabilityArray = data.availability;
+        }
+      }
+      
+      setFormData({
+        first_name: data.first_name || '',
+        last_name: data.last_name || '',
+        title: data.title || '',
+        email: data.email || '',
+        location: data.location || '',
+        availability: availabilityArray,
+        employment_preference: data.employment_preference || 'both',
+        terms_accepted: !!data.terms_accepted,
+        marketing_consent: !!data.marketing_consent,
+        project_updates_consent: !!data.project_updates_consent,
+      });
+    } catch (error) {
+      console.error('Error loading profile data:', error);
+      toast.error("Failed to load profile data");
+    }
+  };
 
   const handleFieldChange = (field: string, value: string | string[]) => {
     setFormData(prev => ({
@@ -172,56 +175,7 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
 
   const handleCancel = () => {
     setIsEditing(false);
-    // Reload the data
-    const loadProfileData = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
-        
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-          
-        if (error) throw error;
-        
-        let availabilityArray = [];
-        
-        // Parse availability properly
-        if (data.availability) {
-          if (typeof data.availability === 'string') {
-            try {
-              // Try to parse JSON string
-              availabilityArray = JSON.parse(data.availability);
-            } catch (e) {
-              // If not valid JSON, treat as a single item
-              availabilityArray = [data.availability];
-            }
-          } else if (Array.isArray(data.availability)) {
-            availabilityArray = data.availability;
-          }
-        }
-        
-        setFormData({
-          first_name: data.first_name || '',
-          last_name: data.last_name || '',
-          title: data.title || '',
-          email: data.email || '',
-          location: data.location || '',
-          availability: availabilityArray,
-          employment_preference: data.employment_preference || 'both',
-          terms_accepted: !!data.terms_accepted,
-          marketing_consent: !!data.marketing_consent,
-          project_updates_consent: !!data.project_updates_consent,
-        });
-      } catch (error) {
-        console.error('Error loading profile data:', error);
-        toast.error("Failed to load profile data");
-      }
-    };
-    
-    loadProfileData();
+    loadProfileData(); // Reload the data when canceling edits
   };
 
   if (!profile) {
@@ -373,7 +327,6 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
           )}
         </CardContent>
       </Card>
-
     </div>
   );
 };
