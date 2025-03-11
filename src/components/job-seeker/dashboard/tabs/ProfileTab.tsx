@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { useProfile } from "@/hooks/job-seeker/useProfile";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AccountSettingsCard } from "@/components/shared/AccountSettingsCard";
@@ -11,25 +10,43 @@ import { ProfileEditor } from "@/components/job-seeker/profile/ProfileEditor";
 import { SkillsCard } from "@/components/job-seeker/skills/SkillsCard";
 import { CVLibrary } from "@/components/job-seeker/cv/CVLibrary";
 import { CareerHistoryDisplay } from "@/components/job-seeker/career/CareerHistoryDisplay";
+import { supabase } from "@/lib/supabase";
 
-export const ProfileTab = () => {
-  const { profile, isLoading, error, refetch } = useProfile();
+export const ProfileTab = ({ profile, cvUrl, skills, parsedCvData, onSkillsUpdate, userCVs, onCvListUpdated }) => {
+  const [isLoading, setIsLoading] = useState(false);
   const [isProfileComplete, setIsProfileComplete] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     if (profile) {
+      // Check if profile values exist
       setIsProfileComplete(
-        !!profile.full_name &&
+        !!profile.first_name &&
+        !!profile.last_name &&
         !!profile.location &&
-        !!profile.summary &&
+        !!profile.bio && // Using bio instead of summary
         !!profile.terms_accepted
       );
     }
   }, [profile]);
 
   const handleProfileUpdate = async () => {
-    await refetch();
     toast.success("Profile updated successfully");
+    try {
+      // Get the latest profile data
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+          
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.error("Error refreshing profile data:", error);
+    }
   };
 
   if (isLoading) {
@@ -52,11 +69,11 @@ export const ProfileTab = () => {
     );
   }
 
-  if (error) {
+  if (loadError) {
     return (
       <div className="p-4 rounded-md bg-red-50 text-red-800">
-        <p>Error loading profile: {error.message}</p>
-        <Button onClick={() => refetch()} className="mt-4">
+        <p>Error loading profile: {loadError}</p>
+        <Button onClick={() => window.location.reload()} className="mt-4">
           Retry
         </Button>
       </div>
@@ -81,11 +98,32 @@ export const ProfileTab = () => {
         </CardContent>
       </Card>
 
-      <SkillsCard />
+      {skills && (
+        <SkillsCard 
+          skills={skills}
+          onSkillsUpdate={onSkillsUpdate}
+        />
+      )}
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <CVLibrary />
-        <CareerHistoryDisplay />
+        {userCVs && (
+          <CVLibrary 
+            userCVs={userCVs}
+            onCvListUpdated={onCvListUpdated} 
+            processingAction={false}
+            onSetDefault={() => {}}
+            onPreview={() => {}}
+            onDelete={() => {}}
+          />
+        )}
+        
+        {parsedCvData?.career_history && (
+          <CareerHistoryDisplay 
+            careerHistory={parsedCvData.career_history}
+            skills={skills || []}
+            education={parsedCvData.education || []}
+          />
+        )}
       </div>
       
       <AccountSettingsCard userType="job_seeker" />
