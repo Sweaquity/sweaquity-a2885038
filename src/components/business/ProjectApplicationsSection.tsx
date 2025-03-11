@@ -1,356 +1,593 @@
-import { useState, useEffect } from "react";
-import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableHeader, TableBody, TableFooter, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useEffect, useState } from "react";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { CheckCircle, Loader2, MessageCircle, UserCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Application } from "@/types/business";
-import { ExpandedApplicationContent } from "./applications/ExpandedApplicationContent";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { JobApplication } from "@/types/jobSeeker";
+import { useApplicationActions } from "@/components/job-seeker/dashboard/applications/hooks/useApplicationActions";
+import { RejectApplicationDialog } from "./applications/RejectApplicationDialog";
+import { AcceptJobDialog } from "./applications/AcceptJobDialog";
 import { useAcceptedJobs } from "@/hooks/useAcceptedJobs";
-import { CreateMessageDialog } from "@/components/job-seeker/dashboard/applications/CreateMessageDialog";
-
-const ITEMS_PER_PAGE = 5;
+import { PendingApplicationsTable } from "./applications/tables/PendingApplicationsTable";
+import { ActiveApplicationsTable } from "./applications/tables/ActiveApplicationsTable";
+import { WithdrawnApplicationsTable } from "./applications/tables/WithdrawnApplicationsTable";
+import { RejectedApplicationsTable } from "./applications/tables/RejectedApplicationsTable";
+import { Application, Project } from "@/types/business";
 
 export const ProjectApplicationsSection = () => {
-  const [applications, setApplications] = useState<Application[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [acceptingId, setAcceptingId] = useState<string | null>(null);
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalApplications, setTotalApplications] = useState(0);
-  const [filterStatus, setFilterStatus] = useState<string>('pending');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
-  const [selectedApplicationForMessage, setSelectedApplicationForMessage] = useState<Application | null>(null);
-  const [forceRefresh, setForceRefresh] = useState(0);
-  
-  const { acceptJobAsBusiness, isLoading: isAccepting, isUploading, uploadContract } = useAcceptedJobs();
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [expandedApplications, setExpandedApplications] = useState<Set<string>>(new Set());
+  const [newApplicationsCount, setNewApplicationsCount] = useState(0);
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
+  const [acceptJobDialogOpen, setAcceptJobDialogOpen] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
+  const { isUpdatingStatus, updateApplicationStatus } = useApplicationActions(() => {
+    loadProjectsWithApplications();
+  });
+  const { acceptJobAsBusiness, isLoading: isAcceptingJobLoading } = useAcceptedJobs(() => {
+    window.location.reload();
+  });
 
   useEffect(() => {
-    fetchApplications();
-  }, [currentPage, filterStatus, sortOrder, searchTerm, forceRefresh]);
+    loadProjectsWithApplications();
+    setupRealtimeListener();
+    return () => {
+      cleanupRealtimeListener();
+    };
+  }, []);
 
-  const fetchApplications = async () => {
-    setIsLoading(true);
-    setError(null);
+  const setupRealtimeListener = () => {
+    const channel = supabase
+      .channel('application-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'job_applications'
+        },
+        () => {
+          setNewApplicationsCount(prev => prev + 1);
+          toast.info("New application received!");
+          loadProjectsWithApplications();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'job_applications',
+          filter: 'task_discourse=neq.null'
+        },
+        () => {
+          setNewMessagesCount(prev => prev + 1);
+          toast.info("New message received!");
+          loadProjectsWithApplications();
+        }
+      )
+      .subscribe();
 
+    return channel;
+  };
+
+  const cleanupRealtimeListener = () => {
+    supabase.removeChannel(supabase.channel('application-updates'));
+  };
+
+  const loadProjectsWithApplications = async () => {
     try {
-      const { data: applicationsData, error: applicationsError, count } = await supabase
-        .from('job_applications')
-        .select('*, business_roles (equity_allocation)', { count: 'exact' })
-        .eq('business_id', supabase.auth.currentUser?.id)
-        .ilike('job_title', `%${searchTerm}%`)
-        .eq('status', filterStatus)
-        .order('applied_at', { ascending: sortOrder === 'asc' })
-        .range((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE - 1);
+      setIsLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-      if (applicationsError) {
-        console.error("Error fetching applications:", applicationsError);
-        throw new Error(`Failed to fetch applications: ${applicationsError.message}`);
+      console.log("Loading projects for business ID:", session.user.id);
+
+      const { data: projectsData, error: projectsError } = await supabase
+        .from('business_projects')
+        .select('*')
+        .eq('business_id', session.user.id);
+
+      if (projectsError) {
+        console.error("Error fetching projects:", projectsError);
+        throw projectsError;
       }
 
-      if (!applicationsData) {
-        throw new Error("No applications found");
+      console.log("Projects fetched:", projectsData?.length || 0);
+
+      if (!projectsData || projectsData.length === 0) {
+        setIsLoading(false);
+        setProjects([]);
+        return;
       }
+
+      const projectsWithApplications: Project[] = [];
+
+      for (const project of projectsData) {
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('project_sub_tasks')
+          .select('task_id, skill_requirements, equity_allocation, timeframe')
+          .eq('project_id', project.project_id);
+
+        if (tasksError) {
+          console.error('Error fetching tasks for project:', project.project_id, tasksError);
+          continue;
+        }
+
+        console.log(`Fetched ${tasksData?.length || 0} tasks for project ${project.project_id}`);
+        
+        const taskIds = tasksData.map(task => task.task_id);
+
+        if (taskIds.length === 0) {
+          projectsWithApplications.push({
+            ...project,
+            applications: []
+          });
+          continue;
+        }
+
+        const taskSkillsMap = new Map<string, any>();
+        tasksData.forEach(task => {
+          taskSkillsMap.set(task.task_id, {
+            skill_requirements: task.skill_requirements || [],
+            equity_allocation: task.equity_allocation,
+            timeframe: task.timeframe
+          });
+        });
+
+        const { data: applicationsData, error: applicationsError } = await supabase
+          .from('job_applications')
+          .select('*')
+          .in('task_id', taskIds);
+
+        if (applicationsError) {
+          console.error('Error fetching applications:', applicationsError);
+          continue;
+        }
+
+        console.log(`Fetched ${applicationsData?.length || 0} applications for project ${project.project_id}`);
+
+        if (!applicationsData || applicationsData.length === 0) {
+          projectsWithApplications.push({
+            ...project,
+            applications: []
+          });
+          continue;
+        }
+
+        const applicationsWithProfiles = [];
+
+        for (const app of applicationsData) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, title, location, employment_preference, skills')
+            .eq('id', app.user_id)
+            .maybeSingle();
+
+          if (profileError) {
+            console.error('Error fetching profile for user:', app.user_id, profileError);
+            continue;
+          }
+
+          const { data: taskData, error: taskError } = await supabase
+            .from('project_sub_tasks')
+            .select('title, description, skills_required, skill_requirements, equity_allocation, timeframe')
+            .eq('task_id', app.task_id)
+            .maybeSingle();
+
+          if (taskError) {
+            console.error('Error fetching task details:', taskError);
+            continue;
+          }
+
+          let userSkills = [];
+          if (profileData?.skills) {
+            try {
+              if (typeof profileData.skills === 'string') {
+                const parsedSkills = JSON.parse(profileData.skills);
+                if (Array.isArray(parsedSkills)) {
+                  userSkills = parsedSkills.map(s => 
+                    typeof s === 'string' ? { skill: s, level: "Intermediate" } : s
+                  );
+                }
+              } else if (Array.isArray(profileData.skills)) {
+                userSkills = profileData.skills.map(s => 
+                  typeof s === 'string' ? { skill: s, level: "Intermediate" } : s
+                );
+              }
+            } catch (e) {
+              console.error("Error parsing skills:", e);
+            }
+          }
+
+          const userSkillNames = userSkills.map(s => s.skill.toLowerCase());
+          const taskRequiredSkills = taskData?.skill_requirements || [];
+          
+          let matchedSkills = 0;
+          if (Array.isArray(taskRequiredSkills)) {
+            taskRequiredSkills.forEach(skillObj => {
+              const skillName = typeof skillObj === 'string' ? 
+                skillObj.toLowerCase() : 
+                (skillObj.skill ? skillObj.skill.toLowerCase() : '');
+                
+              if (skillName && userSkillNames.includes(skillName)) {
+                matchedSkills++;
+              }
+            });
+          }
+          
+          const skillMatch = taskRequiredSkills.length > 0 
+            ? Math.round((matchedSkills / taskRequiredSkills.length) * 100) 
+            : 0;
+
+          applicationsWithProfiles.push({
+            ...app,
+            profile: {
+              ...profileData,
+              skills: userSkills
+            },
+            business_roles: {
+              ...(taskData || {}),
+              project: {
+                title: project.title
+              }
+            },
+            skillMatch
+          });
+        }
+
+        projectsWithApplications.push({
+          ...project,
+          applications: applicationsWithProfiles
+        });
+      }
+
+      console.log("Final projects with applications:", projectsWithApplications.length);
+      setProjects(projectsWithApplications);
       
-      setApplications(applicationsData);
-      setTotalApplications(count || 0);
-      setTotalPages(Math.ceil(totalApplications / ITEMS_PER_PAGE));
-    } catch (e: any) {
-      setError(e.message);
-      toast.error(e.message);
+      const oneDayAgo = new Date();
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+      
+      let newApps = 0;
+      let newMsgs = 0;
+      
+      projectsWithApplications.forEach(project => {
+        project.applications.forEach(app => {
+          const appDate = new Date(app.applied_at);
+          if (appDate > oneDayAgo && app.status === 'pending') {
+            newApps++;
+          }
+          
+          if (app.task_discourse) {
+            const lastMessageMatch = app.task_discourse.match(/\[([^\]]+)\]/);
+            if (lastMessageMatch) {
+              try {
+                const msgDate = new Date(lastMessageMatch[1]);
+                if (msgDate > oneDayAgo) {
+                  newMsgs++;
+                }
+              } catch (e) {
+                console.error("Error parsing message date:", e);
+              }
+            }
+          }
+        });
+      });
+      
+      setNewApplicationsCount(newApps);
+      setNewMessagesCount(newMsgs);
+    } catch (error) {
+      console.error('Error loading projects with applications:', error);
+      toast.error("Failed to load applications data");
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    setTotalPages(Math.ceil(totalApplications / ITEMS_PER_PAGE));
-  }, [totalApplications]);
-
-  const handleApplicationClick = (application: Application) => {
-    setSelectedApplication(application);
-    setIsDialogOpen(true);
+  const handleStatusChange = async (applicationId: string, newStatus: string) => {
+    if (newStatus === 'rejected') {
+      setSelectedApplicationId(applicationId);
+      setRejectDialogOpen(true);
+      return;
+    }
+    
+    await updateApplicationStatus(applicationId, newStatus);
   };
 
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
-    setSelectedApplication(null);
+  const handleRejectWithNote = async (applicationId: string, note: string) => {
+    try {
+      const { data: application, error: fetchError } = await supabase
+        .from('job_applications')
+        .select('task_discourse')
+        .eq('job_app_id', applicationId)
+        .single();
+        
+      if (fetchError) throw fetchError;
+      
+      const timestamp = new Date().toLocaleString();
+      const rejectMessage = `[${timestamp}] Business: ${note} (Rejection reason)`;
+      
+      const updatedDiscourse = application.task_discourse 
+        ? `${application.task_discourse}\n\n${rejectMessage}`
+        : rejectMessage;
+        
+      const { error: updateError } = await supabase
+        .from('job_applications')
+        .update({ 
+          status: 'rejected',
+          task_discourse: updatedDiscourse
+        })
+        .eq('job_app_id', applicationId);
+        
+      if (updateError) throw updateError;
+      
+      toast.success("Application rejected with note");
+      loadProjectsWithApplications();
+    } catch (error) {
+      console.error('Error rejecting application:', error);
+      toast.error("Failed to reject application");
+    }
   };
 
-  const handleAccept = async (application: Application) => {
-    setAcceptingId(application.job_app_id);
+  const toggleProjectExpanded = (projectId: string) => {
+    setExpandedProjects(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(projectId)) {
+        newExpanded.delete(projectId);
+      } else {
+        newExpanded.add(projectId);
+      }
+      return newExpanded;
+    });
+  };
+
+  const toggleApplicationExpanded = (applicationId: string) => {
+    setExpandedApplications(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(applicationId)) {
+        newExpanded.delete(applicationId);
+      } else {
+        newExpanded.clear();
+        newExpanded.add(applicationId);
+      }
+      return newExpanded;
+    });
+  };
+
+  const handleAcceptJob = async (application: JobApplication) => {
     try {
       await acceptJobAsBusiness(application);
-      toast.success("Application accepted successfully");
-      setForceRefresh(prev => prev + 1);
-    } catch (e: any) {
-      toast.error(e.message);
-    } finally {
-      setAcceptingId(null);
+      toast.success("Job accepted successfully");
+      loadProjectsWithApplications();
+    } catch (error) {
+      console.error("Error accepting job:", error);
+      toast.error("Failed to accept job");
     }
   };
 
-  const handleReject = async (application: Application) => {
-    setRejectingId(application.job_app_id);
-    try {
-      const { error } = await supabase
-        .from('job_applications')
-        .update({ status: 'rejected' })
-        .eq('job_app_id', application.job_app_id);
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <h2 className="text-lg font-semibold">Project Applications</h2>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center p-4">
+            <p>Loading applications...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
-      if (error) {
-        console.error("Error rejecting application:", error);
-        throw new Error("Failed to reject application");
-      }
-
-      toast.success("Application rejected successfully");
-      setForceRefresh(prev => prev + 1);
-    } catch (e: any) {
-      toast.error(e.message);
-    } finally {
-      setRejectingId(null);
-    }
-  };
-
-  const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage);
-  };
-
-  const handleStatusFilterChange = (status: string) => {
-    setCurrentPage(1);
-    setFilterStatus(status);
+  const getPendingApplications = () => {
+    const pendingApps: Application[] = [];
+    projects.forEach(project => {
+      project.applications.forEach(app => {
+        if (['pending', 'in review'].includes(app.status.toLowerCase())) {
+          pendingApps.push(app);
+        }
+      });
+    });
+    return pendingApps;
   };
 
-  const handleSortOrderChange = () => {
-    setCurrentPage(1);
-    setSortOrder(prevOrder => (prevOrder === 'asc' ? 'desc' : 'asc'));
+  const getActiveApplications = () => {
+    const activeApps: Application[] = [];
+    projects.forEach(project => {
+      project.applications.forEach(app => {
+        if (['negotiation', 'accepted'].includes(app.status.toLowerCase())) {
+          activeApps.push(app);
+        }
+      });
+    });
+    return activeApps;
   };
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
-  
-  const handleSendMessageClick = (application: Application) => {
-    setSelectedApplicationForMessage(application);
-    setIsMessageDialogOpen(true);
-  };
-  
-  const handleMessageDialogClose = () => {
-    setIsMessageDialogOpen(false);
-    setSelectedApplicationForMessage(null);
-  };
-  
-  const handleMessageSent = () => {
-    setForceRefresh(prev => prev + 1);
+  const getWithdrawnApplications = () => {
+    const withdrawnApps: Application[] = [];
+    projects.forEach(project => {
+      project.applications.forEach(app => {
+        if (app.status.toLowerCase() === 'withdrawn') {
+          withdrawnApps.push(app);
+        }
+      });
+    });
+    return withdrawnApps;
   };
 
-  const isFirstPage = currentPage === 1;
-  const isLastPage = currentPage === totalPages;
+  const getRejectedApplications = () => {
+    const rejectedApps: Application[] = [];
+    projects.forEach(project => {
+      project.applications.forEach(app => {
+        if (app.status.toLowerCase() === 'rejected') {
+          rejectedApps.push(app);
+        }
+      });
+    });
+    return rejectedApps;
+  };
+
+  const pendingApplications = getPendingApplications();
+  const activeApplications = getActiveApplications();
+  const withdrawnApplications = getWithdrawnApplications();
+  const rejectedApplications = getRejectedApplications();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Project Applications</CardTitle>
-        <CardDescription>
-          Manage applications for your projects.
-        </CardDescription>
+        <h2 className="text-lg font-semibold">Project Applications</h2>
       </CardHeader>
       <CardContent>
-        <div className="mb-4 flex items-center space-x-4">
-          <Input
-            type="text"
-            placeholder="Search by job title..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-            className="max-w-sm"
-          />
-          <Select value={filterStatus} onValueChange={handleStatusFilterChange}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by status..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="accepted">Accepted</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-              <SelectItem value="withdrawn">Withdrawn</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="sm" onClick={handleSortOrderChange}>
-            Sort by Date ({sortOrder === 'asc' ? 'Asc' : 'Desc'})
-          </Button>
-        </div>
-
-        {isLoading ? (
-          <div className="flex items-center justify-center min-h-[200px]">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Loading applications...
-          </div>
-        ) : error ? (
-          <div className="text-red-500">{error}</div>
-        ) : applications.length === 0 ? (
-          <div className="text-muted-foreground italic">No applications found.</div>
+        {projects.length === 0 ? (
+          <p className="text-muted-foreground text-center p-4">No projects found.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Job Title</TableHead>
-                  <TableHead className="hidden md:table-cell">Applicant</TableHead>
-                  <TableHead>Applied At</TableHead>
-                  <TableHead className="hidden md:table-cell">Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {applications.map((application) => (
-                  <TableRow key={application.job_app_id}>
-                    <TableCell className="font-medium">{application.job_title}</TableCell>
-                    <TableCell className="hidden md:table-cell">{application.jobseeker_id}</TableCell>
-                    <TableCell>
-                      {new Date(application.applied_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <Badge variant="secondary">{application.status}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleApplicationClick(application)}
-                        >
-                          View Details
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleSendMessageClick(application)}
-                        >
-                          <MessageCircle className="h-4 w-4 mr-2" />
-                          Message
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-              <TableFooter>
-                <TableRow>
-                  <TableCell colSpan={5}>
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-muted-foreground">
-                        Total: {totalApplications} Applications
-                      </div>
-                      <div className="space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(currentPage - 1)}
-                          disabled={isFirstPage}
-                        >
-                          Previous
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(currentPage + 1)}
-                          disabled={isLastPage}
-                        >
-                          Next
-                        </Button>
-                      </div>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              </TableFooter>
-            </Table>
-          </div>
+          <Tabs defaultValue="pending" className="space-y-4">
+            <TabsList className="grid grid-cols-4 gap-2">
+              <TabsTrigger value="pending" className="relative">
+                Pending Applications ({pendingApplications.length})
+                {newApplicationsCount > 0 && (
+                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                    {newApplicationsCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="active" className="relative">
+                Active Projects ({activeApplications.length})
+                {newMessagesCount > 0 && (
+                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                    {newMessagesCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="withdrawn">
+                Withdrawn ({withdrawnApplications.length})
+              </TabsTrigger>
+              <TabsTrigger value="rejected">
+                Rejected ({rejectedApplications.length})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="pending" className="space-y-4">
+              {pendingApplications.length === 0 ? (
+                <p className="text-muted-foreground text-center p-4">No pending applications found.</p>
+              ) : (
+                <PendingApplicationsTable 
+                  applications={pendingApplications}
+                  expandedApplications={expandedApplications}
+                  toggleApplicationExpanded={toggleApplicationExpanded}
+                  handleStatusChange={handleStatusChange}
+                  isUpdatingStatus={isUpdatingStatus}
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="active" className="space-y-4">
+              {activeApplications.length === 0 ? (
+                <p className="text-muted-foreground text-center p-4">No active projects found.</p>
+              ) : (
+                <ActiveApplicationsTable 
+                  applications={activeApplications}
+                  expandedApplications={expandedApplications}
+                  toggleApplicationExpanded={toggleApplicationExpanded}
+                  handleStatusChange={handleStatusChange}
+                  isUpdatingStatus={isUpdatingStatus}
+                  onApplicationUpdate={() => loadProjectsWithApplications()}
+                  openAcceptJobDialog={async (application: Application) => {
+                    const jobApp: JobApplication = {
+                      job_app_id: application.job_app_id,
+                      role_id: application.role_id || "",
+                      task_id: application.task_id,
+                      project_id: application.project_id,
+                      status: application.status,
+                      applied_at: application.applied_at,
+                      notes: application.notes || "",
+                      message: application.message || "",
+                      cv_url: application.cv_url,
+                      task_discourse: application.task_discourse,
+                      id: application.job_app_id,
+                      accepted_jobseeker: application.accepted_jobseeker || false,
+                      accepted_business: application.accepted_business || false,
+                      business_roles: {
+                        title: application.business_roles?.title || "",
+                        description: application.business_roles?.description || "",
+                        project_title: application.business_roles?.project?.title,
+                        timeframe: application.business_roles?.timeframe,
+                        skill_requirements: application.business_roles?.skill_requirements?.map(req => {
+                          if (typeof req === 'string') {
+                            return req;
+                          }
+                          return {
+                            skill: req.skill,
+                            level: req.level as 'Beginner' | 'Intermediate' | 'Expert'
+                          };
+                        }) || [],
+                        equity_allocation: application.business_roles?.equity_allocation
+                      }
+                    };
+                    
+                    setSelectedApplication(jobApp);
+                    setAcceptJobDialogOpen(true);
+                    return Promise.resolve();
+                  }}
+                  handleAcceptJob={handleAcceptJob}
+                  isAcceptingJobLoading={isAcceptingJobLoading}
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="withdrawn" className="space-y-4">
+              {withdrawnApplications.length === 0 ? (
+                <p className="text-muted-foreground text-center p-4">No withdrawn applications found.</p>
+              ) : (
+                <WithdrawnApplicationsTable 
+                  applications={withdrawnApplications}
+                  expandedApplications={expandedApplications}
+                  toggleApplicationExpanded={toggleApplicationExpanded}
+                  handleStatusChange={handleStatusChange}
+                  isUpdatingStatus={isUpdatingStatus}
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="rejected" className="space-y-4">
+              {rejectedApplications.length === 0 ? (
+                <p className="text-muted-foreground text-center p-4">No rejected applications found.</p>
+              ) : (
+                <RejectedApplicationsTable 
+                  applications={rejectedApplications}
+                  expandedApplications={expandedApplications}
+                  toggleApplicationExpanded={toggleApplicationExpanded}
+                  handleStatusChange={handleStatusChange}
+                  isUpdatingStatus={isUpdatingStatus}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
         )}
       </CardContent>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Application Details</DialogTitle>
-            <DialogDescription>
-              View and manage the application details.
-            </DialogDescription>
-          </DialogHeader>
-          {selectedApplication && (
-            <ExpandedApplicationContent
-              application={selectedApplication}
-              onClose={handleCloseDialog}
-              onUpdate={() => setForceRefresh(prev => prev + 1)}
-            />
-          )}
-          <DialogFooter>
-            {selectedApplication && selectedApplication.status === 'pending' && (
-              <div className="flex justify-end space-x-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => handleReject(selectedApplication)}
-                  disabled={rejectingId === selectedApplication.job_app_id}
-                >
-                  {rejectingId === selectedApplication.job_app_id ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Rejecting...
-                    </>
-                  ) : (
-                    "Reject"
-                  )}
-                </Button>
-                
-                {/* When sending the Boolean parameter, ensure it's a boolean value: */}
-                {/* const isAcceptingApplication = application.job_app_id === acceptingId; */}
-                
-                <Button
-                  onClick={() => handleAccept(selectedApplication)}
-                  disabled={acceptingId === selectedApplication.job_app_id}
-                >
-                  {acceptingId === selectedApplication.job_app_id ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Accepting...
-                    </>
-                  ) : (
-                    "Accept"
-                  )}
-                </Button>
-              </div>
-            )}
-            <Button variant="ghost" onClick={handleCloseDialog}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       
-      <CreateMessageDialog
-        isOpen={isMessageDialogOpen}
-        onOpenChange={setIsMessageDialogOpen}
-        applicationId={selectedApplicationForMessage?.job_app_id}
-        onMessageSent={handleMessageSent}
+      <RejectApplicationDialog
+        isOpen={rejectDialogOpen}
+        onOpenChange={setRejectDialogOpen}
+        onReject={(note) => {
+          if (selectedApplicationId) {
+            handleRejectWithNote(selectedApplicationId, note);
+          }
+        }}
+      />
+      
+      <AcceptJobDialog
+        isOpen={acceptJobDialogOpen}
+        onOpenChange={setAcceptJobDialogOpen}
+        application={selectedApplication}
+        onAccept={handleAcceptJob}
+        isLoading={isAcceptingJobLoading}
       />
     </Card>
   );
