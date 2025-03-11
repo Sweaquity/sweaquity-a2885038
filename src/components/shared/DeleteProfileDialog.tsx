@@ -49,36 +49,7 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       
       console.log(`Removing ${userType} profile for user ${userId}`);
       
-      // Get profile data before anonymization for GDPR backup
-      const profileData = userType === 'job_seeker' 
-        ? await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
-        : null;
-        
-      // Get business data before anonymization for GDPR backup
-      const businessData = userType === 'business'
-        ? await supabase.from('businesses').select('*').eq('businesses_id', userId).maybeSingle()
-        : null;
-      
-      // Store in GDPR table
-      const { error: gdprError } = await supabase
-        .from('gdpr_deleted_data')
-        .insert({
-          user_id: userId,
-          user_type: userType,
-          data: JSON.stringify({
-            profile: profileData?.data || null,
-            business: businessData?.data || null
-          }),
-          deleted_at: new Date().toISOString()
-        });
-        
-      if (gdprError) {
-        console.error("Error storing GDPR data:", gdprError);
-        // Continue with deletion despite GDPR storage error
-      }
-      
-      // Call the delete_user_profile function that will handle the actual deletion
-      // This is a server-side function that will delete the user profile and related data
+      // Call the delete_user_profile function that will handle the deletion and auth user removal
       const { error: deletionError } = await supabase.rpc(
         'delete_user_profile',
         { 
@@ -95,11 +66,10 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       
       toast.success("Your profile has been successfully deleted in accordance with GDPR regulations");
       
-      // Sign out the user
-      await supabase.auth.signOut();
-      
-      // Redirect to home page
-      navigate('/');
+      // Redirect to home page after a short delay
+      setTimeout(() => {
+        navigate('/');
+      }, 1500);
       
     } catch (error: any) {
       console.error("Profile deletion error:", error);
@@ -126,6 +96,7 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
             <p className="font-medium mb-1">What happens to your data:</p>
             <ul className="list-disc ml-4 space-y-1">
               <li>Your account and personal information will be completely deleted</li>
+              <li>You will no longer be able to log in with these credentials</li>
               <li>A backup of your data will be securely stored as required by GDPR</li>
               {userType === 'business' && (
                 <li>Your job listings and project data will be removed</li>
@@ -141,10 +112,10 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
           <Info className="text-blue-500 h-5 w-5 shrink-0 mt-0.5" />
           <div className="text-sm text-blue-800">
             <p className="mb-2">
-              You will be signed out after your data is deleted. This action cannot be undone.
+              Your login credentials will be permanently deleted and you will not be able to log in again.
             </p>
             <p className="font-medium">
-              Important: This only deletes your {getProfileTypeLabel()} profile data. If you have both job seeker and business accounts, you will need to delete each account type separately by logging in to each account type.
+              Important: This deletes both your {getProfileTypeLabel()} profile data and your login credentials. If you have multiple account types, they will all be affected.
             </p>
           </div>
         </div>

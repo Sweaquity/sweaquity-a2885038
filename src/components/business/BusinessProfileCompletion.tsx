@@ -29,8 +29,14 @@ export const BusinessProfileCompletion = () => {
   const [loadError, setLoadError] = useState("");
 
   const handleBackClick = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
+    try {
+      await supabase.auth.signOut();
+      toast.success("Signed out successfully");
+      navigate('/');
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast.error("Failed to sign out");
+    }
   };
 
   useEffect(() => {

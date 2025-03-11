@@ -4,15 +4,22 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 const ProfileCompletePage = () => {
   const navigate = useNavigate();
 
   const handleBackClick = async () => {
-    // Sign out the user
-    await supabase.auth.signOut();
-    // Navigate to the login page
-    navigate('/');
+    try {
+      // Sign out the user
+      await supabase.auth.signOut();
+      // Navigate to the login page
+      toast.success("Signed out successfully");
+      navigate('/');
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast.error("Failed to sign out");
+    }
   };
 
   return (
