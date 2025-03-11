@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { 
   Dialog, 
@@ -12,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Info } from "lucide-react";
 
 interface DeleteProfileDialogProps {
   isOpen: boolean;
@@ -50,7 +49,7 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       console.log(`Anonymizing ${userType} profile for user ${userId}`);
       
       // Call the delete_user_profile RPC function
-      const { error: rpcError } = await supabase.rpc('delete_user_profile', { 
+      const { data, error: rpcError } = await supabase.rpc('delete_user_profile', { 
         user_type: userType,
         user_id: userId
       });
@@ -61,7 +60,7 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
         return;
       }
       
-      toast.success("Your profile data has been successfully removed");
+      toast.success("Your profile has been successfully anonymized in accordance with GDPR regulations");
       
       // Sign out the user
       await supabase.auth.signOut();
@@ -82,16 +81,34 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
     <Dialog open={isOpen} onOpenChange={(open) => !isProcessing && !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Remove Account Data</DialogTitle>
+          <DialogTitle>Anonymize Account Data</DialogTitle>
           <DialogDescription>
-            This will remove your personal information from your {getProfileTypeLabel()} profile. Your account will be deactivated and your data will be anonymized in accordance with GDPR regulations.
+            This will anonymize your personal information from your {getProfileTypeLabel()} profile in accordance with GDPR regulations.
           </DialogDescription>
         </DialogHeader>
         
         <div className="bg-amber-50 p-4 rounded-md border border-amber-200 flex gap-2">
           <AlertCircle className="text-amber-500 h-5 w-5" />
-          <p className="text-sm text-amber-800">
-            Note: This will preserve anonymized records for system integrity, but all your personal identifying information will be removed.
+          <div className="text-sm text-amber-800">
+            <p className="font-medium mb-1">What happens to your data:</p>
+            <ul className="list-disc ml-4 space-y-1">
+              <li>Personal information will be replaced with "Deleted Account"</li>
+              <li>Contact details will be removed</li>
+              <li>A backup of your data will be securely stored as required by GDPR</li>
+              {userType === 'business' && (
+                <li>Your job listings will be marked as inactive</li>
+              )}
+              {userType === 'job_seeker' && (
+                <li>Your job applications will be marked as withdrawn</li>
+              )}
+            </ul>
+          </div>
+        </div>
+        
+        <div className="bg-blue-50 p-4 rounded-md border border-blue-200 flex gap-2">
+          <Info className="text-blue-500 h-5 w-5" />
+          <p className="text-sm text-blue-800">
+            You will be signed out after your data is anonymized. This action preserves system records but removes all personally identifiable information.
           </p>
         </div>
         
@@ -106,7 +123,7 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
             onClick={handleRemoveProfile} 
             disabled={isProcessing}
           >
-            {isProcessing ? "Processing..." : "Remove My Data"}
+            {isProcessing ? "Processing..." : "Anonymize My Data"}
           </Button>
         </DialogFooter>
       </DialogContent>
