@@ -144,8 +144,9 @@ const Index = () => {
         ))}
       </div>
       
-      <section className="py-16 bg-slate-50">
-        <div className="container mx-auto px-4 md:px-6">
+      {/* Include the registration process section */}
+      <section className="py-16 bg-slate-50/50">
+        <div className="container">
           <RegistrationProcess />
         </div>
       </section>
