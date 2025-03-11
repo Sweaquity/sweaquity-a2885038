@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AccountSettingsCard } from "@/components/shared/AccountSettingsCard";
-import { BusinessProfileEditor } from "@/components/business/profile/BusinessProfileEditor";
+import { BusinessProfileEditor } from "@/components/business/BusinessProfileEditor";
 
 interface SubTask {
   id: string;
