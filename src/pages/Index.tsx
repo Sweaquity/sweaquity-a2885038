@@ -96,6 +96,8 @@ const Index = () => {
     fetchFeaturedProjects();
   }, []);
 
+
+  
   const userTypes = [
     {
       title: "Job Seeker",
@@ -114,35 +116,30 @@ const Index = () => {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <div className="text-center max-w-3xl mx-auto mb-8">
-        <h1 className="text-4xl font-semibold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          Welcome to Sweaquity
-        </h1>
-        <p className="text-lg text-muted-foreground mb-6">
-          The platform where skills meet equity - build your future by contributing to exciting projects
-        </p>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-6 w-full max-w-4xl mb-12">
-        {userTypes.map((type) => (
-          <Card
-            key={type.type}
-            className="p-6 landing-card hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => navigate(type.path)}
-          >
-            <div className="flex flex-col items-center text-center h-full">
-              <div className="mb-4 p-3 rounded-full bg-accent/10 text-accent">
-                <type.icon size={24} />
-              </div>
-              <h2 className="text-xl font-semibold mb-2">{type.title}</h2>
-              <p className="text-sm text-muted-foreground">
-                {type.description}
-              </p>
-            </div>
-          </Card>
-        ))}
-      </div>
+    <div>
+      <header className="bg-gradient-to-r from-primary/20 to-primary/10 py-16 md:py-24">
+        <div className="container mx-auto px-6 text-center">
+          <h1 className="text-4xl md:text-6xl font-bold mb-6">
+            Exchange <span className="text-primary">Skills</span> for <span className="text-primary">Equity</span>
+          </h1>
+          <p className="text-xl md:text-2xl mb-8 max-w-3xl mx-auto">
+            Connect job seekers with businesses looking to offer equity in exchange for skills and experience. 
+            Lets start by registering or logging in. 
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link to="/auth/seeker">
+              <Button size="lg" className="w-full sm:w-auto">
+                Find Projects
+              </Button>
+            </Link>
+            <Link to="/auth/business">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                Post Projects
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </header>
       
       {/* Include the registration process section */}
       <section className="py-16 bg-slate-50/50">
