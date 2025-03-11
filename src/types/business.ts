@@ -17,6 +17,7 @@ export interface Application {
   notes?: string;
   role_id?: string;
   id?: string;
+  project_id?: string; // Added this property to match JobApplication type
   profile: {
     first_name: string;
     last_name: string;
