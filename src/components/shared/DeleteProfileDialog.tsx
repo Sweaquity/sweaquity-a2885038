@@ -199,7 +199,10 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
               You will be signed out after your data is anonymized. This action preserves system records but removes all personally identifiable information.
             </p>
             <p className="font-medium">
-              Important: If you have both job seeker and business accounts, you will need to anonymize each account type separately.
+              Important: This only anonymizes your {getProfileTypeLabel()} profile data. If you have both job seeker and business accounts, you will need to anonymize each account type separately by logging in to each account type.
+            </p>
+            <p className="mt-2 font-medium">
+              Note: Your login credentials will remain active. To completely remove your account, please contact support.
             </p>
           </div>
         </div>

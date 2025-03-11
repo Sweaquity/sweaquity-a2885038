@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ProjectsSection } from "@/components/business/ProjectsSection";
 import { BusinessProfileCompletion } from "@/components/business/BusinessProfileCompletion";
-import { UserCircle2, Menu, Bell } from "lucide-react";
+import { UserCircle2, Menu, Bell, Pencil } from "lucide-react";
 import { ActiveRolesTable } from "@/components/business/roles/ActiveRolesTable";
 import { ProjectApplicationsSection } from "@/components/business/ProjectApplicationsSection";
 import { RequestAccessButton } from "@/components/business/users/RequestAccessButton";
@@ -49,6 +49,7 @@ const BusinessDashboard = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [newApplicationsCount, setNewApplicationsCount] = useState(0);
   const [newMessagesCount, setNewMessagesCount] = useState(0);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -212,6 +213,10 @@ const BusinessDashboard = () => {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
+  if (isEditingProfile) {
+    return <BusinessProfileCompletion />;
+  }
+
   if (!businessData?.company_name || !businessData?.industry || !businessData?.terms_accepted) {
     return <BusinessProfileCompletion />;
   }
@@ -291,6 +296,14 @@ const BusinessDashboard = () => {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <h2 className="text-lg font-semibold">Business Details</h2>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsEditingProfile(true)}
+                    className="flex items-center gap-1"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit Profile
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
