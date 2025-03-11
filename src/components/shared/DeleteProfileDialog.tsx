@@ -49,6 +49,34 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       
       console.log(`Anonymizing ${userType} profile for user ${userId}`);
       
+      // Get profile data before anonymization for GDPR backup
+      const profileData = userType === 'job_seeker' 
+        ? await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
+        : null;
+        
+      // Get business data before anonymization for GDPR backup
+      const businessData = userType === 'business'
+        ? await supabase.from('businesses').select('*').eq('businesses_id', userId).maybeSingle()
+        : null;
+      
+      // Store in GDPR table
+      const { error: gdprError } = await supabase
+        .from('gdpr_deleted_data')
+        .insert({
+          user_id: userId,
+          user_type: userType,
+          data: JSON.stringify({
+            profile: profileData?.data || null,
+            business: businessData?.data || null
+          }),
+          deleted_at: new Date().toISOString()
+        });
+        
+      if (gdprError) {
+        console.error("Error storing GDPR data:", gdprError);
+        // Continue with anonymization despite GDPR storage error
+      }
+      
       // Direct anonymization approach for the specific profile type
       if (userType === 'job_seeker') {
         // Anonymize the profile data
@@ -79,7 +107,7 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
             status: 'withdrawn',
             applicant_anonymized: true
           })
-          .eq('applicant_id', userId);
+          .eq('user_id', userId);
           
         if (applicationsError && applicationsError.code !== 'PGRST116') {
           console.error("Error updating applications:", applicationsError);
@@ -119,39 +147,6 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
         }
       }
       
-      // Copy data to GDPR table regardless of what happened above
-      try {
-        // Get profile data
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle();
-          
-        // Get business data
-        const { data: businessData } = await supabase
-          .from('businesses')
-          .select('*')
-          .eq('businesses_id', userId)
-          .maybeSingle();
-          
-        // Store in GDPR table
-        await supabase
-          .from('gdpr_deleted_data')
-          .insert({
-            user_id: userId,
-            user_type: userType,
-            data: JSON.stringify({
-              profile: profileData || null,
-              business: businessData || null
-            }),
-            deleted_at: new Date().toISOString()
-          });
-      } catch (gdprError) {
-        console.error("GDPR backup error:", gdprError);
-        // We continue even if GDPR storage fails
-      }
-      
       toast.success("Your profile has been successfully anonymized in accordance with GDPR regulations");
       
       // Sign out the user
@@ -180,7 +175,7 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
         </DialogHeader>
         
         <div className="bg-amber-50 p-4 rounded-md border border-amber-200 flex gap-2">
-          <AlertCircle className="text-amber-500 h-5 w-5" />
+          <AlertCircle className="text-amber-500 h-5 w-5 shrink-0 mt-0.5" />
           <div className="text-sm text-amber-800">
             <p className="font-medium mb-1">What happens to your data:</p>
             <ul className="list-disc ml-4 space-y-1">
@@ -198,10 +193,15 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
         </div>
         
         <div className="bg-blue-50 p-4 rounded-md border border-blue-200 flex gap-2">
-          <Info className="text-blue-500 h-5 w-5" />
-          <p className="text-sm text-blue-800">
-            You will be signed out after your data is anonymized. This action preserves system records but removes all personally identifiable information.
-          </p>
+          <Info className="text-blue-500 h-5 w-5 shrink-0 mt-0.5" />
+          <div className="text-sm text-blue-800">
+            <p className="mb-2">
+              You will be signed out after your data is anonymized. This action preserves system records but removes all personally identifiable information.
+            </p>
+            <p className="font-medium">
+              Important: If you have both job seeker and business accounts, you will need to anonymize each account type separately.
+            </p>
+          </div>
         </div>
         
         <p className="text-destructive font-medium">
@@ -214,6 +214,7 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
             variant="destructive" 
             onClick={handleRemoveProfile} 
             disabled={isProcessing}
+            className="border border-destructive"
           >
             {isProcessing ? "Processing..." : "Anonymize My Data"}
           </Button>

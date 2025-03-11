@@ -503,7 +503,7 @@ export const ProjectApplicationsSection = () => {
                       job_app_id: application.job_app_id,
                       role_id: application.role_id || "",
                       task_id: application.task_id,
-                      project_id: application.project_id || application.task_id,
+                      project_id: application.project_id,
                       status: application.status,
                       applied_at: application.applied_at,
                       notes: application.notes || "",
