@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { 
   Dialog, 
@@ -48,16 +49,107 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       
       console.log(`Anonymizing ${userType} profile for user ${userId}`);
       
-      // Call the delete_user_profile RPC function
-      const { data, error: rpcError } = await supabase.rpc('delete_user_profile', { 
-        user_type: userType,
-        user_id: userId
-      });
+      // Direct anonymization approach for the specific profile type
+      if (userType === 'job_seeker') {
+        // Anonymize the profile data
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            first_name: 'Deleted Account',
+            last_name: '',
+            email: null,
+            phone: null,
+            address: null,
+            bio: 'This account has been anonymized',
+            is_anonymized: true,
+            anonymized_at: new Date().toISOString()
+          })
+          .eq('id', userId);
+          
+        if (profileError) {
+          console.error("Error anonymizing profile:", profileError);
+          toast.error("Failed to anonymize profile data: " + profileError.message);
+          return;
+        }
+        
+        // Update job applications status to withdrawn
+        const { error: applicationsError } = await supabase
+          .from('job_applications')
+          .update({
+            status: 'withdrawn',
+            applicant_anonymized: true
+          })
+          .eq('applicant_id', userId);
+          
+        if (applicationsError && applicationsError.code !== 'PGRST116') {
+          console.error("Error updating applications:", applicationsError);
+        }
+        
+      } else if (userType === 'business') {
+        // Anonymize business profile
+        const { error: businessError } = await supabase
+          .from('businesses')
+          .update({
+            company_name: 'Deleted Business',
+            contact_email: null,
+            contact_phone: null,
+            contact_person: null,
+            website: null,
+            is_anonymized: true,
+            anonymized_at: new Date().toISOString()
+          })
+          .eq('businesses_id', userId);
+          
+        if (businessError) {
+          console.error("Error anonymizing business:", businessError);
+          toast.error("Failed to anonymize business data: " + businessError.message);
+          return;
+        }
+        
+        // Mark business projects as inactive
+        const { error: projectsError } = await supabase
+          .from('business_projects')
+          .update({
+            status: 'inactive'
+          })
+          .eq('business_id', userId);
+          
+        if (projectsError && projectsError.code !== 'PGRST116') {
+          console.error("Error updating projects:", projectsError);
+        }
+      }
       
-      if (rpcError) {
-        console.error("Error anonymizing profile:", rpcError);
-        toast.error("Failed to remove profile data: " + rpcError.message);
-        return;
+      // Copy data to GDPR table regardless of what happened above
+      try {
+        // Get profile data
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+          
+        // Get business data
+        const { data: businessData } = await supabase
+          .from('businesses')
+          .select('*')
+          .eq('businesses_id', userId)
+          .maybeSingle();
+          
+        // Store in GDPR table
+        await supabase
+          .from('gdpr_deleted_data')
+          .insert({
+            user_id: userId,
+            user_type: userType,
+            data: JSON.stringify({
+              profile: profileData || null,
+              business: businessData || null
+            }),
+            deleted_at: new Date().toISOString()
+          });
+      } catch (gdprError) {
+        console.error("GDPR backup error:", gdprError);
+        // We continue even if GDPR storage fails
       }
       
       toast.success("Your profile has been successfully anonymized in accordance with GDPR regulations");
@@ -70,7 +162,7 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
       
     } catch (error: any) {
       console.error("Profile anonymization error:", error);
-      toast.error(`Failed to remove profile data: ${error?.message || "Unknown error"}`);
+      toast.error(`Failed to anonymize profile data: ${error?.message || "Unknown error"}`);
     } finally {
       setIsProcessing(false);
       onClose();
