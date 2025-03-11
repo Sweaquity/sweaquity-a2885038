@@ -120,32 +120,46 @@ const Index = () => {
           <h1 className="text-4xl md:text-6xl font-bold mb-6">
             Exchange <span className="text-primary">Skills</span> for <span className="text-primary">Equity</span>
           </h1>
-          <p className="text-xl md:text-2xl mb-8 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl md:text-2xl mb-8 max-w-3xl mx-auto">
             Connect job seekers with businesses looking to offer equity in exchange for skills and experience.
-            <br />
             Let's start by registering or logging in.
           </p>
-          <div className="grid md:grid-cols-2 gap-6 w-full max-w-4xl mx-auto mb-12">
-            {userTypes.map((type) => (
-              <Card
-                key={type.type}
-                className="p-6 landing-card hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => navigate(type.path)}
-              >
-                <div className="flex flex-col items-center text-center h-full">
-                  <div className="mb-4 p-3 rounded-full bg-accent/10 text-accent">
-                    <type.icon size={24} />
-                  </div>
-                  <h2 className="text-xl font-semibold mb-2">{type.title}</h2>
-                  <p className="text-sm text-muted-foreground">
-                    {type.description}
-                  </p>
-                </div>
+        </div>
+      </header>
+
+      <section className="py-16 bg-slate-50/50">
+        <div className="container">
+          <RegistrationProcess />
+        </div>
+      </section>
+
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-4 md:px-6">
+          <ContractProcessExplanation />
+        </div>
+      </section>
+
+      <div className="w-full max-w-6xl mx-auto text-center mb-8">
+        <h2 className="text-2xl font-semibold mb-6">Featured Equity Projects</h2>
+
+        {isLoading ? (
+          <div className="grid md:grid-cols-2 gap-6 justify-center">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="p-6 h-64 animate-pulse bg-muted/50"></Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-6 justify-center">
+            {featuredProjects.map((project) => (
+              <Card key={project.project_id} className="p-6 hover:shadow-md transition-shadow">
+                <h3 className="text-lg font-semibold">{project.title}</h3>
+                <p className="text-sm text-muted-foreground">{project.company_name}</p>
+                <p className="text-sm mb-4 line-clamp-2">{project.description}</p>
               </Card>
             ))}
           </div>
-        </div>
-      </header>
+        )}
+      </div>
     </div>
   );
 };
