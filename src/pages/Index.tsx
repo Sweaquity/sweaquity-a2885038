@@ -1,3 +1,4 @@
+
 import { Card } from "@/components/ui/card";
 import { Building2, User, Briefcase, BarChart2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -5,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
-import { RegistrationProcess } from "@/components/landing/RegistrationProcess";
-import { ContractProcessExplanation } from "@/components/landing/ContractProcessExplanation";
 
 interface FeaturedProject {
   project_id: string;
@@ -58,7 +57,9 @@ const Index = () => {
 
         if (error) throw error;
 
+        // Process the data to match our interface
         const processedData: FeaturedProject[] = data.map(project => {
+          // Get the company name
           let companyName = "Unknown Company";
           if (project.businesses) {
             if (Array.isArray(project.businesses)) {
@@ -114,7 +115,7 @@ const Index = () => {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="min-h-screen flex flex-col items-center p-6 page-transition">
       <div className="text-center max-w-3xl mx-auto mb-8">
         <h1 className="text-4xl font-semibold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
           Welcome to Sweaquity
@@ -143,18 +144,6 @@ const Index = () => {
           </Card>
         ))}
       </div>
-      
-      <section className="py-16 bg-slate-50">
-        <div className="container mx-auto px-4 md:px-6">
-          <RegistrationProcess />
-        </div>
-      </section>
-      
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4 md:px-6">
-          <ContractProcessExplanation />
-        </div>
-      </section>
       
       <div className="w-full max-w-6xl mb-8">
         <h2 className="text-2xl font-semibold mb-6 text-center">Featured Equity Projects</h2>

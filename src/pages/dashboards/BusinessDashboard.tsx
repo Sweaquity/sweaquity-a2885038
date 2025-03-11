@@ -19,7 +19,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AccountSettingsCard } from "@/components/shared/AccountSettingsCard";
-import { BusinessProfileEditor } from "@/components/business/BusinessProfileEditor";
 
 interface SubTask {
   id: string;
@@ -297,20 +296,71 @@ const BusinessDashboard = () => {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <h2 className="text-lg font-semibold">Business Details</h2>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsEditingProfile(true)}
+                    className="flex items-center gap-1"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit Profile
+                  </Button>
                 </CardHeader>
-                <CardContent>
-                  <div className="p-2">
-                    <BusinessProfileEditor
-                      businessProfile={businessData}
-                      onProfileUpdate={() => {
-                        toast.success("Profile updated successfully");
-                        window.location.reload();
-                      }}
-                    />
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="font-semibold">Company Name</p>
+                      <p>{businessData.company_name || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold">Industry</p>
+                      <p>{businessData.industry || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold">Project Stage</p>
+                      <p>{businessData.project_stage || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold">Website</p>
+                      <p>{businessData.website || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold">Contact Phone</p>
+                      <p>{businessData.contact_phone || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold">Location</p>
+                      <p>{businessData.location || 'Not specified'}</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <h2 className="text-lg font-semibold">Banking Details</h2>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="font-semibold">Account Name</p>
+                      <p>{businessData.banking_details?.account_name || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold">Account Number</p>
+                      <p>{businessData.banking_details?.account_number || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold">Sort Code</p>
+                      <p>{businessData.banking_details?.sort_code || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold">Bank Name</p>
+                      <p>{businessData.banking_details?.bank_name || 'Not specified'}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
               <AccountSettingsCard userType="business" />
             </div>
           </TabsContent>
