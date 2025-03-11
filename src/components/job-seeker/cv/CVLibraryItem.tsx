@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -29,20 +28,20 @@ export const CVLibraryItem = ({
       <div className="flex items-center space-x-2">
         <Checkbox 
           id={`default-${cv.id}`}
-          checked={cv.isDefault}
+          checked={cv.is_default}
           onCheckedChange={() => {
-            if (!cv.isDefault) {
+            if (!cv.is_default) {
               onSetDefault(cv.name);
             }
           }}
-          disabled={cv.isDefault || isProcessing}
+          disabled={cv.is_default || isProcessing}
         />
         <Label 
           htmlFor={`default-${cv.id}`}
-          className={`text-sm ${cv.isDefault ? 'font-semibold' : ''}`}
+          className={`text-sm ${cv.is_default ? 'font-semibold' : ''}`}
         >
           {cv.name}
-          {cv.isDefault && <span className="text-xs text-muted-foreground ml-2">(Default)</span>}
+          {cv.is_default && <span className="text-xs text-muted-foreground ml-2">(Default)</span>}
         </Label>
       </div>
       <div className="flex space-x-2">
