@@ -96,6 +96,23 @@ const Index = () => {
     fetchFeaturedProjects();
   }, []);
 
+  const userTypes = [
+    {
+      title: "Job Seeker",
+      description: "Find your next opportunity and showcase your skills",
+      icon: User,
+      type: "seeker" as const,
+      path: "/auth/seeker",
+    },
+    {
+      title: "Business",
+      description: "Post jobs and find the perfect candidates",
+      icon: Building2,
+      type: "business" as const,
+      path: "/auth/business",
+    },
+  ];
+
   return (
     <div>
       <header className="bg-gradient-to-r from-primary/20 to-primary/10 py-16 md:py-24">
@@ -142,20 +159,7 @@ const Index = () => {
             ))}
           </div>
         )}
-
-        <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
-          <Link to="/auth/seeker">
-            <Button size="lg" className="w-full sm:w-auto">Find Projects</Button>
-          </Link>
-          <Link to="/auth/business">
-            <Button size="lg" variant="outline" className="w-full sm:w-auto">Post Projects</Button>
-          </Link>
-        </div>
       </div>
-
-      <Button asChild variant="link" className="text-muted-foreground">
-        <Link to="/auth/recruiter">Recruitment login here</Link>
-      </Button>
     </div>
   );
 };
