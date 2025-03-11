@@ -1,6 +1,21 @@
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, BarChart, Clock, FileCheck, FileText, MessageSquare, Rocket } from "lucide-react";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { 
+  ArrowRight, 
+  BarChart, 
+  Clock, 
+  FileCheck, 
+  FileText, 
+  MessageSquare, 
+  Rocket 
+} from "lucide-react";
 
 export const ContractProcessExplanation = () => {
   return (
