@@ -1,5 +1,5 @@
 
-import { JobApplication, Project, BusinessRole, EquityProject, SubTask } from '@/types/business';
+import { Application, Project, EquityProject, SubTask } from '@/types/business';
 import { Skill } from '@/types/jobSeeker';
 
 /**
@@ -155,8 +155,10 @@ export const matchJobSeekerToProjects = (
     // Add role-specific requirements if available
     if (project.business_roles && project.business_roles.length > 0) {
       project.business_roles.forEach(role => {
-        if (role.required_skills && role.required_skills.length > 0) {
-          requiredSkills = [...requiredSkills, ...role.required_skills];
+        if (role.skill_requirements && role.skill_requirements.length > 0) {
+          requiredSkills = [...requiredSkills, ...role.skill_requirements.map(s => 
+            typeof s === 'string' ? s : s.skill
+          )];
         }
       });
       
@@ -170,7 +172,10 @@ export const matchJobSeekerToProjects = (
     // Process sub-tasks if available
     const subTasks = project.tasks ? project.tasks.map(task => {
       // Calculate match at task level based on skill_requirements
-      const taskRequirements = task.skill_requirements || [];
+      const taskRequirements = task.skill_requirements?.map(s => 
+        typeof s === 'string' ? s : s.skill
+      ) || [];
+      
       const taskMatch = analyzeSkillMatch(userSkills, taskRequirements);
       
       return {
@@ -205,7 +210,10 @@ export const findMatchingTasks = (
   if (!project || !project.tasks || !userSkills) return [];
 
   return project.tasks.filter(task => {
-    const taskRequirements = task.skill_requirements || [];
+    const taskRequirements = task.skill_requirements?.map(s => 
+      typeof s === 'string' ? s : s.skill
+    ) || [];
+    
     if (taskRequirements.length === 0) return true;
     
     const match = calculateSkillMatch(userSkills, taskRequirements);
@@ -234,6 +242,55 @@ export const userHasSkill = (
   });
 };
 
+// Utility functions for OpportunitiesTab.tsx
+export const filterProjects = (projects: EquityProject[], filterType: string, userSkills: Skill[]): EquityProject[] => {
+  if (filterType === 'all') return projects;
+  
+  if (filterType === 'match') {
+    return projects.filter(project => 
+      project.skill_match && project.skill_match >= 50
+    );
+  }
+  
+  if (filterType === 'recent') {
+    return [...projects].sort((a, b) => {
+      const dateA = a.start_date ? new Date(a.start_date).getTime() : 0;
+      const dateB = b.start_date ? new Date(b.start_date).getTime() : 0;
+      return dateB - dateA;
+    });
+  }
+  
+  return projects;
+};
+
+export const extractUniqueSkills = (projects: EquityProject[]): string[] => {
+  const skillsSet = new Set<string>();
+  
+  projects.forEach(project => {
+    if (project.skills_required) {
+      project.skills_required.forEach(skill => {
+        skillsSet.add(typeof skill === 'string' ? skill : skill.toString());
+      });
+    }
+    
+    if (project.tasks) {
+      project.tasks.forEach(task => {
+        if (task.skill_requirements) {
+          task.skill_requirements.forEach(skill => {
+            skillsSet.add(typeof skill === 'string' ? skill : skill.skill);
+          });
+        }
+      });
+    }
+  });
+  
+  return Array.from(skillsSet);
+};
+
+export const convertUserSkillsToStrings = (skills: Skill[]): string[] => {
+  return skills.map(skill => typeof skill === 'string' ? skill : skill.skill);
+};
+
 /**
  * Filter projects based on a skill match threshold
  */
@@ -243,7 +300,7 @@ export const filterProjectsBySkillMatch = (
   threshold: number = 50
 ): EquityProject[] => {
   const matchedProjects = matchJobSeekerToProjects(projects, userSkills);
-  return matchedProjects.filter(project => project.skill_match >= threshold);
+  return matchedProjects.filter(project => (project.skill_match || 0) >= threshold);
 };
 
 /**
@@ -309,7 +366,7 @@ export const getSkillLevelText = (skill: Skill): string => {
     'expert': 'Expert'
   };
   
-  return levelMap[skill.level?.toLowerCase()] || 'Intermediate';
+  return levelMap[skill.level?.toLowerCase() || ''] || 'Intermediate';
 };
 
 /**

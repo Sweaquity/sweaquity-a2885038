@@ -30,15 +30,23 @@ export type Skill = string | {
   level?: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
 };
 
+// Skill requirement type
+export type SkillRequirement = string | {
+  skill: string;
+  level?: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+};
+
 // Application types
 export interface JobApplication {
   id: string;
+  job_app_id: string; // Added to match what components expect
   user_id: string;
   project_id: string;
   task_id?: string;
   status: 'pending' | 'accepted' | 'rejected' | 'withdrawn';
   applied_at: string;
   cover_letter?: string;
+  message?: string; // Added to match what components expect
   processed_at?: string;
   contract_url?: string;
   contract_status?: 'pending' | 'pending_signature' | 'signed' | 'rejected';
@@ -46,10 +54,37 @@ export interface JobApplication {
   cv_url?: string;
   applicant_anonymized?: boolean;
   applicant_email?: string;
+  task_discourse?: string; // Added to match what components expect
+  accepted_business?: boolean; // Added to match what components expect
+  accepted_jobseeker?: boolean; // Added to match what components expect
+  
   // Relations
-  project?: any;
+  business_roles?: {
+    title?: string;
+    description?: string;
+    timeframe?: string;
+    skill_requirements?: SkillRequirement[];
+    equity_allocation?: number;
+    completion_percentage?: number;
+    task_status?: string;
+    company_name?: string;
+    project_title?: string;
+    project?: {
+      title?: string;
+      business?: {
+        company_name?: string;
+      };
+    };
+  };
   profiles?: any;
   project_sub_tasks?: any;
+}
+
+// Log effort interface
+export interface LogEffort {
+  projectId: string;
+  hours: number;
+  description: string;
 }
 
 // Task types
@@ -79,11 +114,17 @@ export interface EquityProject {
   start_date?: string;
   end_date?: string;
   tasks?: SubTask[];
-  business_roles?: any[];
+  business_roles?: any; // Changed to any from any[] to match component usage
   skill_match?: number;
   match_level?: 'high' | 'medium' | 'low' | 'none';
   matched_skills?: string[];
   missing_skills?: string[];
+  equity_amount?: number; // Added to match what components expect
+  time_allocated?: string; // Added to match what components expect
+  effort_logs?: any[]; // Added to match what components expect
+  total_hours_logged?: number; // Added to match what components expect
+  created_by?: string; // Added to match what components expect
+  sub_tasks?: SubTask[]; // Added to match what components expect
 }
 
 export interface SubTask {
@@ -96,12 +137,13 @@ export interface SubTask {
   task_status?: string;
   equity_allocation?: number;
   timeframe?: string;
-  skill_requirements?: string[];
+  skill_requirements?: SkillRequirement[]; // Changed to match what components expect
   progress?: number;
   skill_match?: number;
   match_level?: 'high' | 'medium' | 'low' | 'none';
   matched_skills?: string[];
   missing_skills?: string[];
+  completion_percentage?: number; // Added to match what components expect
 }
 
 // Parsed CV data
@@ -162,4 +204,6 @@ export interface ProjectWithDocuments extends EquityProject {
   documents: ProjectDocument[];
   start_date?: string;
   end_date?: string;
+  equity_amount?: number; // Added to match what components expect
+  total_hours_logged?: number; // Added to match what components expect
 }

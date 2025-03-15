@@ -11,6 +11,23 @@ import { RequestAccessButton } from "@/components/business/users/RequestAccessBu
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
+interface BusinessDashboardProps {}
+
+interface BusinessProfileEditorProps {
+  businessProfile: any;
+  onUpdate: (updatedProfile: any) => void;
+  isCompleting: boolean;
+}
+
+interface ProjectsSectionProps {
+  businessId: string;
+  onProjectSelect: (projectId: string) => void;
+}
+
+interface ActiveRolesTableProps {
+  businessId: string;
+}
+
 const BusinessDashboard = () => {
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
@@ -117,7 +134,7 @@ const BusinessDashboard = () => {
     return (
       <div className="container mx-auto p-4">
         <BusinessProfileEditor 
-          profile={profile} 
+          businessProfile={profile} 
           onUpdate={handleProfileUpdate} 
           isCompleting={true}
         />
@@ -182,7 +199,7 @@ const BusinessDashboard = () => {
 
         <TabsContent value="profile">
           <BusinessProfileEditor 
-            profile={profile} 
+            businessProfile={profile} 
             onUpdate={handleProfileUpdate}
             isCompleting={false}
           />

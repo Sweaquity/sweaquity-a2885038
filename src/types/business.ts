@@ -1,5 +1,5 @@
 
-import { Skill, SkillRequirement } from "./jobSeeker";
+import { Skill } from "./jobSeeker";
 
 export interface Application {
   job_app_id: string;
@@ -17,7 +17,7 @@ export interface Application {
   notes?: string;
   role_id?: string;
   id?: string;
-  project_id: string; // Required property to match JobApplication type
+  project_id: string;
   applicant_anonymized?: boolean;
   applicant_email?: string;
   profile: {
@@ -31,13 +31,14 @@ export interface Application {
   business_roles: {
     title: string;
     description: string;
-    skill_requirements?: SkillRequirement[];
+    skill_requirements?: Skill[];
     equity_allocation?: number;
     timeframe?: string;
     project?: {
       title: string;
     }
     project_title?: string;
+    company_name?: string;
   };
 }
 
@@ -47,4 +48,53 @@ export interface Project {
   description: string;
   skills_required?: string[];
   applications: Application[];
+}
+
+export interface BusinessRole {
+  id: string;
+  title: string;
+  description: string;
+  skill_requirements?: Skill[];
+  equity_allocation?: number;
+  timeframe?: string;
+  project?: {
+    title: string;
+  }
+}
+
+export interface EquityProject {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string;
+  status: string;
+  business_id: string;
+  equity_allocation: number;
+  equity_allocated: number;
+  skills_required: string[];
+  project_timeframe: string;
+  tasks: SubTask[];
+  business_roles: BusinessRole[];
+  skill_match?: number;
+  match_level?: 'high' | 'medium' | 'low' | 'none';
+  matched_skills?: string[];
+  missing_skills?: string[];
+}
+
+export interface SubTask {
+  id: string;
+  task_id: string;
+  project_id: string;
+  title: string;
+  description: string;
+  status: string;
+  task_status: string;
+  equity_allocation: number;
+  timeframe: string;
+  skill_requirements: Skill[];
+  progress: number;
+  skill_match?: number;
+  match_level?: 'high' | 'medium' | 'low' | 'none';
+  matched_skills?: string[];
+  missing_skills?: string[];
 }

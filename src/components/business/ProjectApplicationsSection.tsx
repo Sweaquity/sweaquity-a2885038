@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { Application } from "@/types/business";
 
 // Import application card components
 import { ApplicationCard } from './applications/ApplicationCard';
@@ -22,49 +23,9 @@ import { WithdrawnApplicationsTable } from './applications/tables/WithdrawnAppli
 import { ContractUploadDialog } from './applications/ContractUploadDialog';
 import { ContractActionsSection } from './applications/ContractActionsSection';
 
-// Define types for applications and related data
-interface Profile {
-  first_name: string;
-  last_name: string;
-  email: string;
-  title: string;
-  location: string;
-  cv_url: string;
-  skills: any[];
-  employment_preference: string;
-}
-
-interface SubTask {
-  task_id: string;
-  title: string;
-  description: string;
-  skill_requirements: any[];
-  equity_allocation: number;
-  timeframe: string;
-}
-
-interface JobApplication {
-  id: string;
-  user_id: string;
-  project_id: string;
-  task_id: string | null;
-  status: string;
-  applied_at: string;
-  cover_letter: string;
-  processed_at: string | null;
-  contract_url: string | null;
-  contract_status: string | null;
-  profiles: Profile;
-  project_sub_tasks: SubTask | null;
-  notes: string | null;
-  cv_url: string | null;
-  applicant_anonymized: boolean;
-  applicant_email: string;
-}
-
 export const ProjectApplicationsSection = ({ projectId }: { projectId: string }) => {
-  const [applications, setApplications] = useState<JobApplication[]>([]);
-  const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>("pending");
   const [showEditNotesDialog, setShowEditNotesDialog] = useState<boolean>(false);
@@ -110,10 +71,13 @@ export const ProjectApplicationsSection = ({ projectId }: { projectId: string })
       // Process the data to add any missing fields and ensure consistent structure
       const processedData = data.map((app: any) => ({
         ...app,
+        job_app_id: app.id || app.job_app_id, // Ensure job_app_id is set
         applicant_anonymized: app.applicant_anonymized || false,
         applicant_email: app.profiles?.email || '',
-        notes: app.notes || ''
-      }));
+        notes: app.notes || '',
+        profile: app.profiles || {},
+        business_roles: app.project_sub_tasks || {}
+      })) as Application[];
       
       setApplications(processedData);
       
@@ -145,12 +109,12 @@ export const ProjectApplicationsSection = ({ projectId }: { projectId: string })
       // Update local state
       setApplications(prevApps => 
         prevApps.map(app => 
-          app.id === applicationId ? { ...app, status, processed_at: new Date().toISOString() } : app
+          app.job_app_id === applicationId ? { ...app, status, processed_at: new Date().toISOString() } : app
         )
       );
 
       // Update selected application if needed
-      if (selectedApplication && selectedApplication.id === applicationId) {
+      if (selectedApplication && selectedApplication.job_app_id === applicationId) {
         setSelectedApplication(prev => prev ? { ...prev, status, processed_at: new Date().toISOString() } : null);
       }
 
@@ -169,14 +133,14 @@ export const ProjectApplicationsSection = ({ projectId }: { projectId: string })
       const { error } = await supabase
         .from('job_applications')
         .update({ notes: applicationNotes })
-        .eq('id', selectedApplication.id);
+        .eq('id', selectedApplication.job_app_id);
 
       if (error) throw error;
 
       // Update local state
       setApplications(prevApps => 
         prevApps.map(app => 
-          app.id === selectedApplication.id ? { ...app, notes: applicationNotes } : app
+          app.job_app_id === selectedApplication.job_app_id ? { ...app, notes: applicationNotes } : app
         )
       );
 
@@ -204,12 +168,12 @@ export const ProjectApplicationsSection = ({ projectId }: { projectId: string })
       // Update local state
       setApplications(prevApps => 
         prevApps.map(app => 
-          app.id === applicationId ? { ...app, applicant_anonymized: !currentState } : app
+          app.job_app_id === applicationId ? { ...app, applicant_anonymized: !currentState } : app
         )
       );
 
       // Update selected application if needed
-      if (selectedApplication && selectedApplication.id === applicationId) {
+      if (selectedApplication && selectedApplication.job_app_id === applicationId) {
         setSelectedApplication(prev => prev ? { ...prev, applicant_anonymized: !currentState } : null);
       }
 
@@ -229,7 +193,7 @@ export const ProjectApplicationsSection = ({ projectId }: { projectId: string })
   };
 
   // Handler for selecting an application
-  const handleSelectApplication = (application: JobApplication) => {
+  const handleSelectApplication = (application: Application) => {
     setSelectedApplication(application);
   };
 
@@ -253,7 +217,7 @@ export const ProjectApplicationsSection = ({ projectId }: { projectId: string })
     // Update local state with new contract URL
     setApplications(prevApps => 
       prevApps.map(app => 
-        app.id === selectedApplication.id ? { ...app, contract_url: contractUrl, contract_status: 'pending_signature' } : app
+        app.job_app_id === selectedApplication.job_app_id ? { ...app, contract_url: contractUrl, contract_status: 'pending_signature' } : app
       )
     );
     
@@ -271,7 +235,7 @@ export const ProjectApplicationsSection = ({ projectId }: { projectId: string })
     
     try {
       // Update application status to accepted
-      await updateApplicationStatus(selectedApplication.id, 'accepted');
+      await updateApplicationStatus(selectedApplication.job_app_id, 'accepted');
       
       // Send notification to applicant (would be implemented with a serverless function)
       console.log(`Sending acceptance message to ${selectedApplication.applicant_anonymized ? 'anonymized applicant' : selectedApplication.applicant_email}:`, data.message);
@@ -286,7 +250,7 @@ export const ProjectApplicationsSection = ({ projectId }: { projectId: string })
     
     try {
       // Update application status to rejected
-      await updateApplicationStatus(selectedApplication.id, 'rejected');
+      await updateApplicationStatus(selectedApplication.job_app_id, 'rejected');
       
       // Send notification to applicant (would be implemented with a serverless function)
       console.log(`Sending rejection message to ${selectedApplication.applicant_anonymized ? 'anonymized applicant' : selectedApplication.applicant_email}:`, data.message);
@@ -321,7 +285,7 @@ export const ProjectApplicationsSection = ({ projectId }: { projectId: string })
                 <PendingApplicationsTable 
                   applications={pendingApplications} 
                   onSelect={handleSelectApplication}
-                  selectedId={selectedApplication?.id}
+                  selectedId={selectedApplication?.job_app_id}
                   isLoading={isLoading}
                 />
               </TabsContent>
@@ -330,7 +294,7 @@ export const ProjectApplicationsSection = ({ projectId }: { projectId: string })
                 <ActiveApplicationsTable 
                   applications={activeApplications} 
                   onSelect={handleSelectApplication}
-                  selectedId={selectedApplication?.id}
+                  selectedId={selectedApplication?.job_app_id}
                   isLoading={isLoading}
                 />
               </TabsContent>
@@ -339,7 +303,7 @@ export const ProjectApplicationsSection = ({ projectId }: { projectId: string })
                 <RejectedApplicationsTable 
                   applications={rejectedApplications} 
                   onSelect={handleSelectApplication}
-                  selectedId={selectedApplication?.id}
+                  selectedId={selectedApplication?.job_app_id}
                   isLoading={isLoading}
                 />
               </TabsContent>
@@ -348,7 +312,7 @@ export const ProjectApplicationsSection = ({ projectId }: { projectId: string })
                 <WithdrawnApplicationsTable 
                   applications={withdrawnApplications} 
                   onSelect={handleSelectApplication}
-                  selectedId={selectedApplication?.id}
+                  selectedId={selectedApplication?.job_app_id}
                   isLoading={isLoading}
                 />
               </TabsContent>
@@ -375,7 +339,7 @@ export const ProjectApplicationsSection = ({ projectId }: { projectId: string })
                       <Button
                         variant={selectedApplication.applicant_anonymized ? "default" : "outline"}
                         size="sm"
-                        onClick={() => toggleAnonymization(selectedApplication.id, selectedApplication.applicant_anonymized)}
+                        onClick={() => toggleAnonymization(selectedApplication.job_app_id, selectedApplication.applicant_anonymized || false)}
                       >
                         {selectedApplication.applicant_anonymized ? "De-anonymize" : "Anonymize"}
                       </Button>
@@ -398,7 +362,7 @@ export const ProjectApplicationsSection = ({ projectId }: { projectId: string })
                         </DialogTrigger>
                         
                         <RejectApplicationDialog 
-                          onSubmit={handleRejectApplication} 
+                          onReject={handleRejectApplication} 
                           onOpenChange={handleRejectDialogChange}
                         />
                       </Dialog>
@@ -411,7 +375,7 @@ export const ProjectApplicationsSection = ({ projectId }: { projectId: string })
                         </DialogTrigger>
                         
                         <AcceptJobDialog 
-                          onSubmit={handleAcceptApplication}
+                          onAccept={handleAcceptApplication}
                           onOpenChange={handleAcceptDialogChange}
                         />
                       </Dialog>

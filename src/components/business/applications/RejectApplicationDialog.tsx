@@ -1,118 +1,108 @@
 
 import { useState } from "react";
 import {
-  Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2 } from "lucide-react";
 
 interface RejectApplicationDialogProps {
-  isOpen: boolean;
+  onReject: (data: { reason: string, message: string }) => Promise<void>;
   onOpenChange: (open: boolean) => void;
-  onReject: (note: string) => void;
 }
 
-export const RejectApplicationDialog = ({
-  isOpen,
-  onOpenChange,
-  onReject
-}: RejectApplicationDialogProps) => {
-  const [note, setNote] = useState("");
+export function RejectApplicationDialog({ onReject, onOpenChange }: RejectApplicationDialogProps) {
+  const [reason, setReason] = useState("not_suitable");
+  const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!note.trim()) {
-      setError("Please provide a reason for rejection");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError("");
-    
+  const handleSubmit = async () => {
     try {
-      await onReject(note);
-      setNote("");
+      setIsSubmitting(true);
+      await onReject({ reason, message });
       onOpenChange(false);
     } catch (error) {
       console.error("Error rejecting application:", error);
-      setError("Failed to reject application. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const reasonOptions = [
+    { value: "not_suitable", label: "Skills not suitable" },
+    { value: "position_filled", label: "Position already filled" },
+    { value: "experience_required", label: "More experience required" },
+    { value: "other", label: "Other reason" },
+  ];
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        setNote("");
-        setError("");
-      }
-      onOpenChange(open);
-    }}>
-      <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Reject Application</DialogTitle>
-            <DialogDescription>
-              Provide a reason for rejecting this application. 
-              <span className="font-medium text-amber-600 block mt-1">
-                Note: This message will be visible to the applicant.
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="rejection-note" className="text-left">
-                Rejection Reason
-              </Label>
-              <Textarea
-                id="rejection-note"
-                placeholder="Enter your rejection reason here..."
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                className="min-h-24"
-              />
-              {error && (
-                <div className="flex items-center gap-1 text-sm text-red-500 mt-1">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>{error}</span>
-                </div>
-              )}
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                "Reject Application"
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <DialogContent className="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle>Reject Application</DialogTitle>
+        <DialogDescription>
+          You are rejecting this application. Please provide a reason and optional message.
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="py-4 space-y-4">
+        <div className="space-y-2">
+          <label htmlFor="reason" className="text-sm font-medium">
+            Reason for Rejection
+          </label>
+          <Select value={reason} onValueChange={setReason}>
+            <SelectTrigger id="reason">
+              <SelectValue placeholder="Select a reason" />
+            </SelectTrigger>
+            <SelectContent>
+              {reasonOptions.map(option => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="message" className="text-sm font-medium">
+            Message to Applicant (Optional)
+          </label>
+          <Textarea
+            id="message"
+            placeholder="Thank you for your application, but..."
+            rows={4}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          Cancel
+        </Button>
+        <Button 
+          type="button"
+          variant="destructive"
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Rejecting...
+            </>
+          ) : (
+            "Reject Application"
+          )}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
   );
-};
+}
