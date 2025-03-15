@@ -6,7 +6,8 @@ import { TaskList } from "./TaskList";
 import { Link } from "react-router-dom";
 
 interface Task {
-  id: string;
+  task_id: string; // Changed to task_id for consistency
+  id?: string; // Add id as optional for backward compatibility
   title: string;
   description: string;
   status: string;
@@ -39,13 +40,13 @@ interface ProjectCardProps {
 export const ProjectCard = ({ project, onEdit, onDelete }: ProjectCardProps) => {
   const handleTaskDeleted = (taskId: string) => {
     // This will be handled by the parent's onProjectUpdated
-    const updatedTasks = project.tasks.filter(task => task.id !== taskId);
+    const updatedTasks = project.tasks.filter(task => task.task_id !== taskId);
     onEdit({ ...project, tasks: updatedTasks });
   };
 
   const handleTaskUpdated = (updatedTask: Task) => {
     const updatedTasks = project.tasks.map(task => 
-      task.id === updatedTask.id ? updatedTask : task
+      task.task_id === updatedTask.task_id ? updatedTask : task
     );
     onEdit({ ...project, tasks: updatedTasks });
   };
