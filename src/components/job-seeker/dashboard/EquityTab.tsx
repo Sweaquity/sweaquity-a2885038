@@ -30,6 +30,11 @@ export const EquityTab = ({
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const { syncAcceptedJobs, isLoading } = useAcceptedJobs();
   
+  // Convert skill objects to strings for matching
+  const userSkillStrings = userSkills.map(skill => 
+    typeof skill === 'string' ? skill.toLowerCase() : skill.skill.toLowerCase()
+  );
+  
   const handleSyncAcceptedJobs = async () => {
     await syncAcceptedJobs();
     toast.success("Synced accepted jobs. If any issues persist, please contact support.");
@@ -67,7 +72,8 @@ export const EquityTab = ({
             <ProjectCard
               key={project.id}
               project={project}
-              userSkills={userSkills || []}
+              userSkills={userSkills}
+              userSkillStrings={userSkillStrings}
               onSelectProject={() => setSelectedProjectId(project.id)}
               onSelectTask={() => {}}
             />

@@ -89,6 +89,8 @@ export const EquityProjectItem = ({
     <Card className="overflow-hidden bg-card">
       <CardHeader className="p-4 pb-0">
         <ProjectHeader
+          status={application.status}
+          appliedAt={application.applied_at}
           application={application}
           isExpanded={isExpanded}
           toggleExpand={toggleExpand}
@@ -102,11 +104,23 @@ export const EquityProjectItem = ({
             description={application.business_roles?.description}
             projectTitle={application.business_roles?.project_title}
             companyName={application.business_roles?.company_name}
+            timeframe={application.business_roles?.timeframe}
+            equityAllocation={application.business_roles?.equity_allocation}
+            skillRequirements={application.business_roles?.skill_requirements}
           />
 
           <div className="flex flex-col justify-between items-end gap-2">
             <div className="flex items-center gap-2">
-              <ApplicationStatus status={application.status} />
+              <ApplicationStatus 
+                status={application.status}
+                isExpanded={isExpanded}
+                toggleExpand={toggleExpand}
+                onStatusChange={handleStatusChange}
+                isUpdatingStatus={isUpdatingStatus === application.job_app_id}
+                showAcceptButton={showAcceptButton}
+                onAcceptClick={() => setIsAcceptJobDialogOpen(true)}
+                isAcceptingJob={isAcceptingJob}
+              />
               {isFullyAccepted && (
                 <Badge variant="outline" className="bg-green-50 text-green-700">
                   Active Project

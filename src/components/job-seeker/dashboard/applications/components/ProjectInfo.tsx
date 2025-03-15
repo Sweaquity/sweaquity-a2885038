@@ -1,18 +1,27 @@
 
 import { Badge } from '@/components/ui/badge';
+import { JobApplication } from '@/types/jobSeeker';
 
-interface ProjectInfoProps {
+export interface ProjectInfoProps {
   taskStatus?: string;
   timeframe?: string;
   equityAllocation?: number;
   skillRequirements?: (string | { skill: string; level?: string })[];
+  title?: string;
+  description?: string;
+  projectTitle?: string;
+  companyName?: string;
 }
 
 export const ProjectInfo = ({ 
   taskStatus, 
   timeframe, 
   equityAllocation,
-  skillRequirements = []
+  skillRequirements = [],
+  title,
+  description,
+  projectTitle,
+  companyName
 }: ProjectInfoProps) => {
   return (
     <>
