@@ -57,53 +57,53 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     "Rejected:", rejectedApplications.length
   );
   
-  useEffect(() => {
-    // Count new messages from the past 24 hours
-    const oneDayAgo = new Date();
-    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-    
-    let newMsgs = 0;
-    
-    applications.forEach(app => {
-      if (app.task_discourse) {
-        const lastMessageMatch = app.task_discourse.match(/\[([^\]]+)\]/);
-        if (lastMessageMatch) {
-          try {
-            const msgDate = new Date(lastMessageMatch[1]);
-            if (msgDate > oneDayAgo && ['negotiation', 'accepted'].includes(normalizeStatus(app.status))) {
-              newMsgs++;
-            }
-          } catch (e) {
-            console.error("Error parsing message date:", e);
+ useEffect(() => {
+  // Count new messages from the past 24 hours
+  const oneDayAgo = new Date();
+  oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+  let newMsgs = 0;
+
+  applications.forEach(app => {
+    if (app.task_discourse) {
+      const lastMessageMatch = app.task_discourse.match(/\[([^\]]+)\]/);
+      if (lastMessageMatch) {
+        try {
+          const msgDate = new Date(lastMessageMatch[1]);
+          if (msgDate > oneDayAgo && ['negotiation', 'accepted'].includes(normalizeStatus(app.status))) {
+            newMsgs++;
           }
+        } catch (e) {
+          console.error("Error parsing message date:", e);
         }
       }
-    });
-    
-    setNewMessagesCount(newMsgs);
-    
-    // Set up realtime listener for application updates
-    const channel = supabase
-      .channel('job-seeker-apps')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'job_applications',
-          filter: 'task_discourse=neq.null'
-        },
-        () => {
-          setNewMessagesCount(prev => prev + 1);
-          onApplicationUpdated();
-        }
-      )
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [applications, onApplicationUpdated]);
+    }
+  });
+
+  setNewMessagesCount(prevCount => (prevCount === newMsgs ? prevCount : newMsgs)); // Only update if needed
+
+  // Set up realtime listener for application updates
+  const channel = supabase
+    .channel('job-seeker-apps')
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'job_applications',
+        filter: 'task_discourse=neq.null'
+      },
+      () => {
+        setNewMessagesCount(prev => prev + 1);
+        onApplicationUpdated();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [applications, onApplicationUpdated]);
   
   // Reset notification counter when viewing the relevant tab
   const handleTabChange = (value: string) => {
