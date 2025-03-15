@@ -10,6 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { CreateMessageDialog } from "@/components/job-seeker/dashboard/applications/CreateMessageDialog";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export interface ActiveApplicationsTableProps {
   applications: Application[];
@@ -85,6 +91,11 @@ export const ActiveApplicationsTable = ({
       handleCloseMessageDialog();
     }
   };
+  
+  // Check if the user can change the status (only before acceptance)
+  const canChangeStatus = (app: Application) => {
+    return !app.accepted_business && !app.accepted_jobseeker;
+  };
 
   return (
     <>
@@ -109,20 +120,29 @@ export const ActiveApplicationsTable = ({
                 <div className="text-xs text-muted-foreground">{app.profile?.title}</div>
               </TableCell>
               <TableCell>
-                <Badge
-                  className={`${
-                    app.status === 'negotiation' ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : 
-                    app.status === 'accepted' ? 'bg-green-100 text-green-800 hover:bg-green-200' : 
-                    'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                  }`}
-                >
-                  {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
-                </Badge>
-                {app.task_discourse && (
-                  <div className="mt-1">
+                <div className="flex flex-col gap-1">
+                  <Badge
+                    className={`${
+                      app.status === 'negotiation' ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' : 
+                      app.status === 'accepted' ? 'bg-green-100 text-green-800 hover:bg-green-200' : 
+                      'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                    }`}
+                  >
+                    {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                  </Badge>
+                  
+                  {app.task_discourse && (
                     <Badge variant="outline" className="text-xs bg-accent/20">Has messages</Badge>
-                  </div>
-                )}
+                  )}
+                  
+                  {app.accepted_business && (
+                    <Badge variant="outline" className="text-xs bg-green-100">Accepted by business</Badge>
+                  )}
+                  
+                  {app.accepted_jobseeker && (
+                    <Badge variant="outline" className="text-xs bg-green-100">Accepted by job seeker</Badge>
+                  )}
+                </div>
               </TableCell>
               <TableCell>
                 {typeof app.skillMatch === 'number' ? (
@@ -155,26 +175,37 @@ export const ActiveApplicationsTable = ({
                   >
                     <MessageSquare className="h-4 w-4" />
                   </Button>
-                  {app.status === 'negotiation' && (
-                    <>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => openAcceptJobDialog(app)}
-                        disabled={isAcceptingJobLoading}
-                      >
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleStatusChange(app.job_app_id, 'rejected')}
-                        disabled={isUpdatingStatus}
-                      >
-                        <ShieldAlert className="h-4 w-4 text-red-600" />
-                      </Button>
-                    </>
+                  
+                  {canChangeStatus(app) ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">Status</Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="bg-white">
+                        <DropdownMenuItem onClick={() => handleStatusChange(app.job_app_id, 'negotiation')}>
+                          Negotiation
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusChange(app.job_app_id, 'accepted')}>
+                          Accepted
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusChange(app.job_app_id, 'rejected')}>
+                          Rejected
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : null}
+                  
+                  {app.status === 'negotiation' && !app.accepted_business && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => openAcceptJobDialog(app)}
+                      disabled={isAcceptingJobLoading}
+                    >
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    </Button>
                   )}
+                  
                   {/* Show accept button for accepted status if not already accepted by business */}
                   {app.status === 'accepted' && !app.accepted_business && (
                     <Button 

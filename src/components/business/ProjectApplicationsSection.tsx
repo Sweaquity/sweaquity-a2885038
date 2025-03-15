@@ -290,6 +290,13 @@ export const ProjectApplicationsSection = () => {
   };
 
   const handleStatusChange = async (applicationId: string, newStatus: string) => {
+    const application = findApplicationById(applicationId);
+    
+    if (application && (application.accepted_business || application.accepted_jobseeker)) {
+      toast.error("Cannot change status after acceptance. Use contract management instead.");
+      return;
+    }
+    
     if (newStatus === 'rejected') {
       setSelectedApplicationId(applicationId);
       setRejectDialogOpen(true);
@@ -297,6 +304,14 @@ export const ProjectApplicationsSection = () => {
     }
     
     await updateApplicationStatus(applicationId, newStatus);
+  };
+
+  const findApplicationById = (applicationId: string): Application | undefined => {
+    for (const project of projects) {
+      const app = project.applications.find(app => app.job_app_id === applicationId);
+      if (app) return app;
+    }
+    return undefined;
   };
 
   const handleRejectWithNote = async (applicationId: string, note: string) => {

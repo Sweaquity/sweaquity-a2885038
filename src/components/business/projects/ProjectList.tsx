@@ -10,9 +10,10 @@ interface SkillRequirement {
   level: string;
 }
 
-// Updated Task interface to maintain consistency with other components
+// Updated Task interface to ensure consistency across components
 interface Task {
   task_id: string;
+  id?: string; // For backward compatibility
   title: string;
   description: string;
   status: string;
@@ -20,10 +21,9 @@ interface Task {
   equity_earned: number;
   equity_allocation: number;
   timeframe: string;
-  skills_required: string[];
+  skills_required?: string[];
   skill_requirements: SkillRequirement[];
   dependencies: string[];
-  id?: string; // For backward compatibility
 }
 
 interface Project {
