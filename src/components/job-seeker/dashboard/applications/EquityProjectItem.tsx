@@ -1,266 +1,243 @@
+
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { JobApplication } from "@/types/jobSeeker";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { ChevronDown, ChevronUp, Check, Clock } from "lucide-react";
-import { CreateMessageDialog } from "./CreateMessageDialog";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { toast } from "sonner";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { WithdrawDialog } from "./WithdrawDialog";
 import { AcceptJobDialog } from "./AcceptJobDialog";
-import { useAcceptedJobs } from "@/hooks/useAcceptedJobs";
+import { useWithdrawApplication } from "./hooks/useWithdrawApplication";
 import { useApplicationActions } from "./hooks/useApplicationActions";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/lib/supabase";
-import { 
-  ProjectActions, 
-  ProjectInfo, 
-  ProjectDetails, 
-  ProjectHeader, 
-  StatusChangeDialog 
-} from "./components";
+import { useAcceptedJobs } from "@/hooks/useAcceptedJobs";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Clock, FileText, MessageSquare, TimerIcon } from "lucide-react";
+import { CreateMessageDialog } from "./CreateMessageDialog";
+import { TimeLoggingDialog } from "./TimeLoggingDialog";
+import { StatusBadge } from "./StatusBadge";
+import { StatusChangeDialog } from "./components/StatusChangeDialog";
+import { ProjectHeader } from "./components/ProjectHeader";
+import { ProjectInfo } from "./components/ProjectInfo";
+import { MessageActions } from "./components/MessageActions";
+import { ApplicationStatus } from "./components/ApplicationStatus";
 
 interface EquityProjectItemProps {
   application: JobApplication;
-  onMessageSent?: () => void;
   onApplicationUpdated?: () => void;
 }
 
-export const EquityProjectItem = ({ 
+export const EquityProjectItem = ({
   application,
-  onMessageSent,
-  onApplicationUpdated = () => {}
+  onApplicationUpdated,
 }: EquityProjectItemProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
-  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
-  const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isCreateMessageOpen, setIsCreateMessageOpen] = useState(false);
+  const [isTimeLoggingOpen, setIsTimeLoggingOpen] = useState(false);
   const [isAcceptJobDialogOpen, setIsAcceptJobDialogOpen] = useState(false);
-  const [isTimeLogDialogOpen, setIsTimeLogDialogOpen] = useState(false);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(application.status);
-  const [hours, setHours] = useState<number>(0);
-  const [description, setDescription] = useState<string>('');
-  const navigate = useNavigate();
 
-  const { 
-    isUpdatingStatus, 
-    updateApplicationStatus 
-  } = useApplicationActions(onApplicationUpdated);
-  
   const {
-    acceptJobAsJobSeeker,
-    isLoading: isAcceptingJob
-  } = useAcceptedJobs(onApplicationUpdated);
+    isWithdrawDialogOpen,
+    setIsWithdrawDialogOpen,
+    isWithdrawing,
+    handleWithdrawApplication,
+  } = useWithdrawApplication(onApplicationUpdated);
 
-  const handleViewProject = () => {
-    if (application.project_id) {
-      navigate(`/projects/${application.project_id}`);
-    }
-  };
+  const { isUpdatingStatus, updateApplicationStatus } =
+    useApplicationActions(onApplicationUpdated);
 
-  const handleAcceptJob = async () => {
-    await acceptJobAsJobSeeker(application);
-    onApplicationUpdated();
+  const { acceptJobAsJobSeeker, isLoading: isAcceptingJob } = useAcceptedJobs(
+    onApplicationUpdated
+  );
+
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded);
   };
 
   const handleWithdraw = async (reason?: string) => {
-    try {
-      await updateApplicationStatus(application.job_app_id, 'withdrawn', reason);
-      toast.success("Application withdrawn successfully");
-      onApplicationUpdated();
-    } catch (error) {
-      console.error("Error withdrawing application:", error);
-      toast.error("Failed to withdraw application");
-    }
+    await handleWithdrawApplication(application.job_app_id, reason);
+    return Promise.resolve();
   };
 
   const handleStatusChange = (status: string) => {
-    if (status === 'withdrawn') {
+    if (status === "withdrawn") {
       setIsWithdrawDialogOpen(true);
       return;
     }
-    
+
     setSelectedStatus(status);
-    setIsStatusDialogOpen(true);
+    setStatusDialogOpen(true);
   };
 
   const confirmStatusChange = async () => {
     await updateApplicationStatus(application.job_app_id, selectedStatus);
-    setIsStatusDialogOpen(false);
+    setStatusDialogOpen(false);
   };
-  
-  const handleLogTime = async () => {
-    if (!application.task_id || hours <= 0) return;
-    
-    try {
-      // Create a time entry
-      const { error } = await supabase
-        .from('time_entries')
-        .insert({
-          ticket_id: application.task_id,
-          user_id: (await supabase.auth.getUser()).data.user?.id,
-          description: description,
-          start_time: new Date().toISOString(),
-          end_time: new Date(new Date().getTime() + hours * 60 * 60 * 1000).toISOString(),
-          hours_logged: hours
-        });
-      
-      if (error) throw error;
-      
-      toast.success("Time logged successfully");
-      setIsTimeLogDialogOpen(false);
-      setHours(0);
-      setDescription('');
-      onApplicationUpdated();
-    } catch (error) {
-      console.error("Error logging time:", error);
-      toast.error("Failed to log time");
-    }
+
+  const handleAcceptJob = async () => {
+    await acceptJobAsJobSeeker(application);
+    if (onApplicationUpdated) onApplicationUpdated();
   };
-  
-  const showAcceptButton = application.status === 'accepted' && !application.accepted_jobseeker;
-  const showTimeLogButton = application.accepted_jobseeker && application.accepted_business;
+
+  const showAcceptButton =
+    application.status === "accepted" && !application.accepted_jobseeker;
+
+  const isFullyAccepted =
+    application.accepted_jobseeker && application.accepted_business;
 
   return (
-    <Card className="shadow-sm hover:shadow transition-shadow">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
-          <ProjectHeader 
+    <Card className="overflow-hidden bg-card">
+      <CardHeader className="p-4 pb-0">
+        <ProjectHeader
+          application={application}
+          isExpanded={isExpanded}
+          toggleExpand={toggleExpand}
+        />
+      </CardHeader>
+
+      <CardContent className={`p-4 ${isExpanded ? "pb-0" : ""}`}>
+        <div className="flex flex-col md:flex-row justify-between gap-4">
+          <ProjectInfo
             title={application.business_roles?.title}
-            companyName={application.business_roles?.company_name}
+            description={application.business_roles?.description}
             projectTitle={application.business_roles?.project_title}
-            status={application.status}
-            appliedAt={application.applied_at}
+            companyName={application.business_roles?.company_name}
           />
-          
-          <div className="flex items-center gap-2">
-            <Select 
-              value={application.status} 
-              onValueChange={handleStatusChange}
-              disabled={isUpdatingStatus === application.job_app_id}
-            >
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="negotiation">Negotiation</SelectItem>
-                <SelectItem value="accepted">Accepted</SelectItem>
-                <SelectItem value="withdrawn">Withdraw</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            {showAcceptButton && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setIsAcceptJobDialogOpen(true)}
-                disabled={isAcceptingJob}
-              >
-                <Check className="mr-1.5 h-4 w-4" />
-                Accept Job
-              </Button>
+
+          <div className="flex flex-col justify-between items-end gap-2">
+            <div className="flex items-center gap-2">
+              <ApplicationStatus status={application.status} />
+              {isFullyAccepted && (
+                <Badge variant="outline" className="bg-green-50 text-green-700">
+                  Active Project
+                </Badge>
+              )}
+            </div>
+
+            {application.business_roles?.equity_allocation && (
+              <div className="text-right">
+                <div className="text-sm text-muted-foreground">
+                  Equity Allocation
+                </div>
+                <div className="font-semibold text-lg">
+                  {application.business_roles.equity_allocation}%
+                </div>
+              </div>
             )}
-            
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </Button>
-            </CollapsibleTrigger>
           </div>
-        </CardHeader>
-        
-        <CardContent className="px-4 py-2">
-          <ProjectInfo 
-            taskStatus={application.business_roles?.task_status}
-            timeframe={application.business_roles?.timeframe}
-            equityAllocation={application.business_roles?.equity_allocation}
-            skillRequirements={application.business_roles?.skill_requirements}
-          />
-          
-          <CollapsibleContent className="mt-4 space-y-4">
-            <ProjectDetails 
-              description={application.business_roles?.description}
-              taskDiscourse={application.task_discourse}
-            />
-            
-            <div className="flex flex-wrap gap-2 mt-4">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setIsMessageDialogOpen(true)}
-              >
-                Send Message
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleViewProject}
-              >
-                View Project
-              </Button>
-              
-              {showTimeLogButton && (
-                <Button 
-                  variant="outline" 
+        </div>
+
+        {isExpanded && (
+          <div className="mt-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                  Timeframe
+                </h3>
+                <p>{application.business_roles?.timeframe || "Not specified"}</p>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                  Completion
+                </h3>
+                <p>
+                  {application.business_roles?.completion_percentage
+                    ? `${application.business_roles.completion_percentage}%`
+                    : "0%"}
+                </p>
+              </div>
+
+              {application.business_roles?.skill_requirements && (
+                <div className="md:col-span-2">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                    Required Skills
+                  </h3>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {application.business_roles.skill_requirements.map(
+                      (skill, index) => (
+                        <Badge
+                          key={index}
+                          variant="secondary"
+                          className="px-2 py-1"
+                        >
+                          {typeof skill === "string"
+                            ? skill
+                            : `${skill.skill} (${skill.level})`}
+                        </Badge>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {application.task_discourse && (
+                <div className="md:col-span-2">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                    Message History
+                  </h3>
+                  <div className="border rounded-md p-3 max-h-48 overflow-y-auto whitespace-pre-wrap text-sm">
+                    {application.task_discourse}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 border-t flex flex-wrap gap-2 justify-end">
+              <MessageActions
+                onMessageClick={() => setIsCreateMessageOpen(true)}
+                onWithdrawClick={() => setIsWithdrawDialogOpen(true)}
+              />
+
+              {isFullyAccepted && (
+                <Button
+                  variant="outline"
                   size="sm"
-                  onClick={() => setIsTimeLogDialogOpen(true)}
+                  onClick={() => setIsTimeLoggingOpen(true)}
                 >
-                  <Clock className="h-4 w-4 mr-2" />
+                  <TimerIcon className="mr-1 h-4 w-4" />
                   Log Time
                 </Button>
               )}
-              
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-destructive hover:bg-destructive/10"
-                onClick={() => setIsWithdrawDialogOpen(true)}
-              >
-                Withdraw
-              </Button>
+
+              {showAcceptButton && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setIsAcceptJobDialogOpen(true)}
+                  disabled={isAcceptingJob}
+                >
+                  {isAcceptingJob ? "Processing..." : "Accept Job"}
+                </Button>
+              )}
             </div>
-          </CollapsibleContent>
-        </CardContent>
-      </Collapsible>
-      
+          </div>
+        )}
+      </CardContent>
+
       <CreateMessageDialog
-        isOpen={isMessageDialogOpen}
-        onOpenChange={setIsMessageDialogOpen}
+        isOpen={isCreateMessageOpen}
+        onOpenChange={setIsCreateMessageOpen}
         applicationId={application.job_app_id}
         existingMessage={application.task_discourse}
-        onMessageSent={() => {
-          if (onMessageSent) onMessageSent();
-          onApplicationUpdated();
-        }}
+        onMessageSent={onApplicationUpdated}
       />
-      
+
       <WithdrawDialog
         isOpen={isWithdrawDialogOpen}
         onOpenChange={setIsWithdrawDialogOpen}
         onWithdraw={handleWithdraw}
-        isWithdrawing={isUpdatingStatus === application.job_app_id}
+        isWithdrawing={isWithdrawing}
       />
-      
+
       <StatusChangeDialog
-        isOpen={isStatusDialogOpen}
-        onOpenChange={setIsStatusDialogOpen}
+        isOpen={statusDialogOpen}
+        onOpenChange={setStatusDialogOpen}
         selectedStatus={selectedStatus}
         onConfirm={confirmStatusChange}
         isLoading={isUpdatingStatus === application.job_app_id}
       />
-      
+
       <AcceptJobDialog
         isOpen={isAcceptJobDialogOpen}
         onOpenChange={setIsAcceptJobDialogOpen}
@@ -268,45 +245,13 @@ export const EquityProjectItem = ({
         onAccept={handleAcceptJob}
         isLoading={isAcceptingJob}
       />
-      
-      <Dialog open={isTimeLogDialogOpen} onOpenChange={setIsTimeLogDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Log Time for {application.business_roles?.title}</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="hours">Hours Worked</Label>
-              <Input
-                id="hours"
-                type="number"
-                min="0.5"
-                step="0.5"
-                value={hours}
-                onChange={(e) => setHours(parseFloat(e.target.value) || 0)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="description">Description of Work</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe what you accomplished during this time"
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsTimeLogDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleLogTime} disabled={hours <= 0 || !description.trim()}>
-              Log Time
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
+      <TimeLoggingDialog
+        isOpen={isTimeLoggingOpen}
+        onOpenChange={setIsTimeLoggingOpen}
+        application={application}
+        onTimeLogged={onApplicationUpdated}
+      />
     </Card>
   );
 };
