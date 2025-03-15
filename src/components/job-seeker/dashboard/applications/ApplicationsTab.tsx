@@ -1,4 +1,5 @@
 
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { JobApplication } from "@/types/jobSeeker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,7 +8,6 @@ import { ApplicationsList } from "./ApplicationsList";
 import { PendingApplicationsList } from "./PendingApplicationsList";
 import { EquityProjectsList } from "./EquityProjectsList";
 import { PastApplicationsList } from "./PastApplicationsList";
-import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
 interface ApplicationsTabProps {
@@ -17,9 +17,7 @@ interface ApplicationsTabProps {
 
 export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} }: ApplicationsTabProps) => {
   const [newMessagesCount, setNewMessagesCount] = useState(0);
-  
-  // Debug the incoming applications
-  console.log("All applications in ApplicationsTab:", applications);
+  const [isInitialized, setIsInitialized] = useState(false);
   
   // Safely normalize status to lowercase for case-insensitive comparison
   const normalizeStatus = (status: string | null | undefined): string => {
@@ -49,15 +47,12 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     return status === 'rejected';
   });
   
-  // Log filtered applications for debugging
-  console.log(
-    "Filtered applications - Pending:", pendingApplications.length, 
-    "Equity:", equityProjects.length,
-    "Withdrawn:", withdrawnApplications.length,
-    "Rejected:", rejectedApplications.length
-  );
-  
   useEffect(() => {
+    if (isInitialized) return;
+
+    // Mark as initialized to prevent multiple initializations
+    setIsInitialized(true);
+    
     // Count new messages from the past 24 hours
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
@@ -103,7 +98,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [applications, onApplicationUpdated]);
+  }, [applications, onApplicationUpdated, isInitialized]);
   
   // Reset notification counter when viewing the relevant tab
   const handleTabChange = (value: string) => {
