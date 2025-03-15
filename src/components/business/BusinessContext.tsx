@@ -7,6 +7,7 @@ interface BusinessContextType {
   isLoading: boolean;
   error: string | null;
   refreshBusiness: () => Promise<void>;
+  fetchBusinessProjects: () => Promise<any[]>;
 }
 
 const BusinessContext = createContext<BusinessContextType | undefined>(undefined);
@@ -38,6 +39,24 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const fetchBusinessProjects = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return [];
+
+      const { data, error } = await supabase
+        .from('business_projects')
+        .select('*')
+        .eq('business_id', session.user.id);
+
+      if (error) throw error;
+      return data || [];
+    } catch (error: any) {
+      console.error('Error fetching business projects:', error);
+      return [];
+    }
+  };
+
   useEffect(() => {
     loadBusiness();
   }, []);
@@ -47,7 +66,8 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
       business, 
       isLoading, 
       error,
-      refreshBusiness: loadBusiness 
+      refreshBusiness: loadBusiness,
+      fetchBusinessProjects 
     }}>
       {children}
     </BusinessContext.Provider>

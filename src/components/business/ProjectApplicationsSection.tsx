@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Card,
@@ -98,14 +97,23 @@ export const ProjectApplicationsSection = ({ projectId }: ProjectApplicationsSec
   const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
   const [withdrawReason, setWithdrawReason] = useState('');
   const [isAnonymizationInfoDialogOpen, setIsAnonymizationInfoDialogOpen] = useState(false);
-  const { business } = useBusinessContext();
+  const { business, fetchBusinessProjects } = useBusinessContext();
 
   useEffect(() => {
-    if (projectId) {
-      fetchApplications();
-    } else {
-      fetchAllApplications();
-    }
+    const fetchData = async () => {
+      try {
+        if (projectId) {
+          await fetchApplications();
+        } else {
+          await fetchAllApplications();
+        }
+      } catch (err) {
+        console.error('Error fetching applications:', err);
+        setError('Failed to fetch applications data');
+      }
+    };
+    
+    fetchData();
   }, [projectId]);
 
   const fetchAllApplications = async () => {
@@ -113,22 +121,20 @@ export const ProjectApplicationsSection = ({ projectId }: ProjectApplicationsSec
     setError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        setLoading(false);
+        return;
+      }
 
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('business_projects')
-        .select('project_id')
-        .eq('business_id', session.user.id);
-
-      if (projectsError) throw projectsError;
+      const projects = await fetchBusinessProjects();
       
-      if (!projectsData || projectsData.length === 0) {
+      if (!projects || projects.length === 0) {
         setApplications([]);
         setLoading(false);
         return;
       }
 
-      const projectIds = projectsData.map((p: any) => p.project_id);
+      const projectIds = projects.map((p: any) => p.project_id);
 
       const { data, error } = await supabase
         .from('job_applications')
@@ -143,14 +149,25 @@ export const ProjectApplicationsSection = ({ projectId }: ProjectApplicationsSec
             timeframe,
             equity_allocation,
             skill_requirements
+          ),
+          profiles!job_applications_user_id_fkey (
+            email,
+            first_name,
+            last_name
           )
         `)
         .in('project_id', projectIds);
 
       if (error) throw error;
 
-      setApplications(data || []);
-      updateStatusCounts(data);
+      const enhancedData = data?.map(app => ({
+        ...app,
+        applicant_email: app.profiles?.email || app.user_id || 'Unknown',
+        applicant_anonymized: app.applicant_anonymized || false
+      })) || [];
+
+      setApplications(enhancedData);
+      updateStatusCounts(enhancedData);
     } catch (err: any) {
       setError(err.message || "Failed to fetch applications");
       toast.error(err.message || "Failed to fetch applications");
@@ -176,14 +193,25 @@ export const ProjectApplicationsSection = ({ projectId }: ProjectApplicationsSec
             timeframe,
             equity_allocation,
             skill_requirements
+          ),
+          profiles!job_applications_user_id_fkey (
+            email,
+            first_name,
+            last_name
           )
         `)
         .eq('project_id', projectId);
 
       if (error) throw error;
 
-      setApplications(data || []);
-      updateStatusCounts(data);
+      const enhancedData = data?.map(app => ({
+        ...app,
+        applicant_email: app.profiles?.email || app.user_id || 'Unknown',
+        applicant_anonymized: app.applicant_anonymized || false
+      })) || [];
+
+      setApplications(enhancedData);
+      updateStatusCounts(enhancedData);
     } catch (err: any) {
       setError(err.message || "Failed to fetch applications");
       toast.error(err.message || "Failed to fetch applications");

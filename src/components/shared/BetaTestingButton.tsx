@@ -32,16 +32,34 @@ export function BetaTestingButton() {
         return;
       }
       
-      // Create a comment on the predefined beta testing task
-      const { error: commentError } = await supabase
-        .from('ticket_comments')
+      // Create a new ticket instead of trying to directly insert a comment
+      const { data: ticketData, error: ticketError } = await supabase
+        .from('tickets')
         .insert({
-          ticket_id: 'f5495aa5-9864-4e82-ac1e-45e734f3ffdb',
-          user_id: user.id,
-          content: `Beta Testing Error: ${errorLocation ? `Location: ${errorLocation}` : ''}\n\n${description}`
-        });
+          title: `Beta Testing Report: ${errorLocation || 'General Issue'}`,
+          description: description,
+          reporter: user.id,
+          priority: 'medium',
+          status: 'new',
+          health: 'needs-review'
+        })
+        .select('id')
+        .single();
       
-      if (commentError) throw commentError;
+      if (ticketError) throw ticketError;
+      
+      // Now add a comment to the new ticket
+      if (ticketData && ticketData.id) {
+        const { error: commentError } = await supabase
+          .from('ticket_comments')
+          .insert({
+            ticket_id: ticketData.id,
+            user_id: user.id,
+            content: `Beta Testing Error: ${errorLocation ? `Location: ${errorLocation}` : ''}\n\n${description}`
+          });
+        
+        if (commentError) throw commentError;
+      }
       
       toast.success("Thank you for reporting this issue! Your feedback helps us improve.");
       setDescription('');

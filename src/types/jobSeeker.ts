@@ -25,7 +25,12 @@ export interface JobApplication {
   accepted_business?: boolean;
   applicant_anonymized?: boolean;
   applicant_email?: string;
-  user_id?: string; // Adding user_id to match database schema
+  user_id?: string;
+  profiles?: {
+    email?: string;
+    first_name?: string;
+    last_name?: string;
+  };
 }
 
 export interface SkillRequirement {
