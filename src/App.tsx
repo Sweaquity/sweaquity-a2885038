@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,6 +14,7 @@ import SweaquityDashboard from "./pages/dashboards/SweaquityDashboard";
 import ProjectDetailsPage from "./pages/projects/ProjectDetailsPage";
 import ProjectApplicationPage from "./pages/projects/ProjectApplicationPage";
 import ProfileCompletePage from "./pages/ProfileCompletePage";
+import { BetaTestingButton } from "./components/shared/BetaTestingButton";
 
 const queryClient = new QueryClient();
 
@@ -28,7 +28,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <div className="min-h-screen bg-background">
+        <div className="app-container">
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -43,11 +43,12 @@ function App() {
               <Route path="/sweaquity" element={<SweaquityDashboard />} />
               <Route path="/projects/:id" element={<ProjectDetailsPage />} />
               <Route path="/projects/:id/apply" element={<ProjectApplicationPage />} />
-              {/* Add redirect route to support /project/ links using the ProjectRedirect component */}
               <Route path="/project/:id" element={<ProjectRedirect />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
+          {/* Add the BetaTestingButton */}
+          <BetaTestingButton />
         </div>
       </TooltipProvider>
     </QueryClientProvider>

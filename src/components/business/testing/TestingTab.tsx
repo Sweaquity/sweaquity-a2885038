@@ -37,7 +37,7 @@ export function TestingTab() {
           <TabsContent value="time-tracking" className="space-y-4">
             <TimeTracker 
               ticketId={selectedTicketId || ""} 
-              userId={""} // This will be populated with the current user's ID
+              userId="" // This will be populated with the current user's ID
             />
           </TabsContent>
         </Tabs>

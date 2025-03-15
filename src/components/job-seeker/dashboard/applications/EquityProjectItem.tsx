@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { JobApplication } from "@/types/jobSeeker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { ChevronDown, ChevronUp, Check } from "lucide-react";
+import { ChevronDown, ChevronUp, Check, Clock } from "lucide-react";
 import { CreateMessageDialog } from "./CreateMessageDialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
@@ -19,6 +19,11 @@ import { WithdrawDialog } from "./WithdrawDialog";
 import { AcceptJobDialog } from "./AcceptJobDialog";
 import { useAcceptedJobs } from "@/hooks/useAcceptedJobs";
 import { useApplicationActions } from "./hooks/useApplicationActions";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/lib/supabase";
 import { 
   ProjectActions, 
   ProjectInfo, 
@@ -43,7 +48,10 @@ export const EquityProjectItem = ({
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
   const [isAcceptJobDialogOpen, setIsAcceptJobDialogOpen] = useState(false);
+  const [isTimeLogDialogOpen, setIsTimeLogDialogOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(application.status);
+  const [hours, setHours] = useState<number>(0);
+  const [description, setDescription] = useState<string>('');
   const navigate = useNavigate();
 
   const { 
@@ -93,7 +101,37 @@ export const EquityProjectItem = ({
     setIsStatusDialogOpen(false);
   };
   
+  const handleLogTime = async () => {
+    if (!application.task_id || hours <= 0) return;
+    
+    try {
+      // Create a time entry
+      const { error } = await supabase
+        .from('time_entries')
+        .insert({
+          ticket_id: application.task_id,
+          user_id: (await supabase.auth.getUser()).data.user?.id,
+          description: description,
+          start_time: new Date().toISOString(),
+          end_time: new Date(new Date().getTime() + hours * 60 * 60 * 1000).toISOString(),
+          hours_logged: hours
+        });
+      
+      if (error) throw error;
+      
+      toast.success("Time logged successfully");
+      setIsTimeLogDialogOpen(false);
+      setHours(0);
+      setDescription('');
+      onApplicationUpdated();
+    } catch (error) {
+      console.error("Error logging time:", error);
+      toast.error("Failed to log time");
+    }
+  };
+  
   const showAcceptButton = application.status === 'accepted' && !application.accepted_jobseeker;
+  const showTimeLogButton = application.accepted_jobseeker && application.accepted_business;
 
   return (
     <Card className="shadow-sm hover:shadow transition-shadow">
@@ -157,10 +195,43 @@ export const EquityProjectItem = ({
               taskDiscourse={application.task_discourse}
             />
             
-            <ProjectActions 
-              onMessageClick={() => setIsMessageDialogOpen(true)}
-              onViewProjectClick={handleViewProject}
-            />
+            <div className="flex flex-wrap gap-2 mt-4">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setIsMessageDialogOpen(true)}
+              >
+                Send Message
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleViewProject}
+              >
+                View Project
+              </Button>
+              
+              {showTimeLogButton && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setIsTimeLogDialogOpen(true)}
+                >
+                  <Clock className="h-4 w-4 mr-2" />
+                  Log Time
+                </Button>
+              )}
+              
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:bg-destructive/10"
+                onClick={() => setIsWithdrawDialogOpen(true)}
+              >
+                Withdraw
+              </Button>
+            </div>
           </CollapsibleContent>
         </CardContent>
       </Collapsible>
@@ -198,6 +269,46 @@ export const EquityProjectItem = ({
         onAccept={handleAcceptJob}
         isLoading={isAcceptingJob}
       />
+      
+      {/* Time Logging Dialog */}
+      <Dialog open={isTimeLogDialogOpen} onOpenChange={setIsTimeLogDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Log Time for {application.business_roles?.title}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="hours">Hours Worked</Label>
+              <Input
+                id="hours"
+                type="number"
+                min="0.5"
+                step="0.5"
+                value={hours}
+                onChange={(e) => setHours(parseFloat(e.target.value) || 0)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="description">Description of Work</Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe what you accomplished during this time"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsTimeLogDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleLogTime} disabled={hours <= 0 || !description.trim()}>
+              Log Time
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

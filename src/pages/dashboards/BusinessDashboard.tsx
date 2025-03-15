@@ -266,15 +266,9 @@ const BusinessDashboard = () => {
 
         <Tabs defaultValue="account" className="space-y-6" onValueChange={handleTabChange}>
           <TabsList className="w-full grid grid-cols-6 md:flex md:w-auto">
-            <TabsTrigger value="account" className="px-3 py-1.5">
-              Account
-            </TabsTrigger>
-            <TabsTrigger value="projects" className="px-3 py-1.5">
-              Projects
-            </TabsTrigger>
-            <TabsTrigger value="users" className="px-3 py-1.5">
-              Users
-            </TabsTrigger>
+            <TabsTrigger value="account" className="px-3 py-1.5">Account</TabsTrigger>
+            <TabsTrigger value="projects" className="px-3 py-1.5">Projects</TabsTrigger>
+            <TabsTrigger value="users" className="px-3 py-1.5">Users</TabsTrigger>
             <TabsTrigger value="roles" className="px-3 py-1.5 relative">
               Active Roles
               {newMessagesCount > 0 && (
@@ -291,9 +285,7 @@ const BusinessDashboard = () => {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="testing" className="px-3 py-1.5">
-              Testing
-            </TabsTrigger>
+            <TabsTrigger value="testing" className="px-3 py-1.5">Testing</TabsTrigger>
           </TabsList>
 
           <TabsContent value="account">

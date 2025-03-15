@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { JobApplication } from "@/types/jobSeeker";
@@ -19,6 +19,18 @@ export const useAcceptedJobsCore = (onUpdate?: () => void) => {
   const createAcceptedJobEntry = async (application: JobApplication) => {
     try {
       console.log("Creating accepted job entry for application:", application.job_app_id);
+      
+      // Check if an entry already exists
+      const { data: existingEntry } = await supabase
+        .from('accepted_jobs')
+        .select('id')
+        .eq('job_app_id', application.job_app_id)
+        .maybeSingle();
+        
+      if (existingEntry) {
+        console.log("Entry already exists for this application");
+        return;
+      }
       
       const { error } = await supabase
         .from('accepted_jobs')
