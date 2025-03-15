@@ -160,7 +160,10 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
         })
         .eq('id', session.user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Profile update error:", error);
+        throw error;
+      }
 
       toast.success("Profile updated successfully");
       setIsEditing(false);

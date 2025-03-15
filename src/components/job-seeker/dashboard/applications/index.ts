@@ -13,6 +13,7 @@ export { EquityProjectItem } from './EquityProjectItem';
 export { PastApplicationsList } from './PastApplicationsList';
 export { PastApplicationItem } from './PastApplicationItem';
 export { CreateMessageDialog } from './CreateMessageDialog';
+export { TimeLoggingDialog } from './TimeLoggingDialog';
 // Export components
 export { 
   MessageActions, 
