@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -468,8 +469,6 @@ const SweaquityDashboard = () => {
     }
   };
 
-
-  
   // Platform stats
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -695,19 +694,27 @@ const SweaquityDashboard = () => {
     toast.success("Dashboard data refreshed");
   };
 
-  // Additional functionality from original file that needs to be kept
+  // Stat Card component
+  const StatCard = ({ title, value, icon, isLoading }: { title: string, value: number, icon: React.ReactNode, isLoading: boolean }) => (
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-sm font-medium text-gray-500">{title}</p>
+            {isLoading ? (
+              <div className="h-8 w-16 bg-gray-200 animate-pulse rounded mt-1"></div>
+            ) : (
+              <p className="text-3xl font-bold mt-1">{value}</p>
+            )}
+          </div>
+          <div className="p-2 bg-blue-50 rounded-full">
+            {icon}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
   
-
-  
-
-  
-
-  
-
-  
-
-  
-
   return (
     <div className="p-6 max-w-7xl mx-auto min-h-screen">
       <div className="flex justify-between items-center mb-6">
@@ -940,4 +947,365 @@ const SweaquityDashboard = () => {
                                     ticket.activity.map((activity, index) => (
                                       <div key={index} className="relative pl-4 pb-2">
                                         <div className="absolute w-2 h-2 rounded-full bg-blue-500 -left-[5px]"></div>
-                                        <p className="font-medium">{activity.
+                                        <p className="font-medium">{activity.action}</p>
+                                        <p className="text-xs text-gray-500">
+                                          {new Date(activity.timestamp).toLocaleString()} by {activity.user}
+                                        </p>
+                                        {activity.comment && (
+                                          <p className="mt-1 bg-gray-50 p-2 rounded border border-gray-100">
+                                            {activity.comment}
+                                          </p>
+                                        )}
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-gray-500 italic">No activity recorded yet</p>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Ticket actions */}
+                              <div className="border-t pt-4 flex flex-wrap gap-4">
+                                {/* Status update */}
+                                <div>
+                                  <Label htmlFor={`status-${ticket.id}`} className="text-xs block mb-1">Update Status</Label>
+                                  <Select
+                                    defaultValue={ticket.status}
+                                    onValueChange={(value) => handleUpdateTicketStatus(ticket.id, value)}
+                                  >
+                                    <SelectTrigger id={`status-${ticket.id}`} className="w-[140px]">
+                                      <SelectValue placeholder="Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="open">Open</SelectItem>
+                                      <SelectItem value="in-progress">In Progress</SelectItem>
+                                      <SelectItem value="blocked">Blocked</SelectItem>
+                                      <SelectItem value="done">Done</SelectItem>
+                                      <SelectItem value="closed">Closed</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                
+                                {/* Priority update */}
+                                <div>
+                                  <Label htmlFor={`priority-${ticket.id}`} className="text-xs block mb-1">Update Priority</Label>
+                                  <Select
+                                    defaultValue={ticket.priority}
+                                    onValueChange={(value) => handleUpdateTicketPriority(ticket.id, value)}
+                                  >
+                                    <SelectTrigger id={`priority-${ticket.id}`} className="w-[140px]">
+                                      <SelectValue placeholder="Priority" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="low">Low</SelectItem>
+                                      <SelectItem value="medium">Medium</SelectItem>
+                                      <SelectItem value="high">High</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                
+                                {/* Due date */}
+                                <div>
+                                  <Label htmlFor={`due-date-${ticket.id}`} className="text-xs block mb-1">Set Due Date</Label>
+                                  <Input
+                                    id={`due-date-${ticket.id}`}
+                                    type="date"
+                                    className="w-[180px]"
+                                    value={ticket.due_date ? new Date(ticket.due_date).toISOString().split('T')[0] : ''}
+                                    onChange={(e) => handleSetDueDate(ticket.id, e.target.value)}
+                                  />
+                                </div>
+                                
+                                {/* Reply to reporter */}
+                                {ticket.reporter && (
+                                  <div className="ml-auto">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => handleReplyToReporter(ticket.id)}
+                                    >
+                                      Reply to Reporter
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Add note section */}
+                              <div className="mt-4 border-t pt-4">
+                                <Label htmlFor={`note-${ticket.id}`} className="text-sm font-medium mb-1 block">Add Note</Label>
+                                <div className="flex gap-2">
+                                  <Textarea 
+                                    id={`note-${ticket.id}`}
+                                    placeholder="Add a note about this ticket..."
+                                    className="min-h-[80px]"
+                                    value={ticket.newNote || ''}
+                                    onChange={(e) => {
+                                      // Update newNote in state
+                                      setBetaTickets(prev => prev.map(t => 
+                                        t.id === ticket.id ? {...t, newNote: e.target.value} : t
+                                      ));
+                                    }}
+                                  />
+                                  <Button 
+                                    className="self-end" 
+                                    onClick={() => handleAddTicketNote(ticket.id, ticket.newNote || '')}
+                                  >
+                                    Add Note
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </Card>
+                      ))}
+                      
+                      {betaTickets.length === 0 && !isLoading && (
+                        <div className="text-center py-8">
+                          <AlertTriangle className="mx-auto h-12 w-12 text-yellow-500 mb-2" />
+                          <h3 className="text-lg font-medium">No Beta Testing Tickets Found</h3>
+                          <p className="text-gray-500 mt-2">
+                            There are currently no beta testing tickets in the system.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+        
+        {/* TICKETS TAB */}
+        <TabsContent value="tickets">
+          {/* Beta testing tickets detailed view */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Beta Testing Tickets</CardTitle>
+              <CardDescription>Manage and respond to user-reported issues</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="animate-pulse">
+                      <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-24 bg-gray-100 rounded"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  {/* Stats overview */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <p className="text-sm text-gray-500">Total Tickets</p>
+                          <p className="text-3xl font-bold">{ticketStats.totalTickets}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <p className="text-sm text-gray-500">Open Tickets</p>
+                          <p className="text-3xl font-bold">{ticketStats.openTickets}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <p className="text-sm text-gray-500">Closed Tickets</p>
+                          <p className="text-3xl font-bold">{ticketStats.closedTickets}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <p className="text-sm text-gray-500">High Priority</p>
+                          <p className="text-3xl font-bold">{ticketStats.highPriorityTickets}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  
+                  {/* Tickets List */}
+                  {betaTickets.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Title</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Priority</TableHead>
+                          <TableHead>Reporter</TableHead>
+                          <TableHead>Created</TableHead>
+                          <TableHead>Due Date</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {betaTickets.map(ticket => (
+                          <TableRow key={ticket.id}>
+                            <TableCell className="font-medium">{ticket.title}</TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                ticket.status === 'done' || ticket.status === 'closed' ? 'bg-green-100 text-green-800' : 
+                                ticket.status === 'in-progress' ? 'bg-purple-100 text-purple-800' : 
+                                ticket.status === 'blocked' ? 'bg-red-100 text-red-800' : 
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {ticket.status}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                ticket.priority === 'high' ? 'bg-red-100 text-red-800' : 
+                                ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
+                                'bg-blue-100 text-blue-800'
+                              }`}>
+                                {ticket.priority}
+                              </span>
+                            </TableCell>
+                            <TableCell>{ticket.reporter_email || 'Unknown'}</TableCell>
+                            <TableCell>{formatDate(ticket.created_at)}</TableCell>
+                            <TableCell>{ticket.due_date ? formatDate(ticket.due_date) : 'Not set'}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => {
+                                  // Toggle expanded state for this ticket
+                                  setBetaTickets(prev => prev.map(t => 
+                                    t.id === ticket.id ? {...t, expanded: !t.expanded} : t
+                                  ));
+                                }}
+                              >
+                                {ticket.expanded ? "Collapse" : "Expand"}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-8">
+                      <AlertTriangle className="mx-auto h-12 w-12 text-yellow-500 mb-2" />
+                      <h3 className="text-lg font-medium">No Tickets Found</h3>
+                      <p className="text-gray-500 mt-2">There are currently no beta testing tickets in the system.</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* APPLICATIONS TAB */}
+        <TabsContent value="applications">
+          <Card>
+            <CardHeader>
+              <CardTitle>Application Statistics</CardTitle>
+              <CardDescription>Overview of all job applications in the platform</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="animate-pulse space-y-4">
+                  <div className="h-40 bg-gray-200 rounded"></div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <p className="text-sm text-gray-500">Total Applications</p>
+                          <p className="text-3xl font-bold">{stats.totalApplications}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <p className="text-sm text-gray-500">Pending</p>
+                          <p className="text-3xl font-bold">{stats.pendingApplications}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <p className="text-sm text-gray-500">Accepted</p>
+                          <p className="text-3xl font-bold">{stats.acceptedApplications}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <p className="text-sm text-gray-500">Withdrawn/Rejected</p>
+                          <p className="text-3xl font-bold">{stats.withdrawnApplications + stats.rejectedApplications}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={[
+                        { name: 'Pending', value: stats.pendingApplications },
+                        { name: 'Accepted', value: stats.acceptedApplications },
+                        { name: 'Withdrawn', value: stats.withdrawnApplications },
+                        { name: 'Rejected', value: stats.rejectedApplications },
+                      ]}>
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <RechartsTooltip />
+                        <Legend />
+                        <Bar dataKey="value" fill="#8884d8" name="Applications" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+      
+      {/* Reply dialog */}
+      <Dialog open={replyDialogOpen} onOpenChange={setReplyDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Reply to Reporter</DialogTitle>
+            <DialogDescription>
+              Send a message to the person who reported this issue.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="message">Message</Label>
+              <Textarea
+                id="message"
+                placeholder="Type your message here..."
+                className="min-h-[150px]"
+                value={replyMessage}
+                onChange={(e) => setReplyMessage(e.target.value)}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReplyDialogOpen(false)}>Cancel</Button>
+            <Button onClick={sendReplyToReporter}>Send Reply</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default SweaquityDashboard;
