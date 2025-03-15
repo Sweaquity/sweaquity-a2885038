@@ -376,7 +376,6 @@ export const ProjectApplicationsSection = () => {
 
   const handleAcceptJob = async (application: JobApplication) => {
     try {
-      setIsAcceptingJobLoading(true);
       await acceptJobAsBusiness(application);
       toast.success("Job accepted successfully");
       loadProjectsWithApplications();
@@ -384,7 +383,6 @@ export const ProjectApplicationsSection = () => {
       console.error("Error accepting job:", error);
       toast.error("Failed to accept job");
     } finally {
-      setIsAcceptingJobLoading(false);
     }
   };
 
