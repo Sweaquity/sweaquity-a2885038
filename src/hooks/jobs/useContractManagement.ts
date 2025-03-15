@@ -16,12 +16,12 @@ export const useContractManagement = (onUpdate?: () => void) => {
     setIsUploading(true);
     
     try {
-      // Create a unique file path
+      // Create a unique file path with versioning through timestamps
       const fileExt = file.name.split('.').pop();
       const fileName = `${jobAppId}-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
+      const filePath = fileName;
       
-      // Upload the file to Supabase Storage
+      // Upload the file to Supabase Storage in the contracts bucket
       const { data, error } = await supabase.storage
         .from('contracts')
         .upload(filePath, file);

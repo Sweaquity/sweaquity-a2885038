@@ -382,7 +382,6 @@ export const ProjectApplicationsSection = () => {
     } catch (error) {
       console.error("Error accepting job:", error);
       toast.error("Failed to accept job");
-    } finally {
     }
   };
 
