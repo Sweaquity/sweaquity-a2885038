@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -63,7 +62,7 @@ export const CVUploadCard = ({
           return;
         }
 
-        const success = await deleteCV(session.user.id, fileName);
+        const success = await deleteCV(`${session.user.id}/${fileName}`);
         if (success && onCvListUpdated) {
           // If this was the default CV, clear the display URL
           if (displayUrl && displayUrl.includes(fileName)) {

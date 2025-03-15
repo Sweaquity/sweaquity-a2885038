@@ -1,13 +1,14 @@
+
 // File: src/components/job-seeker/dashboard/applications/ApplicationsTabBase.tsx
 
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { JobApplication } from "@/types/jobSeeker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ApplicationsList } from "../ApplicationsList";
-import { PendingApplicationsList } from "../PendingApplicationsList";
-import { EquityProjectsList } from "../EquityProjectsList";
-import { PastApplicationsList } from "../PastApplicationsList";
+import { ApplicationsList } from "./ApplicationsList";
+import { PendingApplicationsList } from "./PendingApplicationsList";
+import { EquityProjectsList } from "./EquityProjectsList";
+import { PastApplicationsList } from "./PastApplicationsList";
 import { useState, useEffect } from "react";
 
 interface ApplicationsTabBaseProps {
