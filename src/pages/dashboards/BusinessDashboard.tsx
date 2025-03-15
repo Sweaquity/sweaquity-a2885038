@@ -21,7 +21,6 @@ import {
 import { AccountSettingsCard } from "@/components/shared/AccountSettingsCard";
 import { BusinessProfileEditor } from "@/components/business/profile/BusinessProfileEditor";
 import { TestingTab } from "@/components/business/testing/TestingTab";
-import { BusinessProvider } from "@/components/business/BusinessContext";
 
 interface SubTask {
   id: string;
@@ -225,145 +224,143 @@ const BusinessDashboard = () => {
   }
 
   return (
-    <BusinessProvider>
-      <div className="min-h-screen p-4 md:p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-xl md:text-2xl font-bold">
-              {businessData?.company_name} Dashboard
-            </h1>
-            <div className="flex items-center gap-2">
-              <div className="hidden md:flex items-center gap-4">
-                {hasJobSeekerProfile && (
-                  <Button variant="outline" onClick={handleProfileSwitch}>
-                    <UserCircle2 className="mr-2 h-4 w-4" />
-                    Switch to Job Seeker
+    <div className="min-h-screen p-4 md:p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-xl md:text-2xl font-bold">
+            {businessData?.company_name} Dashboard
+          </h1>
+          <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-4">
+              {hasJobSeekerProfile && (
+                <Button variant="outline" onClick={handleProfileSwitch}>
+                  <UserCircle2 className="mr-2 h-4 w-4" />
+                  Switch to Job Seeker
+                </Button>
+              )}
+              <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
+            </div>
+            
+            <div className="flex md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Menu className="h-5 w-5" />
                   </Button>
-                )}
-                <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
-              </div>
-              
-              <div className="flex md:hidden">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon">
-                      <Menu className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {hasJobSeekerProfile && (
-                      <DropdownMenuItem onClick={handleProfileSwitch}>
-                        <UserCircle2 className="mr-2 h-4 w-4" />
-                        Switch to Job Seeker
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem onClick={handleSignOut}>
-                      Sign Out
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {hasJobSeekerProfile && (
+                    <DropdownMenuItem onClick={handleProfileSwitch}>
+                      <UserCircle2 className="mr-2 h-4 w-4" />
+                      Switch to Job Seeker
                     </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                  )}
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
+        </div>
 
-          <Tabs defaultValue="account" className="space-y-6" onValueChange={handleTabChange}>
-            <TabsList className="w-full grid grid-cols-6 md:flex md:w-auto">
-              <TabsTrigger value="account" className="px-3 py-1.5">Account</TabsTrigger>
-              <TabsTrigger value="projects" className="px-3 py-1.5">Projects</TabsTrigger>
-              <TabsTrigger value="users" className="px-3 py-1.5">Users</TabsTrigger>
-              <TabsTrigger value="roles" className="px-3 py-1.5 relative">
-                Active Roles
-                {newMessagesCount > 0 && (
-                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
-                    {newMessagesCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="applications" className="px-3 py-1.5 relative">
-                Applications
-                {newApplicationsCount > 0 && (
-                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
-                    {newApplicationsCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="testing" className="px-3 py-1.5">Testing</TabsTrigger>
-            </TabsList>
+        <Tabs defaultValue="account" className="space-y-6" onValueChange={handleTabChange}>
+          <TabsList className="w-full grid grid-cols-6 md:flex md:w-auto">
+            <TabsTrigger value="account" className="px-3 py-1.5">Account</TabsTrigger>
+            <TabsTrigger value="projects" className="px-3 py-1.5">Projects</TabsTrigger>
+            <TabsTrigger value="users" className="px-3 py-1.5">Users</TabsTrigger>
+            <TabsTrigger value="roles" className="px-3 py-1.5 relative">
+              Active Roles
+              {newMessagesCount > 0 && (
+                <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                  {newMessagesCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="applications" className="px-3 py-1.5 relative">
+              Applications
+              {newApplicationsCount > 0 && (
+                <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                  {newApplicationsCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="testing" className="px-3 py-1.5">Testing</TabsTrigger>
+          </TabsList>
 
-            <TabsContent value="account">
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <h2 className="text-lg font-semibold">Business Details</h2>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="p-2">
-                      <BusinessProfileEditor
-                        businessProfile={businessData}
-                        onProfileUpdate={() => {
-                          toast.success("Profile updated successfully");
-                          window.location.reload();
-                        }}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <AccountSettingsCard userType="business" />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="projects">
-              <ProjectsSection />
-            </TabsContent>
-
-            <TabsContent value="users">
+          <TabsContent value="account">
+            <div className="space-y-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <h2 className="text-lg font-semibold">Business Users</h2>
-                  <RequestAccessButton />
+                  <h2 className="text-lg font-semibold">Business Details</h2>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">No users have been added to your business yet. Use the "Request Access" button to invite team members.</p>
+                  <div className="p-2">
+                    <BusinessProfileEditor
+                      businessProfile={businessData}
+                      onProfileUpdate={() => {
+                        toast.success("Profile updated successfully");
+                        window.location.reload();
+                      }}
+                    />
+                  </div>
                 </CardContent>
               </Card>
-            </TabsContent>
 
-            <TabsContent value="roles">
-              <Card>
-                <CardHeader>
-                  <h2 className="text-lg font-semibold">Active Project Roles</h2>
-                </CardHeader>
-                <CardContent>
-                  {projects.length === 0 ? (
-                    <p className="text-muted-foreground">No active projects found.</p>
-                  ) : (
-                    projects.map((project, index) => (
-                      <div key={project.id || index} className="mb-6">
-                        <h3 className="text-lg font-medium mb-2">{project.title}</h3>
-                        {project.tasks.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">No tasks available for this project.</p>
-                        ) : (
-                          <ActiveRolesTable project={project} />
-                        )}
-                      </div>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+              <AccountSettingsCard userType="business" />
+            </div>
+          </TabsContent>
 
-            <TabsContent value="applications">
-              <ProjectApplicationsSection />
-            </TabsContent>
+          <TabsContent value="projects">
+            <ProjectsSection />
+          </TabsContent>
 
-            <TabsContent value="testing">
-              <TestingTab />
-            </TabsContent>
-          </Tabs>
-        </div>
+          <TabsContent value="users">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <h2 className="text-lg font-semibold">Business Users</h2>
+                <RequestAccessButton />
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">No users have been added to your business yet. Use the "Request Access" button to invite team members.</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="roles">
+            <Card>
+              <CardHeader>
+                <h2 className="text-lg font-semibold">Active Project Roles</h2>
+              </CardHeader>
+              <CardContent>
+                {projects.length === 0 ? (
+                  <p className="text-muted-foreground">No active projects found.</p>
+                ) : (
+                  projects.map((project, index) => (
+                    <div key={project.id || index} className="mb-6">
+                      <h3 className="text-lg font-medium mb-2">{project.title}</h3>
+                      {project.tasks.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No tasks available for this project.</p>
+                      ) : (
+                        <ActiveRolesTable project={project} />
+                      )}
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="applications">
+            <ProjectApplicationsSection />
+          </TabsContent>
+
+          <TabsContent value="testing">
+            <TestingTab />
+          </TabsContent>
+        </Tabs>
       </div>
-    </BusinessProvider>
+    </div>
   );
 };
 

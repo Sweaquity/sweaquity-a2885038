@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
 interface Task {
-  task_id: string;  // Changed from id to task_id
+  id: string;
   title: string;
   description: string;
   status: string;
@@ -51,7 +51,7 @@ export const ProjectTaskService = {
       const { error } = await supabase
         .from('project_sub_tasks')
         .update(updatedTask)
-        .eq('task_id', updatedTask.task_id);  // Changed from id to task_id
+        .eq('id', updatedTask.id);
 
       if (error) throw error;
 
@@ -63,7 +63,7 @@ export const ProjectTaskService = {
           description: updatedTask.description
         })
         .eq('business_id', projectId)
-        .eq('title', currentProjectTasks.find(t => t.task_id === updatedTask.task_id)?.title);  // Changed from id to task_id
+        .eq('title', currentProjectTasks.find(t => t.id === updatedTask.id)?.title);
 
       return updatedTask;
     } catch (error) {
@@ -77,7 +77,7 @@ export const ProjectTaskService = {
       const { error } = await supabase
         .from('project_sub_tasks')
         .delete()
-        .eq('task_id', taskId);  // Changed from id to task_id
+        .eq('id', taskId);
 
       if (error) throw error;
 
@@ -86,7 +86,7 @@ export const ProjectTaskService = {
         .from('business_roles')
         .delete()
         .eq('business_id', projectId)
-        .eq('title', currentProjectTasks.find(t => t.task_id === taskId)?.title);  // Changed from id to task_id
+        .eq('title', currentProjectTasks.find(t => t.id === taskId)?.title);
 
       return taskId;
     } catch (error) {

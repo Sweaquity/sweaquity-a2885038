@@ -11,7 +11,7 @@ interface SkillRequirement {
 }
 
 interface Task {
-  task_id: string;  // Changed from id to task_id consistently
+  id: string;
   title: string;
   description: string;
   status: string;

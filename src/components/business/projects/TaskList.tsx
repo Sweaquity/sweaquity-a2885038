@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Clock, Edit, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
 interface Task {
-  task_id: string;  // Changed from id to task_id consistently
+  id: string;
   title: string;
   description: string;
   status: string;
@@ -44,7 +43,7 @@ export const TaskList = ({
       const { error } = await supabase
         .from('project_sub_tasks')
         .delete()
-        .eq('task_id', taskId);  // Changed from id to task_id
+        .eq('id', taskId);
 
       if (error) throw error;
 
@@ -65,7 +64,7 @@ export const TaskList = ({
     <>
       <div className="space-y-4">
         {tasks.map(task => (
-          <div key={task.task_id} className="border p-4 rounded-lg">
+          <div key={task.id} className="border p-4 rounded-lg">
             <div className="flex justify-between items-start">
               <div>
                 <h4 className="font-medium">{task.title}</h4>
@@ -101,7 +100,7 @@ export const TaskList = ({
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => handleDeleteTask(task.task_id)}  // Changed from id to task_id
+                    onClick={() => handleDeleteTask(task.id)}
                     className="text-destructive hover:text-destructive"
                   >
                     <Trash className="h-4 w-4" />
