@@ -1,16 +1,46 @@
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Building, FileText, Briefcase, CircleDollarSign } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { 
+  Users, 
+  Building, 
+  FileText, 
+  Briefcase, 
+  CircleDollarSign 
+} from "lucide-react";
+import { 
+  Tabs, 
+  TabsContent, 
+  TabsList, 
+  TabsTrigger 
+} from "@/components/ui/tabs";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  Tooltip as RechartsTooltip, 
+  Legend, 
+  ResponsiveContainer 
+} from "recharts";
 import { GanttChartView } from "@/components/business/testing/GanttChartView";
-import React, { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState({
@@ -77,7 +107,7 @@ const Dashboard = () => {
           <BarChart data={chartData}>
             <XAxis dataKey="name" />
             <YAxis />
-            <Tooltip />
+            <RechartsTooltip />
             <Legend />
             <Bar dataKey="count" fill="#8884d8" />
           </BarChart>
@@ -88,4 +118,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
