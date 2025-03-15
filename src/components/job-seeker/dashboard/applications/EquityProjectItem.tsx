@@ -101,25 +101,50 @@ export const EquityProjectItem = ({
   };
   
   const handleLogTime = async () => {
-    if (!application.task_id || hours <= 0) return;
+  if (!application.task_id || hours <= 0) return;
+  
+  try {
+    console.log("Logging time for task_id:", application.task_id);
     
-    try {
-      console.log("Logging time for task_id:", application.task_id);
-      
-      // Check if the task exists in project_sub_tasks first
+    // First check if there's a corresponding entry in the tickets table
+    const { data: ticketData, error: ticketError } = await supabase
+      .from('tickets')
+      .select('id')
+      .eq('id', application.task_id)
+      .single();
+    
+    if (ticketError) {
+      // If no direct match, let's see if we need to fetch the related ticket ID
       const { data: taskData, error: taskError } = await supabase
         .from('project_sub_tasks')
-        .select('task_id')
+        .select('ticket_id')  // Assuming project_sub_tasks has a ticket_id reference
         .eq('task_id', application.task_id)
         .single();
       
-      if (taskError) {
-        console.error("Error checking task existence:", taskError);
-        toast.error("Could not find the associated task");
+      if (taskError || !taskData?.ticket_id) {
+        console.error("Error finding related ticket:", taskError || "No ticket ID found");
+        toast.error("Could not find the associated ticket for this task");
         return;
       }
       
-      // Create a time entry
+      // Create a time entry with the related ticket_id
+      const { data, error } = await supabase
+        .from('time_entries')
+        .insert({
+          ticket_id: taskData.ticket_id,
+          user_id: (await supabase.auth.getUser()).data.user?.id,
+          description: description,
+          start_time: new Date().toISOString(),
+          end_time: new Date(new Date().getTime() + hours * 60 * 60 * 1000).toISOString(),
+          hours_logged: hours
+        });
+      
+      if (error) {
+        console.error("Error inserting time entry:", error);
+        throw error;
+      }
+    } else {
+      // Direct ticket ID match found, proceed with insertion
       const { data, error } = await supabase
         .from('time_entries')
         .insert({
@@ -135,17 +160,18 @@ export const EquityProjectItem = ({
         console.error("Error inserting time entry:", error);
         throw error;
       }
-      
-      toast.success("Time logged successfully");
-      setIsTimeLogDialogOpen(false);
-      setHours(0);
-      setDescription('');
-      onApplicationUpdated();
-    } catch (error) {
-      console.error("Error logging time:", error);
-      toast.error("Failed to log time");
     }
-  };
+    
+    toast.success("Time logged successfully");
+    setIsTimeLogDialogOpen(false);
+    setHours(0);
+    setDescription('');
+    onApplicationUpdated();
+  } catch (error) {
+    console.error("Error logging time:", error);
+    toast.error("Failed to log time");
+  }
+};
   
   const showAcceptButton = application.status === 'accepted' && !application.accepted_jobseeker;
   const showTimeLogButton = application.accepted_jobseeker && application.accepted_business;
