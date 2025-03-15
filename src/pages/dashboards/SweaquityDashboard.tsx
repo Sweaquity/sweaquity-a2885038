@@ -141,6 +141,45 @@ const handleAddTicketNote = async (ticketId: string, note: string) => {
   }
 };
 
+      // Add this Dialog component at the bottom of the SweaquityDashboard component return
+
+        {/* Reply to Reporter Dialog */}
+        <Dialog open={replyDialogOpen} onOpenChange={setReplyDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Reply to Ticket Reporter</DialogTitle>
+              <DialogDescription>
+                Send a message to the person who reported this issue
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {activeTicketId && (
+                <div className="space-y-2">
+                  <Label htmlFor="reply-message">Message</Label>
+                  <Textarea
+                    id="reply-message"
+                    placeholder="Enter your response..."
+                    rows={5}
+                    value={replyMessage}
+                    onChange={(e) => setReplyMessage(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setReplyDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={sendReplyToReporter}
+                disabled={!replyMessage.trim()}
+              >
+                Send Reply
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
 const handleUpdateTicketStatus = async (ticketId: string, status: string) => {
   try {
     // Get current user
