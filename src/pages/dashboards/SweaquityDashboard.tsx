@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { GanttChartView } from "@/components/business/testing/GanttChartView";
 
+// Update the BetaTicket interface to include the new properties
+
 interface BetaTicket {
   id: string;
   title: string;
@@ -20,6 +22,25 @@ interface BetaTicket {
   updated_at: string;
   reporter_email?: string;
   reporter?: string;
+  // New properties
+  expanded?: boolean;        // UI state for expanding/collapsing tickets
+  newNote?: string;          // Temporary state for new notes
+  activity?: Array<{         // Activity timeline
+    action: string;
+    user: string;
+    timestamp: string;
+    comment?: string;
+  }>;
+  system_info?: {            // System information
+    url: string;
+    userAgent: string;
+    timestamp: string;
+    viewportSize: string;
+    referrer: string;
+  };
+  reported_url?: string;     // URL where the issue was found
+  attachments?: string[];    // Screenshot URLs
+  reproduction_steps?: string; // Steps to reproduce the issue
 }
 
 interface StatisticsData {
@@ -35,6 +56,408 @@ const SweaquityDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [betaTickets, setBetaTickets] = useState<BetaTicket[]>([]);
+// Add these new functions to the SweaquityDashboard component
+
+// Add these new state variables
+const [replyDialogOpen, setReplyDialogOpen] = useState(false);
+const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
+const [replyMessage, setReplyMessage] = useState('');
+
+// Handler functions for ticket actions
+const handleAddTicketNote = async (ticketId: string, note: string) => {
+  if (!note.trim()) return;
+  
+  try {
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      toast.error("You must be logged in to add notes");
+      return;
+    }
+    
+    // Get user's email or name
+    const { data: userData } = await supabase
+      .from('profiles')
+      .select('email, first_name, last_name')
+      .eq('id', user.id)
+      .single();
+      
+    const userName = userData?.first_name 
+      ? `${userData.first_name} ${userData.last_name || ''}`
+      : userData?.email || user.email || 'Unknown User';
+    
+    // First, fetch current ticket data
+    const { data: ticketData, error: fetchError } = await supabase
+      .from('tickets')
+      .select('activity')
+      .eq('id', ticketId)
+      .single();
+      
+    if (fetchError) {
+      console.error("Error fetching ticket:", fetchError);
+      toast.error("Failed to add note");
+      return;
+    }
+    
+    // Prepare activity array
+    let activity = ticketData.activity || [];
+    
+    // Add new activity
+    activity.push({
+      action: 'Note added',
+      user: userName,
+      timestamp: new Date().toISOString(),
+      comment: note
+    });
+    
+    // Update the ticket with new activity
+    const { error: updateError } = await supabase
+      .from('tickets')
+      .update({
+        activity: activity,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', ticketId);
+      
+    if (updateError) {
+      console.error("Error updating ticket:", updateError);
+      toast.error("Failed to add note");
+      return;
+    }
+    
+    // Clear the note input
+    setBetaTickets(prev => prev.map(t => 
+      t.id === ticketId ? {...t, newNote: ''} : t
+    ));
+    
+    // Refresh the ticket data
+    await fetchBetaTickets();
+    toast.success("Note added successfully");
+    
+  } catch (err) {
+    console.error("Error in handleAddTicketNote:", err);
+    toast.error("Failed to add note");
+  }
+};
+
+const handleUpdateTicketStatus = async (ticketId: string, status: string) => {
+  try {
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      toast.error("You must be logged in to update ticket status");
+      return;
+    }
+    
+    // Get user's email or name
+    const { data: userData } = await supabase
+      .from('profiles')
+      .select('email, first_name, last_name')
+      .eq('id', user.id)
+      .single();
+      
+    const userName = userData?.first_name 
+      ? `${userData.first_name} ${userData.last_name || ''}`
+      : userData?.email || user.email || 'Unknown User';
+    
+    // First, fetch current ticket data
+    const { data: ticketData, error: fetchError } = await supabase
+      .from('tickets')
+      .select('activity, status')
+      .eq('id', ticketId)
+      .single();
+      
+    if (fetchError) {
+      console.error("Error fetching ticket:", fetchError);
+      toast.error("Failed to update status");
+      return;
+    }
+    
+    // Prepare activity array
+    let activity = ticketData.activity || [];
+    
+    // Add new activity
+    activity.push({
+      action: `Status changed from ${ticketData.status} to ${status}`,
+      user: userName,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Update the ticket with new status and activity
+    const { error: updateError } = await supabase
+      .from('tickets')
+      .update({
+        status: status,
+        activity: activity,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', ticketId);
+      
+    if (updateError) {
+      console.error("Error updating ticket status:", updateError);
+      toast.error("Failed to update status");
+      return;
+    }
+    
+    // Refresh the ticket data
+    await fetchBetaTickets();
+    toast.success("Status updated successfully");
+    
+  } catch (err) {
+    console.error("Error in handleUpdateTicketStatus:", err);
+    toast.error("Failed to update status");
+  }
+};
+
+const handleUpdateTicketPriority = async (ticketId: string, priority: string) => {
+  try {
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      toast.error("You must be logged in to update ticket priority");
+      return;
+    }
+    
+    // Get user's email or name
+    const { data: userData } = await supabase
+      .from('profiles')
+      .select('email, first_name, last_name')
+      .eq('id', user.id)
+      .single();
+      
+    const userName = userData?.first_name 
+      ? `${userData.first_name} ${userData.last_name || ''}`
+      : userData?.email || user.email || 'Unknown User';
+    
+    // First, fetch current ticket data
+    const { data: ticketData, error: fetchError } = await supabase
+      .from('tickets')
+      .select('activity, priority')
+      .eq('id', ticketId)
+      .single();
+      
+    if (fetchError) {
+      console.error("Error fetching ticket:", fetchError);
+      toast.error("Failed to update priority");
+      return;
+    }
+    
+    // Prepare activity array
+    let activity = ticketData.activity || [];
+    
+    // Add new activity
+    activity.push({
+      action: `Priority changed from ${ticketData.priority} to ${priority}`,
+      user: userName,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Update the ticket with new priority and activity
+    const { error: updateError } = await supabase
+      .from('tickets')
+      .update({
+        priority: priority,
+        activity: activity,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', ticketId);
+      
+    if (updateError) {
+      console.error("Error updating ticket priority:", updateError);
+      toast.error("Failed to update priority");
+      return;
+    }
+    
+    // Refresh the ticket data
+    await fetchBetaTickets();
+    toast.success("Priority updated successfully");
+    
+  } catch (err) {
+    console.error("Error in handleUpdateTicketPriority:", err);
+    toast.error("Failed to update priority");
+  }
+};
+
+const handleReplyToReporter = (ticketId: string) => {
+  setActiveTicketId(ticketId);
+  setReplyMessage('');
+  setReplyDialogOpen(true);
+};
+
+const sendReplyToReporter = async () => {
+  if (!activeTicketId || !replyMessage.trim()) return;
+  
+  try {
+    // Find the active ticket
+    const ticket = betaTickets.find(t => t.id === activeTicketId);
+    if (!ticket || !ticket.reporter) {
+      toast.error("Cannot find reporter information");
+      return;
+    }
+    
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      toast.error("You must be logged in to reply");
+      return;
+    }
+    
+    // Get user's email or name
+    const { data: userData } = await supabase
+      .from('profiles')
+      .select('email, first_name, last_name')
+      .eq('id', user.id)
+      .single();
+      
+    const userName = userData?.first_name 
+      ? `${userData.first_name} ${userData.last_name || ''}`
+      : userData?.email || user.email || 'Unknown User';
+    
+    // Create a notification/message in the database
+    const { error: messageError } = await supabase
+      .from('messages')
+      .insert({
+        sender_id: user.id,
+        recipient_id: ticket.reporter,
+        subject: `Re: ${ticket.title}`,
+        message: replyMessage,
+        related_ticket: activeTicketId,
+        read: false
+      });
+      
+    if (messageError) {
+      console.error("Error sending message:", messageError);
+      toast.error("Failed to send reply");
+      return;
+    }
+    
+    // Update ticket activity
+    // First, fetch current ticket data
+    const { data: ticketData, error: fetchError } = await supabase
+      .from('tickets')
+      .select('activity')
+      .eq('id', activeTicketId)
+      .single();
+      
+    if (fetchError) {
+      console.error("Error fetching ticket:", fetchError);
+      // Still continue, because the message was sent
+    } else {
+      // Prepare activity array
+      let activity = ticketData.activity || [];
+      
+      // Add new activity
+      activity.push({
+        action: 'Reply sent to reporter',
+        user: userName,
+        timestamp: new Date().toISOString(),
+        comment: replyMessage
+      });
+      
+      // Update the ticket with new activity
+      await supabase
+        .from('tickets')
+        .update({
+          activity: activity,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', activeTicketId);
+    }
+    
+    // Close dialog and refresh
+    setReplyDialogOpen(false);
+    setActiveTicketId(null);
+    setReplyMessage('');
+    await fetchBetaTickets();
+    toast.success("Reply sent successfully");
+    
+  } catch (err) {
+    console.error("Error in sendReplyToReporter:", err);
+    toast.error("Failed to send reply");
+  }
+};
+
+const handleSetDueDate = async (ticketId: string, dueDateStr: string) => {
+  if (!dueDateStr) return;
+  
+  try {
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      toast.error("You must be logged in to set due date");
+      return;
+    }
+    
+    // Get user's email or name
+    const { data: userData } = await supabase
+      .from('profiles')
+      .select('email, first_name, last_name')
+      .eq('id', user.id)
+      .single();
+      
+    const userName = userData?.first_name 
+      ? `${userData.first_name} ${userData.last_name || ''}`
+      : userData?.email || user.email || 'Unknown User';
+    
+    // First, fetch current ticket data
+    const { data: ticketData, error: fetchError } = await supabase
+      .from('tickets')
+      .select('activity, due_date')
+      .eq('id', ticketId)
+      .single();
+      
+    if (fetchError) {
+      console.error("Error fetching ticket:", fetchError);
+      toast.error("Failed to set due date");
+      return;
+    }
+    
+    // Format the dates for activity log
+    const oldDueDate = ticketData.due_date ? new Date(ticketData.due_date).toLocaleDateString() : 'None';
+    const newDueDate = new Date(dueDateStr).toLocaleDateString();
+    
+    // Prepare activity array
+    let activity = ticketData.activity || [];
+    
+    // Add new activity
+    activity.push({
+      action: `Due date changed from ${oldDueDate} to ${newDueDate}`,
+      user: userName,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Update the ticket with new due date and activity
+    const { error: updateError } = await supabase
+      .from('tickets')
+      .update({
+        due_date: new Date(dueDateStr).toISOString(),
+        activity: activity,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', ticketId);
+      
+    if (updateError) {
+      console.error("Error updating due date:", updateError);
+      toast.error("Failed to set due date");
+      return;
+    }
+    
+    // Refresh the ticket data
+    await fetchBetaTickets();
+    toast.success("Due date set successfully");
+    
+  } catch (err) {
+    console.error("Error in handleSetDueDate:", err);
+    toast.error("Failed to set due date");
+  }
+};
+
+
   
   // Platform stats
   const [stats, setStats] = useState({
@@ -367,24 +790,246 @@ const SweaquityDashboard = () => {
               </CardHeader>
               <CardContent>
                 {isLoading ? (
-                  <div className="h-48 flex items-center justify-center">
-                    <div className="animate-pulse bg-muted h-40 w-full rounded-md"></div>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-sm font-medium">Total Beta Tickets</p>
-                        <p className="text-3xl font-bold">{ticketStats.totalTickets}</p>
-                      </div>
-                      <FileText className="h-10 w-10 text-blue-500" />
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-sm font-medium">High Priority Issues</p>
-                        <p className="text-3xl font-bold">{ticketStats.highPriorityTickets}</p>
-                      </div>
-                      <AlertTriangle className="h-10 w-10 text-red-500" />
+                  // This code should replace the existing betaTickets map section in the "tickets" TabsContent
+// found in paste.txt around line 361-384
+
+                      <div className="space-y-4">
+                      {betaTickets.map(ticket => (
+                        <Card key={ticket.id} className="overflow-hidden">
+                          <div className="border-b px-4 py-3 flex justify-between items-center bg-gray-50">
+                            <div className="flex items-center">
+                              <h3 className="font-medium">{ticket.title}</h3>
+                              <div className="flex space-x-2 ml-3">
+                                <span className={`px-2 py-1 rounded text-xs ${
+                                  ticket.priority === 'high' ? 'bg-red-100 text-red-800' : 
+                                  ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
+                                  'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {ticket.priority}
+                                </span>
+                                <span className={`px-2 py-1 rounded text-xs ${
+                                  ticket.status === 'done' || ticket.status === 'closed' ? 'bg-green-100 text-green-800' : 
+                                  ticket.status === 'in-progress' ? 'bg-purple-100 text-purple-800' : 
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {ticket.status}
+                                </span>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => {
+                                // Toggle expanded state for this ticket
+                                setBetaTickets(prev => prev.map(t => 
+                                  t.id === ticket.id ? {...t, expanded: !t.expanded} : t
+                                ));
+                              }}
+                            >
+                              {ticket.expanded ? "Collapse" : "Expand"}
+                            </Button>
+                          </div>
+                          
+                          {/* Collapsible content */}
+                          {ticket.expanded && (
+                            <div className="p-4">
+                              <div className="grid md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                  <p className="text-sm text-gray-600 mb-2">{ticket.description}</p>
+                                  
+                                  <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div>
+                                      <span className="text-gray-500">Created: </span>
+                                      {formatDate(ticket.created_at)}
+                                    </div>
+                                    {ticket.due_date && (
+                                      <div>
+                                        <span className="text-gray-500">Due: </span>
+                                        {formatDate(ticket.due_date)}
+                                      </div>
+                                    )}
+                                    {ticket.reporter_email && (
+                                      <div>
+                                        <span className="text-gray-500">Reporter: </span>
+                                        {ticket.reporter_email}
+                                      </div>
+                                    )}
+                                    {ticket.reported_url && (
+                                      <div>
+                                        <span className="text-gray-500">URL: </span>
+                                        <span className="text-blue-500 underline">{ticket.reported_url}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  {/* System info display */}
+                                  {ticket.system_info && (
+                                    <div className="mt-3 p-2 bg-gray-50 rounded text-xs">
+                                      <p className="font-medium mb-1">System Info:</p>
+                                      <div className="grid grid-cols-2 gap-1">
+                                        <div><span className="text-gray-500">Browser: </span>{ticket.system_info.userAgent}</div>
+                                        <div><span className="text-gray-500">Screen: </span>{ticket.system_info.viewportSize}</div>
+                                        <div><span className="text-gray-500">Time: </span>{new Date(ticket.system_info.timestamp).toLocaleString()}</div>
+                                        <div><span className="text-gray-500">Referrer: </span>{ticket.system_info.referrer}</div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {/* Screenshots gallery */}
+                                {ticket.attachments && ticket.attachments.length > 0 && (
+                                  <div>
+                                    <p className="text-sm font-medium mb-2">Screenshots ({ticket.attachments.length})</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {ticket.attachments.map((url, i) => (
+                                        <div key={i} className="relative group border rounded overflow-hidden h-36">
+                                          <img 
+                                            src={url} 
+                                            alt={`Screenshot ${i+1}`} 
+                                            className="w-full h-full object-cover"
+                                          />
+                                          <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                            <Button 
+                                              variant="ghost" 
+                                              size="sm" 
+                                              className="text-white"
+                                              onClick={() => window.open(url, '_blank')}
+                                            >
+                                              View Full
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Ticket timeline */}
+                              <div className="mb-4">
+                                <h4 className="text-sm font-medium mb-2">Activity Timeline</h4>
+                                <div className="space-y-2 text-sm pl-4 border-l-2 border-gray-200">
+                                  {/* Render timeline from ticket comments/activity logs */}
+                                  {ticket.activity ? (
+                                    ticket.activity.map((activity, index) => (
+                                      <div key={index} className="relative pl-4 pb-2">
+                                        <div className="absolute w-2 h-2 rounded-full bg-blue-500 -left-[5px]"></div>
+                                        <p className="font-medium">{activity.action}</p>
+                                        <p className="text-gray-500 text-xs">{new Date(activity.timestamp).toLocaleString()} by {activity.user}</p>
+                                        {activity.comment && <p className="mt-1">{activity.comment}</p>}
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <div className="py-2 text-gray-500">No activity recorded yet</div>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Actions */}
+                              <div className="border-t pt-4 space-y-4">
+                                <div>
+                                  <Label htmlFor={`note-${ticket.id}`}>Add Note</Label>
+                                  <div className="flex gap-2 mt-1">
+                                    <Textarea 
+                                      id={`note-${ticket.id}`} 
+                                      placeholder="Add a note or update..." 
+                                      className="flex-1"
+                                      value={ticket.newNote || ''}
+                                      onChange={(e) => {
+                                        setBetaTickets(prev => prev.map(t => 
+                                          t.id === ticket.id ? {...t, newNote: e.target.value} : t
+                                        ));
+                                      }}
+                                    />
+                                    <Button 
+                                      variant="secondary"
+                                      disabled={!ticket.newNote?.trim()}
+                                      onClick={() => {
+                                        handleAddTicketNote(ticket.id, ticket.newNote || '');
+                                      }}
+                                    >
+                                      Add
+                                    </Button>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex flex-wrap gap-2">
+                                  <Select 
+                                    value={ticket.status}
+                                    onValueChange={(value) => handleUpdateTicketStatus(ticket.id, value)}
+                                  >
+                                    <SelectTrigger className="w-[180px]">
+                                      <SelectValue placeholder="Update Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="new">New</SelectItem>
+                                      <SelectItem value="in-progress">In Progress</SelectItem>
+                                      <SelectItem value="waiting">Waiting for Info</SelectItem>
+                                      <SelectItem value="resolved">Resolved</SelectItem>
+                                      <SelectItem value="closed">Closed</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  
+                                  <Select 
+                                    value={ticket.priority}
+                                    onValueChange={(value) => handleUpdateTicketPriority(ticket.id, value)}
+                                  >
+                                    <SelectTrigger className="w-[180px]">
+                                      <SelectValue placeholder="Update Priority" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="low">Low</SelectItem>
+                                      <SelectItem value="medium">Medium</SelectItem>
+                                      <SelectItem value="high">High</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => handleReplyToReporter(ticket.id)}
+                                    disabled={!ticket.reporter_email}
+                                  >
+                                    Reply to Reporter
+                                  </Button>
+                                  
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                      >
+                                        Set Due Date
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[425px]">
+                                      <DialogHeader>
+                                        <DialogTitle>Set Due Date</DialogTitle>
+                                        <DialogDescription>
+                                          Assign a deadline for this ticket
+                                        </DialogDescription>
+                                      </DialogHeader>
+                                      <div className="grid gap-4 py-4">
+                                        <Input
+                                          id="due-date"
+                                          type="date"
+                                          min={new Date().toISOString().split('T')[0]}
+                                          defaultValue={ticket.due_date ? ticket.due_date.split('T')[0] : ''}
+                                        />
+                                      </div>
+                                      <DialogFooter>
+                                        <Button onClick={() => handleSetDueDate(ticket.id, document.getElementById('due-date')?.value)}>
+                                          Save Date
+                                        </Button>
+                                      </DialogFooter>
+                                    </DialogContent>
+                                  </Dialog>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </Card>
+                      ))}
                     </div>
                     <div className="mt-4 pt-4 border-t">
                       <p className="text-sm font-medium">Ticket Resolution Rate</p>
