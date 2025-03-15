@@ -1,46 +1,6 @@
-
-import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
-import { 
-  Users, 
-  Building, 
-  FileText, 
-  Briefcase, 
-  CircleDollarSign 
-} from "lucide-react";
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
-} from "@/components/ui/tabs";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Tooltip as RechartsTooltip, 
-  Legend, 
-  ResponsiveContainer 
-} from "recharts";
-import { GanttChartView } from "@/components/business/testing/GanttChartView";
+import React, { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState({
@@ -52,6 +12,8 @@ const Dashboard = () => {
     closedTickets: 0,
     highPriorityTickets: 0,
   });
+  
+  const [tickets, setTickets] = useState([]);
 
   useEffect(() => {
     const fetchDashboardStats = async () => {
@@ -71,6 +33,8 @@ const Dashboard = () => {
           closedTickets: ticketStats.closedTickets || 0,
           highPriorityTickets: ticketStats.highPriorityTickets || 0,
         });
+
+        setTickets(ticketStats.tickets || []);
       } catch (error) {
         console.error("Error fetching dashboard stats:", error);
       }
@@ -107,11 +71,32 @@ const Dashboard = () => {
           <BarChart data={chartData}>
             <XAxis dataKey="name" />
             <YAxis />
-            <RechartsTooltip />
+            <Tooltip />
             <Legend />
             <Bar dataKey="count" fill="#8884d8" />
           </BarChart>
         </ResponsiveContainer>
+      </div>
+      <div className="mt-8">
+        <h2 className="text-lg font-bold mb-2">Ticket Status</h2>
+        <table className="min-w-full bg-white border border-gray-300">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border px-4 py-2">Date Age</th>
+              <th className="border px-4 py-2">Status</th>
+              <th className="border px-4 py-2">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tickets.map((ticket, index) => (
+              <tr key={index} className="border">
+                <td className="border px-4 py-2">{ticket.dateAge}</td>
+                <td className={`border px-4 py-2 ${ticket.status === 'Red' ? 'text-red-500' : ticket.status === 'Amber' ? 'text-yellow-500' : 'text-green-500'}`}>{ticket.status}</td>
+                <td className="border px-4 py-2">{ticket.description}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
