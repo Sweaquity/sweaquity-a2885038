@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,7 @@ interface SkillRequirement {
 }
 
 interface Task {
-  id: string;
+  task_id: string;  // Changed from id to task_id to match the database schema
   title: string;
   description: string;
   status: string;
@@ -93,17 +94,23 @@ export const SubTaskForm = ({
       }
 
       if (initialData) {
+        // For updating, use task_id instead of id
+        console.log("Updating task with task_id:", initialData.task_id);
+        
         const { data, error } = await supabase
           .from('project_sub_tasks')
           .update({
             ...task,
             project_id: projectId
           })
-          .eq('id', initialData.id)
+          .eq('task_id', initialData.task_id)  // Changed from id to task_id          .select()
           .select()
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error updating task:', error);
+          throw error;
+        }
         onTaskCreated(data);
       } else {
         const { data, error } = await supabase
@@ -115,7 +122,10 @@ export const SubTaskForm = ({
           .select()
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error creating task:', error);
+          throw error;
+        }
         onTaskCreated(data);
       }
 
