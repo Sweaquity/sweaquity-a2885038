@@ -1,99 +1,7 @@
-export interface JobApplication {
-  job_app_id: string;
-  role_id: string;
-  status: string;
-  applied_at: string;
-  task_id: string;
-  project_id: string;
-  notes: string;
-  message: string; 
-  cv_url: string | null;
-  task_discourse?: string;
-  business_roles?: {
-    title: string;
-    description: string;
-    company_name?: string;
-    project_title?: string;
-    timeframe?: string;
-    skill_requirements?: (string | SkillRequirement)[];
-    equity_allocation?: number;
-    completion_percentage?: number;
-    task_status?: string;
-  };
-  id: string; // Adding this for backward compatibility
-  accepted_jobseeker?: boolean;
-  accepted_business?: boolean;
-  applicant_anonymized?: boolean;
-  applicant_email?: string;
-  user_id?: string;
-  profiles?: {
-    email?: string;
-    first_name?: string;
-    last_name?: string;
-  };
-}
+
+// Add necessary imports and type definitions
 
 export interface SkillRequirement {
-  skill: string;
-  level: 'Beginner' | 'Intermediate' | 'Expert';
-}
-
-export interface SubTask {
-  task_id: string;
-  project_id: string;
-  title: string;
-  description: string;
-  skill_requirements: SkillRequirement[];
-  equity_allocation: number;
-  timeframe: string;
-  status: string;
-  task_status: string;
-  completion_percentage: number;
-  id: string; // Adding this for backward compatibility
-}
-
-export interface EquityProject {
-  id: string;
-  project_id: string;
-  equity_amount: number;
-  time_allocated: string;
-  status: string;
-  start_date: string;
-  end_date?: string;
-  effort_logs: {
-    date: string;
-    hours: number;
-    description: string;
-  }[];
-  total_hours_logged: number;
-  sub_tasks?: SubTask[];
-  business_roles?: {
-    title: string;
-    description: string;
-    company_name?: string;
-    project_title?: string;
-  };
-  title?: string;
-  documents?: {
-    contract?: {
-      url: string;
-      status?: string;
-    };
-  };
-  created_by?: string;
-  skill_match?: number; // Added property for skill match percentage
-}
-
-export interface Profile {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  title: string | null;
-  email: string | null;
-  location: string | null;
-}
-
-export interface Skill {
   skill: string;
   level: 'Beginner' | 'Intermediate' | 'Expert';
 }
@@ -102,4 +10,46 @@ export interface LogEffort {
   projectId: string;
   hours: number;
   description: string;
+}
+
+export interface SubTask {
+  task_id: string;
+  title: string;
+  description: string;
+  completion_percentage: number;
+}
+
+export interface EquityProject {
+  id: string;
+  title: string;
+  status: string;
+  equity_amount: number;
+  time_allocated: string;
+  total_hours_logged?: number;
+  sub_tasks?: SubTask[];
+}
+
+export interface JobApplication {
+  job_app_id: string;
+  id?: string; // For compatibility with existing code
+  user_id: string;
+  task_id: string;
+  project_id?: string;
+  status: string;
+  applied_at: string;
+  message?: string;
+  task_discourse?: string;
+  accepted_business?: boolean;
+  accepted_jobseeker?: boolean;
+  business_roles?: {
+    title: string;
+    description: string;
+    timeframe: string;
+    skill_requirements: SkillRequirement[] | string[];
+    equity_allocation?: number;
+    completion_percentage?: number;
+    task_status?: string;
+    company_name?: string;
+    project_title?: string;
+  };
 }

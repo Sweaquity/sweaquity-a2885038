@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { JobApplication } from "@/types/jobSeeker";
@@ -107,7 +106,7 @@ export const EquityProjectItem = ({
     try {
       console.log("Logging time for task_id:", application.task_id);
       
-      // Check if the task exists in project_sub_tasks first
+      // First check if task exists in project_sub_tasks
       const { data: taskData, error: taskError } = await supabase
         .from('project_sub_tasks')
         .select('task_id')
@@ -116,8 +115,36 @@ export const EquityProjectItem = ({
       
       if (taskError) {
         console.error("Error checking task existence:", taskError);
-        toast.error("Could not find the associated task");
-        return;
+        
+        // If not found in project_sub_tasks, check if it's in tickets table
+        const { data: ticketData, error: ticketError } = await supabase
+          .from('tickets')
+          .select('id')
+          .eq('id', application.task_id)
+          .single();
+          
+        if (ticketError) {
+          // If task doesn't exist in either table, create a new ticket first
+          const { data: newTicket, error: createError } = await supabase
+            .from('tickets')
+            .insert({
+              id: application.task_id,
+              title: application.business_roles?.title || "Task from application",
+              description: application.business_roles?.description || "",
+              status: 'open',
+              priority: 'medium',
+              health: 'green',
+              project_id: application.project_id
+            })
+            .select()
+            .single();
+            
+          if (createError) {
+            throw createError;
+          }
+          
+          console.log("Created new ticket for time tracking:", newTicket);
+        }
       }
       
       // Create a time entry
