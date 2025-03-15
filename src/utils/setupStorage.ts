@@ -8,10 +8,10 @@ export interface CVFile {
   isDefault?: boolean;
 }
 
-// Setup storage buckets
+// Setup storage buckets - now using SQL migrations instead of programmatic creation
 export const setupContractStorage = async () => {
   try {
-    // Check if the contracts bucket exists
+    // Verify buckets exist (no creation attempts - handled by migrations)
     const { data: buckets, error } = await supabase.storage.listBuckets();
     
     if (error) {
@@ -19,63 +19,20 @@ export const setupContractStorage = async () => {
       return false;
     }
     
-    // Check if contracts bucket exists
+    // Check if expected buckets exist
     const contractsBucketExists = buckets.some(bucket => bucket.name === 'contracts');
-    
-    if (!contractsBucketExists) {
-      // Create the contracts bucket
-      const { error: createError } = await supabase.storage.createBucket('contracts', {
-        public: false,
-        fileSizeLimit: 10485760 // 10MB
-      });
-      
-      if (createError) {
-        console.error("Error creating contracts bucket:", createError);
-        return false;
-      }
-      
-      console.log("Contracts storage bucket created successfully");
-    }
-    
-    // Check if job_applications bucket exists
     const jobAppsBucketExists = buckets.some(bucket => bucket.name === 'job_applications');
-    
-    if (!jobAppsBucketExists) {
-      // Create the job_applications bucket
-      const { error: createError } = await supabase.storage.createBucket('job_applications', {
-        public: true,
-        fileSizeLimit: 10485760 // 10MB
-      });
-      
-      if (createError) {
-        console.error("Error creating job_applications bucket:", createError);
-        return false;
-      }
-      
-      console.log("Job applications storage bucket created successfully");
-    }
-    
-    // Check if cvs bucket exists
     const cvsBucketExists = buckets.some(bucket => bucket.name === 'cvs');
     
-    if (!cvsBucketExists) {
-      // Create the cvs bucket
-      const { error: createError } = await supabase.storage.createBucket('cvs', {
-        public: false,
-        fileSizeLimit: 10485760 // 10MB
-      });
-      
-      if (createError) {
-        console.error("Error creating cvs bucket:", createError);
-        return false;
-      }
-      
-      console.log("CVs storage bucket created successfully");
+    if (!contractsBucketExists || !jobAppsBucketExists || !cvsBucketExists) {
+      console.warn("One or more required storage buckets are missing. The application may not function correctly.");
+      return false;
     }
     
+    console.log("All required storage buckets are available");
     return true;
   } catch (error) {
-    console.error("Error setting up storage:", error);
+    console.error("Error verifying storage buckets:", error);
     return false;
   }
 };
@@ -280,5 +237,5 @@ export const previewApplicationCV = async (cvUrl: string) => {
   }
 };
 
-// Run the setup function
+// Run a simple check for buckets rather than trying to create them
 setupContractStorage();

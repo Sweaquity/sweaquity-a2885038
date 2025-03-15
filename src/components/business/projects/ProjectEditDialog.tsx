@@ -28,7 +28,7 @@ interface Task {
   equity_earned: number;
   equity_allocation: number;
   timeframe: string;
-  skills_required: string[]; // Make this required to match other Task interface
+  skills_required: string[]; // Non-optional to match other Task interface
   skill_requirements: SkillRequirement[];
   dependencies: string[];
 }
