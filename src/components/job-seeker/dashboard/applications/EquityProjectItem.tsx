@@ -100,66 +100,69 @@ export const EquityProjectItem = ({
     setIsStatusDialogOpen(false);
   };
   
-  const handleLogTime = async () => {
+const handleLogTime = async () => {
   if (!application.task_id || hours <= 0) return;
   
   try {
     console.log("Logging time for task_id:", application.task_id);
+    let ticketId;
     
-    // First check if there's a corresponding entry in the tickets table
-    const { data: ticketData, error: ticketError } = await supabase
+    // First check if there's already a ticket for this task
+    const { data: existingTicket, error: ticketError } = await supabase
       .from('tickets')
       .select('id')
-      .eq('id', application.task_id)
+      .eq('task_id', application.task_id)
       .single();
     
-    if (ticketError) {
-      // If no direct match, let's see if we need to fetch the related ticket ID
-      const { data: taskData, error: taskError } = await supabase
-        .from('project_sub_tasks')
-        .select('ticket_id')  // Assuming project_sub_tasks has a ticket_id reference
-        .eq('task_id', application.task_id)
+    if (ticketError && ticketError.code !== 'PGRST116') {
+      // Real error, not just "no rows returned"
+      console.error("Error checking for existing ticket:", ticketError);
+      toast.error("Error checking ticket information");
+      return;
+    }
+    
+    if (existingTicket?.id) {
+      // We found an existing ticket
+      ticketId = existingTicket.id;
+    } else {
+      // Create a new ticket for this task
+      const { data: newTicket, error: createError } = await supabase
+        .from('tickets')
+        .insert({
+          title: `Work on ${application.business_roles?.title || 'task'}`,
+          description: `Time tracking for ${application.business_roles?.project_title || 'project'}`,
+          task_id: application.task_id,
+          project_id: application.project_id,
+          status: 'open',
+          created_by: (await supabase.auth.getUser()).data.user?.id
+        })
+        .select('id')
         .single();
       
-      if (taskError || !taskData?.ticket_id) {
-        console.error("Error finding related ticket:", taskError || "No ticket ID found");
-        toast.error("Could not find the associated ticket for this task");
+      if (createError) {
+        console.error("Error creating ticket:", createError);
+        toast.error("Could not create a ticket for time logging");
         return;
       }
       
-      // Create a time entry with the related ticket_id
-      const { data, error } = await supabase
-        .from('time_entries')
-        .insert({
-          ticket_id: taskData.ticket_id,
-          user_id: (await supabase.auth.getUser()).data.user?.id,
-          description: description,
-          start_time: new Date().toISOString(),
-          end_time: new Date(new Date().getTime() + hours * 60 * 60 * 1000).toISOString(),
-          hours_logged: hours
-        });
-      
-      if (error) {
-        console.error("Error inserting time entry:", error);
-        throw error;
-      }
-    } else {
-      // Direct ticket ID match found, proceed with insertion
-      const { data, error } = await supabase
-        .from('time_entries')
-        .insert({
-          ticket_id: application.task_id,
-          user_id: (await supabase.auth.getUser()).data.user?.id,
-          description: description,
-          start_time: new Date().toISOString(),
-          end_time: new Date(new Date().getTime() + hours * 60 * 60 * 1000).toISOString(),
-          hours_logged: hours
-        });
-      
-      if (error) {
-        console.error("Error inserting time entry:", error);
-        throw error;
-      }
+      ticketId = newTicket.id;
+    }
+    
+    // Now create the time entry with the valid ticket ID
+    const { data, error } = await supabase
+      .from('time_entries')
+      .insert({
+        ticket_id: ticketId,
+        user_id: (await supabase.auth.getUser()).data.user?.id,
+        description: description,
+        start_time: new Date().toISOString(),
+        end_time: new Date(new Date().getTime() + hours * 60 * 60 * 1000).toISOString(),
+        hours_logged: hours
+      });
+    
+    if (error) {
+      console.error("Error inserting time entry:", error);
+      throw error;
     }
     
     toast.success("Time logged successfully");
