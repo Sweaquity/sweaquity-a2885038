@@ -18,6 +18,8 @@ export interface Application {
   role_id?: string;
   id?: string;
   project_id: string; // Required property to match JobApplication type
+  applicant_anonymized?: boolean;
+  applicant_email?: string;
   profile: {
     first_name: string;
     last_name: string;

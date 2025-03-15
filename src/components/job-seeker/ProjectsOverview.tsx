@@ -17,6 +17,8 @@ interface ProjectWithDocuments extends EquityProject {
       url: string;
     };
   };
+  start_date?: string;
+  end_date?: string;
 }
 
 interface ProjectsOverviewProps {
@@ -102,7 +104,7 @@ export const ProjectsOverview = ({
                   <p className="text-sm">Final Equity: {project.equity_amount}%</p>
                   <p className="text-sm">Total Hours: {project.total_hours_logged}</p>
                   <p className="text-sm">
-                    Duration: {new Date(project.start_date).toLocaleDateString()} - {
+                    Duration: {project.start_date ? new Date(project.start_date).toLocaleDateString() : 'Unknown'} - {
                       project.end_date ? new Date(project.end_date).toLocaleDateString() : 'Ongoing'
                     }
                   </p>
