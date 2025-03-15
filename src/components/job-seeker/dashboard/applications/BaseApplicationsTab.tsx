@@ -1,25 +1,32 @@
+// File: src/components/job-seeker/dashboard/applications/ApplicationsTabBase.tsx
+
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { JobApplication } from "@/types/jobSeeker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ApplicationsList } from "./ApplicationsList";
-import { PendingApplicationsList } from "./PendingApplicationsList";
-import { EquityProjectsList } from "./EquityProjectsList";
-import { PastApplicationsList } from "./PastApplicationsList";
-import { useState, useEffect, useRef, useCallback } from "react";
-import { supabase } from "@/lib/supabase";
+import { ApplicationsList } from "../ApplicationsList";
+import { PendingApplicationsList } from "../PendingApplicationsList";
+import { EquityProjectsList } from "../EquityProjectsList";
+import { PastApplicationsList } from "../PastApplicationsList";
+import { useState, useEffect } from "react";
 
-interface ApplicationsTabProps {
+interface ApplicationsTabBaseProps {
   applications: JobApplication[];
-  onApplicationUpdated?: () => void;
+  onApplicationUpdated: () => void;
+  newMessagesCount?: number;
 }
 
-export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} }: ApplicationsTabProps) => {
-  const [newMessagesCount, setNewMessagesCount] = useState(0);
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+export const ApplicationsTabBase = ({ 
+  applications, 
+  onApplicationUpdated,
+  newMessagesCount = 0
+}: ApplicationsTabBaseProps) => {
+  const [localMessagesCount, setLocalMessagesCount] = useState(newMessagesCount);
   
-  // Debug the incoming applications
-  console.log("All applications in ApplicationsTab:", applications);
+  // Update local state when prop changes
+  useEffect(() => {
+    setLocalMessagesCount(newMessagesCount);
+  }, [newMessagesCount]);
   
   // Safely normalize status to lowercase for case-insensitive comparison
   const normalizeStatus = (status: string | null | undefined): string => {
@@ -49,82 +56,10 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     return status === 'rejected';
   });
   
-  // Log filtered applications for debugging
-  console.log(
-    "Filtered applications - Pending:", pendingApplications.length, 
-    "Equity:", equityProjects.length,
-    "Withdrawn:", withdrawnApplications.length,
-    "Rejected:", rejectedApplications.length
-  );
-
-  // Memoize the callback handler to prevent recreation
-  const handleApplicationUpdate = useCallback(() => {
-    onApplicationUpdated();
-  }, [onApplicationUpdated]);
-  
-  useEffect(() => {
-    // Count new messages from the past 24 hours
-    const oneDayAgo = new Date();
-    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-
-    let newMsgs = 0;
-
-    applications.forEach(app => {
-      if (app.task_discourse) {
-        const lastMessageMatch = app.task_discourse.match(/\[([^\]]+)\]/);
-        if (lastMessageMatch) {
-          try {
-            const msgDate = new Date(lastMessageMatch[1]);
-            if (msgDate > oneDayAgo && ['negotiation', 'accepted'].includes(normalizeStatus(app.status))) {
-              newMsgs++;
-            }
-          } catch (e) {
-            console.error("Error parsing message date:", e);
-          }
-        }
-      }
-    });
-
-    setNewMessagesCount(newMsgs);
-  }, [applications]); // Only depend on applications for message counting
-
-  // Set up the Supabase channel only once
-  useEffect(() => {
-    // Skip if we already have a channel
-    if (channelRef.current) {
-      return;
-    }
-
-    // Set up realtime listener for application updates
-    const channel = supabase
-      .channel('job-seeker-apps')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'job_applications',
-          filter: 'task_discourse=neq.null'
-        },
-        handleApplicationUpdate
-      )
-      .subscribe();
-
-    channelRef.current = channel;
-
-    // Cleanup function
-    return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-    };
-  }, []); // Empty dependency array means this only runs once
-  
   // Reset notification counter when viewing the relevant tab
   const handleTabChange = (value: string) => {
     if (value === 'equity') {
-      setNewMessagesCount(0);
+      setLocalMessagesCount(0);
     }
   };
 
@@ -143,9 +78,9 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
               </TabsTrigger>
               <TabsTrigger value="equity" className="px-3 py-1.5 relative">
                 Current Equity ({equityProjects.length})
-                {newMessagesCount > 0 && (
+                {localMessagesCount > 0 && (
                   <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
-                    {newMessagesCount}
+                    {localMessagesCount}
                   </Badge>
                 )}
               </TabsTrigger>
@@ -164,7 +99,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
             ) : (
               <PendingApplicationsList 
                 applications={pendingApplications} 
-                onApplicationUpdated={handleApplicationUpdate} 
+                onApplicationUpdated={onApplicationUpdated} 
               />
             )}
           </TabsContent>
@@ -175,7 +110,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
             ) : (
               <EquityProjectsList 
                 applications={equityProjects} 
-                onApplicationUpdated={handleApplicationUpdate} 
+                onApplicationUpdated={onApplicationUpdated} 
               />
             )}
           </TabsContent>
@@ -186,7 +121,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
             ) : (
               <PastApplicationsList 
                 applications={withdrawnApplications}
-                onApplicationUpdated={handleApplicationUpdate}
+                onApplicationUpdated={onApplicationUpdated}
               />
             )}
           </TabsContent>
@@ -197,7 +132,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
             ) : (
               <PastApplicationsList 
                 applications={rejectedApplications}
-                onApplicationUpdated={handleApplicationUpdate}
+                onApplicationUpdated={onApplicationUpdated}
               />
             )}
           </TabsContent>
