@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
 interface Task {
-  id: string;
+  task_id: string;  // Changed from id to task_id
   title: string;
   description: string;
   status: string;
@@ -51,7 +51,7 @@ export const ProjectTaskService = {
       const { error } = await supabase
         .from('project_sub_tasks')
         .update(updatedTask)
-        .eq('id', updatedTask.id);
+        .eq('task_id', updatedTask.task_id);  // Changed from id to task_id
 
       if (error) throw error;
 
@@ -63,7 +63,7 @@ export const ProjectTaskService = {
           description: updatedTask.description
         })
         .eq('business_id', projectId)
-        .eq('title', currentProjectTasks.find(t => t.id === updatedTask.id)?.title);
+        .eq('title', currentProjectTasks.find(t => t.task_id === updatedTask.task_id)?.title);  // Changed from id to task_id
 
       return updatedTask;
     } catch (error) {
@@ -77,7 +77,7 @@ export const ProjectTaskService = {
       const { error } = await supabase
         .from('project_sub_tasks')
         .delete()
-        .eq('id', taskId);
+        .eq('task_id', taskId);  // Changed from id to task_id
 
       if (error) throw error;
 
