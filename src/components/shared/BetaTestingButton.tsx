@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { AlarmClock, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,7 +32,7 @@ export function BetaTestingButton() {
         return;
       }
       
-      // Create a new ticket instead of trying to directly insert a comment
+      // First, create a new ticket
       const { data: ticketData, error: ticketError } = await supabase
         .from('tickets')
         .insert({
@@ -46,19 +46,9 @@ export function BetaTestingButton() {
         .select('id')
         .single();
       
-      if (ticketError) throw ticketError;
-      
-      // Now add a comment to the new ticket
-      if (ticketData && ticketData.id) {
-        const { error: commentError } = await supabase
-          .from('ticket_comments')
-          .insert({
-            ticket_id: ticketData.id,
-            user_id: user.id,
-            content: `Beta Testing Error: ${errorLocation ? `Location: ${errorLocation}` : ''}\n\n${description}`
-          });
-        
-        if (commentError) throw commentError;
+      if (ticketError) {
+        console.error("Error creating ticket:", ticketError);
+        throw ticketError;
       }
       
       toast.success("Thank you for reporting this issue! Your feedback helps us improve.");

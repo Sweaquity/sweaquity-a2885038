@@ -19,7 +19,7 @@ interface SkillRequirement {
 }
 
 interface Task {
-  id: string;
+  task_id: string;  // Changed from id to task_id
   title: string;
   description: string;
   status: string;
@@ -103,7 +103,7 @@ export const ProjectEditDialog = ({
 
       const updatedProject = {
         ...currentProject,
-        tasks: currentProject.tasks.filter(task => task.id !== taskId)
+        tasks: currentProject.tasks.filter(task => task.task_id !== taskId)  // Changed from id to task_id
       };
       
       setCurrentProject(updatedProject);
@@ -123,7 +123,7 @@ export const ProjectEditDialog = ({
       const updatedProject = {
         ...currentProject,
         tasks: currentProject.tasks.map(task => 
-          task.id === updatedTask.id ? updatedTask : task
+          task.task_id === updatedTask.task_id ? updatedTask : task  // Changed from id to task_id
         )
       };
       
