@@ -383,6 +383,60 @@ export type Database = {
         }
         Relationships: []
       }
+      documents: {
+        Row: {
+          description: string | null
+          file_path: string
+          file_type: string
+          id: string
+          name: string
+          project_id: string | null
+          size_in_kb: number
+          ticket_id: string | null
+          uploaded_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          description?: string | null
+          file_path: string
+          file_type: string
+          id?: string
+          name: string
+          project_id?: string | null
+          size_in_kb: number
+          ticket_id?: string | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          description?: string | null
+          file_path?: string
+          file_type?: string
+          id?: string
+          name?: string
+          project_id?: string | null
+          size_in_kb?: number
+          ticket_id?: string | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "documents_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gdpr_deleted_data: {
         Row: {
           data: Json
@@ -903,6 +957,233 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "recruiter_organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_comments: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          ticket_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          ticket_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          ticket_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_comments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_documents: {
+        Row: {
+          description: string | null
+          file_path: string
+          file_type: string
+          id: string
+          name: string
+          project_id: string | null
+          size_in_kb: number
+          ticket_id: string | null
+          uploaded_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          description?: string | null
+          file_path: string
+          file_type: string
+          id?: string
+          name: string
+          project_id?: string | null
+          size_in_kb: number
+          ticket_id?: string | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          description?: string | null
+          file_path?: string
+          file_type?: string
+          id?: string
+          name?: string
+          project_id?: string | null
+          size_in_kb?: number
+          ticket_id?: string | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "ticket_documents_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_time_entries: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          end_time: string | null
+          hours_logged: number | null
+          id: string
+          start_time: string
+          ticket_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          end_time?: string | null
+          hours_logged?: number | null
+          id?: string
+          start_time: string
+          ticket_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          end_time?: string | null
+          hours_logged?: number | null
+          id?: string
+          start_time?: string
+          ticket_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_time_entries_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tickets: {
+        Row: {
+          assigned_to: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          equity_points: number | null
+          estimated_hours: number | null
+          health: string
+          id: string
+          priority: string
+          project_id: string | null
+          reporter: string | null
+          status: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          equity_points?: number | null
+          estimated_hours?: number | null
+          health: string
+          id?: string
+          priority: string
+          project_id?: string | null
+          reporter?: string | null
+          status: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          equity_points?: number | null
+          estimated_hours?: number | null
+          health?: string
+          id?: string
+          priority?: string
+          project_id?: string | null
+          reporter?: string | null
+          status?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      time_entries: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          end_time: string | null
+          hours_logged: number | null
+          id: string
+          start_time: string
+          ticket_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          end_time?: string | null
+          hours_logged?: number | null
+          id?: string
+          start_time: string
+          ticket_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          end_time?: string | null
+          hours_logged?: number | null
+          id?: string
+          start_time?: string
+          ticket_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_entries_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
             referencedColumns: ["id"]
           },
         ]

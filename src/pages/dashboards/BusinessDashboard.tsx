@@ -19,7 +19,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AccountSettingsCard } from "@/components/shared/AccountSettingsCard";
-import { BusinessProfileEditor } from "@/components/business/BusinessProfileEditor";
+import { BusinessProfileEditor } from "@/components/business/profile/BusinessProfileEditor";
+import { TestingTab } from "@/components/business/testing/TestingTab";
 
 interface SubTask {
   id: string;
@@ -264,7 +265,7 @@ const BusinessDashboard = () => {
         </div>
 
         <Tabs defaultValue="account" className="space-y-6" onValueChange={handleTabChange}>
-          <TabsList className="w-full grid grid-cols-5 md:flex md:w-auto">
+          <TabsList className="w-full grid grid-cols-6 md:flex md:w-auto">
             <TabsTrigger value="account" className="px-3 py-1.5">
               Account
             </TabsTrigger>
@@ -289,6 +290,9 @@ const BusinessDashboard = () => {
                   {newApplicationsCount}
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="testing" className="px-3 py-1.5">
+              Testing
             </TabsTrigger>
           </TabsList>
 
@@ -357,6 +361,10 @@ const BusinessDashboard = () => {
 
           <TabsContent value="applications">
             <ProjectApplicationsSection />
+          </TabsContent>
+
+          <TabsContent value="testing">
+            <TestingTab />
           </TabsContent>
         </Tabs>
       </div>
