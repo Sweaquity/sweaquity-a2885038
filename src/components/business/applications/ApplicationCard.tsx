@@ -72,7 +72,7 @@ export const ApplicationCard = ({
       <Collapsible open={isExpanded} onOpenChange={toggleExpand}>
         <CardHeader className="p-4 pb-3">
           {/* Two-row grid layout */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-2 gap-y-2">
             {/* First row */}
             <div className="flex items-center space-x-2">
               <span className="font-semibold">Applicant:</span>
