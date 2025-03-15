@@ -175,6 +175,18 @@ export const ActiveApplicationsTable = ({
                       </Button>
                     </>
                   )}
+                  {/* Show accept button for accepted status if not already accepted by business */}
+                  {app.status === 'accepted' && !app.accepted_business && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => openAcceptJobDialog(app)}
+                      disabled={isAcceptingJobLoading}
+                      title="Accept Contract"
+                    >
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    </Button>
+                  )}
                 </div>
               </TableCell>
             </TableRow>

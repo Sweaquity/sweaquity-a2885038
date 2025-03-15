@@ -19,35 +19,58 @@ export const useAcceptedJobsCore = (onUpdate?: () => void) => {
   const createAcceptedJobEntry = async (application: JobApplication) => {
     try {
       console.log("Creating accepted job entry for application:", application.job_app_id);
+      setIsLoading(true);
       
       // Check if an entry already exists
-      const { data: existingEntry } = await supabase
+      const { data: existingEntry, error: checkError } = await supabase
         .from('accepted_jobs')
         .select('id')
         .eq('job_app_id', application.job_app_id)
         .maybeSingle();
         
+      if (checkError) {
+        console.error("Error checking existing entry:", checkError);
+        throw checkError;
+      }
+      
       if (existingEntry) {
-        console.log("Entry already exists for this application");
+        console.log("Entry already exists for this application", existingEntry);
         return;
       }
       
-      const { error } = await supabase
+      // Get equity allocation from business_roles
+      let equityAllocation = 0;
+      if (application.business_roles?.equity_allocation) {
+        equityAllocation = application.business_roles.equity_allocation;
+      }
+      
+      console.log("Creating new accepted job with equity allocation:", equityAllocation);
+      
+      const { data, error } = await supabase
         .from('accepted_jobs')
         .insert({
           job_app_id: application.job_app_id,
-          equity_agreed: application.business_roles?.equity_allocation || 0
-        });
+          equity_agreed: equityAllocation
+        })
+        .select()
+        .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error inserting accepted job:", error);
+        throw error;
+      }
       
+      console.log("Successfully created accepted job:", data);
       toast.success("Agreement created successfully");
-      console.log("Agreement created successfully for application:", application.job_app_id);
       
       if (onUpdate) onUpdate();
+      return data;
     } catch (error) {
       console.error("Error creating agreement:", error);
       toast.error("Failed to create agreement");
+      return null;
+    } finally {
+      setIsLoading(false);
     }
   };
   
@@ -57,7 +80,7 @@ export const useAcceptedJobsCore = (onUpdate?: () => void) => {
         .from('accepted_jobs')
         .select('*')
         .eq('job_app_id', jobAppId)
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
       

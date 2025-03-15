@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { JobApplication } from "@/types/jobSeeker";
@@ -270,7 +269,6 @@ export const EquityProjectItem = ({
         isLoading={isAcceptingJob}
       />
       
-      {/* Time Logging Dialog */}
       <Dialog open={isTimeLogDialogOpen} onOpenChange={setIsTimeLogDialogOpen}>
         <DialogContent>
           <DialogHeader>

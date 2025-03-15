@@ -18,6 +18,18 @@ export const useJobAcceptance = (onUpdate?: () => void) => {
     setIsLoading(true);
     
     try {
+      console.log("Job seeker accepting application:", application.job_app_id);
+      
+      // First check current state of the application
+      const { data: currentApp, error: fetchError } = await supabase
+        .from('job_applications')
+        .select('*')
+        .eq('job_app_id', application.job_app_id)
+        .single();
+        
+      if (fetchError) throw fetchError;
+      
+      // Update the application to set accepted_jobseeker to true
       const { error } = await supabase
         .from('job_applications')
         .update({ 
@@ -29,9 +41,15 @@ export const useJobAcceptance = (onUpdate?: () => void) => {
       
       toast.success("You've accepted this job");
       
-      if (application.accepted_business) {
+      // Check if the business has already accepted
+      if (currentApp.accepted_business) {
+        console.log("Business has already accepted, creating accepted job entry");
         // Both parties have accepted, create accepted_jobs entry
-        await createAcceptedJobEntry(application);
+        await createAcceptedJobEntry({
+          ...application,
+          accepted_business: true,
+          accepted_jobseeker: true
+        });
       }
       
       if (onUpdate) onUpdate();
@@ -52,6 +70,18 @@ export const useJobAcceptance = (onUpdate?: () => void) => {
     setIsLoading(true);
     
     try {
+      console.log("Business accepting application:", application.job_app_id);
+      
+      // First check current state of the application
+      const { data: currentApp, error: fetchError } = await supabase
+        .from('job_applications')
+        .select('*')
+        .eq('job_app_id', application.job_app_id)
+        .single();
+        
+      if (fetchError) throw fetchError;
+      
+      // Update the application to set accepted_business to true
       const { error } = await supabase
         .from('job_applications')
         .update({ 
@@ -63,9 +93,15 @@ export const useJobAcceptance = (onUpdate?: () => void) => {
       
       toast.success("You've accepted this candidate");
       
-      if (application.accepted_jobseeker) {
+      // Check if the job seeker has already accepted
+      if (currentApp.accepted_jobseeker) {
+        console.log("Job seeker has already accepted, creating accepted job entry");
         // Both parties have accepted, create accepted_jobs entry
-        await createAcceptedJobEntry(application);
+        await createAcceptedJobEntry({
+          ...application,
+          accepted_business: true,
+          accepted_jobseeker: true
+        });
       }
       
       if (onUpdate) onUpdate();
