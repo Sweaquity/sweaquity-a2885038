@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { JobApplication } from "@/types/jobSeeker";
@@ -106,39 +107,20 @@ export const EquityProjectItem = ({
     try {
       console.log("Logging time for task_id:", application.task_id);
       
-      // First check if the task exists in tickets table
-      const { data: ticketExists, error: ticketError } = await supabase
-        .from('tickets')
-        .select('id')
-        .eq('id', application.task_id)
-        .maybeSingle();
+      // Check if the task exists in project_sub_tasks first
+      const { data: taskData, error: taskError } = await supabase
+        .from('project_sub_tasks')
+        .select('task_id')
+        .eq('task_id', application.task_id)
+        .single();
       
-      // If the ticket doesn't exist in tickets table, create it
-      if (!ticketExists) {
-        // Get task details first from project_sub_tasks
-        const { data: taskData } = await supabase
-          .from('project_sub_tasks')
-          .select('*')
-          .eq('task_id', application.task_id)
-          .maybeSingle();
-          
-        // Create a new ticket entry to satisfy foreign key constraint
-        await supabase
-          .from('tickets')
-          .insert({
-            id: application.task_id,
-            title: taskData?.title || application.business_roles?.title || "Task from application",
-            description: taskData?.description || application.business_roles?.description || "",
-            status: 'open',
-            priority: 'medium',
-            health: 'green',
-            project_id: application.project_id || null
-          });
-          
-        console.log("Created new ticket for time tracking with ID:", application.task_id);
+      if (taskError) {
+        console.error("Error checking task existence:", taskError);
+        toast.error("Could not find the associated task");
+        return;
       }
       
-      // Now create a time entry
+      // Create a time entry
       const { data, error } = await supabase
         .from('time_entries')
         .insert({

@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { JobApplication, SkillRequirement } from "@/types/jobSeeker";
@@ -7,18 +7,10 @@ import { JobApplication, SkillRequirement } from "@/types/jobSeeker";
 export const useApplications = () => {
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const isLoadingRef = useRef(false); // Prevent multiple simultaneous loads
 
   const loadApplications = async (userId: string) => {
-    // Prevent multiple simultaneous loadApplications calls
-    if (isLoadingRef.current) {
-      console.log("Already loading applications, skipping redundant call");
-      return;
-    }
-    
     try {
       setIsLoading(true);
-      isLoadingRef.current = true;
       
       // Fetch all job applications for this user
       const { data, error } = await supabase
@@ -48,8 +40,6 @@ export const useApplications = () => {
       
       if (error) throw error;
       
-      console.log("Fetched applications:", data.length);
-      
       // Process the data to make it fit our JobApplication type
       const processedApplications = data.map((app: any) => {
         // Get company name from businesses relation
@@ -77,7 +67,7 @@ export const useApplications = () => {
           ...app,
           id: app.job_app_id, // Ensuring id property is set
           status: app.status || "", // Ensure status is never undefined
-          business_roles: app.business_roles ? {
+          business_roles: {
             title: app.business_roles?.title || "Unknown Role",
             description: app.business_roles?.description || "",
             timeframe: app.business_roles?.timeframe || "",
@@ -87,18 +77,16 @@ export const useApplications = () => {
             task_status: app.business_roles?.task_status,
             company_name: companyName,
             project_title: app.business_roles?.project?.title
-          } : undefined
+          }
         };
       });
       
       // Set all applications without filtering
       setApplications(processedApplications);
     } catch (error) {
-      console.error("Error loading applications:", error);
       toast.error("Failed to load applications");
     } finally {
       setIsLoading(false);
-      isLoadingRef.current = false;
     }
   };
 

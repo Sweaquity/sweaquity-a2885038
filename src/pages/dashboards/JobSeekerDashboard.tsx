@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useJobSeekerDashboard } from "@/hooks/useJobSeekerDashboard";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -24,7 +24,6 @@ const JobSeekerDashboard = () => {
   const [activeTab, setActiveTab] = useState<string>(tabFromUrl || "dashboard");
   const [localLoading, setLocalLoading] = useState(true);
   const [forceRefresh, setForceRefresh] = useState(0);
-  const [hasInitialized, setHasInitialized] = useState(false);
 
   const {
     isLoading,
@@ -48,9 +47,9 @@ const JobSeekerDashboard = () => {
     navigate(`/seeker/dashboard?tab=${value}`, { replace: true });
   };
 
-  const handleApplicationUpdated = useCallback(() => {
+  const handleApplicationUpdated = () => {
     setForceRefresh(prev => prev + 1);
-  }, []);
+  };
 
   const handleProfileSwitch = () => {
     navigate('/business/dashboard');
@@ -67,25 +66,21 @@ const JobSeekerDashboard = () => {
   }, [tabFromUrl]);
 
   useEffect(() => {
-    if (!isLoading && !hasInitialized) {
-      setHasInitialized(true);
+    if (!isLoading) {
       const timer = setTimeout(() => {
         setLocalLoading(false);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isLoading, hasInitialized]);
+  }, [isLoading]);
 
   useEffect(() => {
-    if (!hasInitialized) {
-      const timer = setTimeout(() => {
-        setLocalLoading(false);
-        setHasInitialized(true);
-      }, 3000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [hasInitialized]);
+    const timer = setTimeout(() => {
+      setLocalLoading(false);
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   if (localLoading) {
     return <DashboardSkeleton />;

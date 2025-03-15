@@ -75,28 +75,8 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
         
       if (!subTaskError && subTaskData) {
         console.log('Ticket found in project_sub_tasks table');
-        
-        // Create an entry in tickets table to satisfy foreign key constraint
-        const { data: newTicket, error: createError } = await supabase
-          .from('tickets')
-          .insert({
-            id: ticketId,
-            title: "Task from project",
-            description: "",
-            status: 'open',
-            priority: 'medium',
-            health: 'green'
-          })
-          .select()
-          .single();
-          
-        if (!createError) {
-          console.log('Created ticket entry to track time for project task:', newTicket);
-          setTicketExists(true);
-          return;
-        } else {
-          console.error('Error creating ticket entry:', createError);
-        }
+        setTicketExists(true);
+        return;
       }
       
       console.warn('Ticket not found in either tickets or project_sub_tasks tables');
@@ -173,50 +153,19 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
   };
 
   const startTracking = async () => {
-    if (!ticketId) {
+    if (!ticketId || !userId) {
       toast.error("Please select a ticket first");
       return;
     }
     
     if (!ticketExists) {
-      // Try to create ticket entry first
-      try {
-        const { data, error } = await supabase
-          .from('tickets')
-          .insert({
-            id: ticketId,
-            title: "Task from project",
-            description: "",
-            status: 'open',
-            priority: 'medium',
-            health: 'green'
-          })
-          .select()
-          .single();
-          
-        if (error) {
-          console.error('Error creating ticket entry:', error);
-          toast.error("Cannot track time for this task");
-          return;
-        }
-        
-        setTicketExists(true);
-      } catch (err) {
-        toast.error("This ticket doesn't exist and couldn't be created");
-        return;
-      }
+      toast.error("This ticket doesn't exist in the database");
+      return;
     }
     
     const now = new Date();
     setStartTime(now);
     setIsTracking(true);
-    
-    // Get current user ID if not provided
-    let currentUserId = userId;
-    if (!currentUserId) {
-      const { data } = await supabase.auth.getUser();
-      currentUserId = data.user?.id || "";
-    }
     
     // Create a new time entry
     try {
@@ -224,7 +173,7 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
         .from('time_entries')
         .insert({
           ticket_id: ticketId,
-          user_id: currentUserId,
+          user_id: userId,
           start_time: now.toISOString(),
           description: description
         })
@@ -308,6 +257,8 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
   if (loading) return <div className="flex justify-center p-8">Loading time tracking data...</div>;
 
   if (!ticketId) return <div className="text-center p-8">Please select a ticket to track time.</div>;
+  
+  if (!ticketExists) return <div className="text-center p-8 text-red-500">This ticket doesn't exist in the database.</div>;
 
   return (
     <div className="space-y-6">

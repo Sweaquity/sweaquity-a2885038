@@ -1,378 +1,326 @@
 
-import { Application, Project, EquityProject, SubTask } from '@/types/business';
-import { Skill } from '@/types/jobSeeker';
+import { Skill, SkillRequirement, EquityProject, SubTask } from "@/types/jobSeeker";
 
 /**
- * Calculate a skill match score between user skills and required skills
+ * Calculate the percentage of skills that match between a user's skills and a task's requirements
+ * with added weight for proficiency levels
  */
 export const calculateSkillMatch = (
-  userSkills: Skill[],
-  requiredSkills: string[]
+  userSkills: (Skill | string)[], 
+  taskSkills: (SkillRequirement | string)[]
 ): number => {
-  if (!userSkills || !requiredSkills || requiredSkills.length === 0) {
-    return 0;
-  }
-
-  // Clean and normalize skills for comparison
-  const normalizedUserSkills = userSkills.map(skill => {
+  if (!Array.isArray(taskSkills) || taskSkills.length === 0) return 0;
+  if (!Array.isArray(userSkills) || userSkills.length === 0) return 0;
+  
+  // Extract task skill names and required levels to lowercase for comparison
+  const taskSkillsData = taskSkills.map(skill => {
     if (typeof skill === 'string') {
-      return skill.toLowerCase();
-    } else if (skill && typeof skill === 'object' && skill.skill) {
-      return skill.skill.toLowerCase();
-    }
-    return '';
-  }).filter(Boolean);
-
-  const normalizedRequiredSkills = requiredSkills.map(skill => 
-    typeof skill === 'string' ? skill.toLowerCase() : ''
-  ).filter(Boolean);
-
-  // Count matches
-  const matches = normalizedUserSkills.filter(skill => 
-    normalizedRequiredSkills.includes(skill)
-  ).length;
-
-  // Calculate score as percentage of required skills matched
-  return (matches / normalizedRequiredSkills.length) * 100;
-};
-
-/**
- * Map a numeric match score to a qualitative level
- */
-export const getMatchLevel = (score: number): 'high' | 'medium' | 'low' | 'none' => {
-  if (score >= 80) return 'high';
-  if (score >= 50) return 'medium';
-  if (score > 0) return 'low';
-  return 'none';
-};
-
-/**
- * Get the color class for a match level
- */
-export const getMatchColor = (level: 'high' | 'medium' | 'low' | 'none'): string => {
-  const colors = {
-    high: 'text-green-600',
-    medium: 'text-yellow-600',
-    low: 'text-orange-500',
-    none: 'text-gray-400'
-  };
-  return colors[level] || colors.none;
-};
-
-/**
- * Get the background color class for a match level
- */
-export const getMatchBgColor = (level: 'high' | 'medium' | 'low' | 'none'): string => {
-  const colors = {
-    high: 'bg-green-100',
-    medium: 'bg-yellow-100',
-    low: 'bg-orange-100',
-    none: 'bg-gray-100'
-  };
-  return colors[level] || colors.none;
-};
-
-/**
- * Format a match score for display
- */
-export const formatMatchScore = (score: number): string => {
-  return `${Math.round(score)}%`;
-};
-
-/**
- * Enhanced version of calculateSkillMatch that also returns matched skills
- */
-export const analyzeSkillMatch = (
-  userSkills: Skill[],
-  requiredSkills: string[]
-): { 
-  score: number; 
-  matchLevel: 'high' | 'medium' | 'low' | 'none';
-  matchedSkills: string[];
-  missingSkills: string[];
-} => {
-  if (!userSkills || !requiredSkills || requiredSkills.length === 0) {
-    return { 
-      score: 0, 
-      matchLevel: 'none', 
-      matchedSkills: [],
-      missingSkills: requiredSkills || []
-    };
-  }
-
-  // Clean and normalize skills for comparison
-  const normalizedUserSkills = userSkills.map(skill => {
-    if (typeof skill === 'string') {
-      return skill.toLowerCase();
-    } else if (skill && typeof skill === 'object' && skill.skill) {
-      return skill.skill.toLowerCase();
-    }
-    return '';
-  }).filter(Boolean);
-
-  const normalizedRequiredSkills = requiredSkills.map(skill => 
-    typeof skill === 'string' ? skill.toLowerCase() : ''
-  ).filter(Boolean);
-
-  // Identify matched and missing skills
-  const matchedSkills: string[] = [];
-  const missingSkills: string[] = [];
-
-  normalizedRequiredSkills.forEach(requiredSkill => {
-    if (normalizedUserSkills.includes(requiredSkill)) {
-      matchedSkills.push(requiredSkill);
-    } else {
-      missingSkills.push(requiredSkill);
-    }
-  });
-
-  // Calculate score
-  const score = normalizedRequiredSkills.length > 0 
-    ? (matchedSkills.length / normalizedRequiredSkills.length) * 100 
-    : 0;
-
-  return {
-    score,
-    matchLevel: getMatchLevel(score),
-    matchedSkills,
-    missingSkills
-  };
-};
-
-/**
- * Match a job seeker's skills against equity projects
- */
-export const matchJobSeekerToProjects = (
-  projects: EquityProject[],
-  userSkills: Skill[]
-): EquityProject[] => {
-  if (!projects || !userSkills) return [];
-
-  return projects.map(project => {
-    // Check for project-level skill requirements
-    let requiredSkills = project.skills_required || [];
-    
-    // Add role-specific requirements if available
-    if (project.business_roles && project.business_roles.length > 0) {
-      project.business_roles.forEach(role => {
-        if (role.skill_requirements && role.skill_requirements.length > 0) {
-          requiredSkills = [...requiredSkills, ...role.skill_requirements.map(s => 
-            typeof s === 'string' ? s : s.skill
-          )];
-        }
-      });
-      
-      // Remove duplicates
-      requiredSkills = [...new Set(requiredSkills)];
-    }
-
-    // Calculate match at project level
-    const projectMatch = analyzeSkillMatch(userSkills, requiredSkills);
-    
-    // Process sub-tasks if available
-    const subTasks = project.tasks ? project.tasks.map(task => {
-      // Calculate match at task level based on skill_requirements
-      const taskRequirements = task.skill_requirements?.map(s => 
-        typeof s === 'string' ? s : s.skill
-      ) || [];
-      
-      const taskMatch = analyzeSkillMatch(userSkills, taskRequirements);
-      
-      return {
-        ...task,
-        skill_match: taskMatch.score,
-        match_level: taskMatch.matchLevel,
-        matched_skills: taskMatch.matchedSkills,
-        missing_skills: taskMatch.missingSkills
+      return { skill: String(skill).toLowerCase(), level: 'Intermediate' };
+    } else if (skill && typeof skill === 'object' && 'skill' in skill) {
+      return { 
+        skill: String(skill.skill).toLowerCase(), 
+        level: skill.level || 'Intermediate' 
       };
-    }) : [];
-
-    // Return enhanced project with match data
-    return {
-      ...project,
-      skill_match: projectMatch.score,
-      match_level: projectMatch.matchLevel,
-      matched_skills: projectMatch.matchedSkills,
-      missing_skills: projectMatch.missingSkills,
-      tasks: subTasks
-    };
-  });
-};
-
-/**
- * Find tasks within a project that match a job seeker's skills
- */
-export const findMatchingTasks = (
-  project: EquityProject,
-  userSkills: Skill[],
-  threshold: number = 0
-): SubTask[] => {
-  if (!project || !project.tasks || !userSkills) return [];
-
-  return project.tasks.filter(task => {
-    const taskRequirements = task.skill_requirements?.map(s => 
-      typeof s === 'string' ? s : s.skill
-    ) || [];
-    
-    if (taskRequirements.length === 0) return true;
-    
-    const match = calculateSkillMatch(userSkills, taskRequirements);
-    return match >= threshold;
-  });
-};
-
-/**
- * Check if a specific skill is matched by a user
- */
-export const userHasSkill = (
-  userSkills: Skill[],
-  skillToCheck: string
-): boolean => {
-  if (!userSkills || !skillToCheck) return false;
-
-  const normalizedSkillToCheck = skillToCheck.toLowerCase();
-  
-  return userSkills.some(skill => {
-    if (typeof skill === 'string') {
-      return skill.toLowerCase() === normalizedSkillToCheck;
-    } else if (skill && typeof skill === 'object' && skill.skill) {
-      return skill.skill.toLowerCase() === normalizedSkillToCheck;
     }
-    return false;
+    return null; 
+  }).filter(Boolean); // Filter out nulls
+  
+  // Extract user skill names and proficiency levels to lowercase for comparison
+  const userSkillsData = userSkills.map(s => {
+    if (typeof s === 'string') {
+      return { skill: String(s).toLowerCase(), level: 'Intermediate' };
+    } else if (s && typeof s === 'object' && 'skill' in s) {
+      return { 
+        skill: String(s.skill).toLowerCase(), 
+        level: s.level || 'Intermediate' 
+      };
+    }
+    return null;
+  }).filter(Boolean); // Remove nulls
+  
+  // Create a user skills map for faster lookup
+  const userSkillsMap = new Map();
+  userSkillsData.forEach(userSkill => {
+    userSkillsMap.set(userSkill.skill, userSkill.level);
   });
+  
+  // Weight factors for different skill levels
+  const skillLevelWeights = {
+    'Beginner': 0.5,
+    'Intermediate': 1.0,
+    'Expert': 1.5
+  };
+  
+  let totalWeight = 0;
+  let matchWeight = 0;
+  
+  // Calculate weighted match
+  taskSkillsData.forEach(taskSkill => {
+    // Each task skill starts with a base weight of 1
+    const baseWeight = 1;
+    totalWeight += baseWeight;
+    
+    // Check if the user has this skill
+    if (userSkillsMap.has(taskSkill.skill)) {
+      const userLevel = userSkillsMap.get(taskSkill.skill);
+      const taskLevel = taskSkill.level;
+      
+      // Base match weight
+      let skillMatchWeight = baseWeight * 0.6;  // 60% just for having the skill
+      
+      // Additional weight based on proficiency level match
+      const userLevelWeight = skillLevelWeights[userLevel] || 1.0;
+      const taskLevelWeight = skillLevelWeights[taskLevel] || 1.0;
+      
+      // Perfect level match or exceed required level
+      if (userLevelWeight >= taskLevelWeight) {
+        skillMatchWeight = baseWeight;  // 100% match
+      } 
+      // Close but not quite there
+      else if (userLevelWeight > 0.5) {
+        skillMatchWeight = baseWeight * 0.8;  // 80% match
+      }
+      
+      matchWeight += skillMatchWeight;
+    }
+    // Check for related skills to give partial credit
+    else {
+      const relatedSkills = getRelatedSkills(taskSkill.skill);
+      const userHasRelatedSkill = relatedSkills.some(related => userSkillsMap.has(related));
+      
+      if (userHasRelatedSkill) {
+        matchWeight += baseWeight * 0.3;  // 30% for having a related skill
+      }
+    }
+  });
+  
+  // Calculate percentage (0-100)
+  const matchPercentage = Math.round((matchWeight / totalWeight) * 100);
+  
+  return Math.min(100, matchPercentage);  // Cap at 100%
 };
 
-// Utility functions for OpportunitiesTab.tsx
-export const filterProjects = (projects: EquityProject[], filterType: string, userSkills: Skill[]): EquityProject[] => {
-  if (filterType === 'all') return projects;
+/**
+ * Get related skills for a given skill
+ */
+export const getRelatedSkills = (skillName: string): string[] => {
+  const skillRelationships = {
+    // Programming Languages
+    'javascript': ['typescript', 'react', 'node.js', 'vue', 'angular'],
+    'typescript': ['javascript', 'react', 'node.js', 'angular'],
+    'python': ['django', 'flask', 'pandas', 'numpy', 'tensorflow'],
+    'java': ['spring', 'hibernate', 'kotlin', 'android'],
+    'c#': ['.net', 'asp.net', 'xamarin', 'unity'],
+    'php': ['laravel', 'symfony', 'wordpress'],
+    
+    // Web Technologies
+    'react': ['javascript', 'typescript', 'redux', 'next.js', 'gatsby'],
+    'angular': ['typescript', 'javascript', 'rxjs'],
+    'vue': ['javascript', 'nuxt.js'],
+    'node.js': ['javascript', 'express', 'typescript'],
+    
+    // Databases
+    'sql': ['postgresql', 'mysql', 'oracle', 'sql server'],
+    'postgresql': ['sql', 'database design'],
+    'mongodb': ['nosql', 'mongoose'],
+    
+    // Cloud & DevOps
+    'aws': ['cloud', 'ec2', 's3', 'lambda', 'dynamodb'],
+    'docker': ['kubernetes', 'containerization', 'devops'],
+    'kubernetes': ['docker', 'orchestration', 'devops'],
+    
+    // Mobile
+    'android': ['java', 'kotlin', 'mobile development'],
+    'ios': ['swift', 'objective-c', 'mobile development'],
+    'react native': ['react', 'javascript', 'mobile development'],
+    'flutter': ['dart', 'mobile development'],
+    
+    // General
+    'agile': ['scrum', 'kanban', 'project management'],
+    'ui design': ['ux design', 'figma', 'sketch'],
+    'machine learning': ['data science', 'python', 'tensorflow', 'pytorch']
+  };
   
-  if (filterType === 'match') {
-    return projects.filter(project => 
-      project.skill_match && project.skill_match >= 50
-    );
-  }
-  
-  if (filterType === 'recent') {
-    return [...projects].sort((a, b) => {
-      const dateA = a.start_date ? new Date(a.start_date).getTime() : 0;
-      const dateB = b.start_date ? new Date(b.start_date).getTime() : 0;
-      return dateB - dateA;
+  return skillRelationships[skillName.toLowerCase()] || [];
+};
+
+/**
+ * Filter projects based on search term and selected skill
+ */
+export const filterProjects = (
+  projects: EquityProject[],
+  searchTerm: string,
+  filterSkill: string | null
+): EquityProject[] => {
+  let filtered = [...projects];
+
+  if (searchTerm) {
+    const term = searchTerm.toLowerCase();
+    filtered = filtered.filter(project => {
+      // Check against project title
+      if (project.title && project.title.toLowerCase().includes(term)) return true;
+      
+      // Check against business name
+      if (project.business_roles?.company_name && 
+          String(project.business_roles.company_name).toLowerCase().includes(term)) return true;
+      
+      // Check against project description
+      const projectDescription = project.business_roles?.description;
+      if (projectDescription && String(projectDescription).toLowerCase().includes(term)) return true;
+      
+      // Check against task title
+      const taskTitle = project.business_roles?.title;
+      if (taskTitle && String(taskTitle).toLowerCase().includes(term)) return true;
+      
+      return false;
     });
   }
-  
-  return projects;
+
+  if (filterSkill) {
+    const filterSkillLower = filterSkill.toLowerCase();
+    filtered = filtered.filter(project => {
+      const requirements = project.sub_tasks?.flatMap(task => task.skill_requirements || []) || [];
+      
+      // Direct skill match
+      const directMatch = requirements.some(req => {
+        if (typeof req === 'string') {
+          return String(req).toLowerCase() === filterSkillLower;
+        }
+        if (req && typeof req === 'object' && 'skill' in req && typeof req.skill === 'string') {
+          return String(req.skill).toLowerCase() === filterSkillLower;
+        }
+        return false;
+      });
+      
+      // Related skill match
+      if (!directMatch) {
+        const relatedSkills = getRelatedSkills(filterSkillLower);
+        return requirements.some(req => {
+          const reqSkill = typeof req === 'string' ? 
+            String(req).toLowerCase() : 
+            (req && typeof req === 'object' && 'skill' in req ? String(req.skill).toLowerCase() : '');
+          
+          return relatedSkills.includes(reqSkill);
+        });
+      }
+      
+      return directMatch;
+    });
+  }
+
+  return filtered;
 };
 
+/**
+ * Extract all unique skills from a list of projects
+ */
 export const extractUniqueSkills = (projects: EquityProject[]): string[] => {
   const skillsSet = new Set<string>();
   
   projects.forEach(project => {
-    if (project.skills_required) {
-      project.skills_required.forEach(skill => {
-        skillsSet.add(typeof skill === 'string' ? skill : skill.toString());
-      });
-    }
-    
-    if (project.tasks) {
-      project.tasks.forEach(task => {
-        if (task.skill_requirements) {
-          task.skill_requirements.forEach(skill => {
-            skillsSet.add(typeof skill === 'string' ? skill : skill.skill);
-          });
+    project.sub_tasks?.forEach(task => {
+      const requirements = task.skill_requirements || [];
+      requirements.forEach(req => {
+        if (typeof req === 'string') {
+          skillsSet.add(String(req).toLowerCase());
+        } else if (req && typeof req === 'object' && 'skill' in req && typeof req.skill === 'string') {
+          skillsSet.add(String(req.skill).toLowerCase());
         }
       });
-    }
+    });
   });
   
   return Array.from(skillsSet);
 };
 
-export const convertUserSkillsToStrings = (skills: Skill[]): string[] => {
-  return skills.map(skill => typeof skill === 'string' ? skill : skill.skill);
+/**
+ * Check if a skill is in the user's skill list
+ */
+export const isUserSkill = (
+  skillName: string, 
+  userSkillStrings: string[]
+): boolean => {
+  const skillNameLower = String(skillName).toLowerCase();
+  
+  // Direct match
+  if (userSkillStrings.includes(skillNameLower)) {
+    return true;
+  }
+  
+  // Check related skills
+  const relatedSkills = getRelatedSkills(skillNameLower);
+  return relatedSkills.some(related => userSkillStrings.includes(related));
 };
 
 /**
- * Filter projects based on a skill match threshold
+ * Convert user skills to lowercase strings for comparison
  */
-export const filterProjectsBySkillMatch = (
-  projects: EquityProject[],
-  userSkills: Skill[],
-  threshold: number = 50
-): EquityProject[] => {
-  const matchedProjects = matchJobSeekerToProjects(projects, userSkills);
-  return matchedProjects.filter(project => (project.skill_match || 0) >= threshold);
-};
-
-/**
- * Filter projects that have tasks matching a user's skills
- */
-export const filterProjectsWithMatchingTasks = (
-  projects: EquityProject[],
-  userSkills: Skill[],
-  threshold: number = 50
-): EquityProject[] => {
-  return projects.filter(project => {
-    const matchingTasks = findMatchingTasks(project, userSkills, threshold);
-    return matchingTasks.length > 0;
-  });
-};
-
-// Additional utility functions
-
-/**
- * Group skills by category (e.g., technical, soft skills, etc.)
- */
-export const categorizeSkills = (skills: Skill[]): Record<string, Skill[]> => {
-  const categories: Record<string, Skill[]> = {
-    technical: [],
-    softSkills: [],
-    languages: [],
-    other: []
-  };
-
-  if (!skills) return categories;
-
-  const technicalKeywords = ['programming', 'development', 'software', 'web', 'database', 'cloud', 'devops', 'engineering'];
-  const softSkillKeywords = ['communication', 'leadership', 'teamwork', 'management', 'organization', 'problem solving'];
-  const languageKeywords = ['english', 'spanish', 'french', 'german', 'chinese', 'japanese', 'italian', 'portuguese', 'russian'];
-
-  skills.forEach(skill => {
-    const skillName = typeof skill === 'string' ? skill.toLowerCase() : skill.skill.toLowerCase();
-    
-    if (technicalKeywords.some(keyword => skillName.includes(keyword))) {
-      categories.technical.push(skill);
-    } else if (softSkillKeywords.some(keyword => skillName.includes(keyword))) {
-      categories.softSkills.push(skill);
-    } else if (languageKeywords.some(keyword => skillName.includes(keyword))) {
-      categories.languages.push(skill);
-    } else {
-      categories.other.push(skill);
+export const convertUserSkillsToStrings = (userSkills: Skill[]): string[] => {
+  return userSkills.map(skill => {
+    if (typeof skill === 'string') {
+      return String(skill).toLowerCase();
     }
+    if (skill && typeof skill === 'object' && 'skill' in skill && typeof skill.skill === 'string') {
+      return String(skill.skill).toLowerCase();
+    }
+    return '';
+  }).filter(Boolean);
+};
+
+/**
+ * Generate skill suggestions based on user's existing skills
+ */
+export const suggestRelatedSkills = (userSkills: Skill[]): Skill[] => {
+  const userSkillStrings = convertUserSkillsToStrings(userSkills);
+  const suggestions = new Set<string>();
+  
+  // For each user skill, get related skills
+  userSkillStrings.forEach(skill => {
+    const relatedSkills = getRelatedSkills(skill);
+    relatedSkills.forEach(related => {
+      // Only add if user doesn't already have this skill
+      if (!userSkillStrings.includes(related)) {
+        suggestions.add(related);
+      }
+    });
   });
-
-  return categories;
+  
+  // Convert to Skill objects
+  return Array.from(suggestions).map(skill => ({
+    skill,
+    level: 'Beginner'  // Default suggestion level
+  }));
 };
 
 /**
- * Get the skill level text
+ * Rank projects based on skill match and other factors
  */
-export const getSkillLevelText = (skill: Skill): string => {
-  if (typeof skill === 'string') return 'Intermediate';
+export const rankProjectsByRelevance = (
+  projects: EquityProject[],
+  userSkills: Skill[]
+): EquityProject[] => {
+  const userSkillStrings = convertUserSkillsToStrings(userSkills);
   
-  const levelMap: Record<string, string> = {
-    'beginner': 'Beginner',
-    'intermediate': 'Intermediate',
-    'advanced': 'Advanced',
-    'expert': 'Expert'
-  };
+  // Calculate match score for each project
+  const scoredProjects = projects.map(project => {
+    // Get all skill requirements from sub-tasks
+    const allRequirements = project.sub_tasks?.flatMap(task => task.skill_requirements || []) || [];
+    
+    // Calculate skill match
+    const skillMatchScore = calculateSkillMatch(userSkills, allRequirements);
+    
+    // Additional factors could be considered here:
+    // - Project recency
+    // - Equity amount
+    // - Project status
+    // - Time commitment
+    
+    return {
+      ...project,
+      skillMatch: skillMatchScore
+    };
+  });
   
-  return levelMap[skill.level?.toLowerCase() || ''] || 'Intermediate';
-};
-
-/**
- * Get a skill's display name regardless of format
- */
-export const getSkillName = (skill: Skill): string => {
-  if (typeof skill === 'string') return skill;
-  return skill.skill || '';
+  // Sort by match score descending
+  return scoredProjects.sort((a, b) => (b.skillMatch || 0) - (a.skillMatch || 0));
 };

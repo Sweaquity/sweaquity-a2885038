@@ -1,128 +1,124 @@
 
-import { useState } from 'react';
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { DialogHeader, DialogFooter, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Upload } from "lucide-react";
-import { Application } from '@/types/business';
+import { JobApplication } from "@/types/jobSeeker";
+import { Application } from "@/types/business";
 
 interface ContractUploadDialogProps {
-  application: Application;
-  onClose: () => void;
-  onContractUploaded: (contractUrl: string) => void;
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  application: JobApplication | Application | null;
+  onUpload: (jobAppId: string, file: File, notes: string) => Promise<string | null>;
+  isUploading: boolean;
 }
 
-export function ContractUploadDialog({
+export const ContractUploadDialog = ({
+  isOpen,
+  onOpenChange,
   application,
-  onClose,
-  onContractUploaded
-}: ContractUploadDialogProps) {
+  onUpload,
+  isUploading
+}: ContractUploadDialogProps) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-
+  const [notes, setNotes] = useState("");
+  
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
     }
   };
-
-  const handleUpload = async () => {
-    if (!selectedFile) {
-      toast.error("Please select a file to upload");
-      return;
-    }
-
-    try {
-      setIsUploading(true);
-
-      // Upload file to storage
-      const fileName = `contracts/${application.job_app_id}_${Date.now()}_${selectedFile.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('job_contracts')
-        .upload(fileName, selectedFile);
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL for the file
-      const { data: { publicUrl } } = supabase.storage
-        .from('job_contracts')
-        .getPublicUrl(fileName);
-
-      // Update job application with contract URL
-      const { error: updateError } = await supabase
-        .from('job_applications')
-        .update({
-          contract_url: publicUrl,
-          contract_status: 'pending_signature'
-        })
-        .eq('id', application.job_app_id);
-
-      if (updateError) throw updateError;
-
-      // Notify the parent component
-      onContractUploaded(publicUrl);
-      toast.success("Contract uploaded successfully");
-      onClose();
-    } catch (error) {
-      console.error("Error uploading contract:", error);
-      toast.error("Failed to upload contract");
-    } finally {
-      setIsUploading(false);
-    }
+  
+  const handleSubmit = async () => {
+    if (!application || !selectedFile) return;
+    
+    const jobAppId = application.job_app_id || "";
+    await onUpload(jobAppId, selectedFile, notes);
+    
+    // Reset form
+    setSelectedFile(null);
+    setNotes("");
+    onOpenChange(false);
   };
-
+  
+  if (!application) return null;
+  
   return (
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>Upload Contract</DialogTitle>
-        <DialogDescription>
-          Upload a contract file for this application. Supported formats: PDF, DOCX.
-        </DialogDescription>
-      </DialogHeader>
-
-      <div className="py-4">
-        <div className="grid w-full items-center gap-2">
-          <label htmlFor="contract-file" className="text-sm font-medium">
-            Select Contract File
-          </label>
-          <Input
-            id="contract-file"
-            type="file"
-            accept=".pdf,.docx,.doc"
-            onChange={handleFileChange}
-          />
-          {selectedFile && (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Upload Contract Document</DialogTitle>
+          <DialogDescription>
+            Upload the finalized contract document for this equity agreement.
+            Both parties will be able to view and download this document.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="py-4 space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="contract-file">Contract Document (PDF)</Label>
+            <Input
+              id="contract-file"
+              type="file"
+              accept=".pdf,.doc,.docx"
+              onChange={handleFileChange}
+              className="cursor-pointer"
+            />
             <p className="text-sm text-muted-foreground">
-              Selected file: {selectedFile.name} ({Math.round(selectedFile.size / 1024)} KB)
+              Accepted formats: PDF, DOC, DOCX
             </p>
-          )}
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="contract-notes">Notes (Optional)</Label>
+            <Textarea
+              id="contract-notes"
+              placeholder="Add any notes or instructions about the contract..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="min-h-[100px]"
+            />
+          </div>
         </div>
-      </div>
-
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button
-          type="button"
-          onClick={handleUpload}
-          disabled={!selectedFile || isUploading}
-        >
-          {isUploading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Uploading...
-            </>
-          ) : (
-            <>
-              <Upload className="mr-2 h-4 w-4" />
-              Upload Contract
-            </>
-          )}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
+        
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!selectedFile || isUploading}
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Contract
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
-}
+};

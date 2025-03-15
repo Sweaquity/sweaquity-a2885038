@@ -1,211 +1,369 @@
-
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { ProjectsSection } from "@/components/business/ProjectsSection";
-import { BusinessProfileEditor } from "@/components/business/profile/BusinessProfileEditor";
-import { TestingTab } from "@/components/business/testing/TestingTab";
-import { ProjectApplicationsSection } from "@/components/business/ProjectApplicationsSection";
-import { ActiveRolesTable } from "@/components/business/roles/ActiveRolesTable";
-import { RequestAccessButton } from "@/components/business/users/RequestAccessButton";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { ProjectsSection } from "@/components/business/ProjectsSection";
+import { BusinessProfileCompletion } from "@/components/business/BusinessProfileCompletion";
+import { UserCircle2, Menu, Bell, Pencil } from "lucide-react";
+import { ActiveRolesTable } from "@/components/business/roles/ActiveRolesTable";
+import { ProjectApplicationsSection } from "@/components/business/ProjectApplicationsSection";
+import { RequestAccessButton } from "@/components/business/users/RequestAccessButton";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { AccountSettingsCard } from "@/components/shared/AccountSettingsCard";
+import { BusinessProfileEditor } from "@/components/business/profile/BusinessProfileEditor";
+import { TestingTab } from "@/components/business/testing/TestingTab";
+import { BusinessProvider } from "@/components/business/BusinessContext";
 
-interface BusinessDashboardProps {}
-
-interface BusinessProfileEditorProps {
-  businessProfile: any;
-  onUpdate: (updatedProfile: any) => void;
-  isCompleting: boolean;
+interface SubTask {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  equity_allocation: number;
+  timeframe: string;
+  skill_requirements: Array<{ skill: string; level: string }>;
 }
 
-interface ProjectsSectionProps {
-  businessId: string;
-  onProjectSelect: (projectId: string) => void;
-}
-
-interface ActiveRolesTableProps {
-  businessId: string;
+interface Project {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  tasks: SubTask[];
+  equity_allocation: number;
+  equity_allocated: number;
+  skills_required: string[];
 }
 
 const BusinessDashboard = () => {
-  const [searchParams] = useSearchParams();
-  const tabFromUrl = searchParams.get('tab');
-  const projectIdFromUrl = searchParams.get('projectId');
   const navigate = useNavigate();
-  
-  const [activeTab, setActiveTab] = useState(tabFromUrl || "projects");
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
-  const [isParent, setIsParent] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(projectIdFromUrl);
+  const [isLoading, setIsLoading] = useState(true);
+  const [businessData, setBusinessData] = useState<any>(null);
+  const [hasJobSeekerProfile, setHasJobSeekerProfile] = useState(true);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [newApplicationsCount, setNewApplicationsCount] = useState(0);
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   useEffect(() => {
-    checkUser();
-  }, []);
-
-  useEffect(() => {
-    const newTabFromUrl = searchParams.get('tab');
-    if (newTabFromUrl && ['projects', 'applications', 'profile', 'roles', 'testing'].includes(newTabFromUrl)) {
-      setActiveTab(newTabFromUrl);
-    }
-    
-    const newProjectIdFromUrl = searchParams.get('projectId');
-    if (newProjectIdFromUrl) {
-      setActiveProjectId(newProjectIdFromUrl);
-    }
-  }, [searchParams]);
-
-  const checkUser = async () => {
-    try {
-      setIsLoading(true);
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/login/business');
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/auth/business');
         return;
       }
 
-      setUser(user);
+      try {
+        const { data: businessData, error: businessError } = await supabase
+          .from('businesses')
+          .select('*')
+          .eq('businesses_id', session.user.id)
+          .maybeSingle();
 
-      // Get business profile
-      const { data: business, error: profileError } = await supabase
-        .from('businesses')
-        .select('*')
-        .eq('businesses_id', user.id)
-        .single();
+        if (businessError) throw businessError;
+        
+        console.log("Business profile check:", businessData);
+        setBusinessData(businessData);
 
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error fetching business profile:', profileError);
-        toast.error('Failed to load business profile');
+        const { data: projectsData, error: projectsError } = await supabase
+          .from('business_projects')
+          .select('*')
+          .eq('business_id', session.user.id);
+
+        if (projectsError) throw projectsError;
+        
+        if (projectsData && projectsData.length > 0) {
+          const projectIds = projectsData.map((p: any) => p.project_id);
+
+          const { data: tasksData, error: tasksError } = await supabase
+            .from('project_sub_tasks')
+            .select('*')
+            .in('project_id', projectIds);
+
+          if (tasksError) throw tasksError;
+
+          const projectsWithTasks = projectsData.map((project: any) => ({
+            ...project,
+            tasks: tasksData.filter((task: any) => task.project_id === project.project_id) || []
+          }));
+
+          setProjects(projectsWithTasks);
+        }
+
+        const oneDayAgo = new Date();
+        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+        
+        const { data: recentApps, error: recentAppsError } = await supabase
+          .from('job_applications')
+          .select('applied_at, task_discourse, status')
+          .gte('applied_at', oneDayAgo.toISOString())
+          .eq('status', 'pending');
+          
+        if (recentAppsError) throw recentAppsError;
+        
+        setNewApplicationsCount(recentApps?.length || 0);
+        
+        const { data: recentMsgs, error: recentMsgsError } = await supabase
+          .from('job_applications')
+          .select('task_discourse, updated_at')
+          .gte('updated_at', oneDayAgo.toISOString())
+          .neq('task_discourse', null);
+          
+        if (recentMsgsError) throw recentMsgsError;
+        
+        const newMsgs = recentMsgs?.filter(msg => {
+          if (!msg.task_discourse) return false;
+          
+          const lastMessageMatch = msg.task_discourse.match(/\[([^\]]+)\]/);
+          if (lastMessageMatch) {
+            try {
+              const msgDate = new Date(lastMessageMatch[1]);
+              return msgDate > oneDayAgo;
+            } catch (e) {
+              return false;
+            }
+          }
+          return false;
+        });
+        
+        setNewMessagesCount(newMsgs?.length || 0);
+
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        console.log("Job seeker profile check:", profileData);
+        setHasJobSeekerProfile(!!profileData);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast.error("Failed to load dashboard data");
+      } finally {
+        setIsLoading(false);
       }
+    };
 
-      if (business) {
-        setProfile(business);
-        setIsParent(business.is_parent !== false);
-      }
-    } catch (error) {
-      console.error('Error checking user:', error);
-      toast.error('Failed to load user information');
-    } finally {
-      setIsLoading(false);
+    checkAuth();
+    
+    const channel = supabase
+      .channel('dashboard-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'job_applications'
+        },
+        () => {
+          setNewApplicationsCount(prev => prev + 1);
+          toast.info("New application received!");
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'job_applications',
+          filter: 'task_discourse=neq.null'
+        },
+        () => {
+          setNewMessagesCount(prev => prev + 1);
+          toast.info("New message received!");
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [navigate]);
+
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error("Failed to sign out");
+    } else {
+      navigate('/auth/business');
     }
+  };
+
+  const handleProfileSwitch = () => {
+    console.log("Switching to job seeker profile");
+    navigate('/seeker/dashboard');
   };
 
   const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    navigate(`/business/dashboard?tab=${value}${activeProjectId ? `&projectId=${activeProjectId}` : ''}`, { replace: true });
-  };
-
-  const handleProjectSelect = (projectId: string) => {
-    setActiveProjectId(projectId);
-    if (activeTab !== 'applications') {
-      setActiveTab('applications');
-      navigate(`/business/dashboard?tab=applications&projectId=${projectId}`, { replace: true });
-    } else {
-      navigate(`/business/dashboard?tab=applications&projectId=${projectId}`, { replace: true });
+    if (value === 'applications') {
+      setNewApplicationsCount(0);
+    }
+    if (value === 'roles') {
+      setNewMessagesCount(0);
     }
   };
 
-  const handleProfileUpdate = (updatedProfile: any) => {
-    setProfile(updatedProfile);
-  };
-
-  const profileIsComplete = profile && 
-    profile.company_name && 
-    profile.company_size && 
-    profile.industry &&
-    profile.contact_email;
-
-  // Show loading state
   if (isLoading) {
-    return (
-      <div className="container mx-auto p-4">
-        <div className="flex justify-center items-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      </div>
-    );
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
-  // Show profile completion if profile is incomplete
-  if (!profileIsComplete) {
-    return (
-      <div className="container mx-auto p-4">
-        <BusinessProfileEditor 
-          businessProfile={profile} 
-          onUpdate={handleProfileUpdate} 
-          isCompleting={true}
-        />
-      </div>
-    );
+  if (isEditingProfile) {
+    return <BusinessProfileCompletion />;
+  }
+
+  if (!businessData?.company_name || !businessData?.industry || !businessData?.terms_accepted) {
+    return <BusinessProfileCompletion />;
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">{profile?.company_name || 'Business Dashboard'}</h1>
-          <p className="text-muted-foreground">{profile?.industry || 'Complete your profile'}</p>
-        </div>
-        <div className="flex space-x-2 mt-2 md:mt-0">
-          {isParent && <RequestAccessButton businessId={user?.id} />}
+    <BusinessProvider>
+      <div className="min-h-screen p-4 md:p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-xl md:text-2xl font-bold">
+              {businessData?.company_name} Dashboard
+            </h1>
+            <div className="flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-4">
+                {hasJobSeekerProfile && (
+                  <Button variant="outline" onClick={handleProfileSwitch}>
+                    <UserCircle2 className="mr-2 h-4 w-4" />
+                    Switch to Job Seeker
+                  </Button>
+                )}
+                <Button variant="outline" onClick={handleSignOut}>Sign Out</Button>
+              </div>
+              
+              <div className="flex md:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {hasJobSeekerProfile && (
+                      <DropdownMenuItem onClick={handleProfileSwitch}>
+                        <UserCircle2 className="mr-2 h-4 w-4" />
+                        Switch to Job Seeker
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </div>
+
+          <Tabs defaultValue="account" className="space-y-6" onValueChange={handleTabChange}>
+            <TabsList className="w-full grid grid-cols-6 md:flex md:w-auto">
+              <TabsTrigger value="account" className="px-3 py-1.5">Account</TabsTrigger>
+              <TabsTrigger value="projects" className="px-3 py-1.5">Projects</TabsTrigger>
+              <TabsTrigger value="users" className="px-3 py-1.5">Users</TabsTrigger>
+              <TabsTrigger value="roles" className="px-3 py-1.5 relative">
+                Active Roles
+                {newMessagesCount > 0 && (
+                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                    {newMessagesCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="applications" className="px-3 py-1.5 relative">
+                Applications
+                {newApplicationsCount > 0 && (
+                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                    {newApplicationsCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="testing" className="px-3 py-1.5">Testing</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="account">
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <h2 className="text-lg font-semibold">Business Details</h2>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="p-2">
+                      <BusinessProfileEditor
+                        businessProfile={businessData}
+                        onProfileUpdate={() => {
+                          toast.success("Profile updated successfully");
+                          window.location.reload();
+                        }}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <AccountSettingsCard userType="business" />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="projects">
+              <ProjectsSection />
+            </TabsContent>
+
+            <TabsContent value="users">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <h2 className="text-lg font-semibold">Business Users</h2>
+                  <RequestAccessButton />
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">No users have been added to your business yet. Use the "Request Access" button to invite team members.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="roles">
+              <Card>
+                <CardHeader>
+                  <h2 className="text-lg font-semibold">Active Project Roles</h2>
+                </CardHeader>
+                <CardContent>
+                  {projects.length === 0 ? (
+                    <p className="text-muted-foreground">No active projects found.</p>
+                  ) : (
+                    projects.map((project, index) => (
+                      <div key={project.id || index} className="mb-6">
+                        <h3 className="text-lg font-medium mb-2">{project.title}</h3>
+                        {project.tasks.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No tasks available for this project.</p>
+                        ) : (
+                          <ActiveRolesTable project={project} />
+                        )}
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="applications">
+              <ProjectApplicationsSection />
+            </TabsContent>
+
+            <TabsContent value="testing">
+              <TestingTab />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
-
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="projects">Projects</TabsTrigger>
-          <TabsTrigger value="applications">Applications</TabsTrigger>
-          <TabsTrigger value="roles">Roles</TabsTrigger>
-          <TabsTrigger value="testing">Testing</TabsTrigger>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="projects">
-          <ProjectsSection 
-            businessId={user?.id} 
-            onProjectSelect={handleProjectSelect}
-          />
-        </TabsContent>
-
-        <TabsContent value="applications">
-          {activeProjectId ? (
-            <ProjectApplicationsSection projectId={activeProjectId} />
-          ) : (
-            <div className="bg-muted/50 rounded-lg p-8 text-center">
-              <h3 className="text-lg font-medium mb-2">No Project Selected</h3>
-              <p className="text-muted-foreground mb-4">
-                Please select a project from the Projects tab to view applications.
-              </p>
-              <button
-                onClick={() => handleTabChange('projects')}
-                className="px-4 py-2 bg-primary text-white rounded-md"
-              >
-                Go to Projects
-              </button>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="roles">
-          <ActiveRolesTable businessId={user?.id} />
-        </TabsContent>
-
-        <TabsContent value="testing">
-          <TestingTab />
-        </TabsContent>
-
-        <TabsContent value="profile">
-          <BusinessProfileEditor 
-            businessProfile={profile} 
-            onUpdate={handleProfileUpdate}
-            isCompleting={false}
-          />
-        </TabsContent>
-      </Tabs>
-    </div>
+    </BusinessProvider>
   );
 };
 
