@@ -1,7 +1,6 @@
-
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { ProfileSection } from "../ProfileSection";
-import { ApplicationsTab } from "./applications"; // Updated import path
+import { ApplicationsTab } from "./tabs/ApplicationsTab";
 import { OpportunitiesTab } from "./OpportunitiesTab";
 import { EquityTab } from "./EquityTab";
 import { useState } from "react";
