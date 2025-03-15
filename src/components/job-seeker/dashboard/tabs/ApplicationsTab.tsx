@@ -1,18 +1,20 @@
+// File: src/components/job-seeker/dashboard/tabs/ApplicationsTab.tsx
 
-import { ApplicationsTab as ApplicationsTabComponent } from "@/components/job-seeker/dashboard/applications";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { JobApplication } from "@/types/jobSeeker";
+// Import the base ApplicationsTab component - note the change to path/naming
+import { ApplicationsTabBase } from "@/components/job-seeker/dashboard/applications/ApplicationsTabBase";
 
-interface ApplicationsTabComponentProps {
+interface ApplicationsTabProps {
   applications: JobApplication[];
   onApplicationUpdated: () => void;
 }
 
-export const ApplicationsTabComponent = ({
+export const ApplicationsTab = ({
   applications,
   onApplicationUpdated,
-}: ApplicationsTabComponentProps) => {
+}: ApplicationsTabProps) => {
   const [newMessagesCount, setNewMessagesCount] = useState(0);
 
   // Memoize the update function to prevent unnecessary re-renders
@@ -46,14 +48,12 @@ export const ApplicationsTabComponent = ({
   }, [handleApplicationUpdated]); // Only re-run if the update function changes
 
   return (
-    <div>
-      <h2>Job Applications</h2>
-      <p>New messages: {newMessagesCount}</p>
-      <ul>
-        {applications.map(application => (
-          <li key={application.id}>{application.jobTitle}</li>
-        ))}
-      </ul>
+    <div className="space-y-6">
+      <ApplicationsTabBase 
+        applications={applications} 
+        onApplicationUpdated={handleApplicationUpdated}
+        newMessagesCount={newMessagesCount}
+      />
     </div>
   );
 };
