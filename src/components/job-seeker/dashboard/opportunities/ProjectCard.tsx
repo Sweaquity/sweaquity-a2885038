@@ -5,25 +5,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ChevronDown, ChevronUp, ArrowUpRight, Briefcase } from "lucide-react";
-import { EquityProject, Skill, SubTask } from "@/types/jobSeeker";
+import { EquityProject, SubTask } from "@/types/jobSeeker";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-export interface ProjectCardProps {
+interface ProjectCardProps {
   project: EquityProject;
-  userSkillStrings?: string[];
-  userSkills?: Skill[];
-  onApply?: (project: EquityProject, task: SubTask) => void;
-  onSelectProject?: () => void;
-  onSelectTask?: () => void;
+  userSkillStrings: string[];
+  onApply: (project: EquityProject, task: SubTask) => void;
 }
 
 export const ProjectCard = ({
   project,
-  userSkillStrings = [],
-  userSkills = [],
-  onApply,
-  onSelectProject,
-  onSelectTask
+  userSkillStrings,
+  onApply
 }: ProjectCardProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();

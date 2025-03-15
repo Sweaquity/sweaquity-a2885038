@@ -1,17 +1,13 @@
 
 import { Badge } from '@/components/ui/badge';
 import { format, formatDistanceToNow } from 'date-fns';
-import { JobApplication } from '@/types/jobSeeker';
 
-export interface ProjectHeaderProps {
+interface ProjectHeaderProps {
   title?: string;
   companyName?: string;
   projectTitle?: string;
   status: string;
   appliedAt: string;
-  application?: JobApplication;
-  isExpanded?: boolean;
-  toggleExpand?: () => void;
 }
 
 export const ProjectHeader = ({ 
@@ -19,18 +15,8 @@ export const ProjectHeader = ({
   companyName, 
   projectTitle,
   status,
-  appliedAt,
-  application,
-  isExpanded,
-  toggleExpand
+  appliedAt
 }: ProjectHeaderProps) => {
-  // If application is provided, extract properties from it
-  const displayTitle = title || application?.business_roles?.title || "Untitled Role";
-  const displayCompanyName = companyName || application?.business_roles?.company_name || "Unknown company";
-  const displayProjectTitle = projectTitle || application?.business_roles?.project_title || "Untitled Project";
-  const displayStatus = status || application?.status || "pending";
-  const displayAppliedAt = appliedAt || application?.applied_at || "";
-  
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'negotiation':
@@ -54,22 +40,22 @@ export const ProjectHeader = ({
     <div className="flex flex-1 flex-col space-y-1.5">
       <div className="flex flex-wrap items-center gap-2 mb-1">
         <h3 className="text-md font-semibold line-clamp-1">
-          {displayTitle}
+          {title || "Untitled Role"}
         </h3>
-        <Badge className={getStatusColor(displayStatus)}>
-          {displayStatus}
+        <Badge className={getStatusColor(status)}>
+          {status}
         </Badge>
       </div>
       
       <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
         <span className="inline-flex items-center">
-          {displayCompanyName}
+          {companyName || "Unknown company"}
         </span>
         <span className="inline-flex items-center">
-          Project: {displayProjectTitle}
+          Project: {projectTitle || "Untitled Project"}
         </span>
         <span className="inline-flex items-center">
-          Applied: {formatDate(displayAppliedAt)}
+          Applied: {formatDate(appliedAt)}
         </span>
       </div>
     </div>

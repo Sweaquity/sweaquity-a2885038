@@ -7,7 +7,7 @@ import { useAcceptedJobsCore } from "./useAcceptedJobsCore";
 
 export const useJobAcceptance = (onUpdate?: () => void) => {
   const [isLoading, setIsLoading] = useState(false);
-  const { createAcceptedJobEntry, syncMissingAcceptedJobs } = useAcceptedJobsCore(onUpdate);
+  const { createAcceptedJobEntry } = useAcceptedJobsCore(onUpdate);
   
   const acceptJobAsJobSeeker = async (application: JobApplication) => {
     if (!application.job_app_id) {
@@ -33,8 +33,7 @@ export const useJobAcceptance = (onUpdate?: () => void) => {
       const { error } = await supabase
         .from('job_applications')
         .update({ 
-          accepted_jobseeker: true,
-          status: 'accepted'
+          accepted_jobseeker: true 
         })
         .eq('job_app_id', application.job_app_id);
       
@@ -86,8 +85,7 @@ export const useJobAcceptance = (onUpdate?: () => void) => {
       const { error } = await supabase
         .from('job_applications')
         .update({ 
-          accepted_business: true,
-          status: 'accepted'
+          accepted_business: true 
         })
         .eq('job_app_id', application.job_app_id);
       
@@ -115,24 +113,9 @@ export const useJobAcceptance = (onUpdate?: () => void) => {
     }
   };
   
-  // Utility function to fix any accepted applications missing an accepted_jobs entry
-  const syncAcceptedJobs = async () => {
-    try {
-      setIsLoading(true);
-      await syncMissingAcceptedJobs();
-      if (onUpdate) onUpdate();
-    } catch (error) {
-      console.error("Error syncing accepted jobs:", error);
-      toast.error("Failed to sync accepted jobs");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
   return {
     isLoading,
     acceptJobAsJobSeeker,
-    acceptJobAsBusiness,
-    syncAcceptedJobs
+    acceptJobAsBusiness
   };
 };

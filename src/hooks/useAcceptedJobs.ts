@@ -1,60 +1,23 @@
 
-import { useState } from "react";
-import { useAcceptedJobsCore } from "./jobs/useAcceptedJobsCore";
+import { useAcceptedJobsCore, AcceptedJob } from "./jobs/useAcceptedJobsCore";
 import { useJobAcceptance } from "./jobs/useJobAcceptance";
-import { JobApplication } from "@/types/jobSeeker";
-import { toast } from "sonner";
+import { useContractManagement } from "./jobs/useContractManagement";
+
+// Re-export the type with the correct syntax
+export type { AcceptedJob } from "./jobs/useAcceptedJobsCore";
 
 export const useAcceptedJobs = (onUpdate?: () => void) => {
-  const [isLoggingTime, setIsLoggingTime] = useState(false);
-  
-  const { 
-    acceptJobAsJobSeeker, 
-    acceptJobAsBusiness,
-    syncAcceptedJobs,
-    isLoading: isAccepting 
-  } = useJobAcceptance(onUpdate);
-  
-  const { 
-    logJobEffort,
-    isLoading: isCoreLoading
-  } = useAcceptedJobsCore(onUpdate);
-  
-  const logTime = async (jobAppId: string, hours: number, description: string) => {
-    try {
-      setIsLoggingTime(true);
-      
-      if (!hours || hours <= 0) {
-        toast.error("Please enter a valid number of hours");
-        return false;
-      }
-      
-      if (!description.trim()) {
-        toast.error("Please enter a description of the work done");
-        return false;
-      }
-      
-      const success = await logJobEffort(jobAppId, hours, description);
-      
-      if (success && onUpdate) {
-        onUpdate();
-      }
-      
-      return success;
-    } catch (error) {
-      console.error("Error logging time:", error);
-      toast.error("Failed to log time");
-      return false;
-    } finally {
-      setIsLoggingTime(false);
-    }
-  };
+  const { getAcceptedJob } = useAcceptedJobsCore(onUpdate);
+  const { isLoading, acceptJobAsJobSeeker, acceptJobAsBusiness } = useJobAcceptance(onUpdate);
+  const { isUploading, uploadContract, updateEquityTerms } = useContractManagement(onUpdate);
   
   return {
-    isLoading: isAccepting || isCoreLoading || isLoggingTime,
+    isLoading,
+    isUploading,
     acceptJobAsJobSeeker,
     acceptJobAsBusiness,
-    logTime,
-    syncAcceptedJobs
+    uploadContract,
+    updateEquityTerms,
+    getAcceptedJob
   };
 };

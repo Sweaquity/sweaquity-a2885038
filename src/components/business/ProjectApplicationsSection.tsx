@@ -370,13 +370,6 @@ export const ProjectApplicationsSection = () => {
     }
   };
 
-  const convertToBoolean = (value: string | boolean | null | undefined): boolean => {
-    if (typeof value === 'boolean') return value;
-    if (value === 'true') return true;
-    if (value === 'false') return false;
-    return false;
-  };
-
   if (isLoading) {
     return (
       <Card>
@@ -518,13 +511,12 @@ export const ProjectApplicationsSection = () => {
                       cv_url: application.cv_url,
                       task_discourse: application.task_discourse,
                       id: application.job_app_id,
-                      accepted_jobseeker: convertToBoolean(application.accepted_jobseeker),
-                      accepted_business: convertToBoolean(application.accepted_business),
+                      accepted_jobseeker: application.accepted_jobseeker || false,
+                      accepted_business: application.accepted_business || false,
                       business_roles: {
                         title: application.business_roles?.title || "",
                         description: application.business_roles?.description || "",
                         project_title: application.business_roles?.project?.title,
-                        company_name: application.business_roles?.company_name,
                         timeframe: application.business_roles?.timeframe,
                         skill_requirements: application.business_roles?.skill_requirements?.map(req => {
                           if (typeof req === 'string') {

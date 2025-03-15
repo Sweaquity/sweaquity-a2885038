@@ -32,34 +32,6 @@ export function BetaTestingButton() {
         return;
       }
       
-      // First check if the beta testing ticket exists
-      const { data: ticketData, error: ticketError } = await supabase
-        .from('tickets')
-        .select('id')
-        .eq('id', 'f5495aa5-9864-4e82-ac1e-45e734f3ffdb')
-        .single();
-      
-      // If ticket doesn't exist, create it first
-      if (ticketError) {
-        const { data: newTicket, error: createError } = await supabase
-          .from('tickets')
-          .insert({
-            id: 'f5495aa5-9864-4e82-ac1e-45e734f3ffdb',
-            title: 'Beta Testing Feedback',
-            description: 'Repository for beta testing feedback from users',
-            status: 'open',
-            priority: 'medium',
-            health: 'good',
-            reporter: user.id
-          })
-          .select();
-          
-        if (createError) {
-          console.error("Error creating beta testing ticket:", createError);
-          throw createError;
-        }
-      }
-      
       // Create a comment on the predefined beta testing task
       const { error: commentError } = await supabase
         .from('ticket_comments')

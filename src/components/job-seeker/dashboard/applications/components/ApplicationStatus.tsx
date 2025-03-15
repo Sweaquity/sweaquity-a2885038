@@ -10,27 +10,27 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-export interface ApplicationStatusProps {
+interface ApplicationStatusProps {
+  isExpanded: boolean;
+  toggleExpand: () => void;
   status: string;
-  isExpanded?: boolean;
-  toggleExpand?: () => void;
-  onStatusChange?: (status: string) => void;
-  isUpdatingStatus?: boolean | string;
-  showAcceptButton?: boolean;
-  onAcceptClick?: () => void;
-  isAcceptingJob?: boolean;
+  onStatusChange: (status: string) => void;
+  isUpdatingStatus: boolean;
+  showAcceptButton: boolean;
+  onAcceptClick: () => void;
+  isAcceptingJob: boolean;
   compact?: boolean;
 }
 
 export const ApplicationStatus = ({
+  isExpanded,
+  toggleExpand,
   status,
-  isExpanded = false,
-  toggleExpand = () => {},
-  onStatusChange = () => {},
-  isUpdatingStatus = false,
-  showAcceptButton = false,
-  onAcceptClick = () => {},
-  isAcceptingJob = false,
+  onStatusChange,
+  isUpdatingStatus,
+  showAcceptButton,
+  onAcceptClick,
+  isAcceptingJob,
   compact = false
 }: ApplicationStatusProps) => {
   return (
@@ -43,7 +43,7 @@ export const ApplicationStatus = ({
             <Select 
               value={String(status) || "pending"} 
               onValueChange={onStatusChange}
-              disabled={!!isUpdatingStatus}
+              disabled={isUpdatingStatus}
             >
               <SelectTrigger className="w-[140px] bg-white">
                 <SelectValue placeholder="Status" />
