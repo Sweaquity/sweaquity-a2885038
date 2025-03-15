@@ -35,7 +35,7 @@ export const useAcceptedJobsCore = (onUpdate?: () => void) => {
       
       if (existingEntry) {
         console.log("Entry already exists for this application", existingEntry);
-        return;
+        return existingEntry;
       }
       
       // Get equity allocation from business_roles
@@ -46,13 +46,15 @@ export const useAcceptedJobsCore = (onUpdate?: () => void) => {
       
       console.log("Creating new accepted job with equity allocation:", equityAllocation);
       
+      // Insert directly without filtering fields
       const { data, error } = await supabase
         .from('accepted_jobs')
         .insert({
           job_app_id: application.job_app_id,
-          equity_agreed: equityAllocation
+          equity_agreed: equityAllocation,
+          date_accepted: new Date().toISOString()
         })
-        .select()
+        .select('*')
         .single();
       
       if (error) {
