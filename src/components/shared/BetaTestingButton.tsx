@@ -1,7 +1,6 @@
-
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { AlarmClock, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,16 +31,24 @@ export function BetaTestingButton() {
         return;
       }
       
-      // Create a comment on the predefined beta testing task
-      const { error: commentError } = await supabase
-        .from('ticket_comments')
+      // First, create a new ticket
+      const { data: ticketData, error: ticketError } = await supabase
+        .from('tickets')
         .insert({
-          ticket_id: 'f5495aa5-9864-4e82-ac1e-45e734f3ffdb',
-          user_id: user.id,
-          content: `Beta Testing Error: ${errorLocation ? `Location: ${errorLocation}` : ''}\n\n${description}`
-        });
+          title: `Beta Testing Report: ${errorLocation || 'General Issue'}`,
+          description: description,
+          reporter: user.id,
+          priority: 'medium',
+          status: 'new',
+          health: 'needs-review'
+        })
+        .select('id')
+        .single();
       
-      if (commentError) throw commentError;
+      if (ticketError) {
+        console.error("Error creating ticket:", ticketError);
+        throw ticketError;
+      }
       
       toast.success("Thank you for reporting this issue! Your feedback helps us improve.");
       setDescription('');
