@@ -1,594 +1,456 @@
-import { useEffect, useState } from "react";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/lib/supabase";
+import { MoreVertical, Edit, Trash, Copy, Eye, User, UserX, Mail, MessageSquare, CheckCircle, Ban, AlertTriangle } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/lib/supabase";
 import { JobApplication } from "@/types/jobSeeker";
-import { useApplicationActions } from "@/components/job-seeker/dashboard/applications/hooks/useApplicationActions";
-import { RejectApplicationDialog } from "./applications/RejectApplicationDialog";
-import { AcceptJobDialog } from "./applications/AcceptJobDialog";
-import { useAcceptedJobs } from "@/hooks/useAcceptedJobs";
-import { PendingApplicationsTable } from "./applications/tables/PendingApplicationsTable";
-import { ActiveApplicationsTable } from "./applications/tables/ActiveApplicationsTable";
-import { WithdrawnApplicationsTable } from "./applications/tables/WithdrawnApplicationsTable";
-import { RejectedApplicationsTable } from "./applications/tables/RejectedApplicationsTable";
-import { Application, Project } from "@/types/business";
+import { format } from 'date-fns';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { CopyToClipboard } from 'react-copy-to-clipboard';
+import { useBusinessContext } from './BusinessContext';
+import { Link } from 'react-router-dom';
 
-export const ProjectApplicationsSection = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
-  const [expandedApplications, setExpandedApplications] = useState<Set<string>>(new Set());
-  const [newApplicationsCount, setNewApplicationsCount] = useState(0);
-  const [newMessagesCount, setNewMessagesCount] = useState(0);
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
-  const [acceptJobDialogOpen, setAcceptJobDialogOpen] = useState(false);
+interface ProjectApplicationsSectionProps {
+  projectId: string;
+}
+
+interface ApplicationStatusCounts {
+  negotiation: number;
+  accepted: number;
+  withdrawn: number;
+}
+
+const statusColors: { [key: string]: string } = {
+  negotiation: "bg-yellow-100 text-yellow-800",
+  accepted: "bg-green-100 text-green-800",
+  withdrawn: "bg-red-100 text-red-800",
+};
+
+const formatDate = (dateString: string) => {
+  try {
+    const date = new Date(dateString);
+    return format(date, 'MMM dd, yyyy HH:mm');
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return "Invalid Date";
+  }
+};
+
+export const ProjectApplicationsSection = ({ projectId }: ProjectApplicationsSectionProps) => {
+  const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
-  const { isUpdatingStatus, updateApplicationStatus } = useApplicationActions(() => {
-    loadProjectsWithApplications();
+  const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [applicationStatusCounts, setApplicationStatusCounts] = useState<ApplicationStatusCounts>({
+    negotiation: 0,
+    accepted: 0,
+    withdrawn: 0,
   });
-  const { acceptJobAsBusiness, isLoading: isAcceptingJobLoading } = useAcceptedJobs(() => {
-    window.location.reload();
-  });
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
+  const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
+  const [withdrawReason, setWithdrawReason] = useState('');
+  const [isAnonymizationInfoDialogOpen, setIsAnonymizationInfoDialogOpen] = useState(false);
+  const { business } = useBusinessContext();
 
   useEffect(() => {
-    loadProjectsWithApplications();
-    setupRealtimeListener();
-    return () => {
-      cleanupRealtimeListener();
-    };
-  }, []);
+    fetchApplications();
+  }, [projectId]);
 
-  const setupRealtimeListener = () => {
-    const channel = supabase
-      .channel('application-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'job_applications'
-        },
-        () => {
-          setNewApplicationsCount(prev => prev + 1);
-          toast.info("New application received!");
-          loadProjectsWithApplications();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'job_applications',
-          filter: 'task_discourse=neq.null'
-        },
-        () => {
-          setNewMessagesCount(prev => prev + 1);
-          toast.info("New message received!");
-          loadProjectsWithApplications();
-        }
-      )
-      .subscribe();
-
-    return channel;
-  };
-
-  const cleanupRealtimeListener = () => {
-    supabase.removeChannel(supabase.channel('application-updates'));
-  };
-
-  const loadProjectsWithApplications = async () => {
+  const fetchApplications = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setIsLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      console.log("Loading projects for business ID:", session.user.id);
-
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('business_projects')
-        .select('*')
-        .eq('business_id', session.user.id);
-
-      if (projectsError) {
-        console.error("Error fetching projects:", projectsError);
-        throw projectsError;
-      }
-
-      console.log("Projects fetched:", projectsData?.length || 0);
-
-      if (!projectsData || projectsData.length === 0) {
-        setIsLoading(false);
-        setProjects([]);
-        return;
-      }
-
-      const projectsWithApplications: Project[] = [];
-
-      for (const project of projectsData) {
-        const { data: tasksData, error: tasksError } = await supabase
-          .from('project_sub_tasks')
-          .select('task_id, skill_requirements, equity_allocation, timeframe')
-          .eq('project_id', project.project_id);
-
-        if (tasksError) {
-          console.error('Error fetching tasks for project:', project.project_id, tasksError);
-          continue;
-        }
-
-        console.log(`Fetched ${tasksData?.length || 0} tasks for project ${project.project_id}`);
-        
-        const taskIds = tasksData.map(task => task.task_id);
-
-        if (taskIds.length === 0) {
-          projectsWithApplications.push({
-            ...project,
-            applications: []
-          });
-          continue;
-        }
-
-        const taskSkillsMap = new Map<string, any>();
-        tasksData.forEach(task => {
-          taskSkillsMap.set(task.task_id, {
-            skill_requirements: task.skill_requirements || [],
-            equity_allocation: task.equity_allocation,
-            timeframe: task.timeframe
-          });
-        });
-
-        const { data: applicationsData, error: applicationsError } = await supabase
-          .from('job_applications')
-          .select('*')
-          .in('task_id', taskIds);
-
-        if (applicationsError) {
-          console.error('Error fetching applications:', applicationsError);
-          continue;
-        }
-
-        console.log(`Fetched ${applicationsData?.length || 0} applications for project ${project.project_id}`);
-
-        if (!applicationsData || applicationsData.length === 0) {
-          projectsWithApplications.push({
-            ...project,
-            applications: []
-          });
-          continue;
-        }
-
-        const applicationsWithProfiles = [];
-
-        for (const app of applicationsData) {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('first_name, last_name, title, location, employment_preference, skills')
-            .eq('id', app.user_id)
-            .maybeSingle();
-
-          if (profileError) {
-            console.error('Error fetching profile for user:', app.user_id, profileError);
-            continue;
-          }
-
-          const { data: taskData, error: taskError } = await supabase
-            .from('project_sub_tasks')
-            .select('title, description, skills_required, skill_requirements, equity_allocation, timeframe')
-            .eq('task_id', app.task_id)
-            .maybeSingle();
-
-          if (taskError) {
-            console.error('Error fetching task details:', taskError);
-            continue;
-          }
-
-          let userSkills = [];
-          if (profileData?.skills) {
-            try {
-              if (typeof profileData.skills === 'string') {
-                const parsedSkills = JSON.parse(profileData.skills);
-                if (Array.isArray(parsedSkills)) {
-                  userSkills = parsedSkills.map(s => 
-                    typeof s === 'string' ? { skill: s, level: "Intermediate" } : s
-                  );
-                }
-              } else if (Array.isArray(profileData.skills)) {
-                userSkills = profileData.skills.map(s => 
-                  typeof s === 'string' ? { skill: s, level: "Intermediate" } : s
-                );
-              }
-            } catch (e) {
-              console.error("Error parsing skills:", e);
-            }
-          }
-
-          const userSkillNames = userSkills.map(s => s.skill.toLowerCase());
-          const taskRequiredSkills = taskData?.skill_requirements || [];
-          
-          let matchedSkills = 0;
-          if (Array.isArray(taskRequiredSkills)) {
-            taskRequiredSkills.forEach(skillObj => {
-              const skillName = typeof skillObj === 'string' ? 
-                skillObj.toLowerCase() : 
-                (skillObj.skill ? skillObj.skill.toLowerCase() : '');
-                
-              if (skillName && userSkillNames.includes(skillName)) {
-                matchedSkills++;
-              }
-            });
-          }
-          
-          const skillMatch = taskRequiredSkills.length > 0 
-            ? Math.round((matchedSkills / taskRequiredSkills.length) * 100) 
-            : 0;
-
-          applicationsWithProfiles.push({
-            ...app,
-            profile: {
-              ...profileData,
-              skills: userSkills
-            },
-            business_roles: {
-              ...(taskData || {}),
-              project: {
-                title: project.title
-              }
-            },
-            skillMatch
-          });
-        }
-
-        projectsWithApplications.push({
-          ...project,
-          applications: applicationsWithProfiles
-        });
-      }
-
-      console.log("Final projects with applications:", projectsWithApplications.length);
-      setProjects(projectsWithApplications);
-      
-      const oneDayAgo = new Date();
-      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-      
-      let newApps = 0;
-      let newMsgs = 0;
-      
-      projectsWithApplications.forEach(project => {
-        project.applications.forEach(app => {
-          const appDate = new Date(app.applied_at);
-          if (appDate > oneDayAgo && app.status === 'pending') {
-            newApps++;
-          }
-          
-          if (app.task_discourse) {
-            const lastMessageMatch = app.task_discourse.match(/\[([^\]]+)\]/);
-            if (lastMessageMatch) {
-              try {
-                const msgDate = new Date(lastMessageMatch[1]);
-                if (msgDate > oneDayAgo) {
-                  newMsgs++;
-                }
-              } catch (e) {
-                console.error("Error parsing message date:", e);
-              }
-            }
-          }
-        });
-      });
-      
-      setNewApplicationsCount(newApps);
-      setNewMessagesCount(newMsgs);
-    } catch (error) {
-      console.error('Error loading projects with applications:', error);
-      toast.error("Failed to load applications data");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleStatusChange = async (applicationId: string, newStatus: string) => {
-    if (newStatus === 'rejected') {
-      setSelectedApplicationId(applicationId);
-      setRejectDialogOpen(true);
-      return;
-    }
-    
-    await updateApplicationStatus(applicationId, newStatus);
-  };
-
-  const handleRejectWithNote = async (applicationId: string, note: string) => {
-    try {
-      const { data: application, error: fetchError } = await supabase
+      const { data, error } = await supabase
         .from('job_applications')
-        .select('task_discourse')
-        .eq('job_app_id', applicationId)
-        .single();
-        
-      if (fetchError) throw fetchError;
-      
-      const timestamp = new Date().toLocaleString();
-      const rejectMessage = `[${timestamp}] Business: ${note} (Rejection reason)`;
-      
-      const updatedDiscourse = application.task_discourse 
-        ? `${application.task_discourse}\n\n${rejectMessage}`
-        : rejectMessage;
-        
-      const { error: updateError } = await supabase
+        .select(`
+          *,
+          business_roles (
+            title,
+            description,
+            company_name,
+            project_title,
+            task_status,
+            timeframe,
+            equity_allocation,
+            skill_requirements
+          )
+        `)
+        .eq('project_id', projectId);
+
+      if (error) throw error;
+
+      setApplications(data || []);
+      updateStatusCounts(data);
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch applications");
+      toast.error(err.message || "Failed to fetch applications");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateStatusCounts = (apps: JobApplication[]) => {
+    const counts: ApplicationStatusCounts = {
+      negotiation: 0,
+      accepted: 0,
+      withdrawn: 0,
+    };
+
+    apps.forEach(app => {
+      switch (app.status) {
+        case 'negotiation':
+          counts.negotiation++;
+          break;
+        case 'accepted':
+          counts.accepted++;
+          break;
+        case 'withdrawn':
+          counts.withdrawn++;
+          break;
+        default:
+          break;
+      }
+    });
+
+    setApplicationStatusCounts(counts);
+  };
+
+  const handleOpenNotesDialog = (application: JobApplication) => {
+    setSelectedApplication(application);
+    setNotes(application.notes || '');
+    setIsNotesDialogOpen(true);
+  };
+
+  const handleSaveNotes = async () => {
+    if (!selectedApplication) return;
+
+    try {
+      const { error } = await supabase
+        .from('job_applications')
+        .update({ notes: notes })
+        .eq('job_app_id', selectedApplication.job_app_id);
+
+      if (error) throw error;
+
+      toast.success("Notes saved successfully");
+      fetchApplications();
+    } catch (error: any) {
+      console.error("Error saving notes:", error);
+      toast.error("Failed to save notes");
+    } finally {
+      setIsNotesDialogOpen(false);
+    }
+  };
+
+  const handleStatusChange = (application: JobApplication, status: string) => {
+    setSelectedApplication(application);
+    setSelectedStatus(status);
+    setIsStatusDialogOpen(true);
+  };
+
+  const confirmStatusChange = async () => {
+    if (!selectedApplication) return;
+
+    try {
+      const { error } = await supabase
+        .from('job_applications')
+        .update({ status: selectedStatus })
+        .eq('job_app_id', selectedApplication.job_app_id);
+
+      if (error) throw error;
+
+      toast.success("Application status updated successfully");
+      fetchApplications();
+    } catch (error: any) {
+      console.error("Error updating status:", error);
+      toast.error("Failed to update application status");
+    } finally {
+      setIsStatusDialogOpen(false);
+    }
+  };
+
+  const handleWithdrawApplication = (application: JobApplication) => {
+    setSelectedApplication(application);
+    setIsWithdrawDialogOpen(true);
+  };
+
+  const confirmWithdrawApplication = async () => {
+    if (!selectedApplication) return;
+
+    try {
+      const { error } = await supabase
+        .from('job_applications')
+        .update({ status: 'withdrawn', notes: withdrawReason })
+        .eq('job_app_id', selectedApplication.job_app_id);
+
+      if (error) throw error;
+
+      toast.success("Application withdrawn successfully");
+      fetchApplications();
+    } catch (error: any) {
+      console.error("Error withdrawing application:", error);
+      toast.error("Failed to withdraw application");
+    } finally {
+      setIsWithdrawDialogOpen(false);
+    }
+  };
+
+  const toggleAnonymization = async (application: JobApplication) => {
+    const currentState = application.applicant_anonymized || false;
+    
+    try {
+      const { error } = await supabase
         .from('job_applications')
         .update({ 
-          status: 'rejected',
-          task_discourse: updatedDiscourse
+          applicant_anonymized: !currentState 
         })
-        .eq('job_app_id', applicationId);
-        
-      if (updateError) throw updateError;
+        .eq('job_app_id', application.job_app_id);
+
+      if (error) throw error;
       
-      toast.success("Application rejected with note");
-      loadProjectsWithApplications();
+      toast.success(`Applicant ${currentState ? 'de-anonymized' : 'anonymized'} successfully`);
+      fetchApplications();
     } catch (error) {
-      console.error('Error rejecting application:', error);
-      toast.error("Failed to reject application");
+      console.error('Error toggling anonymization:', error);
+      toast.error("Failed to update anonymization status");
     }
   };
 
-  const toggleProjectExpanded = (projectId: string) => {
-    setExpandedProjects(prev => {
-      const newExpanded = new Set(prev);
-      if (newExpanded.has(projectId)) {
-        newExpanded.delete(projectId);
-      } else {
-        newExpanded.add(projectId);
-      }
-      return newExpanded;
-    });
-  };
-
-  const toggleApplicationExpanded = (applicationId: string) => {
-    setExpandedApplications(prev => {
-      const newExpanded = new Set(prev);
-      if (newExpanded.has(applicationId)) {
-        newExpanded.delete(applicationId);
-      } else {
-        newExpanded.clear();
-        newExpanded.add(applicationId);
-      }
-      return newExpanded;
-    });
-  };
-
-  const handleAcceptJob = async (application: JobApplication) => {
-    try {
-      await acceptJobAsBusiness(application);
-      toast.success("Job accepted successfully");
-      loadProjectsWithApplications();
-    } catch (error) {
-      console.error("Error accepting job:", error);
-      toast.error("Failed to accept job");
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <h2 className="text-lg font-semibold">Project Applications</h2>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center p-4">
-            <p>Loading applications...</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const getPendingApplications = () => {
-    const pendingApps: Application[] = [];
-    projects.forEach(project => {
-      project.applications.forEach(app => {
-        if (['pending', 'in review'].includes(app.status.toLowerCase())) {
-          pendingApps.push(app);
-        }
-      });
-    });
-    return pendingApps;
-  };
-
-  const getActiveApplications = () => {
-    const activeApps: Application[] = [];
-    projects.forEach(project => {
-      project.applications.forEach(app => {
-        if (['negotiation', 'accepted'].includes(app.status.toLowerCase())) {
-          activeApps.push(app);
-        }
-      });
-    });
-    return activeApps;
-  };
-
-  const getWithdrawnApplications = () => {
-    const withdrawnApps: Application[] = [];
-    projects.forEach(project => {
-      project.applications.forEach(app => {
-        if (app.status.toLowerCase() === 'withdrawn') {
-          withdrawnApps.push(app);
-        }
-      });
-    });
-    return withdrawnApps;
-  };
-
-  const getRejectedApplications = () => {
-    const rejectedApps: Application[] = [];
-    projects.forEach(project => {
-      project.applications.forEach(app => {
-        if (app.status.toLowerCase() === 'rejected') {
-          rejectedApps.push(app);
-        }
-      });
-    });
-    return rejectedApps;
-  };
-
-  const pendingApplications = getPendingApplications();
-  const activeApplications = getActiveApplications();
-  const withdrawnApplications = getWithdrawnApplications();
-  const rejectedApplications = getRejectedApplications();
+  if (loading) return <div>Loading applications...</div>;
+  if (error) return <div>Error: {error}</div>;
 
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-lg font-semibold">Project Applications</h2>
+        <CardTitle>Project Applications</CardTitle>
       </CardHeader>
       <CardContent>
-        {projects.length === 0 ? (
-          <p className="text-muted-foreground text-center p-4">No projects found.</p>
-        ) : (
-          <Tabs defaultValue="pending" className="space-y-4">
-            <TabsList className="grid grid-cols-4 gap-2">
-              <TabsTrigger value="pending" className="relative">
-                Pending Applications ({pendingApplications.length})
-                {newApplicationsCount > 0 && (
-                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
-                    {newApplicationsCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="active" className="relative">
-                Active Projects ({activeApplications.length})
-                {newMessagesCount > 0 && (
-                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
-                    {newMessagesCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="withdrawn">
-                Withdrawn ({withdrawnApplications.length})
-              </TabsTrigger>
-              <TabsTrigger value="rejected">
-                Rejected ({rejectedApplications.length})
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="pending" className="space-y-4">
-              {pendingApplications.length === 0 ? (
-                <p className="text-muted-foreground text-center p-4">No pending applications found.</p>
-              ) : (
-                <PendingApplicationsTable 
-                  applications={pendingApplications}
-                  expandedApplications={expandedApplications}
-                  toggleApplicationExpanded={toggleApplicationExpanded}
-                  handleStatusChange={handleStatusChange}
-                  isUpdatingStatus={isUpdatingStatus}
-                />
-              )}
-            </TabsContent>
-
-            <TabsContent value="active" className="space-y-4">
-              {activeApplications.length === 0 ? (
-                <p className="text-muted-foreground text-center p-4">No active projects found.</p>
-              ) : (
-                <ActiveApplicationsTable 
-                  applications={activeApplications}
-                  expandedApplications={expandedApplications}
-                  toggleApplicationExpanded={toggleApplicationExpanded}
-                  handleStatusChange={handleStatusChange}
-                  isUpdatingStatus={isUpdatingStatus}
-                  onApplicationUpdate={() => loadProjectsWithApplications()}
-                  openAcceptJobDialog={async (application: Application) => {
-                    const jobApp: JobApplication = {
-                      job_app_id: application.job_app_id,
-                      role_id: application.role_id || "",
-                      task_id: application.task_id,
-                      project_id: application.project_id,
-                      status: application.status,
-                      applied_at: application.applied_at,
-                      notes: application.notes || "",
-                      message: application.message || "",
-                      cv_url: application.cv_url,
-                      task_discourse: application.task_discourse,
-                      id: application.job_app_id,
-                      accepted_jobseeker: application.accepted_jobseeker || false,
-                      accepted_business: application.accepted_business || false,
-                      business_roles: {
-                        title: application.business_roles?.title || "",
-                        description: application.business_roles?.description || "",
-                        project_title: application.business_roles?.project?.title,
-                        timeframe: application.business_roles?.timeframe,
-                        skill_requirements: application.business_roles?.skill_requirements?.map(req => {
-                          if (typeof req === 'string') {
-                            return req;
-                          }
-                          return {
-                            skill: req.skill,
-                            level: req.level as 'Beginner' | 'Intermediate' | 'Expert'
-                          };
-                        }) || [],
-                        equity_allocation: application.business_roles?.equity_allocation
-                      }
-                    };
-                    
-                    setSelectedApplication(jobApp);
-                    setAcceptJobDialogOpen(true);
-                    return Promise.resolve();
-                  }}
-                  handleAcceptJob={handleAcceptJob}
-                  isAcceptingJobLoading={isAcceptingJobLoading}
-                />
-              )}
-            </TabsContent>
-
-            <TabsContent value="withdrawn" className="space-y-4">
-              {withdrawnApplications.length === 0 ? (
-                <p className="text-muted-foreground text-center p-4">No withdrawn applications found.</p>
-              ) : (
-                <WithdrawnApplicationsTable 
-                  applications={withdrawnApplications}
-                  expandedApplications={expandedApplications}
-                  toggleApplicationExpanded={toggleApplicationExpanded}
-                  handleStatusChange={handleStatusChange}
-                  isUpdatingStatus={isUpdatingStatus}
-                />
-              )}
-            </TabsContent>
-
-            <TabsContent value="rejected" className="space-y-4">
-              {rejectedApplications.length === 0 ? (
-                <p className="text-muted-foreground text-center p-4">No rejected applications found.</p>
-              ) : (
-                <RejectedApplicationsTable 
-                  applications={rejectedApplications}
-                  expandedApplications={expandedApplications}
-                  toggleApplicationExpanded={toggleApplicationExpanded}
-                  handleStatusChange={handleStatusChange}
-                  isUpdatingStatus={isUpdatingStatus}
-                />
-              )}
-            </TabsContent>
-          </Tabs>
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <Badge className={statusColors.negotiation}>Negotiation: {applicationStatusCounts.negotiation}</Badge>
+          <Badge className={statusColors.accepted}>Accepted: {applicationStatusCounts.accepted}</Badge>
+          <Badge className={statusColors.withdrawn}>Withdrawn: {applicationStatusCounts.withdrawn}</Badge>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Applicant</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Applied At</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {applications.map((application) => (
+              <TableRow key={application.job_app_id}>
+                <TableCell>
+                  <div className="flex items-center space-x-2">
+                    <Avatar>
+                      {application.applicant_anonymized ? (
+                        <AvatarFallback><UserX className="h-4 w-4" /></AvatarFallback>
+                      ) : (
+                        <>
+                          <AvatarImage src={`https://avatar.vercel.sh/${application.applicant_email}.png`} alt={application.applicant_email} />
+                          <AvatarFallback>{application.applicant_email?.charAt(0).toUpperCase()}</AvatarFallback>
+                        </>
+                      )}
+                    </Avatar>
+                    <span>
+                      {application.applicant_anonymized ? "Anonymized" : application.applicant_email}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>{application.business_roles?.title}</TableCell>
+                <TableCell>{formatDate(application.applied_at)}</TableCell>
+                <TableCell>
+                  <Badge className={statusColors[application.status] || ""}>{application.status}</Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Open menu</span>
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => handleOpenNotesDialog(application)}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit Notes
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleStatusChange(application, 'negotiation')}>
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        Mark as Negotiation
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleStatusChange(application, 'accepted')}>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Mark as Accepted
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleWithdrawApplication(application)}>
+                        <Ban className="mr-2 h-4 w-4" />
+                        Withdraw Application
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => toggleAnonymization(application)}>
+                        {application.applicant_anonymized ? (
+                          <>
+                            <User className="mr-2 h-4 w-4" />
+                            De-anonymize Applicant
+                          </>
+                        ) : (
+                          <>
+                            <UserX className="mr-2 h-4 w-4" />
+                            Anonymize Applicant
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setIsAnonymizationInfoDialogOpen(true)}>
+                        <AlertTriangle className="mr-2 h-4 w-4" />
+                        Anonymization Info
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </CardContent>
-      
-      <RejectApplicationDialog
-        isOpen={rejectDialogOpen}
-        onOpenChange={setRejectDialogOpen}
-        onReject={(note) => {
-          if (selectedApplicationId) {
-            handleRejectWithNote(selectedApplicationId, note);
-          }
-        }}
-      />
-      
-      <AcceptJobDialog
-        isOpen={acceptJobDialogOpen}
-        onOpenChange={setAcceptJobDialogOpen}
-        application={selectedApplication}
-        onAccept={handleAcceptJob}
-        isLoading={isAcceptingJobLoading}
-      />
+
+      {/* Notes Dialog */}
+      <Dialog open={isNotesDialogOpen} onOpenChange={() => setIsNotesDialogOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Notes</DialogTitle>
+            <DialogDescription>
+              Add or edit notes for this application.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="notes" className="text-right">
+                Notes
+              </Label>
+              <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="col-span-3" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setIsNotesDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveNotes}>Save changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Status Change Confirmation Dialog */}
+      <Dialog open={isStatusDialogOpen} onOpenChange={() => setIsStatusDialogOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Status Change</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to change the application status to {selectedStatus}?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setIsStatusDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmStatusChange}>Confirm</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Withdraw Application Confirmation Dialog */}
+      <Dialog open={isWithdrawDialogOpen} onOpenChange={() => setIsWithdrawDialogOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Withdraw Application</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to withdraw this application? Please provide a reason.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="withdrawReason" className="text-right">
+                Reason
+              </Label>
+              <Textarea id="withdrawReason" value={withdrawReason} onChange={(e) => setWithdrawReason(e.target.value)} className="col-span-3" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setIsWithdrawDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmWithdrawApplication}>Confirm Withdraw</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Anonymization Info Dialog */}
+      <Dialog open={isAnonymizationInfoDialogOpen} onOpenChange={() => setIsAnonymizationInfoDialogOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Anonymization Information</DialogTitle>
+            <DialogDescription>
+              Anonymizing an applicant will hide their email address. This is useful for keeping the hiring process unbiased.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setIsAnonymizationInfoDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

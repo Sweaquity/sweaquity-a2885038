@@ -33,9 +33,11 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [timer, setTimer] = useState<number | null>(null);
   const [ticket, setTicket] = useState<any>(null);
+  const [ticketExists, setTicketExists] = useState(false);
 
   useEffect(() => {
     if (ticketId) {
+      checkTicketExists();
       fetchTicketDetails();
       fetchTimeEntries();
     } else {
@@ -47,18 +49,72 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
     };
   }, [ticketId]);
 
+  const checkTicketExists = async () => {
+    if (!ticketId) return;
+    
+    try {
+      // First check if it exists in tickets table
+      const { data: ticketsData, error: ticketsError } = await supabase
+        .from('tickets')
+        .select('id')
+        .eq('id', ticketId)
+        .maybeSingle();
+        
+      if (!ticketsError && ticketsData) {
+        console.log('Ticket found in tickets table');
+        setTicketExists(true);
+        return;
+      }
+      
+      // If not found in tickets table, check project_sub_tasks
+      const { data: subTaskData, error: subTaskError } = await supabase
+        .from('project_sub_tasks')
+        .select('task_id')
+        .eq('task_id', ticketId)
+        .maybeSingle();
+        
+      if (!subTaskError && subTaskData) {
+        console.log('Ticket found in project_sub_tasks table');
+        setTicketExists(true);
+        return;
+      }
+      
+      console.warn('Ticket not found in either tickets or project_sub_tasks tables');
+      setTicketExists(false);
+      
+    } catch (error) {
+      console.error('Error checking ticket existence:', error);
+      setTicketExists(false);
+    }
+  };
+
   const fetchTicketDetails = async () => {
     if (!ticketId) return;
     
     try {
-      const { data, error } = await supabase
+      // First try to get from tickets table
+      const { data: ticketsData, error: ticketsError } = await supabase
         .from('tickets')
         .select('*')
         .eq('id', ticketId)
-        .single();
+        .maybeSingle();
         
-      if (error) throw error;
-      setTicket(data);
+      if (!ticketsError && ticketsData) {
+        setTicket(ticketsData);
+        return;
+      }
+      
+      // If not found, try project_sub_tasks
+      const { data: subTaskData, error: subTaskError } = await supabase
+        .from('project_sub_tasks')
+        .select('*')
+        .eq('task_id', ticketId)
+        .maybeSingle();
+        
+      if (!subTaskError && subTaskData) {
+        setTicket(subTaskData);
+        return;
+      }
     } catch (error) {
       console.error('Error fetching ticket details:', error);
     }
@@ -99,6 +155,11 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
   const startTracking = async () => {
     if (!ticketId || !userId) {
       toast.error("Please select a ticket first");
+      return;
+    }
+    
+    if (!ticketExists) {
+      toast.error("This ticket doesn't exist in the database");
       return;
     }
     
@@ -196,6 +257,8 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
   if (loading) return <div className="flex justify-center p-8">Loading time tracking data...</div>;
 
   if (!ticketId) return <div className="text-center p-8">Please select a ticket to track time.</div>;
+  
+  if (!ticketExists) return <div className="text-center p-8 text-red-500">This ticket doesn't exist in the database.</div>;
 
   return (
     <div className="space-y-6">

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { JobApplication } from "@/types/jobSeeker";
@@ -104,8 +105,23 @@ export const EquityProjectItem = ({
     if (!application.task_id || hours <= 0) return;
     
     try {
+      console.log("Logging time for task_id:", application.task_id);
+      
+      // Check if the task exists in project_sub_tasks first
+      const { data: taskData, error: taskError } = await supabase
+        .from('project_sub_tasks')
+        .select('task_id')
+        .eq('task_id', application.task_id)
+        .single();
+      
+      if (taskError) {
+        console.error("Error checking task existence:", taskError);
+        toast.error("Could not find the associated task");
+        return;
+      }
+      
       // Create a time entry
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('time_entries')
         .insert({
           ticket_id: application.task_id,
@@ -116,7 +132,10 @@ export const EquityProjectItem = ({
           hours_logged: hours
         });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error inserting time entry:", error);
+        throw error;
+      }
       
       toast.success("Time logged successfully");
       setIsTimeLogDialogOpen(false);
