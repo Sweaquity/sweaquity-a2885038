@@ -86,7 +86,7 @@ export const ProjectTaskService = {
         .from('business_roles')
         .delete()
         .eq('business_id', projectId)
-        .eq('title', currentProjectTasks.find(t => t.id === taskId)?.title);
+        .eq('title', currentProjectTasks.find(t => t.task_id === taskId)?.title);  // Changed from id to task_id
 
       return taskId;
     } catch (error) {
