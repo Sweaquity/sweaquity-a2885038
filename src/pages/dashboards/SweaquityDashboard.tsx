@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Building, FileText, Briefcase, CircleDollarSign, AlertTriangle, CheckCircle, Clock } from "lucide-react";
@@ -7,6 +7,19 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { GanttChartView } from "@/components/business/testing/GanttChartView";
+import { BarChart, Bar, XAxis, YAxis, Legend, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle 
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 
 // Update the BetaTicket interface to include the new properties
 
@@ -56,8 +69,6 @@ const SweaquityDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [betaTickets, setBetaTickets] = useState<BetaTicket[]>([]);
-// Add these new functions to the SweaquityDashboard component
-
 // Add these new state variables
 const [replyDialogOpen, setReplyDialogOpen] = useState(false);
 const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
@@ -140,45 +151,6 @@ const handleAddTicketNote = async (ticketId: string, note: string) => {
     toast.error("Failed to add note");
   }
 };
-
-      // Add this Dialog component at the bottom of the SweaquityDashboard component return
-
-        {/* Reply to Reporter Dialog */}
-        <Dialog open={replyDialogOpen} onOpenChange={setReplyDialogOpen}>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Reply to Ticket Reporter</DialogTitle>
-              <DialogDescription>
-                Send a message to the person who reported this issue
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              {activeTicketId && (
-                <div className="space-y-2">
-                  <Label htmlFor="reply-message">Message</Label>
-                  <Textarea
-                    id="reply-message"
-                    placeholder="Enter your response..."
-                    rows={5}
-                    value={replyMessage}
-                    onChange={(e) => setReplyMessage(e.target.value)}
-                  />
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setReplyDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={sendReplyToReporter}
-                disabled={!replyMessage.trim()}
-              >
-                Send Reply
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
 const handleUpdateTicketStatus = async (ticketId: string, status: string) => {
   try {
@@ -829,10 +801,7 @@ const handleSetDueDate = async (ticketId: string, dueDateStr: string) => {
               </CardHeader>
               <CardContent>
                 {isLoading ? (
-                  // This code should replace the existing betaTickets map section in the "tickets" TabsContent
-// found in paste.txt around line 361-384
-
-                      <div className="space-y-4">
+                  <div className="space-y-4">
                       {betaTickets.map(ticket => (
                         <Card key={ticket.id} className="overflow-hidden">
                           <div className="border-b px-4 py-3 flex justify-between items-center bg-gray-50">
@@ -1089,7 +1058,6 @@ const handleSetDueDate = async (ticketId: string, dueDateStr: string) => {
                         ></div>
                       </div>
                     </div>
-                  </div>
                 )}
               </CardContent>
             </Card>
@@ -1354,6 +1322,43 @@ const handleSetDueDate = async (ticketId: string, dueDateStr: string) => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Reply to Reporter Dialog */}
+      <Dialog open={replyDialogOpen} onOpenChange={setReplyDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Reply to Ticket Reporter</DialogTitle>
+            <DialogDescription>
+              Send a message to the person who reported this issue
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {activeTicketId && (
+              <div className="space-y-2">
+                <Label htmlFor="reply-message">Message</Label>
+                <Textarea
+                  id="reply-message"
+                  placeholder="Enter your response..."
+                  rows={5}
+                  value={replyMessage}
+                  onChange={(e) => setReplyMessage(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReplyDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={sendReplyToReporter}
+              disabled={!replyMessage.trim()}
+            >
+              Send Reply
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
