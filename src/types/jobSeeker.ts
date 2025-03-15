@@ -1,4 +1,3 @@
-
 export interface JobApplication {
   job_app_id: string;
   role_id: string;
@@ -24,6 +23,9 @@ export interface JobApplication {
   id: string; // Adding this for backward compatibility
   accepted_jobseeker?: boolean;
   accepted_business?: boolean;
+  applicant_anonymized?: boolean;
+  applicant_email?: string;
+  user_id?: string; // Adding user_id to match database schema
 }
 
 export interface SkillRequirement {

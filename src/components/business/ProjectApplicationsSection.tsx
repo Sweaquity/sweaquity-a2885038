@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   Card,
@@ -55,7 +56,7 @@ import { useBusinessContext } from './BusinessContext';
 import { Link } from 'react-router-dom';
 
 interface ProjectApplicationsSectionProps {
-  projectId: string;
+  projectId?: string;
 }
 
 interface ApplicationStatusCounts {
@@ -100,8 +101,63 @@ export const ProjectApplicationsSection = ({ projectId }: ProjectApplicationsSec
   const { business } = useBusinessContext();
 
   useEffect(() => {
-    fetchApplications();
+    if (projectId) {
+      fetchApplications();
+    } else {
+      fetchAllApplications();
+    }
   }, [projectId]);
+
+  const fetchAllApplications = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data: projectsData, error: projectsError } = await supabase
+        .from('business_projects')
+        .select('project_id')
+        .eq('business_id', session.user.id);
+
+      if (projectsError) throw projectsError;
+      
+      if (!projectsData || projectsData.length === 0) {
+        setApplications([]);
+        setLoading(false);
+        return;
+      }
+
+      const projectIds = projectsData.map((p: any) => p.project_id);
+
+      const { data, error } = await supabase
+        .from('job_applications')
+        .select(`
+          *,
+          business_roles (
+            title,
+            description,
+            company_name,
+            project_title,
+            task_status,
+            timeframe,
+            equity_allocation,
+            skill_requirements
+          )
+        `)
+        .in('project_id', projectIds);
+
+      if (error) throw error;
+
+      setApplications(data || []);
+      updateStatusCounts(data);
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch applications");
+      toast.error(err.message || "Failed to fetch applications");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchApplications = async () => {
     setLoading(true);
@@ -180,7 +236,11 @@ export const ProjectApplicationsSection = ({ projectId }: ProjectApplicationsSec
       if (error) throw error;
 
       toast.success("Notes saved successfully");
-      fetchApplications();
+      if (projectId) {
+        fetchApplications();
+      } else {
+        fetchAllApplications();
+      }
     } catch (error: any) {
       console.error("Error saving notes:", error);
       toast.error("Failed to save notes");
@@ -207,7 +267,11 @@ export const ProjectApplicationsSection = ({ projectId }: ProjectApplicationsSec
       if (error) throw error;
 
       toast.success("Application status updated successfully");
-      fetchApplications();
+      if (projectId) {
+        fetchApplications();
+      } else {
+        fetchAllApplications();
+      }
     } catch (error: any) {
       console.error("Error updating status:", error);
       toast.error("Failed to update application status");
@@ -233,7 +297,11 @@ export const ProjectApplicationsSection = ({ projectId }: ProjectApplicationsSec
       if (error) throw error;
 
       toast.success("Application withdrawn successfully");
-      fetchApplications();
+      if (projectId) {
+        fetchApplications();
+      } else {
+        fetchAllApplications();
+      }
     } catch (error: any) {
       console.error("Error withdrawing application:", error);
       toast.error("Failed to withdraw application");
@@ -256,7 +324,11 @@ export const ProjectApplicationsSection = ({ projectId }: ProjectApplicationsSec
       if (error) throw error;
       
       toast.success(`Applicant ${currentState ? 'de-anonymized' : 'anonymized'} successfully`);
-      fetchApplications();
+      if (projectId) {
+        fetchApplications();
+      } else {
+        fetchAllApplications();
+      }
     } catch (error) {
       console.error('Error toggling anonymization:', error);
       toast.error("Failed to update anonymization status");
@@ -297,13 +369,13 @@ export const ProjectApplicationsSection = ({ projectId }: ProjectApplicationsSec
                         <AvatarFallback><UserX className="h-4 w-4" /></AvatarFallback>
                       ) : (
                         <>
-                          <AvatarImage src={`https://avatar.vercel.sh/${application.applicant_email}.png`} alt={application.applicant_email} />
-                          <AvatarFallback>{application.applicant_email?.charAt(0).toUpperCase()}</AvatarFallback>
+                          <AvatarImage src={`https://avatar.vercel.sh/${application.applicant_email}.png`} alt={application.applicant_email || 'User'} />
+                          <AvatarFallback>{(application.applicant_email || 'U')[0].toUpperCase()}</AvatarFallback>
                         </>
                       )}
                     </Avatar>
                     <span>
-                      {application.applicant_anonymized ? "Anonymized" : application.applicant_email}
+                      {application.applicant_anonymized ? "Anonymized" : application.applicant_email || application.user_id}
                     </span>
                   </div>
                 </TableCell>
