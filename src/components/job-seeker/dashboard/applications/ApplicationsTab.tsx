@@ -1,4 +1,3 @@
-
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { JobApplication } from "@/types/jobSeeker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,7 +6,7 @@ import { ApplicationsList } from "./ApplicationsList";
 import { PendingApplicationsList } from "./PendingApplicationsList";
 import { EquityProjectsList } from "./EquityProjectsList";
 import { PastApplicationsList } from "./PastApplicationsList";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 
 interface ApplicationsTabProps {
@@ -57,63 +56,70 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     "Withdrawn:", withdrawnApplications.length,
     "Rejected:", rejectedApplications.length
   );
+
+  // Memoize the callback handler to prevent recreation
+  const handleApplicationUpdate = useCallback(() => {
+    onApplicationUpdated();
+  }, [onApplicationUpdated]);
   
- useEffect(() => {
-  // Prevent recreation of the channel on every render
-  if (channelRef.current) {
-    return;
-  }
+  useEffect(() => {
+    // Count new messages from the past 24 hours
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
-  // Count new messages from the past 24 hours
-  const oneDayAgo = new Date();
-  oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    let newMsgs = 0;
 
-  let newMsgs = 0;
-
-  applications.forEach(app => {
-    if (app.task_discourse) {
-      const lastMessageMatch = app.task_discourse.match(/\[([^\]]+)\]/);
-      if (lastMessageMatch) {
-        try {
-          const msgDate = new Date(lastMessageMatch[1]);
-          if (msgDate > oneDayAgo && ['negotiation', 'accepted'].includes(normalizeStatus(app.status))) {
-            newMsgs++;
+    applications.forEach(app => {
+      if (app.task_discourse) {
+        const lastMessageMatch = app.task_discourse.match(/\[([^\]]+)\]/);
+        if (lastMessageMatch) {
+          try {
+            const msgDate = new Date(lastMessageMatch[1]);
+            if (msgDate > oneDayAgo && ['negotiation', 'accepted'].includes(normalizeStatus(app.status))) {
+              newMsgs++;
+            }
+          } catch (e) {
+            console.error("Error parsing message date:", e);
           }
-        } catch (e) {
-          console.error("Error parsing message date:", e);
         }
       }
-    }
-  });
+    });
 
-  setNewMessagesCount(newMsgs);
+    setNewMessagesCount(newMsgs);
+  }, [applications]); // Only depend on applications for message counting
 
-  // Set up realtime listener for application updates
-  const channel = supabase
-    .channel('job-seeker-apps')
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'job_applications',
-        filter: 'task_discourse=neq.null'
-      },
-      () => {
-        onApplicationUpdated();
-      }
-    )
-    .subscribe();
-
-  channelRef.current = channel;
-
-  return () => {
+  // Set up the Supabase channel only once
+  useEffect(() => {
+    // Skip if we already have a channel
     if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
+      return;
     }
-  };
-}, [onApplicationUpdated]); // Remove applications from the dependency array to prevent infinite loops
+
+    // Set up realtime listener for application updates
+    const channel = supabase
+      .channel('job-seeker-apps')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'job_applications',
+          filter: 'task_discourse=neq.null'
+        },
+        handleApplicationUpdate
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    // Cleanup function
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, []); // Empty dependency array means this only runs once
   
   // Reset notification counter when viewing the relevant tab
   const handleTabChange = (value: string) => {
@@ -158,7 +164,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
             ) : (
               <PendingApplicationsList 
                 applications={pendingApplications} 
-                onApplicationUpdated={onApplicationUpdated} 
+                onApplicationUpdated={handleApplicationUpdate} 
               />
             )}
           </TabsContent>
@@ -169,7 +175,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
             ) : (
               <EquityProjectsList 
                 applications={equityProjects} 
-                onApplicationUpdated={onApplicationUpdated} 
+                onApplicationUpdated={handleApplicationUpdate} 
               />
             )}
           </TabsContent>
@@ -180,7 +186,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
             ) : (
               <PastApplicationsList 
                 applications={withdrawnApplications}
-                onApplicationUpdated={onApplicationUpdated}
+                onApplicationUpdated={handleApplicationUpdate}
               />
             )}
           </TabsContent>
@@ -191,7 +197,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
             ) : (
               <PastApplicationsList 
                 applications={rejectedApplications}
-                onApplicationUpdated={onApplicationUpdated}
+                onApplicationUpdated={handleApplicationUpdate}
               />
             )}
           </TabsContent>
