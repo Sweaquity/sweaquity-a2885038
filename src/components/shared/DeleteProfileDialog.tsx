@@ -147,7 +147,7 @@ export const DeleteProfileDialog = ({ isOpen, onClose, userType }: DeleteProfile
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isProcessing}>Cancel</Button>
           <Button 
-            variant="ouline"  
+            variant="outline"  
             onClick={handleRemoveProfile} 
             disabled={isProcessing}
             className="border border-destructive"
