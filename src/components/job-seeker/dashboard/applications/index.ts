@@ -1,5 +1,5 @@
 
-export { ApplicationsTab } from './ApplicationsTab';
+export { ApplicationsTabBase } from './ApplicationsTabBase';
 export { ApplicationItem } from './ApplicationItem';
 export { ApplicationsList } from './ApplicationsList';
 export { StatusBadge } from './StatusBadge';
