@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Application } from "@/types/business";
 import { previewApplicationCV } from "@/utils/setupStorage";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface PendingApplicationsTableProps {
   applications: Application[];
@@ -29,7 +36,7 @@ export const PendingApplicationsTable = ({
           <TableHead className="w-[200px]">Applicant</TableHead>
           <TableHead>Role</TableHead>
           <TableHead className="text-center">Skills Match</TableHead>
-          <TableHead className="text-center w-[120px]">Status</TableHead>
+          <TableHead className="text-center w-[160px]">Status</TableHead>
           <TableHead className="w-[50px]"></TableHead>
         </TableRow>
       </TableHeader>
@@ -66,22 +73,30 @@ export const PendingApplicationsTable = ({
             </TableCell>
             <TableCell>
               <div className="w-full flex justify-center">
-                <select 
-                  className="w-full px-2 py-1 border rounded text-sm bg-white"
+                <Select 
                   value={application.status}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    handleStatusChange(application.job_app_id, e.target.value);
+                  onValueChange={(value) => {
+                    handleStatusChange(application.job_app_id, value);
                   }}
-                  onClick={(e) => e.stopPropagation()}
                   disabled={isUpdatingStatus === application.job_app_id}
+                  onOpenChange={(open) => {
+                    if (open) {
+                      // Prevent the row click event when clicking on the select
+                      event?.stopPropagation();
+                    }
+                  }}
                 >
-                  <option value="pending">Pending</option>
-                  <option value="in review">In Review</option>
-                  <option value="negotiation">Negotiation</option>
-                  <option value="accepted">Accepted</option>
-                  <option value="rejected">Rejected</option>
-                </select>
+                  <SelectTrigger className="w-full" onClick={(e) => e.stopPropagation()}>
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent onClick={(e) => e.stopPropagation()}>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in review">In Review</SelectItem>
+                    <SelectItem value="negotiation">Negotiation</SelectItem>
+                    <SelectItem value="accepted">Accepted</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
                 {isUpdatingStatus === application.job_app_id && (
                   <Loader2 className="animate-spin ml-2 h-4 w-4" />
                 )}

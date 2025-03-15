@@ -11,12 +11,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 export const TicketList = () => {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState('updated_desc');
+  const [savingTicket, setSavingTicket] = useState<string | null>(null);
+  const [editingTickets, setEditingTickets] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadTickets();
@@ -73,9 +77,210 @@ export const TicketList = () => {
     }
   };
 
+  // Toggle edit mode for a ticket
+  const toggleEdit = (ticketId: string) => {
+    setEditingTickets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(ticketId)) {
+        newSet.delete(ticketId);
+      } else {
+        newSet.add(ticketId);
+      }
+      return newSet;
+    });
+  };
+
+  // Update a ticket field
+  const updateTicketField = async (ticketId: string, field: string, value: any) => {
+    const ticketsCopy = [...tickets];
+    const ticketIndex = ticketsCopy.findIndex(t => t.id === ticketId);
+    
+    if (ticketIndex !== -1) {
+      ticketsCopy[ticketIndex] = {
+        ...ticketsCopy[ticketIndex],
+        [field]: value
+      };
+      setTickets(ticketsCopy);
+    }
+  };
+
+  // Save ticket changes
+  const saveTicketChanges = async (ticketId: string) => {
+    setSavingTicket(ticketId);
+    try {
+      const ticket = tickets.find(t => t.id === ticketId);
+      if (!ticket) return;
+
+      const { error } = await supabase
+        .from('tickets')
+        .update({
+          status: ticket.status,
+          priority: ticket.priority,
+          health: ticket.health,
+          due_date: ticket.due_date
+        })
+        .eq('id', ticketId);
+
+      if (error) throw error;
+      
+      toast.success("Ticket updated successfully");
+      toggleEdit(ticketId);
+    } catch (error) {
+      console.error('Error updating ticket:', error);
+      toast.error("Failed to update ticket");
+    } finally {
+      setSavingTicket(null);
+    }
+  };
+
   // Group tickets by status
   const getTicketsByStatus = (status: string) => {
     return tickets.filter(ticket => ticket.status === status);
+  };
+
+  // Enhanced TicketCard that includes editing capabilities
+  const TicketCardWithEdit = ({ ticket, isEditing, onToggleEdit }: { 
+    ticket: any, 
+    isEditing: boolean, 
+    onToggleEdit: () => void 
+  }) => {
+    return (
+      <div className="border rounded-lg p-4 bg-white shadow-sm mb-2">
+        <div className="flex justify-between items-start mb-2">
+          <h3 className="font-medium text-lg">{ticket.title}</h3>
+          {isEditing ? (
+            <div className="flex space-x-2">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => saveTicketChanges(ticket.id)}
+                disabled={savingTicket === ticket.id}
+              >
+                {savingTicket === ticket.id ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving</>
+                ) : (
+                  'Save'
+                )}
+              </Button>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={onToggleEdit}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={onToggleEdit}
+            >
+              Edit
+            </Button>
+          )}
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-2">
+          <div>
+            <p className="text-sm text-gray-500">Status</p>
+            {isEditing ? (
+              <Select 
+                value={ticket.status} 
+                onValueChange={(value) => updateTicketField(ticket.id, 'status', value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="backlog">Backlog</SelectItem>
+                  <SelectItem value="todo">To Do</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="review">Review</SelectItem>
+                  <SelectItem value="done">Done</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-sm font-medium capitalize">{ticket.status.replace('_', ' ')}</p>
+            )}
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Priority</p>
+            {isEditing ? (
+              <Select 
+                value={ticket.priority} 
+                onValueChange={(value) => updateTicketField(ticket.id, 'priority', value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-sm font-medium capitalize">{ticket.priority}</p>
+            )}
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Health</p>
+            {isEditing ? (
+              <Select 
+                value={ticket.health} 
+                onValueChange={(value) => updateTicketField(ticket.id, 'health', value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select health" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="green">Green</SelectItem>
+                  <SelectItem value="amber">Amber</SelectItem>
+                  <SelectItem value="red">Red</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className={`text-sm font-medium capitalize ${
+                ticket.health === 'red' ? 'text-red-600' : 
+                ticket.health === 'amber' ? 'text-amber-600' : 
+                'text-green-600'
+              }`}>
+                {ticket.health}
+              </p>
+            )}
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Due Date</p>
+            {isEditing ? (
+              <input
+                type="date"
+                className="w-full px-3 py-2 border rounded-md text-sm"
+                value={ticket.due_date || ''}
+                onChange={(e) => updateTicketField(ticket.id, 'due_date', e.target.value)}
+              />
+            ) : (
+              <p className="text-sm font-medium">
+                {ticket.due_date ? new Date(ticket.due_date).toLocaleDateString() : 'No due date'}
+              </p>
+            )}
+          </div>
+        </div>
+        
+        {ticket.project && (
+          <div className="mb-2">
+            <p className="text-sm text-gray-500">Project</p>
+            <p className="text-sm font-medium">{ticket.project.title}</p>
+          </div>
+        )}
+        
+        <div>
+          <p className="text-sm text-gray-500">Description</p>
+          <p className="text-sm mt-1">{ticket.description || 'No description provided'}</p>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -151,60 +356,66 @@ export const TicketList = () => {
           
           <TabsContent value="all" className="space-y-2">
             {tickets.map(ticket => (
-              <TicketCard 
+              <TicketCardWithEdit 
                 key={ticket.id} 
-                ticket={ticket} 
-                onTicketUpdated={loadTickets}
+                ticket={ticket}
+                isEditing={editingTickets.has(ticket.id)}
+                onToggleEdit={() => toggleEdit(ticket.id)}
               />
             ))}
           </TabsContent>
           
           <TabsContent value="backlog" className="space-y-2">
             {getTicketsByStatus('backlog').map(ticket => (
-              <TicketCard 
+              <TicketCardWithEdit 
                 key={ticket.id} 
-                ticket={ticket} 
-                onTicketUpdated={loadTickets}
+                ticket={ticket}
+                isEditing={editingTickets.has(ticket.id)}
+                onToggleEdit={() => toggleEdit(ticket.id)}
               />
             ))}
           </TabsContent>
           
           <TabsContent value="todo" className="space-y-2">
             {getTicketsByStatus('todo').map(ticket => (
-              <TicketCard 
+              <TicketCardWithEdit 
                 key={ticket.id} 
-                ticket={ticket} 
-                onTicketUpdated={loadTickets}
+                ticket={ticket}
+                isEditing={editingTickets.has(ticket.id)}
+                onToggleEdit={() => toggleEdit(ticket.id)}
               />
             ))}
           </TabsContent>
           
           <TabsContent value="in_progress" className="space-y-2">
             {getTicketsByStatus('in_progress').map(ticket => (
-              <TicketCard 
+              <TicketCardWithEdit 
                 key={ticket.id} 
-                ticket={ticket} 
-                onTicketUpdated={loadTickets}
+                ticket={ticket}
+                isEditing={editingTickets.has(ticket.id)}
+                onToggleEdit={() => toggleEdit(ticket.id)}
               />
             ))}
           </TabsContent>
           
           <TabsContent value="review" className="space-y-2">
             {getTicketsByStatus('review').map(ticket => (
-              <TicketCard 
+              <TicketCardWithEdit 
                 key={ticket.id} 
-                ticket={ticket} 
-                onTicketUpdated={loadTickets}
+                ticket={ticket}
+                isEditing={editingTickets.has(ticket.id)}
+                onToggleEdit={() => toggleEdit(ticket.id)}
               />
             ))}
           </TabsContent>
           
           <TabsContent value="done" className="space-y-2">
             {getTicketsByStatus('done').map(ticket => (
-              <TicketCard 
+              <TicketCardWithEdit 
                 key={ticket.id} 
-                ticket={ticket} 
-                onTicketUpdated={loadTickets}
+                ticket={ticket}
+                isEditing={editingTickets.has(ticket.id)}
+                onToggleEdit={() => toggleEdit(ticket.id)}
               />
             ))}
           </TabsContent>

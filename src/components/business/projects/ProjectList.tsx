@@ -5,6 +5,7 @@ import { ProjectEditDialog } from "./ProjectEditDialog";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
+// Updated SkillRequirement interface to ensure consistency across components
 interface SkillRequirement {
   skill: string;
   level: string;
@@ -26,6 +27,7 @@ interface Task {
   dependencies: string[];
 }
 
+// Updated Project interface to ensure consistency
 interface Project {
   project_id: string;
   title: string;
