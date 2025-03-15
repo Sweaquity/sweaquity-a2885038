@@ -7,7 +7,7 @@ import { ApplicationsList } from "./ApplicationsList";
 import { PendingApplicationsList } from "./PendingApplicationsList";
 import { EquityProjectsList } from "./EquityProjectsList";
 import { PastApplicationsList } from "./PastApplicationsList";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
 interface ApplicationsTabProps {
@@ -17,9 +17,6 @@ interface ApplicationsTabProps {
 
 export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} }: ApplicationsTabProps) => {
   const [newMessagesCount, setNewMessagesCount] = useState(0);
-  const [currentTab, setCurrentTab] = useState("pending");
-  const channelRef = useRef<any>(null);
-  const initializedRef = useRef(false);
   
   // Debug the incoming applications
   console.log("All applications in ApplicationsTab:", applications);
@@ -61,9 +58,6 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
   );
   
   useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
-    
     // Count new messages from the past 24 hours
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
@@ -106,19 +100,13 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
       )
       .subscribe();
       
-    channelRef.current = channel;
-      
-    // Cleanup function
     return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-      }
+      supabase.removeChannel(channel);
     };
   }, [applications, onApplicationUpdated]);
   
   // Reset notification counter when viewing the relevant tab
   const handleTabChange = (value: string) => {
-    setCurrentTab(value);
     if (value === 'equity') {
       setNewMessagesCount(0);
     }
@@ -131,7 +119,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
         <p className="text-muted-foreground text-sm">View and manage your applications</p>
       </CardHeader>
       <CardContent className="overflow-container">
-        <Tabs defaultValue="pending" value={currentTab} className="space-y-4" onValueChange={handleTabChange}>
+        <Tabs defaultValue="pending" className="space-y-4" onValueChange={handleTabChange}>
           <div className="overflow-x-hidden">
             <TabsList className="responsive-tabs h-auto p-1 w-full grid grid-cols-2 md:grid-cols-4 gap-1">
               <TabsTrigger value="pending" className="px-3 py-1.5">
