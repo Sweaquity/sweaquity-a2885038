@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Application, Project } from '@/types/business';
 import { toast } from 'sonner';
@@ -23,53 +23,7 @@ export const JobApplicationProvider = ({ children }: { children: ReactNode }) =>
   const [isLoading, setIsLoading] = useState(true);
   const [newApplicationsCount, setNewApplicationsCount] = useState(0);
   const [newMessagesCount, setNewMessagesCount] = useState(0);
-  
-  useEffect(() => {
-    loadProjectsWithApplications();
-    setupRealtimeListener();
-    return () => {
-      cleanupRealtimeListener();
-    };
-  }, []);
-
-  const setupRealtimeListener = () => {
-    const channel = supabase
-      .channel('application-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'job_applications'
-        },
-        () => {
-          setNewApplicationsCount(prev => prev + 1);
-          toast.info("New application received!");
-          loadProjectsWithApplications();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'job_applications',
-          filter: 'task_discourse=neq.null'
-        },
-        () => {
-          setNewMessagesCount(prev => prev + 1);
-          toast.info("New message received!");
-          loadProjectsWithApplications();
-        }
-      )
-      .subscribe();
-
-    return channel;
-  };
-
-  const cleanupRealtimeListener = () => {
-    supabase.removeChannel(supabase.channel('application-updates'));
-  };
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   
   const loadProjectsWithApplications = async () => {
     try {
@@ -262,6 +216,53 @@ export const JobApplicationProvider = ({ children }: { children: ReactNode }) =>
       setIsLoading(false);
     }
   };
+  
+  useEffect(() => {
+    loadProjectsWithApplications();
+    
+    // Only set up the channel once
+    if (!channelRef.current) {
+      const channel = supabase
+        .channel('application-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'job_applications'
+          },
+          () => {
+            setNewApplicationsCount(prev => prev + 1);
+            toast.info("New application received!");
+            loadProjectsWithApplications();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'job_applications',
+            filter: 'task_discourse=neq.null'
+          },
+          () => {
+            setNewMessagesCount(prev => prev + 1);
+            toast.info("New message received!");
+            loadProjectsWithApplications();
+          }
+        )
+        .subscribe();
+
+      channelRef.current = channel;
+    }
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, []);
   
   // Get applications across all projects
   const getAllApplications = (): Application[] => {

@@ -7,7 +7,7 @@ import { ApplicationsList } from "./ApplicationsList";
 import { PendingApplicationsList } from "./PendingApplicationsList";
 import { EquityProjectsList } from "./EquityProjectsList";
 import { PastApplicationsList } from "./PastApplicationsList";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 
 interface ApplicationsTabProps {
@@ -17,6 +17,7 @@ interface ApplicationsTabProps {
 
 export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} }: ApplicationsTabProps) => {
   const [newMessagesCount, setNewMessagesCount] = useState(0);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   
   // Debug the incoming applications
   console.log("All applications in ApplicationsTab:", applications);
@@ -58,6 +59,11 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
   );
   
  useEffect(() => {
+  // Prevent recreation of the channel on every render
+  if (channelRef.current) {
+    return;
+  }
+
   // Count new messages from the past 24 hours
   const oneDayAgo = new Date();
   oneDayAgo.setDate(oneDayAgo.getDate() - 1);
@@ -80,7 +86,7 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
     }
   });
 
-  setNewMessagesCount(prevCount => (prevCount === newMsgs ? prevCount : newMsgs)); // Only update if needed
+  setNewMessagesCount(newMsgs);
 
   // Set up realtime listener for application updates
   const channel = supabase
@@ -94,16 +100,20 @@ export const ApplicationsTab = ({ applications, onApplicationUpdated = () => {} 
         filter: 'task_discourse=neq.null'
       },
       () => {
-        setNewMessagesCount(prev => prev + 1);
         onApplicationUpdated();
       }
     )
     .subscribe();
 
+  channelRef.current = channel;
+
   return () => {
-    supabase.removeChannel(channel);
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
   };
-}, [applications, onApplicationUpdated]);
+}, [onApplicationUpdated]); // Remove applications from the dependency array to prevent infinite loops
   
   // Reset notification counter when viewing the relevant tab
   const handleTabChange = (value: string) => {
