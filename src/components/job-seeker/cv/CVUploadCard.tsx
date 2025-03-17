@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -40,13 +41,7 @@ export const CVUploadCard = ({
   const handleDownload = async (fileName: string) => {
     setProcessingAction({ type: 'downloading', fileName });
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        toast.error("You must be logged in to download CVs");
-        return;
-      }
-
-      await downloadCV(session.user.id, fileName);
+      await downloadCV(`${fileName}`);
     } finally {
       setProcessingAction(null);
     }
@@ -79,13 +74,7 @@ export const CVUploadCard = ({
   const handlePreview = async (fileName: string) => {
     setProcessingAction({ type: 'previewing', fileName });
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        toast.error("You must be logged in to preview CVs");
-        return;
-      }
-
-      await previewCV(session.user.id, fileName);
+      await previewCV(`${fileName}`);
     } finally {
       setProcessingAction(null);
     }

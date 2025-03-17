@@ -52,10 +52,6 @@ export const useAcceptedJobsCore = (onUpdate?: () => void) => {
         throw new Error("No active session found");
       }
       
-      const userId = session.user.id;
-      console.log("Current user ID:", userId);
-      console.log("Application user ID:", application.user_id);
-      
       // Insert directly without filtering fields
       const { data, error } = await supabase
         .from('accepted_jobs')

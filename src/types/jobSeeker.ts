@@ -23,6 +23,7 @@ export interface JobApplication {
   id: string; // Adding this for backward compatibility
   accepted_jobseeker?: boolean;
   accepted_business?: boolean;
+  user_id?: string; // Adding user_id field
 }
 
 export interface SkillRequirement {

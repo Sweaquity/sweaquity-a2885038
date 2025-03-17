@@ -1,150 +1,128 @@
-
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
-export const uploadCV = async (file: File) => {
-  try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) throw new Error("No session found");
-    
-    const userId = sessionData.session.user.id;
-    const fileExt = file.name.split('.').pop();
-    const filePath = `${userId}/${Date.now()}.${fileExt}`;
-    
-    const { error } = await supabase.storage
-      .from('cvs')
-      .upload(filePath, file);
-      
-    if (error) throw error;
-    
-    const { data } = await supabase.storage
-      .from('cvs')
-      .getPublicUrl(filePath);
-      
-    return data.publicUrl;
-  } catch (error) {
-    console.error('Error uploading CV:', error);
-    throw error;
-  }
-};
-
 export const downloadCV = async (filePath: string) => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      toast.error("You must be logged in to download CVs");
+      return;
+    }
+
     const { data, error } = await supabase.storage
-      .from('cvs')
+      .from('CVs Storage')
       .download(filePath);
-      
-    if (error) throw error;
-    
+
+    if (error) {
+      console.error("Error downloading CV:", error);
+      toast.error("Failed to download CV");
+      return;
+    }
+
+    // Create a URL for the file and trigger download
     const url = URL.createObjectURL(data);
     const a = document.createElement('a');
     a.href = url;
-    a.download = filePath.split('/').pop() || 'cv.pdf';
+    a.download = filePath.split('/').pop() || 'cv-file';
     document.body.appendChild(a);
     a.click();
     URL.revokeObjectURL(url);
     document.body.removeChild(a);
+    
+    return true;
   } catch (error) {
-    console.error('Error downloading CV:', error);
-    toast.error('Error downloading CV');
+    console.error("Error downloading CV:", error);
+    toast.error("Failed to download CV");
+    return false;
   }
 };
 
 export const deleteCV = async (filePath: string) => {
   try {
     const { error } = await supabase.storage
-      .from('cvs')
+      .from('CVs Storage')
       .remove([filePath]);
-      
-    if (error) throw error;
-    
+
+    if (error) {
+      console.error("Error deleting CV:", error);
+      toast.error("Failed to delete CV");
+      return false;
+    }
+
+    toast.success("CV deleted successfully");
     return true;
   } catch (error) {
-    console.error('Error deleting CV:', error);
-    throw error;
-  }
-};
-
-export const listUserCVs = async () => {
-  try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) throw new Error("No session found");
-    
-    const userId = sessionData.session.user.id;
-    const { data, error } = await supabase.storage
-      .from('cvs')
-      .list(userId);
-      
-    if (error) throw error;
-    
-    return data.map(file => ({
-      ...file,
-      url: supabase.storage.from('cvs').getPublicUrl(userId + '/' + file.name).data.publicUrl
-    }));
-  } catch (error) {
-    console.error('Error listing user CVs:', error);
-    return [];
-  }
-};
-
-export const setDefaultCV = async (cvUrl: string) => {
-  try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) throw new Error("No session found");
-    
-    const userId = sessionData.session.user.id;
-    
-    const { error } = await supabase
-      .from('profiles')
-      .update({ cv_url: cvUrl })
-      .eq('id', userId);
-      
-    if (error) throw error;
-    
-    toast.success('Default CV updated');
-    return true;
-  } catch (error) {
-    console.error('Error setting default CV:', error);
-    toast.error('Error updating default CV');
+    console.error("Error deleting CV:", error);
+    toast.error("Failed to delete CV");
     return false;
   }
 };
 
-export const previewCV = async (cvUrl: string) => {
-  // Open CV in a new tab
-  window.open(cvUrl, '_blank');
-};
-
-export const previewApplicationCV = async (cvUrl: string) => {
+export const previewCV = async (filePath: string) => {
   try {
-    // Extract the path from the URL if needed
-    let path = cvUrl;
-    if (cvUrl.includes('supabase')) {
-      // If it's a URL, open directly
-      window.open(cvUrl, '_blank');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      toast.error("You must be logged in to preview CVs");
       return;
     }
-    
+
     const { data, error } = await supabase.storage
-      .from('job_applications')
-      .download(path);
-      
-    if (error) throw error;
-    
+      .from('CVs Storage')
+      .download(filePath);
+
+    if (error) {
+      console.error("Error previewing CV:", error);
+      toast.error("Failed to preview CV");
+      return;
+    }
+
+    // Create a URL for the file and open in a new tab
     const url = URL.createObjectURL(data);
     window.open(url, '_blank');
+    
+    // Don't forget to revoke the object URL when done
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 1000);
+    
+    return true;
   } catch (error) {
-    console.error('Error previewing application CV:', error);
-    toast.error('Error previewing CV');
+    console.error("Error previewing CV:", error);
+    toast.error("Failed to preview CV");
+    return false;
   }
 };
 
-// Export for TypeScript types
-export interface CVFile {
-  name: string;
-  created_at: string;
-  id: string;
-  updated_at: string;
-  url: string;
-  [key: string]: any;
-}
+export const setDefaultCV = async (userId: string, fileName: string) => {
+  try {
+    // Create public URL for the CV
+    const { data: { publicUrl }, error: urlError } = supabase.storage
+      .from('CVs Storage')
+      .getPublicUrl(`${userId}/${fileName}`);
+
+    if (urlError) {
+      console.error("Error creating public URL:", urlError);
+      toast.error("Failed to set default CV");
+      return null;
+    }
+
+    // Update the profile with the new CV URL
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ cv_url: publicUrl })
+      .eq('id', userId);
+
+    if (updateError) {
+      console.error("Error updating profile with CV URL:", updateError);
+      toast.error("Failed to set default CV");
+      return null;
+    }
+
+    toast.success("Default CV updated successfully");
+    return publicUrl;
+  } catch (error) {
+    console.error("Error setting default CV:", error);
+    toast.error("Failed to set default CV");
+    return null;
+  }
+};
