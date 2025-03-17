@@ -96,12 +96,11 @@ export const previewCV = async (filePath: string) => {
 export const setDefaultCV = async (userId: string, fileName: string) => {
   try {
     // Create public URL for the CV
-    const { data: { publicUrl }, error: urlError } = supabase.storage
+    const { data } = supabase.storage
       .from('CVs Storage')
       .getPublicUrl(`${userId}/${fileName}`);
 
-    if (urlError) {
-      console.error("Error creating public URL:", urlError);
+    if (!data.publicUrl) {
       toast.error("Failed to set default CV");
       return null;
     }
@@ -109,7 +108,7 @@ export const setDefaultCV = async (userId: string, fileName: string) => {
     // Update the profile with the new CV URL
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({ cv_url: publicUrl })
+      .update({ cv_url: data.publicUrl })
       .eq('id', userId);
 
     if (updateError) {
@@ -119,10 +118,88 @@ export const setDefaultCV = async (userId: string, fileName: string) => {
     }
 
     toast.success("Default CV updated successfully");
-    return publicUrl;
+    return data.publicUrl;
   } catch (error) {
     console.error("Error setting default CV:", error);
     toast.error("Failed to set default CV");
     return null;
+  }
+};
+
+// New function to preview Application CV
+export const previewApplicationCV = async (cvUrl: string) => {
+  try {
+    if (!cvUrl) {
+      toast.error("No CV URL provided");
+      return false;
+    }
+
+    // Check if this is a direct URL or a file path
+    if (cvUrl.startsWith('http')) {
+      // Direct URL, just open it
+      window.open(cvUrl, '_blank');
+      return true;
+    }
+    
+    // Otherwise, try to download from Supabase storage
+    let bucket = 'job_applications';
+    let filePath = cvUrl;
+    
+    // If the path includes the bucket name, extract it
+    if (cvUrl.includes('job_applications/')) {
+      filePath = cvUrl.split('job_applications/')[1];
+    } else if (cvUrl.includes('job-applications/')) {
+      bucket = 'job-applications';
+      filePath = cvUrl.split('job-applications/')[1];
+    } else if (cvUrl.includes('CVs Storage/')) {
+      bucket = 'CVs Storage';
+      filePath = cvUrl.split('CVs Storage/')[1];
+    }
+    
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .download(filePath);
+
+    if (error) {
+      console.error("Error downloading application CV:", error);
+      toast.error("Failed to preview CV");
+      return false;
+    }
+
+    // Create a URL for the file and open in a new tab
+    const url = URL.createObjectURL(data);
+    window.open(url, '_blank');
+    
+    // Don't forget to revoke the object URL when done
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 1000);
+    
+    return true;
+  } catch (error) {
+    console.error("Error previewing application CV:", error);
+    toast.error("Failed to preview CV");
+    return false;
+  }
+};
+
+// New function to list user CVs
+export const listUserCVs = async (userId: string) => {
+  try {
+    const { data, error } = await supabase.storage
+      .from('cvs')
+      .list(`${userId}/`, {
+        sortBy: { column: 'created_at', order: 'desc' }
+      });
+
+    if (error) {
+      console.error("Error listing CVs:", error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error("Error listing CVs:", error);
+    return [];
   }
 };
