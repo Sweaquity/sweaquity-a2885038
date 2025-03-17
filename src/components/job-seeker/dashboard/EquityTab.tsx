@@ -12,7 +12,8 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { TimeTracker } from "@/components/business/testing/TimeTracker";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Clock, FileText, ArrowUpToLine } from "lucide-react";
+import { Clock, FileText, ArrowUpToLine, Plus } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface EquityTabProps {
   equityProjects?: EquityProject[];
@@ -30,11 +31,16 @@ export const EquityTab = ({
   const [selectedProject, setSelectedProject] = useState<EquityProject | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [isCreateTicketDialogOpen, setIsCreateTicketDialogOpen] = useState(false);
   const [hours, setHours] = useState<number>(0);
   const [description, setDescription] = useState<string>('');
   const [userId, setUserId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [ticketTitle, setTicketTitle] = useState('');
+  const [ticketDescription, setTicketDescription] = useState('');
+  const [ticketPriority, setTicketPriority] = useState('medium');
+  const [projectTickets, setProjectTickets] = useState<{ [key: string]: any[] }>({});
 
   useEffect(() => {
     const getUser = async () => {
@@ -47,6 +53,33 @@ export const EquityTab = ({
     
     getUser();
   }, []);
+
+  useEffect(() => {
+    if (equityProjects.length > 0) {
+      // Load tickets for all projects
+      equityProjects.forEach(project => {
+        fetchProjectTickets(project.id);
+      });
+    }
+  }, [equityProjects]);
+
+  const fetchProjectTickets = async (projectId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('project_id', projectId);
+
+      if (error) throw error;
+      
+      setProjectTickets(prev => ({
+        ...prev,
+        [projectId]: data || []
+      }));
+    } catch (error) {
+      console.error('Error fetching project tickets:', error);
+    }
+  };
 
   const handleLogEffort = async () => {
     if (!selectedProject || !selectedTaskId) return;
@@ -80,11 +113,52 @@ export const EquityTab = ({
       setHours(0);
       setDescription('');
       
-      // Refresh the page to update the data
-      window.location.reload();
+      // Refresh tickets
+      fetchProjectTickets(selectedProject.id);
     } catch (error) {
       console.error('Error logging effort:', error);
       toast.error("Failed to log effort");
+    }
+  };
+
+  const handleCreateTicket = async () => {
+    if (!selectedProject || !selectedTaskId) {
+      toast.error("Please select a project and task first");
+      return;
+    }
+
+    try {
+      // Create a new ticket
+      const { data, error } = await supabase
+        .from('tickets')
+        .insert({
+          title: ticketTitle,
+          description: ticketDescription,
+          status: 'todo',
+          priority: ticketPriority,
+          health: 'green',
+          project_id: selectedProject.id,
+          task_id: selectedTaskId,
+          reporter: userId,
+          assigned_to: userId,
+          ticket_type: 'task'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      toast.success("Ticket created successfully");
+      setIsCreateTicketDialogOpen(false);
+      setTicketTitle('');
+      setTicketDescription('');
+      setTicketPriority('medium');
+      
+      // Refresh tickets
+      fetchProjectTickets(selectedProject.id);
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      toast.error("Failed to create ticket");
     }
   };
 
@@ -123,7 +197,21 @@ export const EquityTab = ({
                 </div>
                 
                 <div className="mt-4">
-                  <p className="text-sm text-muted-foreground">Tasks</p>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-muted-foreground">Tasks</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedProject(project);
+                        setIsCreateTicketDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Ticket
+                    </Button>
+                  </div>
+                  
                   <div className="mt-2 space-y-2">
                     {project.sub_tasks?.map((task) => (
                       <div key={task.task_id} className="text-sm p-3 bg-secondary/50 rounded-md">
@@ -133,6 +221,36 @@ export const EquityTab = ({
                         </div>
                         <p className="text-muted-foreground mt-1">{task.description}</p>
                         
+                        {/* Show tickets related to this task */}
+                        {projectTickets[project.id]?.filter(ticket => ticket.task_id === task.task_id).length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            <p className="text-xs font-medium">Tickets:</p>
+                            {projectTickets[project.id]
+                              .filter(ticket => ticket.task_id === task.task_id)
+                              .map(ticket => (
+                                <div key={ticket.id} className="bg-background rounded p-2 text-xs flex justify-between items-center">
+                                  <div>
+                                    <p className="font-medium">{ticket.title}</p>
+                                    <p className="text-muted-foreground">{ticket.status} - {ticket.priority} priority</p>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedProject(project);
+                                        setSelectedTaskId(ticket.id);
+                                        setIsDialogOpen(true);
+                                      }}
+                                    >
+                                      <Clock className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                        
                         <div className="flex mt-3 gap-2">
                           <Button 
                             variant="outline" 
@@ -140,12 +258,12 @@ export const EquityTab = ({
                             onClick={() => {
                               setSelectedProject(project);
                               setSelectedTaskId(task.task_id);
-                              setIsDialogOpen(true);
+                              setIsCreateTicketDialogOpen(true);
                             }}
                             className="flex items-center"
                           >
-                            <Clock className="h-4 w-4 mr-2" />
-                            Log Time
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Ticket
                           </Button>
                           
                           <Button 
@@ -191,6 +309,7 @@ export const EquityTab = ({
         </CardContent>
       </Card>
       
+      {/* Time logging dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -231,6 +350,82 @@ export const EquityTab = ({
         </DialogContent>
       </Dialog>
       
+      {/* Create ticket dialog */}
+      <Dialog open={isCreateTicketDialogOpen} onOpenChange={setIsCreateTicketDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Ticket</DialogTitle>
+            <DialogDescription>
+              Create a new ticket for {selectedProject?.title}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="ticketTitle">Ticket Title</Label>
+              <Input
+                id="ticketTitle"
+                value={ticketTitle}
+                onChange={(e) => setTicketTitle(e.target.value)}
+                placeholder="Enter ticket title"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="ticketDescription">Description</Label>
+              <Textarea
+                id="ticketDescription"
+                value={ticketDescription}
+                onChange={(e) => setTicketDescription(e.target.value)}
+                placeholder="Describe what needs to be done"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="ticketPriority">Priority</Label>
+              <Select value={ticketPriority} onValueChange={setTicketPriority}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {selectedProject?.sub_tasks && selectedProject.sub_tasks.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="taskId">Associated Task</Label>
+                <Select 
+                  value={selectedTaskId || ''} 
+                  onValueChange={(value) => setSelectedTaskId(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select task" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectedProject.sub_tasks.map(task => (
+                      <SelectItem key={task.task_id} value={task.task_id}>
+                        {task.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateTicketDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateTicket}>Create Ticket</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Document upload dialog */}
       <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -240,7 +435,6 @@ export const EquityTab = ({
             </DialogDescription>
           </DialogHeader>
           
-          {/* Document upload form will be implemented here */}
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="documentTitle">Document Title</Label>

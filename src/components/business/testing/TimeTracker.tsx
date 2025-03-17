@@ -1,10 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Play, Square } from 'lucide-react';
+import { Play, Square, PercentIcon } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
 
 interface TimeTrackerProps {
   ticketId: string;
@@ -33,12 +37,16 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
   const [timer, setTimer] = useState<number | null>(null);
   const [ticket, setTicket] = useState<any>(null);
   const [ticketExists, setTicketExists] = useState(false);
+  const [completionPercentage, setCompletionPercentage] = useState(0);
+  const [taskDetails, setTaskDetails] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('timeTracking');
 
   useEffect(() => {
     if (ticketId) {
       checkTicketExists();
       fetchTicketDetails();
       fetchTimeEntries();
+      fetchTaskDetails();
     } else {
       setLoading(false);
     }
@@ -47,6 +55,45 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
       if (timer) clearInterval(timer);
     };
   }, [ticketId]);
+
+  const fetchTaskDetails = async () => {
+    if (!ticketId) return;
+    
+    try {
+      // First get the ticket to find the task_id
+      const { data: ticketData, error: ticketError } = await supabase
+        .from('tickets')
+        .select('task_id, completion_percentage')
+        .eq('id', ticketId)
+        .maybeSingle();
+        
+      if (ticketError || !ticketData || !ticketData.task_id) {
+        console.error('Error fetching ticket details or task_id not found:', ticketError);
+        return;
+      }
+      
+      // Set completion percentage from ticket
+      if (ticketData.completion_percentage !== null) {
+        setCompletionPercentage(ticketData.completion_percentage || 0);
+      }
+      
+      // Then get the task details
+      const { data: taskData, error: taskError } = await supabase
+        .from('project_sub_tasks')
+        .select('*')
+        .eq('task_id', ticketData.task_id)
+        .maybeSingle();
+        
+      if (taskError) {
+        console.error('Error fetching task details:', taskError);
+        return;
+      }
+      
+      setTaskDetails(taskData);
+    } catch (error) {
+      console.error('Error in fetchTaskDetails:', error);
+    }
+  };
 
   const checkTicketExists = async () => {
     if (!ticketId) return;
@@ -238,6 +285,36 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
     }
   };
 
+  const updateCompletionPercentage = async () => {
+    try {
+      // Update ticket completion percentage
+      const { error: ticketError } = await supabase
+        .from('tickets')
+        .update({ completion_percentage: completionPercentage })
+        .eq('id', ticketId);
+        
+      if (ticketError) throw ticketError;
+
+      // If the ticket has a task_id, also update the task's completion percentage
+      if (ticket?.task_id) {
+        const { error: taskError } = await supabase
+          .from('project_sub_tasks')
+          .update({ completion_percentage: completionPercentage })
+          .eq('task_id', ticket.task_id);
+          
+        if (taskError) throw taskError;
+      }
+
+      toast.success(`Completion percentage updated to ${completionPercentage}%`);
+      
+      // Refresh task details
+      fetchTaskDetails();
+    } catch (error) {
+      console.error('Error updating completion percentage:', error);
+      toast.error("Failed to update completion percentage");
+    }
+  };
+
   // Format time as HH:MM:SS
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -263,79 +340,131 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Time Tracker {ticket && `- ${ticket.title}`}</CardTitle>
+          <CardTitle>Ticket Tracking {ticket && `- ${ticket.title}`}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="mb-4">
-            <p className="text-lg font-semibold">
-              Total time logged: <span className="text-blue-600">{totalHours.toFixed(2)} hours</span>
-            </p>
-          </div>
-          
-          <div className="mb-4">
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What are you working on?"
-              className="w-full p-2 border rounded-md mb-2"
-              disabled={isTracking}
-            />
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="timeTracking">Time Tracking</TabsTrigger>
+              <TabsTrigger value="progressTracking">Progress Tracking</TabsTrigger>
+            </TabsList>
             
-            {isTracking ? (
-              <div className="mb-4 space-y-4">
-                <div className="text-4xl font-mono text-center my-4 font-semibold text-primary">
-                  {formatTime(elapsedTime)}
-                </div>
-                <Button
-                  onClick={stopTracking}
-                  className="w-full bg-red-500 hover:bg-red-600"
-                  variant="destructive"
-                >
-                  <Square className="mr-2 h-4 w-4" />
-                  Stop
-                </Button>
+            <TabsContent value="timeTracking">
+              <div className="mb-4">
+                <p className="text-lg font-semibold">
+                  Total time logged: <span className="text-blue-600">{totalHours.toFixed(2)} hours</span>
+                </p>
               </div>
-            ) : (
-              <Button
-                onClick={startTracking}
-                className="w-full"
-                variant="default"
-              >
-                <Play className="mr-2 h-4 w-4" />
-                Start Tracking
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-      
-      {timeEntries.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Time Entries</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {timeEntries.map(entry => (
-                <div key={entry.id} className="border p-4 rounded-lg">
-                  <div className="flex justify-between">
-                    <div>
-                      <div className="font-medium">{entry.description || "No description"}</div>
-                      <div className="text-sm text-gray-500">
-                        {entry.start_time && formatDate(entry.start_time)}
-                        {entry.end_time && ` to ${formatDate(entry.end_time)}`}
+              
+              <div className="mb-4">
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="What are you working on?"
+                  className="w-full p-2 border rounded-md mb-2"
+                  disabled={isTracking}
+                />
+                
+                {isTracking ? (
+                  <div className="mb-4 space-y-4">
+                    <div className="text-4xl font-mono text-center my-4 font-semibold text-primary">
+                      {formatTime(elapsedTime)}
+                    </div>
+                    <Button
+                      onClick={stopTracking}
+                      className="w-full bg-red-500 hover:bg-red-600"
+                      variant="destructive"
+                    >
+                      <Square className="mr-2 h-4 w-4" />
+                      Stop
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={startTracking}
+                    className="w-full"
+                    variant="default"
+                  >
+                    <Play className="mr-2 h-4 w-4" />
+                    Start Tracking
+                  </Button>
+                )}
+              </div>
+              
+              {timeEntries.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Recent Time Entries</h3>
+                  <div className="space-y-2">
+                    {timeEntries.map(entry => (
+                      <div key={entry.id} className="border p-4 rounded-lg">
+                        <div className="flex justify-between">
+                          <div>
+                            <div className="font-medium">{entry.description || "No description"}</div>
+                            <div className="text-sm text-gray-500">
+                              {entry.start_time && formatDate(entry.start_time)}
+                              {entry.end_time && ` to ${formatDate(entry.end_time)}`}
+                            </div>
+                          </div>
+                          <div className="font-semibold text-primary">
+                            {entry.hours_logged ? `${entry.hours_logged.toFixed(2)} hours` : 'In progress'}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="font-semibold text-primary">
-                      {entry.hours_logged ? `${entry.hours_logged.toFixed(2)} hours` : 'In progress'}
-                    </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              )}
+            </TabsContent>
+            
+            <TabsContent value="progressTracking">
+              <div className="space-y-6">
+                <div>
+                  <Label className="text-lg font-medium mb-2 block">Task Completion Progress</Label>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Update the completion percentage for this task. Task equity will be allocated based on this value.
+                  </p>
+                  
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <Label>Completion Percentage:</Label>
+                      <span className="font-semibold text-lg">{completionPercentage}%</span>
+                    </div>
+                    
+                    <Slider
+                      value={[completionPercentage]}
+                      min={0}
+                      max={100}
+                      step={5}
+                      onValueChange={(value) => setCompletionPercentage(value[0])}
+                      className="mb-4"
+                    />
+                    
+                    <Button 
+                      onClick={updateCompletionPercentage}
+                      className="w-full"
+                    >
+                      <PercentIcon className="mr-2 h-4 w-4" />
+                      Update Progress
+                    </Button>
+                  </div>
+                </div>
+                
+                {taskDetails && (
+                  <div className="mt-6 border-t pt-4">
+                    <h3 className="text-lg font-medium mb-2">Task Details</h3>
+                    <p><strong>Title:</strong> {taskDetails.title}</p>
+                    <p><strong>Description:</strong> {taskDetails.description || 'No description'}</p>
+                    <p><strong>Timeframe:</strong> {taskDetails.timeframe}</p>
+                    <p><strong>Equity Allocation:</strong> {taskDetails.equity_allocation}%</p>
+                    <p><strong>Completion:</strong> {taskDetails.completion_percentage}%</p>
+                    <p><strong>Status:</strong> {taskDetails.status}</p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 }
