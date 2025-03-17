@@ -1,539 +1,538 @@
 
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from 'sonner';
-import { PercentIcon, AlertCircle, CheckCircle2, Clock, ChevronDown, ChevronUp } from 'lucide-react';
-import { Slider } from '@/components/ui/slider';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Clock, PauseCircle, PlayCircle, User } from "lucide-react";
+import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Slider } from "@/components/ui/slider";
 
-interface TimeTrackerProps {
-  ticketId: string;
-  userId: string;
-}
-
-interface TimeEntry {
-  id: string;
-  ticket_id: string;
-  user_id: string;
-  start_time: string;
-  end_time?: string;
-  hours_logged?: number;
-  description: string;
-}
-
-interface ProjectSubTask {
-  task_id: string;
-  title: string;
-  description: string;
-  timeframe: string;
-  equity_allocation: number;
-  completion_percentage: number;
-  status: string;
-  project_id: string;
-}
-
-interface BusinessProject {
-  project_id: string;
-  title: string;
-  equity_allocation: number;
-  equity_allocated: number;
-}
-
-interface UserProfile {
-  first_name: string;
-  last_name: string;
-}
-
-interface AcceptedJob {
-  job_app_id: string;
-  date_accepted: string;
-  equity_agreed: number;
-}
-
-interface TicketWithDetails {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  priority: string;
-  health: string;
-  estimated_hours: number;
-  completion_percentage: number;
-  task_id: string;
-  project_id: string;
-  assigned_to: string;
-  reporter: string;
-  created_at: string;
-  project: BusinessProject;
-  task: ProjectSubTask;
-  user: UserProfile;
-  accepted_job: AcceptedJob;
-  total_hours_logged: number;
-}
-
-export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
-  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
-  const [totalHours, setTotalHours] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [ticketDetails, setTicketDetails] = useState<TicketWithDetails | null>(null);
-  const [ticketExists, setTicketExists] = useState(false);
-  const [completionPercentage, setCompletionPercentage] = useState(0);
+export const TimeTracker = () => {
+  const [isTracking, setIsTracking] = useState(false);
+  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
+  const [elapsedTime, setElapsedTime] = useState("00:00:00");
+  const [description, setDescription] = useState("");
+  const [timeEntries, setTimeEntries] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [ticketId, setTicketId] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [taskId, setTaskId] = useState<string | null>(null);
+  
+  const [projects, setProjects] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(true);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+  const [loadingTickets, setLoadingTickets] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<string | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
 
   useEffect(() => {
-    if (ticketId) {
-      checkTicketExists();
-      fetchTicketDetails();
-      fetchTimeEntries();
-    } else {
-      setLoading(false);
-    }
-  }, [ticketId]);
-
-  const checkTicketExists = async () => {
-    if (!ticketId) return;
+    fetchProjects();
     
-    try {
-      // First check if it exists in tickets table
-      const { data: ticketsData, error: ticketsError } = await supabase
-        .from('tickets')
-        .select('id')
-        .eq('id', ticketId)
-        .maybeSingle();
-        
-      if (!ticketsError && ticketsData) {
-        console.log('Ticket found in tickets table');
-        setTicketExists(true);
-        return;
+    return () => {
+      if (timerInterval) {
+        clearInterval(timerInterval);
       }
-      
-      setTicketExists(false);
-      
-    } catch (error) {
-      console.error('Error checking ticket existence:', error);
-      setTicketExists(false);
-    }
-  };
+    };
+  }, []);
 
-  const fetchTicketDetails = async () => {
-    if (!ticketId) return;
-    
+  useEffect(() => {
+    if (selectedProject) {
+      fetchTasks(selectedProject);
+      setSelectedTask(null);
+      setSelectedTicket(null);
+    }
+  }, [selectedProject]);
+
+  useEffect(() => {
+    if (selectedTask) {
+      fetchTickets(selectedTask);
+      setSelectedTicket(null);
+    }
+  }, [selectedTask]);
+
+  useEffect(() => {
+    if (selectedTicket) {
+      setTicketId(selectedTicket);
+      fetchTimeEntries(selectedTicket);
+    }
+  }, [selectedTicket]);
+
+  const fetchProjects = async () => {
+    setLoadingProjects(true);
     try {
-      // Fetch ticket with related data
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
       const { data, error } = await supabase
-        .from('tickets')
+        .from('business_projects')
         .select(`
           *,
-          project:project_id(
-            project_id, 
-            title, 
-            equity_allocation,
-            equity_allocated
-          ),
-          task:task_id(
-            task_id,
-            title,
-            description,
-            timeframe,
-            equity_allocation,
-            completion_percentage,
-            status,
-            project_id
-          )
+          businesses (company_name)
         `)
-        .eq('id', ticketId)
-        .maybeSingle();
-        
-      if (error) {
-        console.error('Error fetching ticket details:', error);
-        return;
+        .eq('business_id', session.user.id);
+
+      if (error) throw error;
+      
+      setProjects(data || []);
+      if (data && data.length > 0) {
+        setSelectedProject(data[0].project_id);
+        setProjectId(data[0].project_id);
       }
-      
-      if (!data) {
-        console.log('No ticket found with id:', ticketId);
-        return;
-      }
-      
-      // Set completion percentage from ticket
-      if (data && data.completion_percentage !== null) {
-        setCompletionPercentage(data.completion_percentage || 0);
-      }
-      
-      // Fetch user profile if assigned_to exists
-      let userProfile = null;
-      if (data.assigned_to) {
-        const { data: userData, error: userError } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('id', data.assigned_to)
-          .maybeSingle();
-          
-        if (!userError && userData) {
-          userProfile = userData;
-        }
-      }
-      
-      // Fetch accepted job if task_id exists
-      let acceptedJob = null;
-      if (data.task_id) {
-        const { data: jobData, error: jobError } = await supabase
-          .from('accepted_jobs')
-          .select('*')
-          .eq('task_id', data.task_id)
-          .maybeSingle();
-          
-        if (!jobError && jobData) {
-          acceptedJob = jobData;
-        }
-      }
-      
-      // Calculate total hours logged
-      const { data: hoursData, error: hoursError } = await supabase
-        .from('time_entries')
-        .select('hours_logged')
-        .eq('ticket_id', ticketId);
-        
-      const totalHoursLogged = hoursData?.reduce((sum, entry) => sum + (entry.hours_logged || 0), 0) || 0;
-      
-      // Combine all data
-      const ticketWithDetails: TicketWithDetails = {
-        ...data,
-        user: userProfile,
-        accepted_job: acceptedJob,
-        total_hours_logged: totalHoursLogged
-      };
-      
-      setTicketDetails(ticketWithDetails);
     } catch (error) {
-      console.error('Error in fetchTicketDetails:', error);
+      console.error("Error fetching projects:", error);
+      toast.error("Failed to load projects");
+    } finally {
+      setLoadingProjects(false);
     }
   };
 
-  const fetchTimeEntries = async () => {
-    if (!ticketId) {
-      setLoading(false);
-      return;
+  const fetchTasks = async (projectId: string) => {
+    setLoadingTasks(true);
+    try {
+      const { data, error } = await supabase
+        .from('project_sub_tasks')
+        .select('*')
+        .eq('project_id', projectId);
+
+      if (error) throw error;
+      
+      setTasks(data || []);
+      if (data && data.length > 0) {
+        setSelectedTask(data[0].task_id);
+        setTaskId(data[0].task_id);
+      }
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      toast.error("Failed to load tasks");
+    } finally {
+      setLoadingTasks(false);
     }
-    
+  };
+
+  const fetchTickets = async (taskId: string) => {
+    setLoadingTickets(true);
+    try {
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('task_id', taskId);
+
+      if (error) throw error;
+      
+      setTickets(data || []);
+      if (data && data.length > 0) {
+        setSelectedTicket(data[0].id);
+        setTicketId(data[0].id);
+      }
+    } catch (error) {
+      console.error("Error fetching tickets:", error);
+      toast.error("Failed to load tickets");
+    } finally {
+      setLoadingTickets(false);
+    }
+  };
+
+  const fetchTimeEntries = async (ticketId: string) => {
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('time_entries')
         .select('*')
         .eq('ticket_id', ticketId)
-        .order('start_time', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-
+      
       setTimeEntries(data || []);
-      
-      // Calculate total hours
-      const total = data?.reduce((sum, entry) => {
-        return sum + (entry.hours_logged || 0);
-      }, 0) || 0;
-      
-      setTotalHours(total);
     } catch (error) {
-      console.error('Error fetching time entries:', error);
+      console.error("Error fetching time entries:", error);
       toast.error("Failed to load time entries");
     } finally {
       setLoading(false);
     }
   };
 
-  const updateCompletionPercentage = async () => {
-    try {
-      if (!ticketDetails) return;
-      
-      // Update ticket completion percentage
-      const { error: ticketError } = await supabase
-        .from('tickets')
-        .update({ completion_percentage: completionPercentage })
-        .eq('id', ticketId);
-        
-      if (ticketError) throw ticketError;
-
-      // If the ticket has a task_id, also update the task's completion percentage
-      if (ticketDetails.task_id) {
-        const { error: taskError } = await supabase
-          .from('project_sub_tasks')
-          .update({ completion_percentage: completionPercentage })
-          .eq('task_id', ticketDetails.task_id);
-          
-        if (taskError) throw taskError;
-      }
-
-      toast.success(`Completion percentage updated to ${completionPercentage}%`);
-      
-      // Refresh ticket details
-      fetchTicketDetails();
-    } catch (error) {
-      console.error('Error updating completion percentage:', error);
-      toast.error("Failed to update completion percentage");
+  const startTimer = async () => {
+    if (!selectedTicket) {
+      toast.error("Please select a ticket first");
+      return;
     }
-  };
-
-  // Format time as HH:MM:SS
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
     
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  // Get status icon
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'done':
-        return <CheckCircle2 className="text-green-500" />;
-      case 'todo':
-        return <Clock className="text-blue-500" />;
-      default:
-        return <AlertCircle className="text-amber-500" />;
+    const now = new Date();
+    setStartTime(now);
+    setIsTracking(true);
+    
+    // Create time entry
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("You must be logged in to track time");
+        return;
+      }
+      
+      const { data, error } = await supabase
+        .from('time_entries')
+        .insert({
+          ticket_id: selectedTicket,
+          user_id: session.user.id,
+          start_time: now.toISOString(),
+          description: description
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      // Start timer interval
+      const intervalId = setInterval(() => {
+        const currentTime = new Date();
+        const diff = currentTime.getTime() - now.getTime();
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        setElapsedTime(
+          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+        );
+      }, 1000);
+      
+      setTimerInterval(intervalId);
+      toast.success("Time tracking started");
+    } catch (error) {
+      console.error("Error starting time tracking:", error);
+      toast.error("Failed to start time tracking");
+      setIsTracking(false);
+      setStartTime(null);
     }
   };
 
-  if (loading) return <div className="flex justify-center p-8">Loading time tracking data...</div>;
+  const stopTimer = async () => {
+    if (!startTime || !timerInterval) return;
+    
+    clearInterval(timerInterval);
+    setTimerInterval(null);
+    
+    const endTime = new Date();
+    const hoursLogged = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+    
+    try {
+      // Update the latest time entry
+      const { data: latestEntry, error: fetchError } = await supabase
+        .from('time_entries')
+        .select('*')
+        .eq('ticket_id', selectedTicket)
+        .is('end_time', null)
+        .order('start_time', { ascending: false })
+        .limit(1)
+        .single();
+        
+      if (fetchError) throw fetchError;
+      
+      const { error: updateError } = await supabase
+        .from('time_entries')
+        .update({
+          end_time: endTime.toISOString(),
+          hours_logged: hoursLogged,
+          description: description
+        })
+        .eq('id', latestEntry.id);
+        
+      if (updateError) throw updateError;
+      
+      // Update ticket hours logged
+      const { data: ticket, error: ticketFetchError } = await supabase
+        .from('tickets')
+        .select('hours_logged')
+        .eq('id', selectedTicket)
+        .single();
+        
+      if (ticketFetchError && ticketFetchError.code !== 'PGRST116') throw ticketFetchError;
+      
+      const currentHours = ticket?.hours_logged || 0;
+      const { error: ticketUpdateError } = await supabase
+        .from('tickets')
+        .update({
+          hours_logged: currentHours + hoursLogged
+        })
+        .eq('id', selectedTicket);
+        
+      if (ticketUpdateError) throw ticketUpdateError;
+      
+      setIsTracking(false);
+      setStartTime(null);
+      setElapsedTime("00:00:00");
+      setDescription("");
+      fetchTimeEntries(selectedTicket);
+      toast.success("Time entry saved successfully");
+    } catch (error) {
+      console.error("Error stopping time tracking:", error);
+      toast.error("Failed to save time entry");
+    }
+  };
 
-  if (!ticketId) return <div className="text-center p-8">Please select a ticket to track time.</div>;
-  
-  if (!ticketExists) return <div className="text-center p-8 text-red-500">This ticket doesn't exist in the database.</div>;
+  const updateTaskProgress = async (taskId: string, value: number) => {
+    try {
+      const { error } = await supabase
+        .from('project_sub_tasks')
+        .update({ completion_percentage: value })
+        .eq('task_id', taskId);
+        
+      if (error) throw error;
+      
+      // Refresh tasks
+      if (selectedProject) {
+        fetchTasks(selectedProject);
+      }
+      
+      toast.success("Task progress updated");
+    } catch (error) {
+      console.error("Error updating task progress:", error);
+      toast.error("Failed to update task progress");
+    }
+  };
 
-  if (!ticketDetails) return <div className="text-center p-8">Failed to load ticket details.</div>;
+  const formatDuration = (hours: number) => {
+    const totalMinutes = Math.floor(hours * 60);
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    
+    return `${h}h ${m}m`;
+  };
 
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="pb-3">
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle>{ticketDetails.title || 'Untitled Ticket'}</CardTitle>
-              <div className="text-sm text-muted-foreground mt-1">
-                {ticketDetails.description || 'No description'}
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              {ticketDetails.status && (
-                <Badge variant={ticketDetails.status === 'done' ? 'default' : ticketDetails.status === 'todo' ? 'outline' : 'secondary'}>
-                  <span className="flex items-center">
-                    {getStatusIcon(ticketDetails.status)}
-                    <span className="ml-1 capitalize">{ticketDetails.status}</span>
-                  </span>
-                </Badge>
-              )}
-              {ticketDetails.priority && (
-                <Badge variant="outline" className={
-                  ticketDetails.priority === 'high' ? 'border-red-500 text-red-500' : 
-                  ticketDetails.priority === 'medium' ? 'border-amber-500 text-amber-500' : 
-                  'border-blue-500 text-blue-500'
-                }>
-                  {ticketDetails.priority}
-                </Badge>
-              )}
-            </div>
-          </div>
-          {completionPercentage > 0 && (
-            <div className="mt-4">
-              <div className="flex justify-between text-sm mb-1">
-                <span>Progress</span>
-                <span>{completionPercentage}%</span>
-              </div>
-              <Progress value={completionPercentage} className="h-2" />
-            </div>
-          )}
+        <CardHeader>
+          <CardTitle>Time & Progress Tracking</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Project and Task Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-4">
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Project Details</h3>
-              <div className="mt-2 space-y-1">
-                <div className="flex justify-between">
-                  <span className="font-medium">Project:</span>
-                  <span>{ticketDetails.project?.title || 'Unknown'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Total Equity:</span>
-                  <span>{ticketDetails.project?.equity_allocation || 0}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Allocated Equity:</span>
-                  <span>{ticketDetails.project?.equity_allocated || 0}%</span>
-                </div>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Task Details</h3>
-              <div className="mt-2 space-y-1">
-                <div className="flex justify-between">
-                  <span className="font-medium">Task:</span>
-                  <span>{ticketDetails.task?.title || 'Unknown'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Timeframe:</span>
-                  <span>{ticketDetails.task?.timeframe || 'Not specified'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Equity:</span>
-                  <span>{ticketDetails.task?.equity_allocation || 0}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Status:</span>
-                  <span className="capitalize">{ticketDetails.task?.status || 'Unknown'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Assignment Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-4">
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Assignment Details</h3>
-              <div className="mt-2 space-y-1">
-                <div className="flex justify-between">
-                  <span className="font-medium">Assigned To:</span>
-                  <span>
-                    {ticketDetails.user ? 
-                      `${ticketDetails.user.first_name} ${ticketDetails.user.last_name}` : 
-                      'Unassigned'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Date Accepted:</span>
-                  <span>
-                    {ticketDetails.accepted_job?.date_accepted ? 
-                      formatDate(ticketDetails.accepted_job.date_accepted) : 
-                      'Not yet accepted'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Equity Agreed:</span>
-                  <span>{ticketDetails.accepted_job?.equity_agreed || 0}%</span>
-                </div>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Time & Progress</h3>
-              <div className="mt-2 space-y-1">
-                <div className="flex justify-between">
-                  <span className="font-medium">Estimated Hours:</span>
-                  <span>{ticketDetails.estimated_hours || 'Not estimated'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Hours Logged:</span>
-                  <span className="font-bold text-blue-600">{totalHours.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Completion:</span>
-                  <span>{completionPercentage}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Progress Tracking Section */}
-          <div className="border-b pb-4">
-            <Label className="text-lg font-medium mb-2 block">Task Completion Progress</Label>
-            <p className="text-sm text-muted-foreground mb-4">
-              Update the completion percentage for this task. Task equity will be allocated based on this value.
-            </p>
-            
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <Label>Completion Percentage:</Label>
-                <span className="font-semibold text-lg">{completionPercentage}%</span>
-              </div>
-              
-              <Slider
-                value={[completionPercentage]}
-                min={0}
-                max={100}
-                step={5}
-                onValueChange={(value) => setCompletionPercentage(value[0])}
-                className="mb-4"
-              />
-              
-              <Button 
-                onClick={updateCompletionPercentage}
-                className="w-full"
+        <CardContent>
+          <div className="mb-6 space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Project</label>
+              <Select 
+                value={selectedProject || ''} 
+                onValueChange={setSelectedProject}
+                disabled={loadingProjects || projects.length === 0}
               >
-                <PercentIcon className="mr-2 h-4 w-4" />
-                Update Progress
-              </Button>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map(project => (
+                    <SelectItem key={project.project_id} value={project.project_id}>
+                      {project.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Task</label>
+              <Select 
+                value={selectedTask || ''} 
+                onValueChange={setSelectedTask}
+                disabled={loadingTasks || tasks.length === 0 || !selectedProject}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a task" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tasks.map(task => (
+                    <SelectItem key={task.task_id} value={task.task_id}>
+                      {task.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Ticket</label>
+              <Select 
+                value={selectedTicket || ''} 
+                onValueChange={setSelectedTicket}
+                disabled={loadingTickets || tickets.length === 0 || !selectedTask}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a ticket" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tickets.map(ticket => (
+                    <SelectItem key={ticket.id} value={ticket.id}>
+                      {ticket.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {tickets.length === 0 && selectedTask && !loadingTickets && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  No tickets found for this task. Create a ticket first.
+                </p>
+              )}
             </div>
           </div>
           
-          {/* Time Entries Section */}
-          <div>
-            <div className="mb-4">
-              <h3 className="text-lg font-medium">Time Entries</h3>
-              <p className="text-muted-foreground text-sm">
-                View recorded time entries for this ticket. Total: <span className="font-bold">{totalHours.toFixed(2)} hours</span>
-              </p>
-            </div>
-            
-            {timeEntries.length > 0 ? (
-              <div className="space-y-2">
-                <Accordion type="single" collapsible className="w-full">
-                  {timeEntries.map((entry, index) => (
-                    <AccordionItem key={entry.id} value={entry.id}>
-                      <AccordionTrigger className="hover:no-underline">
-                        <div className="flex justify-between w-full pr-4">
-                          <div className="font-medium">
-                            {entry.description || `Time Entry #${index + 1}`}
-                          </div>
-                          <div className="font-semibold text-primary">
-                            {entry.hours_logged ? `${entry.hours_logged.toFixed(2)} hours` : 'In progress'}
-                          </div>
+          {selectedTicket && (
+            <>
+              <Separator className="my-4" />
+              
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Task Progress</h3>
+                  {selectedTask && tasks.find(t => t.task_id === selectedTask) && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">
+                          {tasks.find(t => t.task_id === selectedTask)?.title}
+                        </span>
+                        <span className="text-sm">
+                          {tasks.find(t => t.task_id === selectedTask)?.completion_percentage || 0}%
+                        </span>
+                      </div>
+                      <Slider
+                        defaultValue={[tasks.find(t => t.task_id === selectedTask)?.completion_percentage || 0]}
+                        max={100}
+                        step={5}
+                        className="w-full"
+                        onValueCommit={(value) => {
+                          if (selectedTask) {
+                            updateTaskProgress(selectedTask, value[0]);
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+                
+                <Separator className="my-4" />
+                
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Time Tracker</h3>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-4">
+                      <div className="rounded-lg border p-4">
+                        <div className="text-center text-4xl font-mono mb-4">
+                          {isTracking ? elapsedTime : "00:00:00"}
                         </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="px-4 py-2 bg-secondary/20 rounded-md">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <div>
-                              <span className="text-sm font-medium">Started:</span>
-                              <span className="ml-2 text-sm">
-                                {entry.start_time && formatDate(entry.start_time)}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-sm font-medium">Ended:</span>
-                              <span className="ml-2 text-sm">
-                                {entry.end_time ? formatDate(entry.end_time) : 'Not completed'}
-                              </span>
-                            </div>
-                            {entry.description && (
-                              <div className="col-span-2">
-                                <span className="text-sm font-medium">Description:</span>
-                                <p className="text-sm mt-1">{entry.description}</p>
-                              </div>
-                            )}
-                          </div>
+                        <Textarea
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                          placeholder="What are you working on?"
+                          className="mb-4"
+                          disabled={isTracking}
+                        />
+                        {isTracking ? (
+                          <Button 
+                            variant="destructive" 
+                            className="w-full" 
+                            onClick={stopTimer}
+                          >
+                            <PauseCircle className="mr-2 h-4 w-4" />
+                            Stop Timer
+                          </Button>
+                        ) : (
+                          <Button 
+                            className="w-full" 
+                            onClick={startTimer}
+                          >
+                            <PlayCircle className="mr-2 h-4 w-4" />
+                            Start Timer
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="rounded-lg border">
+                        <div className="p-4 font-medium flex justify-between items-center">
+                          <h4>Recent Time Entries</h4>
+                          {loading && <p className="text-sm text-muted-foreground">Loading...</p>}
                         </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
+                        <div className="max-h-[300px] overflow-y-auto">
+                          {!loading && timeEntries.length === 0 ? (
+                            <p className="p-4 text-center text-muted-foreground">No time entries found</p>
+                          ) : (
+                            <Accordion type="single" collapsible className="w-full">
+                              {timeEntries.map((entry, index) => (
+                                <AccordionItem key={entry.id} value={entry.id}>
+                                  <AccordionTrigger className="px-4 py-2 hover:no-underline">
+                                    <div className="flex justify-between items-center w-full">
+                                      <div className="flex items-center">
+                                        <Clock className="mr-2 h-4 w-4" />
+                                        <span>
+                                          {entry.hours_logged ? formatDuration(entry.hours_logged) : 'In progress'}
+                                        </span>
+                                      </div>
+                                      <span className="text-xs text-muted-foreground">
+                                        {format(new Date(entry.start_time), 'MMM d, yyyy')}
+                                      </span>
+                                    </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent className="px-4 pb-3 pt-0">
+                                    <div className="text-sm space-y-2">
+                                      <div className="flex justify-between">
+                                        <span className="font-medium">Start:</span>
+                                        <span>{format(new Date(entry.start_time), 'MMM d, yyyy h:mm a')}</span>
+                                      </div>
+                                      {entry.end_time && (
+                                        <div className="flex justify-between">
+                                          <span className="font-medium">End:</span>
+                                          <span>{format(new Date(entry.end_time), 'MMM d, yyyy h:mm a')}</span>
+                                        </div>
+                                      )}
+                                      {entry.description && (
+                                        <div className="pt-2">
+                                          <span className="font-medium">Description:</span>
+                                          <p className="mt-1">{entry.description}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </AccordionContent>
+                                </AccordionItem>
+                              ))}
+                            </Accordion>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="text-center py-6 text-muted-foreground">
-                No time entries recorded for this ticket.
-              </div>
-            )}
-          </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
   );
-}
+};

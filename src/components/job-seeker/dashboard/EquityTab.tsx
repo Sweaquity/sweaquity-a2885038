@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,7 +55,6 @@ export const EquityTab = ({
 
   useEffect(() => {
     if (equityProjects.length > 0) {
-      // Load tickets for all projects
       equityProjects.forEach(project => {
         fetchProjectTickets(project.id);
       });
@@ -87,14 +85,12 @@ export const EquityTab = ({
     try {
       const today = new Date().toISOString().split('T')[0];
       
-      // Get user ID from auth
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast.error("You must be logged in to log effort");
         return;
       }
       
-      // Create a new time entry in the ticket_time_entries table
       const { error } = await supabase
         .from('time_entries')
         .insert({
@@ -113,7 +109,6 @@ export const EquityTab = ({
       setHours(0);
       setDescription('');
       
-      // Refresh tickets
       fetchProjectTickets(selectedProject.id);
     } catch (error) {
       console.error('Error logging effort:', error);
@@ -128,7 +123,6 @@ export const EquityTab = ({
     }
 
     try {
-      // Create a new ticket
       const { data, error } = await supabase
         .from('tickets')
         .insert({
@@ -154,7 +148,6 @@ export const EquityTab = ({
       setTicketDescription('');
       setTicketPriority('medium');
       
-      // Refresh tickets
       fetchProjectTickets(selectedProject.id);
     } catch (error) {
       console.error('Error creating ticket:', error);
@@ -221,7 +214,6 @@ export const EquityTab = ({
                         </div>
                         <p className="text-muted-foreground mt-1">{task.description}</p>
                         
-                        {/* Show tickets related to this task */}
                         {projectTickets[project.id]?.filter(ticket => ticket.task_id === task.task_id).length > 0 && (
                           <div className="mt-3 space-y-2">
                             <p className="text-xs font-medium">Tickets:</p>
@@ -309,7 +301,6 @@ export const EquityTab = ({
         </CardContent>
       </Card>
       
-      {/* Time logging dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -350,7 +341,6 @@ export const EquityTab = ({
         </DialogContent>
       </Dialog>
       
-      {/* Create ticket dialog */}
       <Dialog open={isCreateTicketDialogOpen} onOpenChange={setIsCreateTicketDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -425,7 +415,6 @@ export const EquityTab = ({
         </DialogContent>
       </Dialog>
       
-      {/* Document upload dialog */}
       <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -462,5 +451,105 @@ export const EquityTab = ({
         </DialogContent>
       </Dialog>
     </>
+  );
+};
+
+const TicketActions = ({ project, task, onCreateTicket }) => {
+  const [isCreatingTicket, setIsCreatingTicket] = useState(false);
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (task?.task_id) {
+      fetchTickets(task.task_id);
+    }
+  }, [task]);
+
+  const fetchTickets = async (taskId) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('task_id', taskId);
+
+      if (error) throw error;
+      setTickets(data || []);
+    } catch (error) {
+      console.error('Error fetching tickets:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between items-center">
+        <h4 className="text-sm font-medium">Tickets</h4>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            onCreateTicket(project, task);
+          }}
+        >
+          Create Ticket
+        </Button>
+      </div>
+      
+      {loading ? (
+        <div className="text-center py-2">
+          <span className="text-sm text-muted-foreground">Loading tickets...</span>
+        </div>
+      ) : tickets.length === 0 ? (
+        <div className="rounded-md border p-4 text-center">
+          <p className="text-sm text-muted-foreground">No tickets found for this task.</p>
+          <p className="text-sm mt-1">Create a ticket to track your work.</p>
+        </div>
+      ) : (
+        <div className="space-y-2 mt-2">
+          {tickets.map(ticket => (
+            <div key={ticket.id} className="border rounded-md p-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h5 className="font-medium">{ticket.title}</h5>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant={
+                      ticket.status === 'done' ? 'default' :
+                      ticket.status === 'in_progress' ? 'secondary' :
+                      'outline'
+                    }>
+                      {ticket.status}
+                    </Badge>
+                    {ticket.priority && (
+                      <Badge variant={
+                        ticket.priority === 'high' ? 'destructive' :
+                        ticket.priority === 'medium' ? 'warning' :
+                        'outline'
+                      }>
+                        {ticket.priority}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {ticket.due_date && (
+                    <div>Due: {new Date(ticket.due_date).toLocaleDateString()}</div>
+                  )}
+                  {ticket.estimated_hours && (
+                    <div>Est: {ticket.estimated_hours}h</div>
+                  )}
+                </div>
+              </div>
+              {ticket.description && (
+                <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                  {ticket.description}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };

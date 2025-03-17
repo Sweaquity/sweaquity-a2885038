@@ -1,426 +1,697 @@
 
-import { useState, useEffect } from "react";
-import { TicketCard } from "./TicketCard";
-import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader,
+  TableRow 
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { 
+  ChevronDown, 
+  ChevronUp, 
+  Clock, 
+  Filter, 
+  MoreHorizontal, 
+  User 
+} from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+} from '@/components/ui/select';
 
-export const TicketList = () => {
-  const [tickets, setTickets] = useState<any[]>([]);
+export const TicketList = ({ projectId }) => {
+  const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
-  const [sort, setSort] = useState('updated_desc');
-  const [savingTicket, setSavingTicket] = useState<string | null>(null);
-  const [editingTickets, setEditingTickets] = useState<Set<string>>(new Set());
+  const [expandedTicketId, setExpandedTicketId] = useState(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [currentTicket, setCurrentTicket] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
 
   useEffect(() => {
-    loadTickets();
-  }, [filter, sort]);
+    fetchTickets();
+    fetchUsers();
+    fetchProjects();
+  }, [filter, projectId]);
 
-  const loadTickets = async () => {
+  useEffect(() => {
+    if (projectId) {
+      fetchTasks(projectId);
+    }
+  }, [projectId]);
+
+  const fetchTickets = async () => {
     setLoading(true);
     try {
       let query = supabase
         .from('tickets')
         .select(`
           *,
-          assigned_user:assigned_to(id, email),
-          reporter_user:reporter(id, email),
-          project:project_id(id, title)
-        `);
-
+          project:project_id(title, project_id),
+          task:task_id(title, task_id),
+          assigned_user:assigned_to(first_name, last_name, email, id)
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (projectId) {
+        query = query.eq('project_id', projectId);
+      }
+      
       // Apply filters
-      if (filter !== 'all') {
-        query = query.eq('status', filter);
+      if (filter === 'mine') {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          query = query.eq('assigned_to', session.user.id);
+        }
+      } else if (filter === 'open') {
+        query = query.not('status', 'eq', 'done');
+      } else if (filter === 'done') {
+        query = query.eq('status', 'done');
       }
-
-      // Apply sorting
-      switch (sort) {
-        case 'updated_desc':
-          query = query.order('updated_at', { ascending: false });
-          break;
-        case 'updated_asc':
-          query = query.order('updated_at', { ascending: true });
-          break;
-        case 'priority_desc':
-          query = query.order('priority', { ascending: false });
-          break;
-        case 'priority_asc':
-          query = query.order('priority', { ascending: true });
-          break;
-        case 'due_date_asc':
-          query = query.order('due_date', { ascending: true });
-          break;
-        case 'due_date_desc':
-          query = query.order('due_date', { ascending: false });
-          break;
-      }
-
+      
       const { data, error } = await query;
-
+      
       if (error) throw error;
+      
+      console.log("Tickets data:", data);
       setTickets(data || []);
     } catch (error) {
-      console.error('Error loading tickets:', error);
+      console.error('Error fetching tickets:', error);
       toast.error("Failed to load tickets");
     } finally {
       setLoading(false);
     }
   };
 
-  // Toggle edit mode for a ticket
-  const toggleEdit = (ticketId: string) => {
-    setEditingTickets(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(ticketId)) {
-        newSet.delete(ticketId);
-      } else {
-        newSet.add(ticketId);
-      }
-      return newSet;
-    });
-  };
-
-  // Update a ticket field
-  const updateTicketField = async (ticketId: string, field: string, value: any) => {
-    const ticketsCopy = [...tickets];
-    const ticketIndex = ticketsCopy.findIndex(t => t.id === ticketId);
-    
-    if (ticketIndex !== -1) {
-      ticketsCopy[ticketIndex] = {
-        ...ticketsCopy[ticketIndex],
-        [field]: value
-      };
-      setTickets(ticketsCopy);
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email');
+      
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
     }
   };
 
-  // Save ticket changes
-  const saveTicketChanges = async (ticketId: string) => {
-    setSavingTicket(ticketId);
+  const fetchProjects = async () => {
     try {
-      const ticket = tickets.find(t => t.id === ticketId);
-      if (!ticket) return;
+      const { data, error } = await supabase
+        .from('business_projects')
+        .select('project_id, title');
+      
+      if (error) throw error;
+      setProjects(data || []);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  };
 
-      const { error } = await supabase
+  const fetchTasks = async (projectId) => {
+    try {
+      const { data, error } = await supabase
+        .from('project_sub_tasks')
+        .select('task_id, title')
+        .eq('project_id', projectId);
+      
+      if (error) throw error;
+      setTasks(data || []);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+    }
+  };
+
+  const handleUpdateTicket = async (ticketData) => {
+    try {
+      const { data: oldTicket, error: fetchError } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('id', ticketData.id)
+        .single();
+        
+      if (fetchError) throw fetchError;
+      
+      // Track changes for notes
+      const changes = [];
+      
+      if (oldTicket.status !== ticketData.status) {
+        changes.push({
+          type: 'status_change',
+          from: oldTicket.status,
+          to: ticketData.status,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      if (oldTicket.priority !== ticketData.priority) {
+        changes.push({
+          type: 'priority_change',
+          from: oldTicket.priority,
+          to: ticketData.priority,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      if (oldTicket.assigned_to !== ticketData.assigned_to) {
+        changes.push({
+          type: 'assignee_change',
+          from: oldTicket.assigned_to,
+          to: ticketData.assigned_to,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      // Prepare notes
+      let notes = oldTicket.notes || [];
+      if (typeof notes === 'string') {
+        try {
+          notes = JSON.parse(notes);
+        } catch (e) {
+          notes = [];
+        }
+      }
+      if (!Array.isArray(notes)) {
+        notes = [];
+      }
+      
+      const updatedNotes = [...notes, ...changes];
+      
+      // Update the ticket
+      const { error: updateError } = await supabase
         .from('tickets')
         .update({
-          status: ticket.status,
-          priority: ticket.priority,
-          health: ticket.health,
-          due_date: ticket.due_date
+          ...ticketData,
+          notes: updatedNotes,
+          updated_at: new Date().toISOString()
         })
-        .eq('id', ticketId);
-
-      if (error) throw error;
+        .eq('id', ticketData.id);
+        
+      if (updateError) throw updateError;
       
       toast.success("Ticket updated successfully");
-      toggleEdit(ticketId);
+      fetchTickets();
+      setEditDialogOpen(false);
     } catch (error) {
       console.error('Error updating ticket:', error);
       toast.error("Failed to update ticket");
-    } finally {
-      setSavingTicket(null);
     }
   };
 
-  // Group tickets by status
-  const getTicketsByStatus = (status: string) => {
-    return tickets.filter(ticket => ticket.status === status);
+  const handleDeleteTicket = async (ticketId) => {
+    try {
+      const { error } = await supabase
+        .from('tickets')
+        .delete()
+        .eq('id', ticketId);
+        
+      if (error) throw error;
+      
+      toast.success("Ticket deleted successfully");
+      fetchTickets();
+    } catch (error) {
+      console.error('Error deleting ticket:', error);
+      toast.error("Failed to delete ticket");
+    }
   };
 
-  // Enhanced TicketCard that includes editing capabilities
-  const TicketCardWithEdit = ({ ticket, isEditing, onToggleEdit }: { 
-    ticket: any, 
-    isEditing: boolean, 
-    onToggleEdit: () => void 
-  }) => {
+  const toggleExpandTicket = (ticketId) => {
+    setExpandedTicketId(expandedTicketId === ticketId ? null : ticketId);
+  };
+
+  const openEditDialog = (ticket) => {
+    setCurrentTicket(ticket);
+    setEditDialogOpen(true);
+    
+    // If ticket is associated with a project, load its tasks
+    if (ticket.project_id) {
+      fetchTasks(ticket.project_id);
+    }
+  };
+
+  const renderHealthIndicator = (health) => {
+    const colors = {
+      red: 'bg-red-500',
+      amber: 'bg-yellow-500',
+      green: 'bg-green-500'
+    };
+    
     return (
-      <div className="border rounded-lg p-4 bg-white shadow-sm mb-2">
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="font-medium text-lg">{ticket.title}</h3>
-          {isEditing ? (
-            <div className="flex space-x-2">
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={() => saveTicketChanges(ticket.id)}
-                disabled={savingTicket === ticket.id}
-              >
-                {savingTicket === ticket.id ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving</>
-                ) : (
-                  'Save'
-                )}
-              </Button>
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                onClick={onToggleEdit}
-              >
-                Cancel
-              </Button>
-            </div>
-          ) : (
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={onToggleEdit}
-            >
-              Edit
-            </Button>
-          )}
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-2">
-          <div>
-            <p className="text-sm text-gray-500">Status</p>
-            {isEditing ? (
-              <Select 
-                value={ticket.status} 
-                onValueChange={(value) => updateTicketField(ticket.id, 'status', value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="backlog">Backlog</SelectItem>
-                  <SelectItem value="todo">To Do</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="review">Review</SelectItem>
-                  <SelectItem value="done">Done</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : (
-              <p className="text-sm font-medium capitalize">{ticket.status.replace('_', ' ')}</p>
-            )}
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Priority</p>
-            {isEditing ? (
-              <Select 
-                value={ticket.priority} 
-                onValueChange={(value) => updateTicketField(ticket.id, 'priority', value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="urgent">Urgent</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : (
-              <p className="text-sm font-medium capitalize">{ticket.priority}</p>
-            )}
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Health</p>
-            {isEditing ? (
-              <Select 
-                value={ticket.health} 
-                onValueChange={(value) => updateTicketField(ticket.id, 'health', value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select health" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="green">Green</SelectItem>
-                  <SelectItem value="amber">Amber</SelectItem>
-                  <SelectItem value="red">Red</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : (
-              <p className={`text-sm font-medium capitalize ${
-                ticket.health === 'red' ? 'text-red-600' : 
-                ticket.health === 'amber' ? 'text-amber-600' : 
-                'text-green-600'
-              }`}>
-                {ticket.health}
-              </p>
-            )}
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Due Date</p>
-            {isEditing ? (
-              <input
-                type="date"
-                className="w-full px-3 py-2 border rounded-md text-sm"
-                value={ticket.due_date || ''}
-                onChange={(e) => updateTicketField(ticket.id, 'due_date', e.target.value)}
-              />
-            ) : (
-              <p className="text-sm font-medium">
-                {ticket.due_date ? new Date(ticket.due_date).toLocaleDateString() : 'No due date'}
-              </p>
-            )}
-          </div>
-        </div>
-        
-        {ticket.project && (
-          <div className="mb-2">
-            <p className="text-sm text-gray-500">Project</p>
-            <p className="text-sm font-medium">{ticket.project.title}</p>
-          </div>
-        )}
-        
-        <div>
-          <p className="text-sm text-gray-500">Description</p>
-          <p className="text-sm mt-1">{ticket.description || 'No description provided'}</p>
-        </div>
-      </div>
+      <span 
+        className={`inline-block w-3 h-3 rounded-full ${colors[health] || 'bg-gray-500'}`} 
+        title={`Health: ${health}`}
+      />
     );
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between mb-4">
-        <h2 className="text-2xl font-bold">Project Tickets</h2>
-        
-        <div className="flex gap-2">
-          <Select
-            value={sort}
-            onValueChange={setSort}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="updated_desc">Recently Updated</SelectItem>
-              <SelectItem value="updated_asc">Oldest Updated</SelectItem>
-              <SelectItem value="priority_desc">Highest Priority</SelectItem>
-              <SelectItem value="priority_asc">Lowest Priority</SelectItem>
-              <SelectItem value="due_date_asc">Earliest Due</SelectItem>
-              <SelectItem value="due_date_desc">Latest Due</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Select
-            value={filter}
-            onValueChange={setFilter}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Tickets</SelectItem>
-              <SelectItem value="backlog">Backlog</SelectItem>
-              <SelectItem value="todo">To Do</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="review">In Review</SelectItem>
-              <SelectItem value="done">Done</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+  const renderStatusBadge = (status) => {
+    const badges = {
+      backlog: 'bg-gray-100 text-gray-800',
+      todo: 'bg-blue-100 text-blue-800',
+      in_progress: 'bg-yellow-100 text-yellow-800',
+      review: 'bg-purple-100 text-purple-800',
+      done: 'bg-green-100 text-green-800'
+    };
+    
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badges[status] || 'bg-gray-100 text-gray-800'}`}>
+        {status}
+      </span>
+    );
+  };
 
-      {loading ? (
-        <div className="text-center py-10">Loading tickets...</div>
-      ) : tickets.length === 0 ? (
-        <div className="text-center py-10 bg-slate-50 rounded-lg">
-          <p className="text-gray-500">No tickets found</p>
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex justify-center">
+            <p>Loading tickets...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex justify-between items-center">
+          <CardTitle>Tickets</CardTitle>
+          <div className="flex items-center gap-2">
+            <Select defaultValue={filter} onValueChange={setFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter tickets" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Tickets</SelectItem>
+                <SelectItem value="mine">My Tickets</SelectItem>
+                <SelectItem value="open">Open Tickets</SelectItem>
+                <SelectItem value="done">Completed Tickets</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      ) : (
-        <Tabs defaultValue="all" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="all">
-              All ({tickets.length})
-            </TabsTrigger>
-            <TabsTrigger value="backlog">
-              Backlog ({getTicketsByStatus('backlog').length})
-            </TabsTrigger>
-            <TabsTrigger value="todo">
-              To Do ({getTicketsByStatus('todo').length})
-            </TabsTrigger>
-            <TabsTrigger value="in_progress">
-              In Progress ({getTicketsByStatus('in_progress').length})
-            </TabsTrigger>
-            <TabsTrigger value="review">
-              Review ({getTicketsByStatus('review').length})
-            </TabsTrigger>
-            <TabsTrigger value="done">
-              Done ({getTicketsByStatus('done').length})
-            </TabsTrigger>
-          </TabsList>
+      </CardHeader>
+      <CardContent>
+        {tickets.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">No tickets found.</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-8"></TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Project</TableHead>
+                <TableHead>Task</TableHead>
+                <TableHead>Assigned To</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="w-8"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {tickets.map(ticket => (
+                <React.Fragment key={ticket.id}>
+                  <TableRow className={expandedTicketId === ticket.id ? 'bg-gray-50' : ''}>
+                    <TableCell>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => toggleExpandTicket(ticket.id)}
+                      >
+                        {expandedTicketId === ticket.id ? 
+                          <ChevronUp className="h-4 w-4" /> : 
+                          <ChevronDown className="h-4 w-4" />
+                        }
+                      </Button>
+                    </TableCell>
+                    <TableCell className="font-medium flex items-center gap-2">
+                      {renderHealthIndicator(ticket.health)}
+                      {ticket.title}
+                    </TableCell>
+                    <TableCell>
+                      {renderStatusBadge(ticket.status)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={
+                        ticket.priority === 'high' ? 'destructive' :
+                        ticket.priority === 'medium' ? 'secondary' :
+                        'outline'
+                      }>
+                        {ticket.priority}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {ticket.project?.title || 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {ticket.task?.title || 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {ticket.assigned_user ? 
+                        `${ticket.assigned_user.first_name} ${ticket.assigned_user.last_name}` : 
+                        'Unassigned'
+                      }
+                    </TableCell>
+                    <TableCell>
+                      {new Date(ticket.created_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditDialog(ticket)}>
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            className="text-red-600" 
+                            onClick={() => handleDeleteTicket(ticket.id)}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                  
+                  {expandedTicketId === ticket.id && (
+                    <TableRow className="bg-gray-50">
+                      <TableCell colSpan={9} className="p-4">
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="font-medium mb-1">Description</h4>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                              {ticket.description || 'No description provided.'}
+                            </p>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <h4 className="font-medium mb-1">Details</h4>
+                              <dl className="grid grid-cols-2 gap-2 text-sm">
+                                {ticket.due_date && (
+                                  <>
+                                    <dt className="text-muted-foreground">Due Date:</dt>
+                                    <dd>{new Date(ticket.due_date).toLocaleDateString()}</dd>
+                                  </>
+                                )}
+                                {ticket.estimated_hours !== null && (
+                                  <>
+                                    <dt className="text-muted-foreground">Estimated Hours:</dt>
+                                    <dd>{ticket.estimated_hours}h</dd>
+                                  </>
+                                )}
+                                {ticket.ticket_type && (
+                                  <>
+                                    <dt className="text-muted-foreground">Type:</dt>
+                                    <dd>{ticket.ticket_type}</dd>
+                                  </>
+                                )}
+                                {ticket.equity_points !== null && (
+                                  <>
+                                    <dt className="text-muted-foreground">Equity Points:</dt>
+                                    <dd>{ticket.equity_points}</dd>
+                                  </>
+                                )}
+                              </dl>
+                            </div>
+                            
+                            <div>
+                              <h4 className="font-medium mb-1">Activity</h4>
+                              <div className="text-sm space-y-2 max-h-[200px] overflow-y-auto">
+                                {ticket.notes && Array.isArray(ticket.notes) && ticket.notes.length > 0 ? (
+                                  ticket.notes.map((note, index) => (
+                                    <div key={index} className="py-1 border-b border-gray-100">
+                                      <div className="flex justify-between">
+                                        <span className="font-medium">
+                                          {note.type === 'status_change' ? 'Status changed' :
+                                           note.type === 'priority_change' ? 'Priority changed' :
+                                           note.type === 'assignee_change' ? 'Assignee changed' :
+                                           note.type}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                          {new Date(note.timestamp).toLocaleString()}
+                                        </span>
+                                      </div>
+                                      {note.from !== undefined && note.to !== undefined && (
+                                        <div className="text-xs text-muted-foreground mt-1">
+                                          From <span className="font-medium">{note.from || 'none'}</span> to <span className="font-medium">{note.to || 'none'}</span>
+                                        </div>
+                                      )}
+                                      {note.message && (
+                                        <p className="mt-1">{note.message}</p>
+                                      )}
+                                    </div>
+                                  ))
+                                ) : (
+                                  <p className="text-muted-foreground">No activity recorded.</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+      
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Ticket</DialogTitle>
+            <DialogDescription>
+              Make changes to the ticket details below.
+            </DialogDescription>
+          </DialogHeader>
           
-          <TabsContent value="all" className="space-y-2">
-            {tickets.map(ticket => (
-              <TicketCardWithEdit 
-                key={ticket.id} 
-                ticket={ticket}
-                isEditing={editingTickets.has(ticket.id)}
-                onToggleEdit={() => toggleEdit(ticket.id)}
-              />
-            ))}
-          </TabsContent>
-          
-          <TabsContent value="backlog" className="space-y-2">
-            {getTicketsByStatus('backlog').map(ticket => (
-              <TicketCardWithEdit 
-                key={ticket.id} 
-                ticket={ticket}
-                isEditing={editingTickets.has(ticket.id)}
-                onToggleEdit={() => toggleEdit(ticket.id)}
-              />
-            ))}
-          </TabsContent>
-          
-          <TabsContent value="todo" className="space-y-2">
-            {getTicketsByStatus('todo').map(ticket => (
-              <TicketCardWithEdit 
-                key={ticket.id} 
-                ticket={ticket}
-                isEditing={editingTickets.has(ticket.id)}
-                onToggleEdit={() => toggleEdit(ticket.id)}
-              />
-            ))}
-          </TabsContent>
-          
-          <TabsContent value="in_progress" className="space-y-2">
-            {getTicketsByStatus('in_progress').map(ticket => (
-              <TicketCardWithEdit 
-                key={ticket.id} 
-                ticket={ticket}
-                isEditing={editingTickets.has(ticket.id)}
-                onToggleEdit={() => toggleEdit(ticket.id)}
-              />
-            ))}
-          </TabsContent>
-          
-          <TabsContent value="review" className="space-y-2">
-            {getTicketsByStatus('review').map(ticket => (
-              <TicketCardWithEdit 
-                key={ticket.id} 
-                ticket={ticket}
-                isEditing={editingTickets.has(ticket.id)}
-                onToggleEdit={() => toggleEdit(ticket.id)}
-              />
-            ))}
-          </TabsContent>
-          
-          <TabsContent value="done" className="space-y-2">
-            {getTicketsByStatus('done').map(ticket => (
-              <TicketCardWithEdit 
-                key={ticket.id} 
-                ticket={ticket}
-                isEditing={editingTickets.has(ticket.id)}
-                onToggleEdit={() => toggleEdit(ticket.id)}
-              />
-            ))}
-          </TabsContent>
-        </Tabs>
-      )}
-    </div>
+          {currentTicket && (
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              handleUpdateTicket(currentTicket);
+            }}>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="title">Title</Label>
+                  <Input
+                    id="title"
+                    value={currentTicket.title || ''}
+                    onChange={(e) => setCurrentTicket({...currentTicket, title: e.target.value})}
+                    required
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={currentTicket.description || ''}
+                    onChange={(e) => setCurrentTicket({...currentTicket, description: e.target.value})}
+                    rows={4}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="status">Status</Label>
+                    <Select
+                      value={currentTicket.status || ''}
+                      onValueChange={(value) => setCurrentTicket({...currentTicket, status: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="backlog">Backlog</SelectItem>
+                        <SelectItem value="todo">To Do</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="review">Review</SelectItem>
+                        <SelectItem value="done">Done</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="priority">Priority</Label>
+                    <Select
+                      value={currentTicket.priority || ''}
+                      onValueChange={(value) => setCurrentTicket({...currentTicket, priority: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="project">Project</Label>
+                    <Select
+                      value={currentTicket.project_id || ''}
+                      onValueChange={(value) => {
+                        setCurrentTicket({...currentTicket, project_id: value});
+                        fetchTasks(value);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select project" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {projects.map(project => (
+                          <SelectItem key={project.project_id} value={project.project_id}>
+                            {project.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="task">Task</Label>
+                    <Select
+                      value={currentTicket.task_id || ''}
+                      onValueChange={(value) => setCurrentTicket({...currentTicket, task_id: value})}
+                      disabled={!currentTicket.project_id || tasks.length === 0}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select task" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tasks.map(task => (
+                          <SelectItem key={task.task_id} value={task.task_id}>
+                            {task.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="assignee">Assigned To</Label>
+                    <Select
+                      value={currentTicket.assigned_to || ''}
+                      onValueChange={(value) => setCurrentTicket({...currentTicket, assigned_to: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select assignee" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Unassigned</SelectItem>
+                        {users.map(user => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.first_name} {user.last_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="health">Health</Label>
+                    <Select
+                      value={currentTicket.health || ''}
+                      onValueChange={(value) => setCurrentTicket({...currentTicket, health: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select health" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="green">Green</SelectItem>
+                        <SelectItem value="amber">Amber</SelectItem>
+                        <SelectItem value="red">Red</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="due_date">Due Date</Label>
+                    <Input
+                      id="due_date"
+                      type="date"
+                      value={currentTicket.due_date ? new Date(currentTicket.due_date).toISOString().split('T')[0] : ''}
+                      onChange={(e) => setCurrentTicket({...currentTicket, due_date: e.target.value ? new Date(e.target.value).toISOString() : null})}
+                    />
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="estimated_hours">Estimated Hours</Label>
+                    <Input
+                      id="estimated_hours"
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={currentTicket.estimated_hours || ''}
+                      onChange={(e) => setCurrentTicket({...currentTicket, estimated_hours: e.target.value ? parseFloat(e.target.value) : null})}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <DialogFooter>
+                <Button type="submit">Save Changes</Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 };
