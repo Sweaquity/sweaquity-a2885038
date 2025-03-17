@@ -1095,6 +1095,7 @@ export type Database = {
         Row: {
           assigned_to: string | null
           created_at: string | null
+          created_by: string | null
           description: string | null
           due_date: string | null
           equity_points: number | null
@@ -1105,12 +1106,14 @@ export type Database = {
           project_id: string | null
           reporter: string | null
           status: string
+          task_id: string | null
           title: string
           updated_at: string | null
         }
         Insert: {
           assigned_to?: string | null
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
           due_date?: string | null
           equity_points?: number | null
@@ -1121,12 +1124,14 @@ export type Database = {
           project_id?: string | null
           reporter?: string | null
           status: string
+          task_id?: string | null
           title: string
           updated_at?: string | null
         }
         Update: {
           assigned_to?: string | null
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
           due_date?: string | null
           equity_points?: number | null
@@ -1137,6 +1142,7 @@ export type Database = {
           project_id?: string | null
           reporter?: string | null
           status?: string
+          task_id?: string | null
           title?: string
           updated_at?: string | null
         }

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { JobApplication } from "@/types/jobSeeker";
@@ -128,6 +127,7 @@ export const EquityProjectItem = ({
         ticketId = existingTicket.id;
       } else {
         // Create a new ticket for this task
+        const currentUser = (await supabase.auth.getUser()).data.user?.id;
         const { data: newTicket, error: createError } = await supabase
           .from('tickets')
           .insert({
@@ -135,9 +135,10 @@ export const EquityProjectItem = ({
             description: `Time tracking for ${application.business_roles?.project_title || 'project'}`,
             project_id: application.project_id,
             status: 'open',
-            created_by: (await supabase.auth.getUser()).data.user?.id,
+            reporter: currentUser,
             priority: 'medium',
-            health: 'good'
+            health: 'good',
+            assigned_to: currentUser
           })
           .select('id')
           .single();

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Camera, Upload, X, Paperclip } from "lucide-react";
+import { AlertTriangle, Camera, Upload, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,7 +28,6 @@ export function BetaTestingButton() {
   const [systemInfo, setSystemInfo] = useState<SystemLogInfo | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Collect system information when dialog opens
   useEffect(() => {
     if (isOpen) {
       const info: SystemLogInfo = {
@@ -40,7 +39,6 @@ export function BetaTestingButton() {
       };
       setSystemInfo(info);
       
-      // Auto-populate error location from current page if empty
       if (!errorLocation) {
         const pathParts = window.location.pathname.split('/');
         const pageName = pathParts[pathParts.length - 1] || pathParts[pathParts.length - 2] || 'Home';
@@ -54,7 +52,6 @@ export function BetaTestingButton() {
       const newFiles = Array.from(e.target.files);
       setScreenshots([...screenshots, ...newFiles]);
       
-      // Generate previews for the new files
       newFiles.forEach(file => {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -74,15 +71,9 @@ export function BetaTestingButton() {
 
   const captureScreenshot = async () => {
     try {
-      // This is a placeholder for screenshot capture functionality
-      // In a real implementation, you would use a library or API for this
       toast.info("Taking screenshot... Please use the file upload for now.");
-      // For demonstration, we'll minimize the dialog temporarily
       setIsOpen(false);
-      
-      // Wait for the dialog to close
       setTimeout(() => {
-        // Then reopen it
         setIsOpen(true);
         toast.info("Please use the file upload to attach screenshots for now.");
       }, 500);
@@ -101,7 +92,6 @@ export function BetaTestingButton() {
     try {
       setIsSubmitting(true);
       
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
@@ -109,7 +99,6 @@ export function BetaTestingButton() {
         return;
       }
       
-      // First, create a new ticket
       const { data: ticketData, error: ticketError } = await supabase
         .from('tickets')
         .insert({
@@ -131,7 +120,6 @@ export function BetaTestingButton() {
         throw ticketError;
       }
       
-      // If we have screenshots, upload them to storage
       if (screenshots.length > 0 && ticketData?.id) {
         const uploadPromises = screenshots.map(async (file, index) => {
           const fileExt = file.name.split('.').pop();
@@ -148,7 +136,6 @@ export function BetaTestingButton() {
             return null;
           }
           
-          // Get the public URL for the file
           const { data: { publicUrl } } = supabase
             .storage
             .from('beta-testing')
@@ -160,7 +147,6 @@ export function BetaTestingButton() {
         const uploadedUrls = await Promise.all(uploadPromises);
         const validUrls = uploadedUrls.filter(url => url !== null) as string[];
         
-        // Update the ticket with screenshot URLs
         if (validUrls.length > 0) {
           const { error: updateError } = await supabase
             .from('tickets')
