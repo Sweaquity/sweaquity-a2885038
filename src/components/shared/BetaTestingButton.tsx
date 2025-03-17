@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 interface SystemLogInfo {
   url: string;
@@ -178,18 +180,27 @@ export function BetaTestingButton() {
       setIsSubmitting(false);
     }
   };
-  
-  return (
-    <>
-      <Button
-        variant="outline"
-        size="sm"
-        className="fixed bottom-4 right-4 md:top-4 md:bottom-auto z-50 bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
-        onClick={() => setIsOpen(true)}
-      >
-        <AlertTriangle className="mr-2 h-4 w-4" />
-        Report Beta Issue
-      </Button>
+      
+    return (
+      <>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="fixed bottom-4 right-4 md:top-4 md:bottom-auto z-50 bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
+                onClick={() => setIsOpen(true)}
+              >
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Report Beta Issue
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <p>By reporting errors you can earn equity in Sweaquity (if they then get fixed)</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-xl">
