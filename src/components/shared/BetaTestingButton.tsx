@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Camera, Upload, X } from "lucide-react";
@@ -111,6 +112,9 @@ export function BetaTestingButton() {
           system_info: systemInfo,
           reported_url: systemInfo?.url,
           reproduction_steps: description,
+          ticket_type: 'beta_testing',
+          notes: [],
+          replies: []
         })
         .select('id')
         .single();
