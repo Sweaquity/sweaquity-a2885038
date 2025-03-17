@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { TimeTracker } from "@/components/business/testing/TimeTracker";
+import { TimeTracker } from "@/components/job-seeker/dashboard/TimeTracker";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Clock, FileText, ArrowUpToLine, Plus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -524,7 +525,7 @@ const TicketActions = ({ project, task, onCreateTicket }) => {
                     {ticket.priority && (
                       <Badge variant={
                         ticket.priority === 'high' ? 'destructive' :
-                        ticket.priority === 'medium' ? 'warning' :
+                        ticket.priority === 'medium' ? 'secondary' :
                         'outline'
                       }>
                         {ticket.priority}

@@ -13,7 +13,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ChevronDown, Clock, Check, Plus, BarChart } from "lucide-react";
-import { TimeTracker } from "@/components/business/testing/TimeTracker";
+import { TimeTracker } from "@/components/job-seeker/dashboard/TimeTracker";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
@@ -452,7 +452,9 @@ export const ProjectsOverview = ({
                         </TabsList>
                         
                         <TabsContent value="time">
-                          <TimeTracker ticketId={selectedTicketId} userId={userId} />
+                          {userId && selectedTicketId && (
+                            <TimeTracker ticketId={selectedTicketId} userId={userId} />
+                          )}
                         </TabsContent>
                         
                         <TabsContent value="progress">
