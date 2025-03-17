@@ -4,12 +4,12 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { PercentIcon, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { PercentIcon, AlertCircle, CheckCircle2, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 interface TimeTrackerProps {
   ticketId: string;
@@ -26,72 +26,73 @@ interface TimeEntry {
   description: string;
 }
 
+interface ProjectSubTask {
+  task_id: string;
+  title: string;
+  description: string;
+  timeframe: string;
+  equity_allocation: number;
+  completion_percentage: number;
+  status: string;
+  project_id: string;
+}
+
+interface BusinessProject {
+  project_id: string;
+  title: string;
+  equity_allocation: number;
+  equity_allocated: number;
+}
+
+interface UserProfile {
+  first_name: string;
+  last_name: string;
+}
+
+interface AcceptedJob {
+  job_app_id: string;
+  date_accepted: string;
+  equity_agreed: number;
+}
+
+interface TicketWithDetails {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  priority: string;
+  health: string;
+  estimated_hours: number;
+  completion_percentage: number;
+  task_id: string;
+  project_id: string;
+  assigned_to: string;
+  reporter: string;
+  created_at: string;
+  project: BusinessProject;
+  task: ProjectSubTask;
+  user: UserProfile;
+  accepted_job: AcceptedJob;
+  total_hours_logged: number;
+}
+
 export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [totalHours, setTotalHours] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [ticket, setTicket] = useState<any>(null);
+  const [ticketDetails, setTicketDetails] = useState<TicketWithDetails | null>(null);
   const [ticketExists, setTicketExists] = useState(false);
   const [completionPercentage, setCompletionPercentage] = useState(0);
-  const [taskDetails, setTaskDetails] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState('timeTracking');
 
   useEffect(() => {
     if (ticketId) {
       checkTicketExists();
       fetchTicketDetails();
       fetchTimeEntries();
-      fetchTaskDetails();
     } else {
       setLoading(false);
     }
   }, [ticketId]);
-
-  const fetchTaskDetails = async () => {
-    if (!ticketId) return;
-    
-    try {
-      // First get the ticket to find the task_id
-      const { data: ticketData, error: ticketError } = await supabase
-        .from('tickets')
-        .select('task_id, completion_percentage, title, description, status, priority, health')
-        .eq('id', ticketId)
-        .maybeSingle();
-        
-      if (ticketError) {
-        console.error('Error fetching ticket details:', ticketError);
-        return;
-      }
-      
-      // Set completion percentage from ticket
-      if (ticketData && ticketData.completion_percentage !== null) {
-        setCompletionPercentage(ticketData.completion_percentage || 0);
-      }
-
-      // Store ticket data
-      if (ticketData) {
-        setTicket(ticketData);
-      }
-      
-      // Then get the task details if task_id exists
-      if (ticketData && ticketData.task_id) {
-        const { data: taskData, error: taskError } = await supabase
-          .from('project_sub_tasks')
-          .select('*')
-          .eq('task_id', ticketData.task_id)
-          .maybeSingle();
-          
-        if (taskError) {
-          console.error('Error fetching task details:', taskError);
-          return;
-        }
-        
-        setTaskDetails(taskData);
-      }
-    } catch (error) {
-      console.error('Error in fetchTaskDetails:', error);
-    }
-  };
 
   const checkTicketExists = async () => {
     if (!ticketId) return;
@@ -110,20 +111,6 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
         return;
       }
       
-      // If not found in tickets table, check project_sub_tasks
-      const { data: subTaskData, error: subTaskError } = await supabase
-        .from('project_sub_tasks')
-        .select('task_id')
-        .eq('task_id', ticketId)
-        .maybeSingle();
-        
-      if (!subTaskError && subTaskData) {
-        console.log('Ticket found in project_sub_tasks table');
-        setTicketExists(true);
-        return;
-      }
-      
-      console.warn('Ticket not found in either tickets or project_sub_tasks tables');
       setTicketExists(false);
       
     } catch (error) {
@@ -136,31 +123,93 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
     if (!ticketId) return;
     
     try {
-      // First try to get from tickets table
-      const { data: ticketsData, error: ticketsError } = await supabase
+      // Fetch ticket with related data
+      const { data, error } = await supabase
         .from('tickets')
-        .select('*')
+        .select(`
+          *,
+          project:project_id(
+            project_id, 
+            title, 
+            equity_allocation,
+            equity_allocated
+          ),
+          task:task_id(
+            task_id,
+            title,
+            description,
+            timeframe,
+            equity_allocation,
+            completion_percentage,
+            status,
+            project_id
+          )
+        `)
         .eq('id', ticketId)
         .maybeSingle();
         
-      if (!ticketsError && ticketsData) {
-        setTicket(ticketsData);
+      if (error) {
+        console.error('Error fetching ticket details:', error);
         return;
       }
       
-      // If not found, try project_sub_tasks
-      const { data: subTaskData, error: subTaskError } = await supabase
-        .from('project_sub_tasks')
-        .select('*')
-        .eq('task_id', ticketId)
-        .maybeSingle();
-        
-      if (!subTaskError && subTaskData) {
-        setTicket(subTaskData);
+      if (!data) {
+        console.log('No ticket found with id:', ticketId);
         return;
       }
+      
+      // Set completion percentage from ticket
+      if (data && data.completion_percentage !== null) {
+        setCompletionPercentage(data.completion_percentage || 0);
+      }
+      
+      // Fetch user profile if assigned_to exists
+      let userProfile = null;
+      if (data.assigned_to) {
+        const { data: userData, error: userError } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', data.assigned_to)
+          .maybeSingle();
+          
+        if (!userError && userData) {
+          userProfile = userData;
+        }
+      }
+      
+      // Fetch accepted job if task_id exists
+      let acceptedJob = null;
+      if (data.task_id) {
+        const { data: jobData, error: jobError } = await supabase
+          .from('accepted_jobs')
+          .select('*')
+          .eq('task_id', data.task_id)
+          .maybeSingle();
+          
+        if (!jobError && jobData) {
+          acceptedJob = jobData;
+        }
+      }
+      
+      // Calculate total hours logged
+      const { data: hoursData, error: hoursError } = await supabase
+        .from('time_entries')
+        .select('hours_logged')
+        .eq('ticket_id', ticketId);
+        
+      const totalHoursLogged = hoursData?.reduce((sum, entry) => sum + (entry.hours_logged || 0), 0) || 0;
+      
+      // Combine all data
+      const ticketWithDetails: TicketWithDetails = {
+        ...data,
+        user: userProfile,
+        accepted_job: acceptedJob,
+        total_hours_logged: totalHoursLogged
+      };
+      
+      setTicketDetails(ticketWithDetails);
     } catch (error) {
-      console.error('Error fetching ticket details:', error);
+      console.error('Error in fetchTicketDetails:', error);
     }
   };
 
@@ -198,6 +247,8 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
 
   const updateCompletionPercentage = async () => {
     try {
+      if (!ticketDetails) return;
+      
       // Update ticket completion percentage
       const { error: ticketError } = await supabase
         .from('tickets')
@@ -207,19 +258,19 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
       if (ticketError) throw ticketError;
 
       // If the ticket has a task_id, also update the task's completion percentage
-      if (ticket?.task_id) {
+      if (ticketDetails.task_id) {
         const { error: taskError } = await supabase
           .from('project_sub_tasks')
           .update({ completion_percentage: completionPercentage })
-          .eq('task_id', ticket.task_id);
+          .eq('task_id', ticketDetails.task_id);
           
         if (taskError) throw taskError;
       }
 
       toast.success(`Completion percentage updated to ${completionPercentage}%`);
       
-      // Refresh task details
-      fetchTaskDetails();
+      // Refresh ticket details
+      fetchTicketDetails();
     } catch (error) {
       console.error('Error updating completion percentage:', error);
       toast.error("Failed to update completion percentage");
@@ -259,33 +310,35 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
   
   if (!ticketExists) return <div className="text-center p-8 text-red-500">This ticket doesn't exist in the database.</div>;
 
+  if (!ticketDetails) return <div className="text-center p-8">Failed to load ticket details.</div>;
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader className="pb-3">
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle>{ticket?.title || 'Untitled Ticket'}</CardTitle>
+              <CardTitle>{ticketDetails.title || 'Untitled Ticket'}</CardTitle>
               <div className="text-sm text-muted-foreground mt-1">
-                {ticket?.description || 'No description'}
+                {ticketDetails.description || 'No description'}
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              {ticket?.status && (
-                <Badge variant={ticket.status === 'done' ? 'default' : ticket.status === 'todo' ? 'outline' : 'secondary'}>
+              {ticketDetails.status && (
+                <Badge variant={ticketDetails.status === 'done' ? 'default' : ticketDetails.status === 'todo' ? 'outline' : 'secondary'}>
                   <span className="flex items-center">
-                    {getStatusIcon(ticket.status)}
-                    <span className="ml-1 capitalize">{ticket.status}</span>
+                    {getStatusIcon(ticketDetails.status)}
+                    <span className="ml-1 capitalize">{ticketDetails.status}</span>
                   </span>
                 </Badge>
               )}
-              {ticket?.priority && (
+              {ticketDetails.priority && (
                 <Badge variant="outline" className={
-                  ticket.priority === 'high' ? 'border-red-500 text-red-500' : 
-                  ticket.priority === 'medium' ? 'border-amber-500 text-amber-500' : 
+                  ticketDetails.priority === 'high' ? 'border-red-500 text-red-500' : 
+                  ticketDetails.priority === 'medium' ? 'border-amber-500 text-amber-500' : 
                   'border-blue-500 text-blue-500'
                 }>
-                  {ticket.priority}
+                  {ticketDetails.priority}
                 </Badge>
               )}
             </div>
@@ -300,116 +353,185 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
             </div>
           )}
         </CardHeader>
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="timeTracking">Time Tracking</TabsTrigger>
-              <TabsTrigger value="progressTracking">Progress Tracking</TabsTrigger>
-            </TabsList>
+        <CardContent className="space-y-6">
+          {/* Project and Task Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-4">
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Project Details</h3>
+              <div className="mt-2 space-y-1">
+                <div className="flex justify-between">
+                  <span className="font-medium">Project:</span>
+                  <span>{ticketDetails.project?.title || 'Unknown'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Total Equity:</span>
+                  <span>{ticketDetails.project?.equity_allocation || 0}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Allocated Equity:</span>
+                  <span>{ticketDetails.project?.equity_allocated || 0}%</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Task Details</h3>
+              <div className="mt-2 space-y-1">
+                <div className="flex justify-between">
+                  <span className="font-medium">Task:</span>
+                  <span>{ticketDetails.task?.title || 'Unknown'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Timeframe:</span>
+                  <span>{ticketDetails.task?.timeframe || 'Not specified'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Equity:</span>
+                  <span>{ticketDetails.task?.equity_allocation || 0}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Status:</span>
+                  <span className="capitalize">{ticketDetails.task?.status || 'Unknown'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Assignment Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-4">
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Assignment Details</h3>
+              <div className="mt-2 space-y-1">
+                <div className="flex justify-between">
+                  <span className="font-medium">Assigned To:</span>
+                  <span>
+                    {ticketDetails.user ? 
+                      `${ticketDetails.user.first_name} ${ticketDetails.user.last_name}` : 
+                      'Unassigned'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Date Accepted:</span>
+                  <span>
+                    {ticketDetails.accepted_job?.date_accepted ? 
+                      formatDate(ticketDetails.accepted_job.date_accepted) : 
+                      'Not yet accepted'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Equity Agreed:</span>
+                  <span>{ticketDetails.accepted_job?.equity_agreed || 0}%</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Time & Progress</h3>
+              <div className="mt-2 space-y-1">
+                <div className="flex justify-between">
+                  <span className="font-medium">Estimated Hours:</span>
+                  <span>{ticketDetails.estimated_hours || 'Not estimated'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Hours Logged:</span>
+                  <span className="font-bold text-blue-600">{totalHours.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Completion:</span>
+                  <span>{completionPercentage}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Progress Tracking Section */}
+          <div className="border-b pb-4">
+            <Label className="text-lg font-medium mb-2 block">Task Completion Progress</Label>
+            <p className="text-sm text-muted-foreground mb-4">
+              Update the completion percentage for this task. Task equity will be allocated based on this value.
+            </p>
             
-            <TabsContent value="timeTracking">
-              <div className="mb-4">
-                <p className="text-lg font-semibold">
-                  Total time logged: <span className="text-blue-600">{totalHours.toFixed(2)} hours</span>
-                </p>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <Label>Completion Percentage:</Label>
+                <span className="font-semibold text-lg">{completionPercentage}%</span>
               </div>
               
-              {timeEntries.length > 0 ? (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Time Entries</h3>
-                  <div className="space-y-2">
-                    {timeEntries.map(entry => (
-                      <div key={entry.id} className="border p-4 rounded-lg">
-                        <div className="flex justify-between">
-                          <div>
-                            <div className="font-medium">{entry.description || "No description"}</div>
-                            <div className="text-sm text-gray-500">
-                              {entry.start_time && formatDate(entry.start_time)}
-                              {entry.end_time && ` to ${formatDate(entry.end_time)}`}
-                            </div>
+              <Slider
+                value={[completionPercentage]}
+                min={0}
+                max={100}
+                step={5}
+                onValueChange={(value) => setCompletionPercentage(value[0])}
+                className="mb-4"
+              />
+              
+              <Button 
+                onClick={updateCompletionPercentage}
+                className="w-full"
+              >
+                <PercentIcon className="mr-2 h-4 w-4" />
+                Update Progress
+              </Button>
+            </div>
+          </div>
+          
+          {/* Time Entries Section */}
+          <div>
+            <div className="mb-4">
+              <h3 className="text-lg font-medium">Time Entries</h3>
+              <p className="text-muted-foreground text-sm">
+                View recorded time entries for this ticket. Total: <span className="font-bold">{totalHours.toFixed(2)} hours</span>
+              </p>
+            </div>
+            
+            {timeEntries.length > 0 ? (
+              <div className="space-y-2">
+                <Accordion type="single" collapsible className="w-full">
+                  {timeEntries.map((entry, index) => (
+                    <AccordionItem key={entry.id} value={entry.id}>
+                      <AccordionTrigger className="hover:no-underline">
+                        <div className="flex justify-between w-full pr-4">
+                          <div className="font-medium">
+                            {entry.description || `Time Entry #${index + 1}`}
                           </div>
                           <div className="font-semibold text-primary">
                             {entry.hours_logged ? `${entry.hours_logged.toFixed(2)} hours` : 'In progress'}
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-6 text-muted-foreground">
-                  No time entries recorded for this ticket.
-                </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="progressTracking">
-              <div className="space-y-6">
-                <div>
-                  <Label className="text-lg font-medium mb-2 block">Task Completion Progress</Label>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Update the completion percentage for this task. Task equity will be allocated based on this value.
-                  </p>
-                  
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <Label>Completion Percentage:</Label>
-                      <span className="font-semibold text-lg">{completionPercentage}%</span>
-                    </div>
-                    
-                    <Slider
-                      value={[completionPercentage]}
-                      min={0}
-                      max={100}
-                      step={5}
-                      onValueChange={(value) => setCompletionPercentage(value[0])}
-                      className="mb-4"
-                    />
-                    
-                    <Button 
-                      onClick={updateCompletionPercentage}
-                      className="w-full"
-                    >
-                      <PercentIcon className="mr-2 h-4 w-4" />
-                      Update Progress
-                    </Button>
-                  </div>
-                </div>
-                
-                {taskDetails && (
-                  <div className="mt-6 border-t pt-4">
-                    <h3 className="text-lg font-medium mb-2">Task Details</h3>
-                    <div className="grid gap-2">
-                      <div className="flex justify-between">
-                        <span className="font-medium">Title:</span>
-                        <span>{taskDetails.title}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Description:</span>
-                        <span>{taskDetails.description || 'No description'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Timeframe:</span>
-                        <span>{taskDetails.timeframe}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Equity Allocation:</span>
-                        <span>{taskDetails.equity_allocation}%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Completion:</span>
-                        <span>{taskDetails.completion_percentage}%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Status:</span>
-                        <span>{taskDetails.status}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="px-4 py-2 bg-secondary/20 rounded-md">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div>
+                              <span className="text-sm font-medium">Started:</span>
+                              <span className="ml-2 text-sm">
+                                {entry.start_time && formatDate(entry.start_time)}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium">Ended:</span>
+                              <span className="ml-2 text-sm">
+                                {entry.end_time ? formatDate(entry.end_time) : 'Not completed'}
+                              </span>
+                            </div>
+                            {entry.description && (
+                              <div className="col-span-2">
+                                <span className="text-sm font-medium">Description:</span>
+                                <p className="text-sm mt-1">{entry.description}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
               </div>
-            </TabsContent>
-          </Tabs>
+            ) : (
+              <div className="text-center py-6 text-muted-foreground">
+                No time entries recorded for this ticket.
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
