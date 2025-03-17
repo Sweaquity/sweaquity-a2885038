@@ -27,34 +27,9 @@ export function GanttChartView({ projectId }: GanttChartViewProps) {
   const fetchProjectData = async () => {
     setLoading(true);
     try {
-      // Fetch tickets
-      const { data: tickets, error: ticketsError } = await supabase
-        .from('tickets')
-        .select('*')
-        .eq('project_id', projectId);
+      console.log("Fetching project data for Gantt chart with project ID:", projectId);
       
-      if (ticketsError) throw ticketsError;
-      
-      // Fetch epics
-      const { data: epics, error: epicsError } = await supabase
-        .from('epics')
-        .select('*')
-        .eq('project_id', projectId);
-      
-      if (epicsError) throw epicsError;
-      
-      // Fetch milestones
-      const { data: milestones, error: milestonesError } = await supabase
-        .from('milestones')
-        .select('*')
-        .eq('project_id', projectId);
-      
-      if (milestonesError) throw milestonesError;
-
-      // Process data for the Gantt chart
-      const ganttTasks: Task[] = [];
-      
-      // Add project as the root task
+      // Fetch project details
       const { data: project, error: projectError } = await supabase
         .from('business_projects')
         .select('*')
@@ -62,113 +37,107 @@ export function GanttChartView({ projectId }: GanttChartViewProps) {
         .single();
       
       if (projectError) throw projectError;
+      
+      // Fetch project sub-tasks
+      const { data: subTasks, error: subTasksError } = await supabase
+        .from('project_sub_tasks')
+        .select('*')
+        .eq('project_id', projectId);
+      
+      if (subTasksError) throw subTasksError;
+      
+      // Fetch tickets associated with this project's tasks
+      const { data: tickets, error: ticketsError } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('project_id', projectId);
+      
+      if (ticketsError) throw ticketsError;
+      
+      // Fetch milestones (if you have a milestones table)
+      // For now, we'll handle sub-tasks with specific status as milestones
+      const milestones = subTasks?.filter(task => task.task_status === 'milestone') || [];
 
+      // Process data for the Gantt chart
+      const ganttTasks: Task[] = [];
+      
       // Start with project as the root
       ganttTasks.push({
         id: project.project_id,
         name: project.title,
         type: 'project',
         start: new Date(project.created_at || new Date()),
-        end: calculateEndDate(tickets, epics, milestones),
-        progress: calculateProgress(tickets),
+        end: calculateEndDate(subTasks, milestones, tickets),
+        progress: calculateProgress(subTasks),
         hideChildren: false,
         styles: { progressColor: '#1E40AF', progressSelectedColor: '#2563EB' },
         isDisabled: true
       });
 
-      // Add epics as second level
-      epics?.forEach(epic => {
-        const epicTickets = tickets?.filter(ticket => ticket.epic_id === epic.id) || [];
-        const epicStartDate = new Date(epic.created_at || new Date());
-        const epicEndDate = epic.due_date ? new Date(epic.due_date) : calculateTicketsEndDate(epicTickets);
+      // Add sub-tasks as second level items
+      subTasks?.forEach(task => {
+        const taskTickets = tickets?.filter(ticket => ticket.task_id === task.task_id) || [];
+        const taskStartDate = new Date(task.created_at || new Date());
+        let taskEndDate;
         
-        ganttTasks.push({
-          id: `epic-${epic.id}`,
-          name: epic.title,
-          type: 'project',
-          start: epicStartDate,
-          end: epicEndDate,
-          progress: calculateEpicProgress(epicTickets),
-          project: project.project_id,
-          dependencies: [project.project_id],
-          styles: { progressColor: '#4F46E5', progressSelectedColor: '#6366F1' }
-        });
-        
-        // Add tickets for this epic
-        epicTickets.forEach(ticket => {
-          const startDate = new Date(ticket.created_at || new Date());
-          let endDate;
-          
-          if (ticket.due_date) {
-            endDate = new Date(ticket.due_date);
-          } else if (ticket.estimated_hours) {
-            // If no due date but has estimated hours, set end date based on that
-            endDate = new Date(startDate);
-            endDate.setHours(endDate.getHours() + ticket.estimated_hours);
+        if (task.timeframe && task.timeframe.includes("-")) {
+          const timeframeParts = task.timeframe.split("-");
+          if (timeframeParts.length > 1 && timeframeParts[1].trim()) {
+            try {
+              taskEndDate = new Date(timeframeParts[1].trim());
+            } catch (e) {
+              // If date parsing fails, use calculated end date
+              taskEndDate = calculateTicketsEndDate(taskTickets) || addDaysToDate(taskStartDate, 30);
+            }
           } else {
-            // Default to 1 day if no due date or estimated hours
-            endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + 1);
+            taskEndDate = calculateTicketsEndDate(taskTickets) || addDaysToDate(taskStartDate, 30);
           }
-          
-          ganttTasks.push({
-            id: `ticket-${ticket.id}`,
-            name: ticket.title,
-            type: 'task',
-            start: startDate,
-            end: endDate,
-            progress: getTicketProgress(ticket.status),
-            project: project.project_id,
-            dependencies: [`epic-${epic.id}`],
-            styles: { progressColor: '#059669', progressSelectedColor: '#10B981' }
-          });
-        });
-      });
-      
-      // Add orphaned tickets (not part of any epic)
-      const orphanedTickets = tickets?.filter(ticket => !ticket.epic_id) || [];
-      orphanedTickets.forEach(ticket => {
-        const startDate = new Date(ticket.created_at || new Date());
-        let endDate;
-        
-        if (ticket.due_date) {
-          endDate = new Date(ticket.due_date);
-        } else if (ticket.estimated_hours) {
-          endDate = new Date(startDate);
-          endDate.setHours(endDate.getHours() + ticket.estimated_hours);
         } else {
-          endDate = new Date(startDate);
-          endDate.setDate(endDate.getDate() + 1);
+          taskEndDate = calculateTicketsEndDate(taskTickets) || addDaysToDate(taskStartDate, 30);
         }
         
+        // Determine if this is a regular task or a milestone
+        const taskType = task.task_status === 'milestone' ? 'milestone' : 'task';
+        
         ganttTasks.push({
-          id: `ticket-${ticket.id}`,
-          name: ticket.title,
-          type: 'task',
-          start: startDate,
-          end: endDate,
-          progress: getTicketProgress(ticket.status),
+          id: `task-${task.task_id}`,
+          name: task.title,
+          type: taskType,
+          start: taskStartDate,
+          end: taskType === 'milestone' ? taskStartDate : taskEndDate,
+          progress: calculateTaskProgress(task),
           project: project.project_id,
           dependencies: [project.project_id],
           styles: { progressColor: '#059669', progressSelectedColor: '#10B981' }
         });
-      });
-      
-      // Add milestones
-      milestones?.forEach(milestone => {
-        const milestoneDate = new Date(milestone.due_date || new Date());
         
-        ganttTasks.push({
-          id: `milestone-${milestone.id}`,
-          name: milestone.title,
-          type: 'milestone',
-          start: milestoneDate,
-          end: milestoneDate,
-          progress: getMilestoneProgress(milestone.status),
-          project: project.project_id,
-          dependencies: [project.project_id],
-          styles: { progressColor: '#DC2626', progressSelectedColor: '#EF4444' }
-        });
+        // Add tickets for this task if it's not a milestone
+        if (taskType !== 'milestone') {
+          taskTickets.forEach(ticket => {
+            const ticketStartDate = new Date(ticket.created_at || new Date());
+            let ticketEndDate;
+            
+            if (ticket.due_date) {
+              ticketEndDate = new Date(ticket.due_date);
+            } else if (ticket.estimated_hours) {
+              ticketEndDate = addHoursToDate(ticketStartDate, ticket.estimated_hours);
+            } else {
+              ticketEndDate = addDaysToDate(ticketStartDate, 1);
+            }
+            
+            ganttTasks.push({
+              id: `ticket-${ticket.id}`,
+              name: ticket.title,
+              type: 'task',
+              start: ticketStartDate,
+              end: ticketEndDate,
+              progress: getTicketProgress(ticket.status),
+              project: project.project_id,
+              dependencies: [`task-${task.task_id}`],
+              styles: { progressColor: '#4F46E5', progressSelectedColor: '#6366F1' }
+            });
+          });
+        }
       });
       
       setTasks(ganttTasks);
@@ -180,9 +149,38 @@ export function GanttChartView({ projectId }: GanttChartViewProps) {
     }
   };
 
-  // Helper function to calculate the latest end date among all items
-  const calculateEndDate = (tickets: any[] = [], epics: any[] = [], milestones: any[] = []) => {
+  // Helper function to add days to a date
+  const addDaysToDate = (date: Date, days: number) => {
+    const newDate = new Date(date);
+    newDate.setDate(newDate.getDate() + days);
+    return newDate;
+  };
+
+  // Helper function to add hours to a date
+  const addHoursToDate = (date: Date, hours: number) => {
+    const newDate = new Date(date);
+    newDate.setHours(newDate.getHours() + hours);
+    return newDate;
+  };
+
+  // Helper function to calculate the latest end date
+  const calculateEndDate = (tasks: any[] = [], milestones: any[] = [], tickets: any[] = []) => {
     let latestDate = new Date();
+    
+    // Check tasks
+    tasks?.forEach(task => {
+      if (task.timeframe && task.timeframe.includes("-")) {
+        const timeframeParts = task.timeframe.split("-");
+        if (timeframeParts.length > 1 && timeframeParts[1].trim()) {
+          try {
+            const endDate = new Date(timeframeParts[1].trim());
+            if (endDate > latestDate) latestDate = endDate;
+          } catch (e) {
+            // Skip invalid dates
+          }
+        }
+      }
+    });
     
     // Check tickets
     tickets?.forEach(ticket => {
@@ -192,34 +190,28 @@ export function GanttChartView({ projectId }: GanttChartViewProps) {
       }
     });
     
-    // Check epics
-    epics?.forEach(epic => {
-      if (epic.due_date) {
-        const dueDate = new Date(epic.due_date);
-        if (dueDate > latestDate) latestDate = dueDate;
-      }
-    });
-    
-    // Check milestones
-    milestones?.forEach(milestone => {
-      if (milestone.due_date) {
-        const dueDate = new Date(milestone.due_date);
-        if (dueDate > latestDate) latestDate = dueDate;
-      }
-    });
-    
-    // Add a little buffer
+    // Add buffer
     latestDate.setDate(latestDate.getDate() + 7);
-    
     return latestDate;
   };
 
-  // Helper function to calculate the end date for a group of tickets
+  // Calculate task progress based on completion_percentage
+  const calculateTaskProgress = (task: any) => {
+    return task.completion_percentage ? task.completion_percentage / 100 : 0;
+  };
+
+  // Calculate overall project progress based on sub-tasks completion
+  const calculateProgress = (tasks: any[] = []) => {
+    if (!tasks || tasks.length === 0) return 0;
+    const totalProgress = tasks.reduce((sum, task) => sum + (task.completion_percentage || 0), 0);
+    return Math.round((totalProgress / tasks.length) / 100 * 100) / 100;
+  };
+
+  // Helper function to calculate the end date for tickets
   const calculateTicketsEndDate = (tickets: any[] = []) => {
-    if (!tickets || tickets.length === 0) return new Date();
+    if (!tickets || tickets.length === 0) return null;
     
     let latestDate = new Date();
-    
     tickets.forEach(ticket => {
       if (ticket.due_date) {
         const dueDate = new Date(ticket.due_date);
@@ -228,22 +220,6 @@ export function GanttChartView({ projectId }: GanttChartViewProps) {
     });
     
     return latestDate;
-  };
-
-  // Calculate overall project progress based on ticket completion
-  const calculateProgress = (tickets: any[] = []) => {
-    if (!tickets || tickets.length === 0) return 0;
-    
-    const completedTickets = tickets.filter(t => t.status === 'done').length;
-    return Math.round((completedTickets / tickets.length) * 100) / 100; // Convert to decimal
-  };
-
-  // Calculate epic progress based on its tickets
-  const calculateEpicProgress = (tickets: any[] = []) => {
-    if (!tickets || tickets.length === 0) return 0;
-    
-    const completedTickets = tickets.filter(t => t.status === 'done').length;
-    return Math.round((completedTickets / tickets.length) * 100) / 100;
   };
 
   // Map ticket status to progress percentage
@@ -258,17 +234,6 @@ export function GanttChartView({ projectId }: GanttChartViewProps) {
     }
   };
 
-  // Map milestone status to progress percentage
-  const getMilestoneProgress = (status: string) => {
-    switch(status) {
-      case 'not_started': return 0;
-      case 'in_progress': return 0.5;
-      case 'completed': return 1;
-      default: return 0;
-    }
-  };
-
-  // Handle view mode changes
   const handleViewModeChange = (value: string) => {
     switch(value) {
       case 'day':

@@ -1184,6 +1184,13 @@ export type Database = {
             referencedRelation: "business_projects"
             referencedColumns: ["project_id"]
           },
+          {
+            foreignKeyName: "tickets_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "project_sub_tasks"
+            referencedColumns: ["task_id"]
+          },
         ]
       }
       time_entries: {
