@@ -68,6 +68,33 @@ export const useAcceptedJobsCore = (onUpdate?: () => void) => {
         throw error;
       }
       
+      // Also create a ticket for this accepted job for tracking purposes
+      if (application.task_id && application.project_id) {
+        const { data: ticketData, error: ticketError } = await supabase
+          .from('tickets')
+          .insert({
+            title: `Work on ${application.business_roles?.title || 'task'}`,
+            description: `Accepted job: ${application.business_roles?.description || 'No description'}`,
+            project_id: application.project_id,
+            status: 'open',
+            priority: 'medium',
+            health: 'good',
+            reporter: session.user.id,
+            assigned_to: session.user.id,
+            estimated_hours: 0,
+            equity_points: equityAllocation
+          })
+          .select('id')
+          .single();
+          
+        if (ticketError) {
+          console.error("Error creating ticket for accepted job:", ticketError);
+          // Don't throw here, we still created the accepted job
+        } else {
+          console.log("Created ticket for accepted job:", ticketData);
+        }
+      }
+      
       console.log("Successfully created accepted job:", data);
       toast.success("Agreement created successfully");
       

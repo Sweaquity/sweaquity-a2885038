@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { JobApplication } from "@/types/jobSeeker";
@@ -111,7 +112,8 @@ export const EquityProjectItem = ({
       const { data: existingTicket, error: ticketError } = await supabase
         .from('tickets')
         .select('id')
-        .eq('task_id', application.task_id)
+        .eq('project_id', application.project_id)
+        .eq('title', `Work on ${application.business_roles?.title || 'task'}`)
         .maybeSingle();
       
       if (ticketError && ticketError.code !== 'PGRST116') {
@@ -131,7 +133,6 @@ export const EquityProjectItem = ({
           .insert({
             title: `Work on ${application.business_roles?.title || 'task'}`,
             description: `Time tracking for ${application.business_roles?.project_title || 'project'}`,
-            task_id: application.task_id,
             project_id: application.project_id,
             status: 'open',
             created_by: (await supabase.auth.getUser()).data.user?.id,
