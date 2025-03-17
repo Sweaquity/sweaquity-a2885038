@@ -2,13 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Play, Square, PercentIcon } from 'lucide-react';
+import { PercentIcon, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 
 interface TimeTrackerProps {
   ticketId: string;
@@ -26,15 +27,9 @@ interface TimeEntry {
 }
 
 export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
-  const [isTracking, setIsTracking] = useState(false);
-  const [startTime, setStartTime] = useState<Date | null>(null);
-  const [timeEntryId, setTimeEntryId] = useState<string | null>(null);
-  const [description, setDescription] = useState('');
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [totalHours, setTotalHours] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [timer, setTimer] = useState<number | null>(null);
   const [ticket, setTicket] = useState<any>(null);
   const [ticketExists, setTicketExists] = useState(false);
   const [completionPercentage, setCompletionPercentage] = useState(0);
@@ -50,10 +45,6 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
     } else {
       setLoading(false);
     }
-
-    return () => {
-      if (timer) clearInterval(timer);
-    };
   }, [ticketId]);
 
   const fetchTaskDetails = async () => {
@@ -63,33 +54,40 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
       // First get the ticket to find the task_id
       const { data: ticketData, error: ticketError } = await supabase
         .from('tickets')
-        .select('task_id, completion_percentage')
+        .select('task_id, completion_percentage, title, description, status, priority, health')
         .eq('id', ticketId)
         .maybeSingle();
         
-      if (ticketError || !ticketData || !ticketData.task_id) {
-        console.error('Error fetching ticket details or task_id not found:', ticketError);
+      if (ticketError) {
+        console.error('Error fetching ticket details:', ticketError);
         return;
       }
       
       // Set completion percentage from ticket
-      if (ticketData.completion_percentage !== null) {
+      if (ticketData && ticketData.completion_percentage !== null) {
         setCompletionPercentage(ticketData.completion_percentage || 0);
       }
-      
-      // Then get the task details
-      const { data: taskData, error: taskError } = await supabase
-        .from('project_sub_tasks')
-        .select('*')
-        .eq('task_id', ticketData.task_id)
-        .maybeSingle();
-        
-      if (taskError) {
-        console.error('Error fetching task details:', taskError);
-        return;
+
+      // Store ticket data
+      if (ticketData) {
+        setTicket(ticketData);
       }
       
-      setTaskDetails(taskData);
+      // Then get the task details if task_id exists
+      if (ticketData && ticketData.task_id) {
+        const { data: taskData, error: taskError } = await supabase
+          .from('project_sub_tasks')
+          .select('*')
+          .eq('task_id', ticketData.task_id)
+          .maybeSingle();
+          
+        if (taskError) {
+          console.error('Error fetching task details:', taskError);
+          return;
+        }
+        
+        setTaskDetails(taskData);
+      }
     } catch (error) {
       console.error('Error in fetchTaskDetails:', error);
     }
@@ -198,93 +196,6 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
     }
   };
 
-  const startTracking = async () => {
-    if (!ticketId || !userId) {
-      toast.error("Please select a ticket first");
-      return;
-    }
-    
-    if (!ticketExists) {
-      toast.error("This ticket doesn't exist in the database");
-      return;
-    }
-    
-    const now = new Date();
-    setStartTime(now);
-    setIsTracking(true);
-    
-    // Create a new time entry
-    try {
-      const { data, error } = await supabase
-        .from('time_entries')
-        .insert({
-          ticket_id: ticketId,
-          user_id: userId,
-          start_time: now.toISOString(),
-          description: description
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      setTimeEntryId(data.id);
-      
-      // Start the timer to update elapsed time
-      const intervalId = window.setInterval(() => {
-        const currentTime = new Date();
-        const elapsed = (currentTime.getTime() - now.getTime()) / 1000; // seconds
-        setElapsedTime(elapsed);
-      }, 1000);
-      
-      setTimer(intervalId);
-    } catch (error) {
-      console.error('Error starting time tracking:', error);
-      toast.error("Failed to start time tracking");
-      setIsTracking(false);
-      setStartTime(null);
-    }
-  };
-
-  const stopTracking = async () => {
-    if (!isTracking || !timeEntryId || !startTime) return;
-    
-    const endTime = new Date();
-    const hoursLogged = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60); // Convert ms to hours
-    
-    try {
-      const { error } = await supabase
-        .from('time_entries')
-        .update({
-          end_time: endTime.toISOString(),
-          hours_logged: hoursLogged,
-          description: description
-        })
-        .eq('id', timeEntryId);
-
-      if (error) throw error;
-      
-      // Clear timer
-      if (timer) clearInterval(timer);
-      setTimer(null);
-      
-      // Reset state
-      setIsTracking(false);
-      setStartTime(null);
-      setTimeEntryId(null);
-      setDescription('');
-      setElapsedTime(0);
-      
-      toast.success("Time entry saved successfully");
-      
-      // Refresh time entries
-      fetchTimeEntries();
-    } catch (error) {
-      console.error('Error stopping time tracking:', error);
-      toast.error("Failed to stop time tracking");
-    }
-  };
-
   const updateCompletionPercentage = async () => {
     try {
       // Update ticket completion percentage
@@ -330,6 +241,18 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Get status icon
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'done':
+        return <CheckCircle2 className="text-green-500" />;
+      case 'todo':
+        return <Clock className="text-blue-500" />;
+      default:
+        return <AlertCircle className="text-amber-500" />;
+    }
+  };
+
   if (loading) return <div className="flex justify-center p-8">Loading time tracking data...</div>;
 
   if (!ticketId) return <div className="text-center p-8">Please select a ticket to track time.</div>;
@@ -339,8 +262,43 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Ticket Tracking {ticket && `- ${ticket.title}`}</CardTitle>
+        <CardHeader className="pb-3">
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle>{ticket?.title || 'Untitled Ticket'}</CardTitle>
+              <div className="text-sm text-muted-foreground mt-1">
+                {ticket?.description || 'No description'}
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              {ticket?.status && (
+                <Badge variant={ticket.status === 'done' ? 'default' : ticket.status === 'todo' ? 'outline' : 'secondary'}>
+                  <span className="flex items-center">
+                    {getStatusIcon(ticket.status)}
+                    <span className="ml-1 capitalize">{ticket.status}</span>
+                  </span>
+                </Badge>
+              )}
+              {ticket?.priority && (
+                <Badge variant="outline" className={
+                  ticket.priority === 'high' ? 'border-red-500 text-red-500' : 
+                  ticket.priority === 'medium' ? 'border-amber-500 text-amber-500' : 
+                  'border-blue-500 text-blue-500'
+                }>
+                  {ticket.priority}
+                </Badge>
+              )}
+            </div>
+          </div>
+          {completionPercentage > 0 && (
+            <div className="mt-4">
+              <div className="flex justify-between text-sm mb-1">
+                <span>Progress</span>
+                <span>{completionPercentage}%</span>
+              </div>
+              <Progress value={completionPercentage} className="h-2" />
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -356,44 +314,9 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
                 </p>
               </div>
               
-              <div className="mb-4">
-                <Textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="What are you working on?"
-                  className="w-full p-2 border rounded-md mb-2"
-                  disabled={isTracking}
-                />
-                
-                {isTracking ? (
-                  <div className="mb-4 space-y-4">
-                    <div className="text-4xl font-mono text-center my-4 font-semibold text-primary">
-                      {formatTime(elapsedTime)}
-                    </div>
-                    <Button
-                      onClick={stopTracking}
-                      className="w-full bg-red-500 hover:bg-red-600"
-                      variant="destructive"
-                    >
-                      <Square className="mr-2 h-4 w-4" />
-                      Stop
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    onClick={startTracking}
-                    className="w-full"
-                    variant="default"
-                  >
-                    <Play className="mr-2 h-4 w-4" />
-                    Start Tracking
-                  </Button>
-                )}
-              </div>
-              
-              {timeEntries.length > 0 && (
+              {timeEntries.length > 0 ? (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Recent Time Entries</h3>
+                  <h3 className="text-lg font-medium">Time Entries</h3>
                   <div className="space-y-2">
                     {timeEntries.map(entry => (
                       <div key={entry.id} className="border p-4 rounded-lg">
@@ -412,6 +335,10 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
                       </div>
                     ))}
                   </div>
+                </div>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground">
+                  No time entries recorded for this ticket.
                 </div>
               )}
             </TabsContent>
@@ -452,12 +379,32 @@ export function TimeTracker({ ticketId, userId }: TimeTrackerProps) {
                 {taskDetails && (
                   <div className="mt-6 border-t pt-4">
                     <h3 className="text-lg font-medium mb-2">Task Details</h3>
-                    <p><strong>Title:</strong> {taskDetails.title}</p>
-                    <p><strong>Description:</strong> {taskDetails.description || 'No description'}</p>
-                    <p><strong>Timeframe:</strong> {taskDetails.timeframe}</p>
-                    <p><strong>Equity Allocation:</strong> {taskDetails.equity_allocation}%</p>
-                    <p><strong>Completion:</strong> {taskDetails.completion_percentage}%</p>
-                    <p><strong>Status:</strong> {taskDetails.status}</p>
+                    <div className="grid gap-2">
+                      <div className="flex justify-between">
+                        <span className="font-medium">Title:</span>
+                        <span>{taskDetails.title}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium">Description:</span>
+                        <span>{taskDetails.description || 'No description'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium">Timeframe:</span>
+                        <span>{taskDetails.timeframe}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium">Equity Allocation:</span>
+                        <span>{taskDetails.equity_allocation}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium">Completion:</span>
+                        <span>{taskDetails.completion_percentage}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium">Status:</span>
+                        <span>{taskDetails.status}</span>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
