@@ -12,9 +12,13 @@ import { EquityProject } from "@/types/jobSeeker";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { ChevronDown, Clock, Check } from "lucide-react";
+import { ChevronDown, Clock, Check, Plus, BarChart } from "lucide-react";
 import { TimeTracker } from "@/components/business/testing/TimeTracker";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 // Update the EquityProject type to include the documents property
 interface ProjectWithDocuments extends EquityProject {
@@ -42,6 +46,17 @@ export const ProjectsOverview = ({
   const [isLoading, setIsLoading] = useState<{[key: string]: boolean}>({});
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isCreatingTicket, setIsCreatingTicket] = useState(false);
+  const [newTicketData, setNewTicketData] = useState({
+    title: '',
+    description: '',
+    status: 'todo',
+    priority: 'medium',
+    taskId: '',
+    projectId: ''
+  });
+  const [trackingTab, setTrackingTab] = useState<'time' | 'progress'>('time');
+  const [completionPercentage, setCompletionPercentage] = useState<number>(0);
 
   useEffect(() => {
     const getUserId = async () => {
@@ -88,28 +103,29 @@ export const ProjectsOverview = ({
     }
   };
 
-  const createTicket = async (projectId: string, taskId: string) => {
+  const createTicket = async () => {
     try {
-      // Get user session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("You must be logged in to create a ticket");
+      // Validate form
+      if (!newTicketData.title.trim()) {
+        toast.error("Title is required");
         return;
       }
 
+      setIsCreatingTicket(true);
+      
       // Create a new ticket
       const { data, error } = await supabase
         .from('tickets')
         .insert({
-          title: 'New task ticket',
-          description: 'Please provide a description for this ticket',
-          status: 'todo',
-          priority: 'medium',
+          title: newTicketData.title,
+          description: newTicketData.description,
+          status: newTicketData.status,
+          priority: newTicketData.priority,
           health: 'green',
-          project_id: projectId,
-          task_id: taskId,
-          reporter: session.user.id,
-          assigned_to: session.user.id,
+          project_id: newTicketData.projectId,
+          task_id: newTicketData.taskId,
+          reporter: userId,
+          assigned_to: userId,
           ticket_type: 'task'
         })
         .select()
@@ -119,11 +135,125 @@ export const ProjectsOverview = ({
       
       toast.success("Ticket created successfully");
       
+      // Reset form and refresh tickets
+      setNewTicketData({
+        title: '',
+        description: '',
+        status: 'todo',
+        priority: 'medium',
+        taskId: '',
+        projectId: ''
+      });
+      setIsCreatingTicket(false);
+      
       // Refresh tickets
-      fetchProjectTickets(projectId);
+      fetchProjectTickets(newTicketData.projectId);
     } catch (error) {
       console.error('Error creating ticket:', error);
       toast.error("Failed to create ticket");
+      setIsCreatingTicket(false);
+    }
+  };
+
+  const handleTicketCreate = (projectId: string, taskId: string) => {
+    setNewTicketData(prev => ({
+      ...prev,
+      projectId,
+      taskId
+    }));
+    
+    // Focus on the title input after a short delay
+    setTimeout(() => {
+      const titleInput = document.getElementById('new-ticket-title');
+      if (titleInput) {
+        titleInput.focus();
+      }
+    }, 100);
+  };
+
+  const updateTaskCompletion = async () => {
+    if (!selectedTicketId) return;
+    
+    try {
+      // First, get the ticket to check its task_id
+      const { data: ticketData, error: ticketError } = await supabase
+        .from('tickets')
+        .select('task_id, project_id')
+        .eq('id', selectedTicketId)
+        .single();
+        
+      if (ticketError) throw ticketError;
+      
+      if (!ticketData.task_id) {
+        toast.error("This ticket is not associated with a task");
+        return;
+      }
+      
+      // Update the task completion percentage
+      const { error: updateError } = await supabase
+        .from('project_sub_tasks')
+        .update({ completion_percentage: completionPercentage })
+        .eq('task_id', ticketData.task_id);
+        
+      if (updateError) throw updateError;
+      
+      // Update ticket status based on completion
+      let newStatus = 'in-progress';
+      if (completionPercentage >= 100) {
+        newStatus = 'done';
+      } else if (completionPercentage === 0) {
+        newStatus = 'todo';
+      }
+      
+      // Update the ticket status
+      await supabase
+        .from('tickets')
+        .update({ status: newStatus })
+        .eq('id', selectedTicketId);
+      
+      toast.success(`Task progress updated to ${completionPercentage}%`);
+      
+      // Refresh tickets
+      if (ticketData.project_id) {
+        fetchProjectTickets(ticketData.project_id);
+      }
+      
+    } catch (error) {
+      console.error('Error updating task completion:', error);
+      toast.error("Failed to update task completion");
+    }
+  };
+
+  // Handler for when a ticket is selected
+  const handleTicketSelect = async (ticketId: string) => {
+    setSelectedTicketId(ticketId === selectedTicketId ? null : ticketId);
+    
+    // If selecting a ticket, fetch its task completion percentage
+    if (ticketId !== selectedTicketId) {
+      try {
+        const { data: ticketData, error: ticketError } = await supabase
+          .from('tickets')
+          .select('task_id')
+          .eq('id', ticketId)
+          .single();
+          
+        if (ticketError) throw ticketError;
+        
+        if (ticketData.task_id) {
+          const { data: taskData, error: taskError } = await supabase
+            .from('project_sub_tasks')
+            .select('completion_percentage')
+            .eq('task_id', ticketData.task_id)
+            .single();
+            
+          if (taskError) throw taskError;
+          
+          setCompletionPercentage(taskData.completion_percentage || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching task completion:', error);
+        setCompletionPercentage(0);
+      }
     }
   };
 
@@ -206,12 +336,17 @@ export const ProjectsOverview = ({
                               <div>
                                 <p className="font-medium">{task.title}</p>
                                 <p className="text-sm text-muted-foreground">{task.description}</p>
+                                <div className="mt-1">
+                                  <p className="text-xs">Progress: {task.completion_percentage || 0}%</p>
+                                  <Progress value={task.completion_percentage || 0} className="h-1.5 mt-1" />
+                                </div>
                               </div>
                               <Button 
                                 variant="outline" 
                                 size="sm"
-                                onClick={() => createTicket(project.id, task.task_id)}
+                                onClick={() => handleTicketCreate(project.id, task.task_id)}
                               >
+                                <Plus className="h-4 w-4 mr-1" />
                                 Create Ticket
                               </Button>
                             </div>
@@ -230,11 +365,17 @@ export const ProjectsOverview = ({
                                       </div>
                                       <div className="flex gap-2">
                                         <Button 
-                                          variant="ghost" 
+                                          variant={selectedTicketId === ticket.id ? "default" : "ghost"}
                                           size="sm"
-                                          onClick={() => setSelectedTicketId(ticket.id === selectedTicketId ? null : ticket.id)}
+                                          onClick={() => handleTicketSelect(ticket.id)}
                                         >
-                                          <Clock className="h-4 w-4" />
+                                          {selectedTicketId === ticket.id ? (
+                                            <span>Close</span>
+                                          ) : (
+                                            <>
+                                              <Clock className="h-4 w-4 mr-1" /> Track
+                                            </>
+                                          )}
                                         </Button>
                                       </div>
                                     </div>
@@ -245,15 +386,100 @@ export const ProjectsOverview = ({
                             )}
                           </div>
                         ))}
+
+                        {/* New Ticket Creation Form */}
+                        {newTicketData.projectId === project.id && (
+                          <div className="mt-4 p-4 border rounded-md">
+                            <h5 className="font-medium mb-2">Create New Ticket</h5>
+                            <div className="space-y-3">
+                              <div>
+                                <Input 
+                                  id="new-ticket-title"
+                                  placeholder="Ticket title" 
+                                  value={newTicketData.title}
+                                  onChange={(e) => setNewTicketData(prev => ({ ...prev, title: e.target.value }))}
+                                />
+                              </div>
+                              <div>
+                                <Textarea 
+                                  placeholder="Description" 
+                                  rows={3}
+                                  value={newTicketData.description}
+                                  onChange={(e) => setNewTicketData(prev => ({ ...prev, description: e.target.value }))}
+                                />
+                              </div>
+                              <div className="flex space-x-2">
+                                <Button 
+                                  onClick={createTicket} 
+                                  disabled={isCreatingTicket}
+                                >
+                                  {isCreatingTicket ? 'Creating...' : 'Create Ticket'}
+                                </Button>
+                                <Button 
+                                  variant="outline"
+                                  onClick={() => setNewTicketData({
+                                    title: '',
+                                    description: '',
+                                    status: 'todo',
+                                    priority: 'medium',
+                                    taskId: '',
+                                    projectId: ''
+                                  })}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
                   
-                  {/* Time Tracker for selected ticket */}
+                  {/* Time & Progress Tracker for selected ticket */}
                   {selectedTicketId && userId && (
-                    <div className="mt-4 border-t pt-4">
-                      <h4 className="font-medium mb-2">Time Tracking</h4>
-                      <TimeTracker ticketId={selectedTicketId} userId={userId} />
+                    <div className="mt-6 border-t pt-4">
+                      <Tabs defaultValue="time" value={trackingTab} onValueChange={(value) => setTrackingTab(value as 'time' | 'progress')}>
+                        <TabsList className="mb-4">
+                          <TabsTrigger value="time">
+                            <Clock className="h-4 w-4 mr-2" />
+                            Time Tracking
+                          </TabsTrigger>
+                          <TabsTrigger value="progress">
+                            <BarChart className="h-4 w-4 mr-2" />
+                            Progress Update
+                          </TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="time">
+                          <TimeTracker ticketId={selectedTicketId} userId={userId} />
+                        </TabsContent>
+                        
+                        <TabsContent value="progress">
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Task Completion Percentage
+                              </label>
+                              <div className="flex items-center space-x-2">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={completionPercentage}
+                                  onChange={(e) => setCompletionPercentage(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                                  className="w-20"
+                                />
+                                <span>%</span>
+                                <Progress value={completionPercentage} className="flex-1 h-2" />
+                              </div>
+                            </div>
+                            <Button onClick={updateTaskCompletion}>
+                              Update Progress
+                            </Button>
+                          </div>
+                        </TabsContent>
+                      </Tabs>
                     </div>
                   )}
                 </CollapsibleContent>

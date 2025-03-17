@@ -50,6 +50,27 @@ export type Database = {
           },
         ]
       }
+      admin_users: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       business_invitations: {
         Row: {
           accepted_at: string | null
@@ -1102,11 +1123,14 @@ export type Database = {
           estimated_hours: number | null
           health: string
           id: string
+          notes: Json | null
           priority: string
           project_id: string | null
+          replies: Json | null
           reporter: string | null
           status: string
           task_id: string | null
+          ticket_type: string | null
           title: string
           updated_at: string | null
         }
@@ -1120,11 +1144,14 @@ export type Database = {
           estimated_hours?: number | null
           health: string
           id?: string
+          notes?: Json | null
           priority: string
           project_id?: string | null
+          replies?: Json | null
           reporter?: string | null
           status: string
           task_id?: string | null
+          ticket_type?: string | null
           title: string
           updated_at?: string | null
         }
@@ -1138,11 +1165,14 @@ export type Database = {
           estimated_hours?: number | null
           health?: string
           id?: string
+          notes?: Json | null
           priority?: string
           project_id?: string | null
+          replies?: Json | null
           reporter?: string | null
           status?: string
           task_id?: string | null
+          ticket_type?: string | null
           title?: string
           updated_at?: string | null
         }
