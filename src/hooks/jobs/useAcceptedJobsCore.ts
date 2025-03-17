@@ -46,6 +46,16 @@ export const useAcceptedJobsCore = (onUpdate?: () => void) => {
       
       console.log("Creating new accepted job with equity allocation:", equityAllocation);
       
+      // Make sure we have the current user session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("No active session found");
+      }
+      
+      const userId = session.user.id;
+      console.log("Current user ID:", userId);
+      console.log("Application user ID:", application.user_id);
+      
       // Insert directly without filtering fields
       const { data, error } = await supabase
         .from('accepted_jobs')

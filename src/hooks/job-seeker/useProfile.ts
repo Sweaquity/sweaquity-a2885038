@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -52,14 +53,15 @@ export const useProfile = () => {
         }
       }
       
-      // Make sure to include the id in the profile data
+      // Make sure to include the id and account_type in the profile data
       const profileWithId: Profile = {
         id: userId, // Ensure id is included
         first_name: data.first_name,
         last_name: data.last_name,
         title: data.title,
         email: data.email,
-        location: data.location
+        location: data.location,
+        account_type: data.account_type || 'job_seeker' // Include account_type with default
       };
       
       setProfile(profileWithId);

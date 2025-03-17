@@ -1,4 +1,3 @@
-
 export interface JobApplication {
   job_app_id: string;
   role_id: string;
@@ -79,11 +78,12 @@ export interface EquityProject {
 
 export interface Profile {
   id: string;
-  first_name: string | null;
-  last_name: string | null;
-  title: string | null;
-  email: string | null;
-  location: string | null;
+  first_name?: string;
+  last_name?: string;
+  title?: string;
+  email?: string;
+  location?: string;
+  account_type?: string;
 }
 
 export interface Skill {
