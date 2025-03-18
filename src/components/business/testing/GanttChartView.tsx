@@ -8,21 +8,25 @@ import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 
 interface GanttChartViewProps {
-  projectId: string | null;
+  projectId?: string | null;
+  tasks?: Task[];
 }
 
-export function GanttChartView({ projectId }: GanttChartViewProps) {
+export function GanttChartView({ projectId, tasks: propTasks }: GanttChartViewProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Month);
 
   useEffect(() => {
-    if (projectId) {
+    if (propTasks) {
+      setTasks(propTasks);
+      setLoading(false);
+    } else if (projectId) {
       fetchProjectData();
     } else {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, propTasks]);
 
   const fetchProjectData = async () => {
     setLoading(true);
@@ -255,7 +259,7 @@ export function GanttChartView({ projectId }: GanttChartViewProps) {
 
   if (loading) return <div className="flex justify-center p-8">Loading Gantt chart data...</div>;
 
-  if (!projectId) return <div className="text-center p-8">Please select a project to view the Gantt chart.</div>;
+  if (!projectId && !propTasks) return <div className="text-center p-8">Please select a project to view the Gantt chart.</div>;
 
   if (tasks.length === 0) return <div className="text-center p-8">No tasks found for this project.</div>;
 

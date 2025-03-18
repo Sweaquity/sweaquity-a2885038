@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,8 +22,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { AdminTicketManager } from "@/components/admin/tickets/AdminTicketManager";
 
-// Update the BetaTicket interface to include the new properties
-
 interface BetaTicket {
   id: string;
   title: string;
@@ -37,29 +34,24 @@ interface BetaTicket {
   updated_at: string;
   reporter_email?: string;
   reporter?: string;
-  // New properties
-  expanded?: boolean;        // UI state for expanding/collapsing tickets
-  newNote?: string;          // Temporary state for new notes
-  notes?: Array<{         // Activity timeline
+  expanded?: boolean;
+  newNote?: string;
+  notes?: Array<{
     action: string;
     user: string;
     timestamp: string;
     comment?: string;
-    
-  }>
-  | null
-  ;
- 
-  system_info?: {            // System information
+  }> | null;
+  system_info?: {
     url: string;
     userAgent: string;
     timestamp: string;
     viewportSize: string;
     referrer: string;
   };
-  reported_url?: string;     // URL where the issue was found
-  attachments?: string[];    // Screenshot URLs
-  reproduction_steps?: string; // Steps to reproduce the issue
+  reported_url?: string;
+  attachments?: string[];
+  reproduction_steps?: string;
 }
 
 interface StatisticsData {
@@ -75,19 +67,16 @@ const SweaquityDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [betaTickets, setBetaTickets] = useState<BetaTicket[]>([]);
-  // Add these new state variables
   const [replyDialogOpen, setReplyDialogOpen] = useState(false);
   const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
   const [showKanban, setShowKanban] = useState(true);
   const [showGantt, setShowGantt] = useState(true);
 
-  // Handler functions for ticket actions
   const handleAddTicketNote = async (ticketId: string, note: string) => {
     if (!note.trim()) return;
     
     try {
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
@@ -95,7 +84,6 @@ const SweaquityDashboard = () => {
         return;
       }
       
-      // Get user's email or name
       const { data: userData } = await supabase
         .from('profiles')
         .select('email, first_name, last_name')
@@ -106,7 +94,6 @@ const SweaquityDashboard = () => {
         ? `${userData.first_name} ${userData.last_name || ''}`
         : userData?.email || user.email || 'Unknown User';
       
-      // First, fetch current ticket data
       const { data: ticketData, error: fetchError } = await supabase
         .from('tickets')
         .select('notes')
@@ -119,10 +106,8 @@ const SweaquityDashboard = () => {
         return;
       }
       
-      // Prepare notes array
       let notes = ticketData.notes || [];
       
-      // Add new note
       notes.push({
         action: 'Note added',
         user: userName,
@@ -130,7 +115,6 @@ const SweaquityDashboard = () => {
         comment: note
       });
       
-      // Update the ticket with new activity
       const { error: updateError } = await supabase
         .from('tickets')
         .update({
@@ -145,12 +129,10 @@ const SweaquityDashboard = () => {
         return;
       }
       
-      // Clear the note input
       setBetaTickets(prev => prev.map(t => 
         t.id === ticketId ? {...t, newNote: ''} : t
       ));
       
-      // Refresh the ticket data
       await fetchBetaTickets();
       toast.success("Note added successfully");
       
@@ -162,7 +144,6 @@ const SweaquityDashboard = () => {
 
   const handleUpdateTicketStatus = async (ticketId: string, status: string) => {
     try {
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
@@ -170,7 +151,6 @@ const SweaquityDashboard = () => {
         return;
       }
       
-      // Get user's email or name
       const { data: userData } = await supabase
         .from('profiles')
         .select('email, first_name, last_name')
@@ -181,7 +161,6 @@ const SweaquityDashboard = () => {
         ? `${userData.first_name} ${userData.last_name || ''}`
         : userData?.email || user.email || 'Unknown User';
       
-      // First, fetch current ticket data
       const { data: ticketData, error: fetchError } = await supabase
         .from('tickets')
         .select('notes, status')
@@ -194,17 +173,14 @@ const SweaquityDashboard = () => {
         return;
       }
       
-      // Prepare notes array
       let notes = ticketData.notes || [];
       
-      // Add new activity
       notes.push({
         action: `Status changed from ${ticketData.status} to ${status}`,
         user: userName,
         timestamp: new Date().toISOString()
       });
       
-      // Update the ticket with new status and activity
       const { error: updateError } = await supabase
         .from('tickets')
         .update({
@@ -220,7 +196,6 @@ const SweaquityDashboard = () => {
         return;
       }
       
-      // Refresh the ticket data
       await fetchBetaTickets();
       toast.success("Status updated successfully");
       
@@ -232,7 +207,6 @@ const SweaquityDashboard = () => {
 
   const handleUpdateTicketPriority = async (ticketId: string, priority: string) => {
     try {
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
@@ -240,7 +214,6 @@ const SweaquityDashboard = () => {
         return;
       }
       
-      // Get user's email or name
       const { data: userData } = await supabase
         .from('profiles')
         .select('email, first_name, last_name')
@@ -251,7 +224,6 @@ const SweaquityDashboard = () => {
         ? `${userData.first_name} ${userData.last_name || ''}`
         : userData?.email || user.email || 'Unknown User';
       
-      // First, fetch current ticket data
       const { data: ticketData, error: fetchError } = await supabase
         .from('tickets')
         .select('notes, priority')
@@ -264,17 +236,14 @@ const SweaquityDashboard = () => {
         return;
       }
       
-      // Prepare notes array
       let notes = ticketData.notes || [];
       
-      // Add new activity
       notes.push({
         action: `Priority changed from ${ticketData.priority} to ${priority}`,
         user: userName,
         timestamp: new Date().toISOString()
       });
       
-      // Update the ticket with new priority and activity
       const { error: updateError } = await supabase
         .from('tickets')
         .update({
@@ -290,7 +259,6 @@ const SweaquityDashboard = () => {
         return;
       }
       
-      // Refresh the ticket data
       await fetchBetaTickets();
       toast.success("Priority updated successfully");
       
@@ -310,14 +278,12 @@ const SweaquityDashboard = () => {
     if (!activeTicketId || !replyMessage.trim()) return;
     
     try {
-      // Find the active ticket
       const ticket = betaTickets.find(t => t.id === activeTicketId);
       if (!ticket || !ticket.reporter) {
         toast.error("Cannot find reporter information");
         return;
       }
       
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
@@ -325,7 +291,6 @@ const SweaquityDashboard = () => {
         return;
       }
       
-      // Get user's email or name
       const { data: userData } = await supabase
         .from('profiles')
         .select('email, first_name, last_name')
@@ -336,13 +301,10 @@ const SweaquityDashboard = () => {
         ? `${userData.first_name} ${userData.last_name || ''}`
         : userData?.email || user.email || 'Unknown User';
       
-      // Create a notification/message in the database
-      // First check if 'messages' table exists
       const { error: tableCheckError } = await supabase
         .from('user_messages')
         .select('id', { count: 'exact', head: true });
       
-      // If table doesn't exist, try to create it first
       if (tableCheckError) {
         const { error: createTableError } = await supabase.rpc('create_messages_table_if_not_exists');
         if (createTableError) {
@@ -352,7 +314,6 @@ const SweaquityDashboard = () => {
         }
       }
       
-      // Insert the message
       const { error: messageError } = await supabase
         .from('user_messages')
         .insert({
@@ -367,12 +328,8 @@ const SweaquityDashboard = () => {
       if (messageError) {
         console.error("Error sending message:", messageError);
         toast.error("Failed to send reply, but message recorded in ticket notes");
-        
-        // Even if the message table insert fails, we'll still record the reply in ticket notes
       }
       
-      // Update ticket activity
-      // First, fetch current ticket data
       const { data: ticketData, error: fetchError } = await supabase
         .from('tickets')
         .select('notes')
@@ -385,10 +342,8 @@ const SweaquityDashboard = () => {
         return;
       }
       
-      // Prepare notes array
       let notes = ticketData.notes || [];
       
-      // Add new activity
       notes.push({
         action: 'Reply sent to reporter',
         user: userName,
@@ -396,7 +351,6 @@ const SweaquityDashboard = () => {
         comment: replyMessage
       });
       
-      // Update the ticket with new activity
       const { error: updateError } = await supabase
         .from('tickets')
         .update({
@@ -411,7 +365,6 @@ const SweaquityDashboard = () => {
         return;
       }
       
-      // Close dialog and refresh
       setReplyDialogOpen(false);
       setActiveTicketId(null);
       setReplyMessage('');
@@ -428,7 +381,6 @@ const SweaquityDashboard = () => {
     if (!dueDateStr) return;
     
     try {
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
@@ -436,7 +388,6 @@ const SweaquityDashboard = () => {
         return;
       }
       
-      // Get user's email or name
       const { data: userData } = await supabase
         .from('profiles')
         .select('email, first_name, last_name')
@@ -447,7 +398,6 @@ const SweaquityDashboard = () => {
         ? `${userData.first_name} ${userData.last_name || ''}`
         : userData?.email || user.email || 'Unknown User';
       
-      // First, fetch current ticket data
       const { data: ticketData, error: fetchError } = await supabase
         .from('tickets')
         .select('notes, due_date')
@@ -460,21 +410,17 @@ const SweaquityDashboard = () => {
         return;
       }
       
-      // Format the dates for activity log
       const oldDueDate = ticketData.due_date ? new Date(ticketData.due_date).toLocaleDateString() : 'None';
       const newDueDate = new Date(dueDateStr).toLocaleDateString();
       
-      // Prepare notes array
       let notes = ticketData.notes || [];
       
-      // Add new activity
       notes.push({
         action: `Due date changed from ${oldDueDate} to ${newDueDate}`,
         user: userName,
         timestamp: new Date().toISOString()
       });
       
-      // Update the ticket with new due date and activity
       const { error: updateError } = await supabase
         .from('tickets')
         .update({
@@ -490,7 +436,6 @@ const SweaquityDashboard = () => {
         return;
       }
       
-      // Refresh the ticket data
       await fetchBetaTickets();
       toast.success("Due date set successfully");
       
@@ -500,7 +445,6 @@ const SweaquityDashboard = () => {
     }
   };
 
-  // Platform stats
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalBusinesses: 0,
@@ -514,7 +458,6 @@ const SweaquityDashboard = () => {
     completedTasks: 0
   });
   
-  // Ticket stats
   const [ticketStats, setTicketStats] = useState<StatisticsData>({
     totalTickets: 0,
     openTickets: 0,
@@ -539,7 +482,6 @@ const SweaquityDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch stats from Supabase
       const fetchUsersCount = supabase
         .from('profiles')
         .select('id', { count: 'exact', head: true });
@@ -586,7 +528,6 @@ const SweaquityDashboard = () => {
         .select('task_id', { count: 'exact', head: true })
         .eq('status', 'completed');
       
-      // Execute all queries in parallel
       const [
         usersResult,
         businessesResult,
@@ -611,12 +552,10 @@ const SweaquityDashboard = () => {
         fetchCompletedTasks
       ]);
       
-      // Check for errors
       if (usersResult.error || businessesResult.error || projectsResult.error || applicationsResult.error) {
         throw new Error("Error fetching data");
       }
       
-      // Update stats with counts
       setStats({
         totalUsers: usersResult.count || 0,
         totalBusinesses: businessesResult.count || 0,
@@ -638,7 +577,6 @@ const SweaquityDashboard = () => {
 
   const fetchBetaTickets = async () => {
     try {
-      // First fetch tickets without the profiles join
       const { data, error } = await supabase
         .from('tickets')
         .select('*')
@@ -651,7 +589,6 @@ const SweaquityDashboard = () => {
         return;
       }
 
-      // Then get the reporter emails separately
       const processedTickets = await Promise.all(
         data.map(async (ticket) => {
           let reporterEmail = null;
@@ -692,22 +629,18 @@ const SweaquityDashboard = () => {
     };
 
     tickets.forEach(ticket => {
-      // Count by status
       if (ticket.status === 'done' || ticket.status === 'closed') {
         stats.closedTickets++;
       } else {
         stats.openTickets++;
       }
 
-      // Count by priority
       if (ticket.priority === 'high') {
         stats.highPriorityTickets++;
       }
 
-      // Aggregate by status
       stats.byStatus[ticket.status] = (stats.byStatus[ticket.status] || 0) + 1;
 
-      // Aggregate by priority
       stats.byPriority[ticket.priority] = (stats.byPriority[ticket.priority] || 0) + 1;
     });
 
@@ -725,7 +658,6 @@ const SweaquityDashboard = () => {
     toast.success("Dashboard data refreshed");
   };
 
-  // Function to toggle expanded state for a ticket
   const toggleTicketExpanded = (ticketId: string) => {
     setBetaTickets(prev => prev.map(ticket => 
       ticket.id === ticketId 
@@ -734,7 +666,6 @@ const SweaquityDashboard = () => {
     ));
   };
 
-  // Get Kanban-formatted tickets for the board
   const getKanbanTickets = () => {
     const columns = {
       'new': { id: 'new', title: 'New', ticketIds: [] },
@@ -760,13 +691,11 @@ const SweaquityDashboard = () => {
     return { columns, tickets: ticketMap };
   };
 
-  // Get Gantt-formatted tasks for the chart
   const getGanttTasks = () => {
     return betaTickets.map((ticket, index) => {
       const startDate = new Date(ticket.created_at);
       let endDate = ticket.due_date ? new Date(ticket.due_date) : new Date();
       
-      // If no due date or due date is in the past, set end date to 7 days from now
       if (!ticket.due_date || endDate < new Date()) {
         endDate = new Date();
         endDate.setDate(endDate.getDate() + 7);
@@ -791,7 +720,6 @@ const SweaquityDashboard = () => {
     });
   };
 
-  // Stat Card component
   const StatCard = ({ title, value, icon, isLoading }: { title: string, value: number, icon: React.ReactNode, isLoading: boolean }) => (
     <Card>
       <CardContent className="p-6">
@@ -812,7 +740,6 @@ const SweaquityDashboard = () => {
     </Card>
   );
 
-  // Kanban board component
   const KanbanBoard = () => {
     const { columns, tickets } = getKanbanTickets();
     
@@ -822,7 +749,6 @@ const SweaquityDashboard = () => {
       if (!destination) return;
       if (source.droppableId === destination.droppableId && source.index === destination.index) return;
       
-      // Update ticket status in Supabase
       handleUpdateTicketStatus(draggableId, destination.droppableId);
     };
     
@@ -865,7 +791,7 @@ const SweaquityDashboard = () => {
       </div>
     );
   };
-  
+
   return (
     <div className="p-6 max-w-7xl mx-auto min-h-screen">
       <div className="flex justify-between items-center mb-6">
@@ -885,7 +811,6 @@ const SweaquityDashboard = () => {
           <TabsTrigger value="applications">Applications</TabsTrigger>
         </TabsList>
         
-        {/* OVERVIEW TAB */}
         <TabsContent value="overview">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatCard 
@@ -1009,7 +934,6 @@ const SweaquityDashboard = () => {
                             </Button>
                           </div>
                           
-                          {/* Collapsible content */}
                           {ticket.expanded && (
                             <div className="p-4">
                               <div className="grid md:grid-cols-2 gap-4 mb-4">
@@ -1041,7 +965,6 @@ const SweaquityDashboard = () => {
                                     )}
                                   </div>
                                   
-                                  {/* System info display */}
                                   {ticket.system_info && (
                                     <div className="mt-3 p-2 bg-gray-50 rounded text-xs">
                                       <p className="font-medium mb-1">System Info:</p>
@@ -1055,7 +978,6 @@ const SweaquityDashboard = () => {
                                   )}
                                 </div>
                                 
-                                {/* Screenshots gallery */}
                                 {ticket.attachments && ticket.attachments.length > 0 && (
                                   <div>
                                     <p className="text-sm font-medium mb-2">Screenshots ({ticket.attachments.length})</p>
@@ -1084,11 +1006,9 @@ const SweaquityDashboard = () => {
                                 )}
                               </div>
                               
-                              {/* Ticket timeline */}
                               <div className="mb-4">
                                 <h4 className="text-sm font-medium mb-2">Activity Timeline</h4>
                                 <div className="space-y-2 text-sm pl-4 border-l-2 border-gray-200">
-                                  {/* Render timeline from ticket comments/activity logs */}
                                   {ticket.notes ? (
                                     ticket.notes.map((activity, index) => (
                                       <div key={index} className="relative pl-4 pb-2">
@@ -1110,9 +1030,7 @@ const SweaquityDashboard = () => {
                                 </div>
                               </div>
                               
-                              {/* Ticket actions */}
                               <div className="border-t pt-4 flex flex-wrap gap-4">
-                                {/* Status update */}
                                 <div>
                                   <Label htmlFor={`status-${ticket.id}`} className="text-xs block mb-1">Update Status</Label>
                                   <Select
@@ -1133,7 +1051,6 @@ const SweaquityDashboard = () => {
                                   </Select>
                                 </div>
                                 
-                                {/* Priority update */}
                                 <div>
                                   <Label htmlFor={`priority-${ticket.id}`} className="text-xs block mb-1">Update Priority</Label>
                                   <Select
@@ -1151,7 +1068,6 @@ const SweaquityDashboard = () => {
                                   </Select>
                                 </div>
                                 
-                                {/* Due date */}
                                 <div>
                                   <Label htmlFor={`due-date-${ticket.id}`} className="text-xs block mb-1">Set Due Date</Label>
                                   <Input
@@ -1163,7 +1079,6 @@ const SweaquityDashboard = () => {
                                   />
                                 </div>
                                 
-                                {/* Reply to reporter */}
                                 {ticket.reporter && (
                                   <div className="ml-auto">
                                     <Button 
@@ -1177,7 +1092,6 @@ const SweaquityDashboard = () => {
                                 )}
                               </div>
                               
-                              {/* Add note section */}
                               <div className="mt-4 border-t pt-4">
                                 <Label htmlFor={`note-${ticket.id}`} className="text-sm font-medium mb-1 block">Add Note</Label>
                                 <div className="flex gap-2">
@@ -1187,7 +1101,6 @@ const SweaquityDashboard = () => {
                                     className="min-h-[80px]"
                                     value={ticket.newNote || ''}
                                     onChange={(e) => {
-                                      // Update newNote in state
                                       setBetaTickets(prev => prev.map(t => 
                                         t.id === ticket.id ? {...t, newNote: e.target.value} : t
                                       ));
@@ -1223,9 +1136,7 @@ const SweaquityDashboard = () => {
           </div>
         </TabsContent>
         
-        {/* TICKETS TAB */}
         <TabsContent value="tickets">
-          {/* Beta testing tickets detailed view */}
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>Beta Testing Visualization</CardTitle>
@@ -1253,7 +1164,6 @@ const SweaquityDashboard = () => {
                 </div>
               ) : (
                 <div className="space-y-8">
-                  {/* Kanban Board */}
                   {showKanban && (
                     <div>
                       <h3 className="font-medium mb-2">Kanban Board</h3>
@@ -1263,7 +1173,6 @@ const SweaquityDashboard = () => {
                     </div>
                   )}
                   
-                  {/* Gantt Chart */}
                   {showGantt && betaTickets.length > 0 && (
                     <div>
                       <h3 className="font-medium mb-2">Gantt Chart</h3>
@@ -1294,7 +1203,6 @@ const SweaquityDashboard = () => {
                 </div>
               ) : (
                 <>
-                  {/* Stats overview */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <Card>
                       <CardContent className="p-4">
@@ -1330,7 +1238,6 @@ const SweaquityDashboard = () => {
                     </Card>
                   </div>
                   
-                  {/* Tickets List */}
                   {betaTickets.length > 0 ? (
                     <Table>
                       <TableHeader>
@@ -1396,7 +1303,6 @@ const SweaquityDashboard = () => {
           </Card>
         </TabsContent>
         
-        {/* APPLICATIONS TAB */}
         <TabsContent value="applications">
           <Card>
             <CardHeader>
@@ -1468,7 +1374,6 @@ const SweaquityDashboard = () => {
         </TabsContent>
       </Tabs>
       
-      {/* Reply dialog */}
       <Dialog open={replyDialogOpen} onOpenChange={setReplyDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
