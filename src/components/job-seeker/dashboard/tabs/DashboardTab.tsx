@@ -1,10 +1,8 @@
-
 import { ProjectsOverview } from "@/components/job-seeker/ProjectsOverview";
 import { DashboardContent } from "@/components/job-seeker/dashboard/DashboardContent";
 import { EquityProject, JobApplication, Profile, Skill } from "@/types/jobSeeker";
 import { CVFile } from "@/hooks/job-seeker/useCVData";
 import { Notification, TicketMessage } from "@/types/dashboard";
-import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { useMessaging } from "@/components/job-seeker/dashboard/applications/hooks/useMessaging";
 
@@ -49,19 +47,28 @@ export const DashboardTab = ({
 }: DashboardTabProps) => {
   const { fetchMessages } = useMessaging();
   const [allTicketMessages, setAllTicketMessages] = useState<TicketMessage[]>(ticketMessages);
+  // Track if we have already loaded messages for tickets
+  const [messagesLoaded, setMessagesLoaded] = useState(false);
   
   useEffect(() => {
-    if (activeTab === 'tickets' && userTickets.length > 0) {
+    // Initialize with provided ticket messages
+    setAllTicketMessages(ticketMessages);
+  }, [ticketMessages]);
+  
+  useEffect(() => {
+    // Only fetch messages if we're on the tickets tab and haven't loaded them yet
+    if (activeTab === 'tickets' && userTickets.length > 0 && !messagesLoaded) {
       // Load messages for each ticket
       const loadAllTicketMessages = async () => {
-        let allMessages: TicketMessage[] = [...ticketMessages];
+        let allMessages: TicketMessage[] = [...allTicketMessages];
+        const newMessages: TicketMessage[] = [];
         
         for (const ticket of userTickets) {
           if (ticket.id) {
             try {
               const messages = await fetchMessages(ticket.id);
               if (messages && messages.length > 0) {
-                allMessages = [...allMessages, ...messages];
+                newMessages.push(...messages);
               }
             } catch (error) {
               console.error(`Error fetching messages for ticket ${ticket.id}:`, error);
@@ -69,23 +76,44 @@ export const DashboardTab = ({
           }
         }
         
-        setAllTicketMessages(allMessages);
+        // Add only new messages that aren't already in the state
+        const existingIds = new Set(allMessages.map(msg => msg.id));
+        const uniqueNewMessages = newMessages.filter(msg => msg.id && !existingIds.has(msg.id));
+        
+        if (uniqueNewMessages.length > 0) {
+          setAllTicketMessages([...allMessages, ...uniqueNewMessages]);
+        }
+        
+        setMessagesLoaded(true);
       };
       
       loadAllTicketMessages();
     }
-  }, [activeTab, userTickets, ticketMessages]);
+  }, [activeTab, userTickets, allTicketMessages, messagesLoaded]);
+  
+  // Reset messages loaded state when tickets change
+  useEffect(() => {
+    setMessagesLoaded(false);
+  }, [userTickets.length]);
   
   // Define a handler for ticket actions
   const handleTicketAction = async (ticketId: string, action: string, data?: any) => {
     // Perform the action using the provided handler
     await onTicketAction(ticketId, action, data);
     
-    // If it's a reply action, refresh the messages
-    if (action === 'reply' && ticketId) {
-      const newMessages = await fetchMessages(ticketId);
-      if (newMessages && newMessages.length > 0) {
-        setAllTicketMessages(prev => [...prev, ...newMessages]);
+    // If it's a reply action, refresh the messages for that specific ticket
+    if ((action === 'reply' || action === 'update_status') && ticketId) {
+      try {
+        const newMessages = await fetchMessages(ticketId);
+        if (newMessages && newMessages.length > 0) {
+          // Get existing messages for other tickets
+          const otherTicketsMessages = allTicketMessages.filter(msg => msg.ticketId !== ticketId);
+          
+          // Combine with new messages
+          setAllTicketMessages([...otherTicketsMessages, ...newMessages]);
+        }
+      } catch (error) {
+        console.error(`Error fetching messages after action for ticket ${ticketId}:`, error);
       }
     }
   };
