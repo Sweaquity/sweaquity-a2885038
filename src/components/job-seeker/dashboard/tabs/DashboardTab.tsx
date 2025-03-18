@@ -39,6 +39,8 @@ interface Ticket {
   created_at: string;
   due_date?: string;
   expanded?: boolean;
+  task_id?: string;
+  project_id?: string;
 }
 
 interface TicketStats {
@@ -66,6 +68,7 @@ interface DashboardTabProps {
   onTicketAction?: (ticketId: string, action: string, data?: any) => void;
   userCVs?: CVFile[];
   onCvListUpdated?: () => void;
+  refreshTickets?: () => void;
 }
 
 export const DashboardTab = ({
@@ -86,6 +89,7 @@ export const DashboardTab = ({
   onTicketAction = () => {},
   userCVs = [],
   onCvListUpdated = () => {},
+  refreshTickets = () => {},
 }: DashboardTabProps) => {
   const { fetchMessages } = useMessaging();
   const [allTicketMessages, setAllTicketMessages] = useState<TicketMessage[]>(ticketMessages);
@@ -163,6 +167,11 @@ export const DashboardTab = ({
         console.error(`Error fetching messages after action for ticket ${ticketId}:`, error);
       }
     }
+    
+    // Refresh tickets after action if needed
+    if (['create', 'update_status', 'delete'].includes(action)) {
+      refreshTickets();
+    }
   };
 
   // Transform userTickets into betaTickets with expanded property
@@ -173,6 +182,8 @@ export const DashboardTab = ({
         expanded: false,
       }));
       setBetaTickets(formattedTickets);
+    } else {
+      setBetaTickets([]);
     }
   }, [userTickets]);
 
@@ -352,57 +363,65 @@ export const DashboardTab = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {betaTickets.map(ticket => (
-                  <React.Fragment key={ticket.id}>
-                    <TableRow className="group">
-                      <TableCell className="font-medium">{ticket.title}</TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          ticket.status === 'new' ? 'bg-blue-100 text-blue-800' :
-                          ticket.status === 'in-progress' ? 'bg-purple-100 text-purple-800' :
-                          ticket.status === 'blocked' ? 'bg-red-100 text-red-800' :
-                          ticket.status === 'review' ? 'bg-yellow-100 text-yellow-800' :
-                          ticket.status === 'done' ? 'bg-green-100 text-green-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {ticket.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          ticket.priority === 'high' ? 'bg-red-100 text-red-800' :
-                          ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          {ticket.priority}
-                        </span>
-                      </TableCell>
-                      <TableCell>{formatDate(ticket.created_at)}</TableCell>
-                      <TableCell>{ticket.due_date ? formatDate(ticket.due_date) : '-'}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleTicketExpanded(ticket.id)}
-                        >
-                          {ticket.expanded ? 'Collapse' : 'Expand'}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    {ticket.expanded && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="p-0 border-t-0">
-                          <ExpandedTicketDetails 
-                            ticket={ticket} 
-                            messages={allTicketMessages.filter(msg => msg.ticketId === ticket.id)}
-                            onReply={(message) => handleTicketAction(ticket.id, 'reply', { message })}
-                            onStatusChange={(status) => handleTicketAction(ticket.id, 'update_status', { status })}
-                          />
+                {betaTickets.length > 0 ? (
+                  betaTickets.map(ticket => (
+                    <React.Fragment key={ticket.id}>
+                      <TableRow className="group">
+                        <TableCell className="font-medium">{ticket.title}</TableCell>
+                        <TableCell>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            ticket.status === 'new' || ticket.status === 'todo' ? 'bg-blue-100 text-blue-800' :
+                            ticket.status === 'in-progress' ? 'bg-purple-100 text-purple-800' :
+                            ticket.status === 'blocked' ? 'bg-red-100 text-red-800' :
+                            ticket.status === 'review' ? 'bg-yellow-100 text-yellow-800' :
+                            ticket.status === 'done' ? 'bg-green-100 text-green-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {ticket.status}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            ticket.priority === 'high' ? 'bg-red-100 text-red-800' :
+                            ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {ticket.priority}
+                          </span>
+                        </TableCell>
+                        <TableCell>{formatDate(ticket.created_at)}</TableCell>
+                        <TableCell>{ticket.due_date ? formatDate(ticket.due_date) : '-'}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleTicketExpanded(ticket.id)}
+                          >
+                            {ticket.expanded ? 'Collapse' : 'Expand'}
+                          </Button>
                         </TableCell>
                       </TableRow>
-                    )}
-                  </React.Fragment>
-                ))}
+                      {ticket.expanded && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="p-0 border-t-0">
+                            <ExpandedTicketDetails 
+                              ticket={ticket} 
+                              messages={allTicketMessages.filter(msg => msg.ticketId === ticket.id)}
+                              onReply={(message) => handleTicketAction(ticket.id, 'reply', { message })}
+                              onStatusChange={(status) => handleTicketAction(ticket.id, 'update_status', { status })}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No tickets found. Create tickets from the Projects section below.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -417,6 +436,9 @@ export const DashboardTab = ({
         currentProjects={equityProjects} 
         pastProjects={[]} 
         onDocumentAction={onDocumentAction}
+        userTickets={userTickets}
+        onTicketAction={handleTicketAction}
+        refreshTickets={refreshTickets}
       />
       
       {/* Conditional render the ticket management UI */}
