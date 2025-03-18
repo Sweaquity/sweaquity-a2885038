@@ -659,11 +659,13 @@ const SweaquityDashboard = () => {
   };
 
   const toggleTicketExpanded = (ticketId: string) => {
-    setBetaTickets(prev => prev.map(ticket => 
-      ticket.id === ticketId 
-        ? { ...ticket, expanded: !ticket.expanded } 
-        : ticket
-    ));
+    setBetaTickets((prev) =>
+      prev.map((ticket) =>
+        ticket.id === ticketId
+          ? { ...ticket, expanded: !ticket.expanded }
+          : ticket
+      )
+    );
   };
 
   const getKanbanTickets = () => {
@@ -1278,13 +1280,199 @@ const SweaquityDashboard = () => {
                             <TableCell>{formatDate(ticket.created_at)}</TableCell>
                             <TableCell>{ticket.due_date ? formatDate(ticket.due_date) : 'Not set'}</TableCell>
                             <TableCell>
-                              <Button
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => toggleTicketExpanded(ticket.id)}
-                              >
-                                {ticket.expanded ? "Collapse" : "Expand"}
-                              </Button>
+                                                  <Button
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => toggleTicketExpanded(ticket.id)}
+                            >
+                              {ticket.expanded ? "Collapse" : "Expand"}
+                            </Button>
+                          </div>
+                          
+                          {ticket.expanded && (
+                            <div className="p-4">
+                              <div className="grid md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                  <p className="text-sm text-gray-600 mb-2">{ticket.description}</p>
+                                  
+                                  <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div>
+                                      <span className="text-gray-500">Created: </span>
+                                      {formatDate(ticket.created_at)}
+                                    </div>
+                                    {ticket.due_date && (
+                                      <div>
+                                        <span className="text-gray-500">Due: </span>
+                                        {formatDate(ticket.due_date)}
+                                      </div>
+                                    )}
+                                    {ticket.reporter_email && (
+                                      <div>
+                                        <span className="text-gray-500">Reporter: </span>
+                                        {ticket.reporter_email}
+                                      </div>
+                                    )}
+                                    {ticket.reported_url && (
+                                      <div>
+                                        <span className="text-gray-500">URL: </span>
+                                        <span className="text-blue-500 underline">{ticket.reported_url}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  {ticket.system_info && (
+                                    <div className="mt-3 p-2 bg-gray-50 rounded text-xs">
+                                      <p className="font-medium mb-1">System Info:</p>
+                                      <div className="grid grid-cols-2 gap-1">
+                                        <div><span className="text-gray-500">Browser: </span>{ticket.system_info.userAgent}</div>
+                                        <div><span className="text-gray-500">Screen: </span>{ticket.system_info.viewportSize}</div>
+                                        <div><span className="text-gray-500">Time: </span>{new Date(ticket.system_info.timestamp).toLocaleString()}</div>
+                                        <div><span className="text-gray-500">Referrer: </span>{ticket.system_info.referrer}</div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {ticket.attachments && ticket.attachments.length > 0 && (
+                                  <div>
+                                    <p className="text-sm font-medium mb-2">Screenshots ({ticket.attachments.length})</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {ticket.attachments.map((url, i) => (
+                                        <div key={i} className="relative group border rounded overflow-hidden h-36">
+                                          <img 
+                                            src={url} 
+                                            alt={`Screenshot ${i+1}`} 
+                                            className="w-full h-full object-cover"
+                                          />
+                                          <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                            <Button 
+                                              variant="ghost" 
+                                              size="sm" 
+                                              className="text-white"
+                                              onClick={() => window.open(url, '_blank')}
+                                            >
+                                              View Full
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div className="mb-4">
+                                <h4 className="text-sm font-medium mb-2">Activity Timeline</h4>
+                                <div className="space-y-2 text-sm pl-4 border-l-2 border-gray-200">
+                                  {ticket.notes ? (
+                                    ticket.notes.map((activity, index) => (
+                                      <div key={index} className="relative pl-4 pb-2">
+                                        <div className="absolute w-2 h-2 rounded-full bg-blue-500 -left-[5px]"></div>
+                                        <p className="font-medium">{activity.action}</p>
+                                        <p className="text-xs text-gray-500">
+                                          {new Date(activity.timestamp).toLocaleString()} by {activity.user}
+                                        </p>
+                                        {activity.comment && (
+                                          <p className="mt-1 bg-gray-50 p-2 rounded border border-gray-100">
+                                            {activity.comment}
+                                          </p>
+                                        )}
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-gray-500 italic">No activity recorded yet</p>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              <div className="border-t pt-4 flex flex-wrap gap-4">
+                                <div>
+                                  <Label htmlFor={`status-${ticket.id}`} className="text-xs block mb-1">Update Status</Label>
+                                  <Select
+                                    defaultValue={ticket.status}
+                                    onValueChange={(value) => handleUpdateTicketStatus(ticket.id, value)}
+                                  >
+                                    <SelectTrigger id={`status-${ticket.id}`} className="w-[140px]">
+                                      <SelectValue placeholder="Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="new">New</SelectItem>
+                                      <SelectItem value="in-progress">In Progress</SelectItem>
+                                      <SelectItem value="blocked">Blocked</SelectItem>
+                                      <SelectItem value="review">Review</SelectItem>
+                                      <SelectItem value="done">Done</SelectItem>
+                                      <SelectItem value="closed">Closed</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                
+                                <div>
+                                  <Label htmlFor={`priority-${ticket.id}`} className="text-xs block mb-1">Update Priority</Label>
+                                  <Select
+                                    defaultValue={ticket.priority}
+                                    onValueChange={(value) => handleUpdateTicketPriority(ticket.id, value)}
+                                  >
+                                    <SelectTrigger id={`priority-${ticket.id}`} className="w-[140px]">
+                                      <SelectValue placeholder="Priority" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="low">Low</SelectItem>
+                                      <SelectItem value="medium">Medium</SelectItem>
+                                      <SelectItem value="high">High</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                
+                                <div>
+                                  <Label htmlFor={`due-date-${ticket.id}`} className="text-xs block mb-1">Set Due Date</Label>
+                                  <Input
+                                    id={`due-date-${ticket.id}`}
+                                    type="date"
+                                    className="w-[180px]"
+                                    value={ticket.due_date ? new Date(ticket.due_date).toISOString().split('T')[0] : ''}
+                                    onChange={(e) => handleSetDueDate(ticket.id, e.target.value)}
+                                  />
+                                </div>
+                                
+                                {ticket.reporter && (
+                                  <div className="ml-auto">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => handleReplyToReporter(ticket.id)}
+                                    >
+                                      Reply to Reporter
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div className="mt-4 border-t pt-4">
+                                <Label htmlFor={`note-${ticket.id}`} className="text-sm font-medium mb-1 block">Add Note</Label>
+                                <div className="flex gap-2">
+                                  <Textarea 
+                                    id={`note-${ticket.id}`}
+                                    placeholder="Add a note about this ticket..."
+                                    className="min-h-[80px]"
+                                    value={ticket.newNote || ''}
+                                    onChange={(e) => {
+                                      setBetaTickets(prev => prev.map(t => 
+                                        t.id === ticket.id ? {...t, newNote: e.target.value} : t
+                                      ));
+                                    }}
+                                  />
+                                  <Button 
+                                    className="self-end" 
+                                    onClick={() => handleAddTicketNote(ticket.id, ticket.newNote || '')}
+                                  >
+                                    Add Note
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </Card>
+                      ))}
                             </TableCell>
                           </TableRow>
                         ))}
