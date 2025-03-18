@@ -111,7 +111,7 @@ export function BetaTestingButton() {
           status: 'new',
           health: 'needs-review',
           system_info: systemInfo,
-          reproduction_steps: description,
+          // reproduction_steps: description,
           ticket_type: 'beta_testing',
           notes: [],
           replies: []
