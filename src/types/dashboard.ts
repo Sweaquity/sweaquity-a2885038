@@ -33,3 +33,16 @@ export interface DragResult {
     index: number;
   } | null;
 }
+
+export interface ApplicationStats {
+  totalUsers: number;
+  totalBusinesses: number;
+  totalProjects: number;
+  totalApplications: number;
+  pendingApplications: number;
+  acceptedApplications: number;
+  withdrawnApplications: number;
+  rejectedApplications: number;
+  openTasks: number;
+  completedTasks: number;
+}
