@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,6 +79,8 @@ const SweaquityDashboard = () => {
   const [replyDialogOpen, setReplyDialogOpen] = useState(false);
   const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
+  const [showKanban, setShowKanban] = useState(true);
+  const [showGantt, setShowGantt] = useState(true);
 
   // Handler functions for ticket actions
   const handleAddTicketNote = async (ticketId: string, note: string) => {
@@ -334,8 +337,24 @@ const SweaquityDashboard = () => {
         : userData?.email || user.email || 'Unknown User';
       
       // Create a notification/message in the database
+      // First check if 'messages' table exists
+      const { error: tableCheckError } = await supabase
+        .from('user_messages')
+        .select('id', { count: 'exact', head: true });
+      
+      // If table doesn't exist, try to create it first
+      if (tableCheckError) {
+        const { error: createTableError } = await supabase.rpc('create_messages_table_if_not_exists');
+        if (createTableError) {
+          console.error("Error creating messages table:", createTableError);
+          toast.error("Failed to send reply: messaging system not available");
+          return;
+        }
+      }
+      
+      // Insert the message
       const { error: messageError } = await supabase
-        .from('messages')
+        .from('user_messages')
         .insert({
           sender_id: user.id,
           recipient_id: ticket.reporter,
@@ -347,8 +366,9 @@ const SweaquityDashboard = () => {
         
       if (messageError) {
         console.error("Error sending message:", messageError);
-        toast.error("Failed to send reply");
-        return;
+        toast.error("Failed to send reply, but message recorded in ticket notes");
+        
+        // Even if the message table insert fails, we'll still record the reply in ticket notes
       }
       
       // Update ticket activity
@@ -361,27 +381,34 @@ const SweaquityDashboard = () => {
         
       if (fetchError) {
         console.error("Error fetching ticket:", fetchError);
-        // Still continue, because the message was sent
-      } else {
-        // Prepare notes array
-        let notes = ticketData.notes || [];
+        toast.error("Failed to update ticket notes");
+        return;
+      }
+      
+      // Prepare notes array
+      let notes = ticketData.notes || [];
+      
+      // Add new activity
+      notes.push({
+        action: 'Reply sent to reporter',
+        user: userName,
+        timestamp: new Date().toISOString(),
+        comment: replyMessage
+      });
+      
+      // Update the ticket with new activity
+      const { error: updateError } = await supabase
+        .from('tickets')
+        .update({
+          notes: notes,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', activeTicketId);
         
-        // Add new activity
-        notes.push({
-          action: 'Reply sent to reporter',
-          user: userName,
-          timestamp: new Date().toISOString(),
-          comment: replyMessage
-        });
-        
-        // Update the ticket with new activity
-        await supabase
-          .from('tickets')
-          .update({
-            notes: notes,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', activeTicketId);
+      if (updateError) {
+        console.error("Error updating ticket notes:", updateError);
+        toast.error("Failed to record reply in ticket history");
+        return;
       }
       
       // Close dialog and refresh
@@ -389,7 +416,7 @@ const SweaquityDashboard = () => {
       setActiveTicketId(null);
       setReplyMessage('');
       await fetchBetaTickets();
-      toast.success("Reply sent successfully");
+      toast.success("Reply recorded in ticket history");
       
     } catch (err) {
       console.error("Error in sendReplyToReporter:", err);
@@ -698,6 +725,72 @@ const SweaquityDashboard = () => {
     toast.success("Dashboard data refreshed");
   };
 
+  // Function to toggle expanded state for a ticket
+  const toggleTicketExpanded = (ticketId: string) => {
+    setBetaTickets(prev => prev.map(ticket => 
+      ticket.id === ticketId 
+        ? { ...ticket, expanded: !ticket.expanded } 
+        : ticket
+    ));
+  };
+
+  // Get Kanban-formatted tickets for the board
+  const getKanbanTickets = () => {
+    const columns = {
+      'new': { id: 'new', title: 'New', ticketIds: [] },
+      'in-progress': { id: 'in-progress', title: 'In Progress', ticketIds: [] },
+      'blocked': { id: 'blocked', title: 'Blocked', ticketIds: [] },
+      'review': { id: 'review', title: 'Review', ticketIds: [] },
+      'done': { id: 'done', title: 'Done', ticketIds: [] },
+      'closed': { id: 'closed', title: 'Closed', ticketIds: [] }
+    };
+    
+    const ticketMap = {};
+    
+    betaTickets.forEach(ticket => {
+      ticketMap[ticket.id] = ticket;
+      const status = ticket.status || 'new';
+      if (columns[status]) {
+        columns[status].ticketIds.push(ticket.id);
+      } else {
+        columns['new'].ticketIds.push(ticket.id);
+      }
+    });
+    
+    return { columns, tickets: ticketMap };
+  };
+
+  // Get Gantt-formatted tasks for the chart
+  const getGanttTasks = () => {
+    return betaTickets.map((ticket, index) => {
+      const startDate = new Date(ticket.created_at);
+      let endDate = ticket.due_date ? new Date(ticket.due_date) : new Date();
+      
+      // If no due date or due date is in the past, set end date to 7 days from now
+      if (!ticket.due_date || endDate < new Date()) {
+        endDate = new Date();
+        endDate.setDate(endDate.getDate() + 7);
+      }
+      
+      return {
+        id: ticket.id,
+        name: ticket.title,
+        start: startDate,
+        end: endDate,
+        type: 'task',
+        progress: ticket.status === 'done' || ticket.status === 'closed' ? 100 : 
+                 ticket.status === 'in-progress' ? 50 : 
+                 ticket.status === 'review' ? 75 : 25,
+        isDisabled: false,
+        styles: { 
+          progressColor: 
+            ticket.priority === 'high' ? '#ef4444' : 
+            ticket.priority === 'medium' ? '#f59e0b' : '#3b82f6'
+        }
+      };
+    });
+  };
+
   // Stat Card component
   const StatCard = ({ title, value, icon, isLoading }: { title: string, value: number, icon: React.ReactNode, isLoading: boolean }) => (
     <Card>
@@ -718,6 +811,60 @@ const SweaquityDashboard = () => {
       </CardContent>
     </Card>
   );
+
+  // Kanban board component
+  const KanbanBoard = () => {
+    const { columns, tickets } = getKanbanTickets();
+    
+    const onDragEnd = (result) => {
+      const { source, destination, draggableId } = result;
+      
+      if (!destination) return;
+      if (source.droppableId === destination.droppableId && source.index === destination.index) return;
+      
+      // Update ticket status in Supabase
+      handleUpdateTicketStatus(draggableId, destination.droppableId);
+    };
+    
+    return (
+      <div className="overflow-x-auto p-4">
+        <div className="flex space-x-4 min-w-fit">
+          {Object.values(columns).map(column => (
+            <div key={column.id} className="w-64 bg-gray-50 rounded-md p-2">
+              <h3 className="font-medium mb-2">{column.title} ({column.ticketIds.length})</h3>
+              <div className="space-y-2">
+                {column.ticketIds.map((ticketId) => {
+                  const ticket = tickets[ticketId];
+                  return (
+                    <Card key={ticketId} className={`
+                      p-2 cursor-pointer
+                      ${ticket.priority === 'high' ? 'border-l-4 border-l-red-500' : 
+                        ticket.priority === 'medium' ? 'border-l-4 border-l-yellow-500' :
+                        'border-l-4 border-l-blue-500'}
+                    `}>
+                      <div className="text-sm font-medium">{ticket.title}</div>
+                      <div className="text-xs text-gray-500 truncate">{ticket.description}</div>
+                      <div className="flex justify-between mt-1">
+                        <div className="text-xs">{formatDate(ticket.due_date || '')}</div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-xs px-2"
+                          onClick={() => toggleTicketExpanded(ticket.id)}
+                        >
+                          View
+                        </Button>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
   
   return (
     <div className="p-6 max-w-7xl mx-auto min-h-screen">
@@ -856,12 +1003,7 @@ const SweaquityDashboard = () => {
                             <Button
                               variant="ghost" 
                               size="sm"
-                              onClick={() => {
-                                // Toggle expanded state for this ticket
-                                setBetaTickets(prev => prev.map(t => 
-                                  t.id === ticket.id ? {...t, expanded: !t.expanded} : t
-                                ));
-                              }}
+                              onClick={() => toggleTicketExpanded(ticket.id)}
                             >
                               {ticket.expanded ? "Collapse" : "Expand"}
                             </Button>
@@ -981,9 +1123,10 @@ const SweaquityDashboard = () => {
                                       <SelectValue placeholder="Status" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="open">Open</SelectItem>
+                                      <SelectItem value="new">New</SelectItem>
                                       <SelectItem value="in-progress">In Progress</SelectItem>
                                       <SelectItem value="blocked">Blocked</SelectItem>
+                                      <SelectItem value="review">Review</SelectItem>
                                       <SelectItem value="done">Done</SelectItem>
                                       <SelectItem value="closed">Closed</SelectItem>
                                     </SelectContent>
@@ -1083,6 +1226,57 @@ const SweaquityDashboard = () => {
         {/* TICKETS TAB */}
         <TabsContent value="tickets">
           {/* Beta testing tickets detailed view */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Beta Testing Visualization</CardTitle>
+              <div className="flex items-center space-x-4">
+                <Button 
+                  variant={showKanban ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowKanban(!showKanban)}
+                >
+                  {showKanban ? "Hide Kanban" : "Show Kanban"}
+                </Button>
+                <Button 
+                  variant={showGantt ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowGantt(!showGantt)}
+                >
+                  {showGantt ? "Hide Gantt" : "Show Gantt"}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="animate-pulse space-y-4">
+                  <div className="h-40 bg-gray-200 rounded"></div>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  {/* Kanban Board */}
+                  {showKanban && (
+                    <div>
+                      <h3 className="font-medium mb-2">Kanban Board</h3>
+                      <div className="border rounded-md">
+                        <KanbanBoard />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Gantt Chart */}
+                  {showGantt && betaTickets.length > 0 && (
+                    <div>
+                      <h3 className="font-medium mb-2">Gantt Chart</h3>
+                      <div className="border rounded-md p-4 h-[300px]">
+                        <GanttChartView tasks={getGanttTasks()} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
           <Card>
             <CardHeader>
               <CardTitle>Beta Testing Tickets</CardTitle>
@@ -1152,7 +1346,7 @@ const SweaquityDashboard = () => {
                       </TableHeader>
                       <TableBody>
                         {betaTickets.map(ticket => (
-                          <TableRow key={ticket.id}>
+                          <TableRow key={ticket.id} isExpanded={ticket.expanded}>
                             <TableCell className="font-medium">{ticket.title}</TableCell>
                             <TableCell>
                               <span className={`px-2 py-1 rounded text-xs ${
@@ -1180,12 +1374,7 @@ const SweaquityDashboard = () => {
                               <Button
                                 variant="ghost" 
                                 size="sm"
-                                onClick={() => {
-                                  // Toggle expanded state for this ticket
-                                  setBetaTickets(prev => prev.map(t => 
-                                    t.id === ticket.id ? {...t, expanded: !t.expanded} : t
-                                  ));
-                                }}
+                                onClick={() => toggleTicketExpanded(ticket.id)}
                               >
                                 {ticket.expanded ? "Collapse" : "Expand"}
                               </Button>
