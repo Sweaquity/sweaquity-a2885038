@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,10 +21,10 @@ export const TimeTracker = ({ ticketId, userId }: TimeTrackerProps) => {
   const [manualHours, setManualHours] = useState<number>(0);
 
   useEffect(() => {
-    let interval: number | undefined;
+    let intervalId: NodeJS.Timeout | null = null;
     
     if (isTracking && startTime) {
-      interval = setInterval(() => {
+      intervalId = setInterval(() => {
         const now = new Date();
         const elapsed = (now.getTime() - startTime.getTime()) / 1000;
         setElapsedTime(elapsed);
@@ -32,7 +32,7 @@ export const TimeTracker = ({ ticketId, userId }: TimeTrackerProps) => {
     }
     
     return () => {
-      if (interval) clearInterval(interval);
+      if (intervalId) clearInterval(intervalId);
     };
   }, [isTracking, startTime]);
 
