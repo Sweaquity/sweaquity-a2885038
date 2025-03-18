@@ -39,12 +39,16 @@ interface BetaTicket {
   // New properties
   expanded?: boolean;        // UI state for expanding/collapsing tickets
   newNote?: string;          // Temporary state for new notes
-  activity?: Array<{         // Activity timeline
+  notes?: Array<{         // Activity timeline
     action: string;
     user: string;
     timestamp: string;
     comment?: string;
-  }>;
+    
+  }>
+  | null
+  ;
+ 
   system_info?: {            // System information
     url: string;
     userAgent: string;
@@ -102,7 +106,7 @@ const SweaquityDashboard = () => {
       // First, fetch current ticket data
       const { data: ticketData, error: fetchError } = await supabase
         .from('tickets')
-        .select('activity')
+        .select('notes')
         .eq('id', ticketId)
         .single();
         
@@ -113,10 +117,10 @@ const SweaquityDashboard = () => {
       }
       
       // Prepare activity array
-      let activity = ticketData.activity || [];
+      let activity = ticketData.notes || [];
       
-      // Add new activity
-      activity.push({
+      // Add new note
+      notes.push({
         action: 'Note added',
         user: userName,
         timestamp: new Date().toISOString(),
@@ -127,7 +131,7 @@ const SweaquityDashboard = () => {
       const { error: updateError } = await supabase
         .from('tickets')
         .update({
-          activity: activity,
+          activity: notes,
           updated_at: new Date().toISOString()
         })
         .eq('id', ticketId);
@@ -177,7 +181,7 @@ const SweaquityDashboard = () => {
       // First, fetch current ticket data
       const { data: ticketData, error: fetchError } = await supabase
         .from('tickets')
-        .select('activity, status')
+        .select('notes, status')
         .eq('id', ticketId)
         .single();
         
@@ -188,10 +192,10 @@ const SweaquityDashboard = () => {
       }
       
       // Prepare activity array
-      let activity = ticketData.activity || [];
+      let activity = ticketData.notes || [];
       
       // Add new activity
-      activity.push({
+      notes.push({
         action: `Status changed from ${ticketData.status} to ${status}`,
         user: userName,
         timestamp: new Date().toISOString()
@@ -202,7 +206,7 @@ const SweaquityDashboard = () => {
         .from('tickets')
         .update({
           status: status,
-          activity: activity,
+          activity: notes,
           updated_at: new Date().toISOString()
         })
         .eq('id', ticketId);
@@ -258,7 +262,7 @@ const SweaquityDashboard = () => {
       }
       
       // Prepare activity array
-      let activity = ticketData.activity || [];
+      let activity = ticketData.notes || [];
       
       // Add new activity
       activity.push({
@@ -272,7 +276,7 @@ const SweaquityDashboard = () => {
         .from('tickets')
         .update({
           priority: priority,
-          activity: activity,
+          activity: notes,
           updated_at: new Date().toISOString()
         })
         .eq('id', ticketId);
@@ -360,7 +364,7 @@ const SweaquityDashboard = () => {
         // Still continue, because the message was sent
       } else {
         // Prepare activity array
-        let activity = ticketData.activity || [];
+        let activity = ticketData.notes || [];
         
         // Add new activity
         activity.push({
@@ -374,7 +378,7 @@ const SweaquityDashboard = () => {
         await supabase
           .from('tickets')
           .update({
-            activity: activity,
+            activity: notes,
             updated_at: new Date().toISOString()
           })
           .eq('id', activeTicketId);
@@ -434,7 +438,7 @@ const SweaquityDashboard = () => {
       const newDueDate = new Date(dueDateStr).toLocaleDateString();
       
       // Prepare activity array
-      let activity = ticketData.activity || [];
+      let activity = ticketData.notes || [];
       
       // Add new activity
       activity.push({
@@ -448,7 +452,7 @@ const SweaquityDashboard = () => {
         .from('tickets')
         .update({
           due_date: new Date(dueDateStr).toISOString(),
-          activity: activity,
+          activity: notes,
           updated_at: new Date().toISOString()
         })
         .eq('id', ticketId);
@@ -943,17 +947,17 @@ const SweaquityDashboard = () => {
                                 <h4 className="text-sm font-medium mb-2">Activity Timeline</h4>
                                 <div className="space-y-2 text-sm pl-4 border-l-2 border-gray-200">
                                   {/* Render timeline from ticket comments/activity logs */}
-                                  {ticket.activity ? (
-                                    ticket.activity.map((activity, index) => (
+                                  {ticket.notes ? (
+                                    ticket.notes.map((activity, index) => (
                                       <div key={index} className="relative pl-4 pb-2">
                                         <div className="absolute w-2 h-2 rounded-full bg-blue-500 -left-[5px]"></div>
                                         <p className="font-medium">{activity.action}</p>
                                         <p className="text-xs text-gray-500">
-                                          {new Date(activity.timestamp).toLocaleString()} by {activity.user}
+                                          {new Date(notes.timestamp).toLocaleString()} by {notes.user}
                                         </p>
-                                        {activity.comment && (
+                                        {notes.comment && (
                                           <p className="mt-1 bg-gray-50 p-2 rounded border border-gray-100">
-                                            {activity.comment}
+                                            {notes.comment}
                                           </p>
                                         )}
                                       </div>
