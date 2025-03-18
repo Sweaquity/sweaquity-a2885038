@@ -1,4 +1,3 @@
-
 import {
   Card,
   CardContent,
@@ -34,12 +33,19 @@ interface ProjectsOverviewProps {
   currentProjects?: ProjectWithDocuments[];
   pastProjects?: ProjectWithDocuments[];
   onDocumentAction?: (projectId: string, action: 'edit' | 'approve') => void;
+  // Add missing props that are passed from DashboardTab
+  userTickets?: any[];
+  onTicketAction?: (ticketId: string, action: string, data?: any) => void;
+  refreshTickets?: () => void;
 }
 
 export const ProjectsOverview = ({
   currentProjects = [],
   pastProjects = [],
-  onDocumentAction = () => {}
+  onDocumentAction = () => {},
+  userTickets = [],  // Receive tickets from parent instead of fetching directly
+  onTicketAction = () => {},
+  refreshTickets = () => {}
 }: ProjectsOverviewProps) => {
   const [expandedProjects, setExpandedProjects] = useState<{[key: string]: boolean}>({});
   const [projectTickets, setProjectTickets] = useState<{[key: string]: any[]}>({});
@@ -68,39 +74,29 @@ export const ProjectsOverview = ({
     getUserId();
   }, []);
 
+  // Use userTickets from props to initialize project tickets
+  useEffect(() => {
+    if (userTickets && userTickets.length > 0) {
+      const ticketsByProject: {[key: string]: any[]} = {};
+      
+      userTickets.forEach(ticket => {
+        if (ticket.project_id) {
+          if (!ticketsByProject[ticket.project_id]) {
+            ticketsByProject[ticket.project_id] = [];
+          }
+          ticketsByProject[ticket.project_id].push(ticket);
+        }
+      });
+      
+      setProjectTickets(ticketsByProject);
+    }
+  }, [userTickets]);
+
   const toggleProjectExpansion = (projectId: string) => {
     setExpandedProjects(prev => ({
       ...prev,
       [projectId]: !prev[projectId]
     }));
-
-    // Load tickets if expanding and not yet loaded
-    if (!expandedProjects[projectId] && !projectTickets[projectId]) {
-      fetchProjectTickets(projectId);
-    }
-  };
-
-  const fetchProjectTickets = async (projectId: string) => {
-    setIsLoading(prev => ({ ...prev, [projectId]: true }));
-    try {
-      // Fetch tickets associated with this project
-      const { data, error } = await supabase
-        .from('tickets')
-        .select('*')
-        .eq('project_id', projectId);
-
-      if (error) throw error;
-      
-      setProjectTickets(prev => ({
-        ...prev,
-        [projectId]: data || []
-      }));
-    } catch (error) {
-      console.error('Error fetching project tickets:', error);
-      toast.error("Failed to load project tickets");
-    } finally {
-      setIsLoading(prev => ({ ...prev, [projectId]: false }));
-    }
   };
 
   const createTicket = async () => {
@@ -113,29 +109,23 @@ export const ProjectsOverview = ({
 
       setIsCreatingTicket(true);
       
-      // Create a new ticket
-      const { data, error } = await supabase
-        .from('tickets')
-        .insert({
-          title: newTicketData.title,
-          description: newTicketData.description,
-          status: newTicketData.status,
-          priority: newTicketData.priority,
-          health: 'green',
-          project_id: newTicketData.projectId,
-          task_id: newTicketData.taskId,
-          reporter: userId,
-          assigned_to: userId,
-          ticket_type: 'task'
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      // Create a new ticket using the provided onTicketAction handler
+      await onTicketAction('new', 'create', {
+        title: newTicketData.title,
+        description: newTicketData.description,
+        status: newTicketData.status,
+        priority: newTicketData.priority,
+        health: 'green',
+        project_id: newTicketData.projectId,
+        task_id: newTicketData.taskId,
+        reporter: userId,
+        assigned_to: userId,
+        ticket_type: 'task'
+      });
       
       toast.success("Ticket created successfully");
       
-      // Reset form and refresh tickets
+      // Reset form
       setNewTicketData({
         title: '',
         description: '',
@@ -146,8 +136,8 @@ export const ProjectsOverview = ({
       });
       setIsCreatingTicket(false);
       
-      // Refresh tickets
-      fetchProjectTickets(newTicketData.projectId);
+      // Refresh tickets using the provided handler
+      refreshTickets();
     } catch (error) {
       console.error('Error creating ticket:', error);
       toast.error("Failed to create ticket");
@@ -175,48 +165,15 @@ export const ProjectsOverview = ({
     if (!selectedTicketId) return;
     
     try {
-      // First, get the ticket to check its task_id
-      const { data: ticketData, error: ticketError } = await supabase
-        .from('tickets')
-        .select('task_id, project_id')
-        .eq('id', selectedTicketId)
-        .single();
-        
-      if (ticketError) throw ticketError;
-      
-      if (!ticketData.task_id) {
-        toast.error("This ticket is not associated with a task");
-        return;
-      }
-      
-      // Update the task completion percentage
-      const { error: updateError } = await supabase
-        .from('project_sub_tasks')
-        .update({ completion_percentage: completionPercentage })
-        .eq('task_id', ticketData.task_id);
-        
-      if (updateError) throw updateError;
-      
-      // Update ticket status based on completion
-      let newStatus = 'in-progress';
-      if (completionPercentage >= 100) {
-        newStatus = 'done';
-      } else if (completionPercentage === 0) {
-        newStatus = 'todo';
-      }
-      
-      // Update the ticket status
-      await supabase
-        .from('tickets')
-        .update({ status: newStatus })
-        .eq('id', selectedTicketId);
+      // Update task progress and ticket status via the parent handler
+      await onTicketAction(selectedTicketId, 'update_task_progress', { 
+        completion_percentage: completionPercentage 
+      });
       
       toast.success(`Task progress updated to ${completionPercentage}%`);
       
       // Refresh tickets
-      if (ticketData.project_id) {
-        fetchProjectTickets(ticketData.project_id);
-      }
+      refreshTickets();
       
     } catch (error) {
       console.error('Error updating task completion:', error);
@@ -230,31 +187,30 @@ export const ProjectsOverview = ({
     
     // If selecting a ticket, fetch its task completion percentage
     if (ticketId !== selectedTicketId) {
-      try {
-        const { data: ticketData, error: ticketError } = await supabase
-          .from('tickets')
-          .select('task_id')
-          .eq('id', ticketId)
-          .single();
-          
-        if (ticketError) throw ticketError;
-        
-        if (ticketData.task_id) {
+      const ticket = userTickets.find(t => t.id === ticketId);
+      
+      if (ticket && ticket.task_id) {
+        try {
           const { data: taskData, error: taskError } = await supabase
             .from('project_sub_tasks')
             .select('completion_percentage')
-            .eq('task_id', ticketData.task_id)
+            .eq('task_id', ticket.task_id)
             .single();
             
           if (taskError) throw taskError;
           
-          setCompletionPercentage(taskData.completion_percentage || 0);
+          setCompletionPercentage(taskData?.completion_percentage || 0);
+        } catch (error) {
+          console.error('Error fetching task completion:', error);
+          setCompletionPercentage(0);
         }
-      } catch (error) {
-        console.error('Error fetching task completion:', error);
-        setCompletionPercentage(0);
       }
     }
+  };
+  
+  // Helper function to get tickets for a specific project
+  const getProjectTickets = (projectId: string) => {
+    return projectTickets[projectId] || [];
   };
 
   return (
@@ -352,10 +308,10 @@ export const ProjectsOverview = ({
                             </div>
                             
                             {/* Tickets associated with this task */}
-                            {projectTickets[project.id]?.filter(ticket => ticket.task_id === task.task_id).length > 0 ? (
+                            {getProjectTickets(project.id).filter(ticket => ticket.task_id === task.task_id).length > 0 ? (
                               <div className="mt-2 space-y-2">
                                 <p className="text-sm font-medium">Task Tickets:</p>
-                                {projectTickets[project.id]
+                                {getProjectTickets(project.id)
                                   .filter(ticket => ticket.task_id === task.task_id)
                                   .map(ticket => (
                                     <div key={ticket.id} className="flex justify-between items-center p-2 bg-background rounded border text-sm">
@@ -374,6 +330,21 @@ export const ProjectsOverview = ({
                                           ) : (
                                             <>
                                               <Clock className="h-4 w-4 mr-1" /> Track
+                                            </>
+                                          )}
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => onTicketAction(ticket.id, 'update_status', { 
+                                            status: ticket.status === 'done' ? 'todo' : 'done' 
+                                          })}
+                                        >
+                                          {ticket.status === 'done' ? (
+                                            <span>Reopen</span>
+                                          ) : (
+                                            <>
+                                              <Check className="h-4 w-4 mr-1" /> Complete
                                             </>
                                           )}
                                         </Button>
