@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -93,7 +94,7 @@ export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
         
       if (error) throw error;
       toast.success("Ticket status updated");
-      if (onTicketUpdated) onTicketUpdated();
+      if (onTicketUpdated) onTicketUpdated({ status: newValue });
     } catch (error) {
       console.error('Error updating ticket status:', error);
       toast.error("Failed to update ticket status");
@@ -112,7 +113,7 @@ export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
         
       if (error) throw error;
       toast.success("Ticket priority updated");
-      if (onTicketUpdated) onTicketUpdated();
+      if (onTicketUpdated) onTicketUpdated({ priority: newValue });
     } catch (error) {
       console.error('Error updating ticket priority:', error);
       toast.error("Failed to update ticket priority");
@@ -131,7 +132,7 @@ export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
         
       if (error) throw error;
       toast.success("Ticket health updated");
-      if (onTicketUpdated) onTicketUpdated();
+      if (onTicketUpdated) onTicketUpdated({ health: newValue });
     } catch (error) {
       console.error('Error updating ticket health:', error);
       toast.error("Failed to update ticket health");
