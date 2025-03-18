@@ -250,11 +250,13 @@ const SweaquityDashboard = () => {
         ? `${userData.first_name} ${userData.last_name || ''}`
         : userData?.email || user.email || 'Unknown User';
       
+      // Create the user_messages table if it doesn't exist
       const { error: tableCheckError } = await supabase
         .from('user_messages')
         .select('id', { count: 'exact', head: true });
       
       if (tableCheckError) {
+        // Create the user_messages table if it doesn't exist
         const { error: createTableError } = await supabase.rpc('create_messages_table_if_not_exists');
         if (createTableError) {
           console.error("Error creating messages table:", createTableError);
@@ -263,6 +265,7 @@ const SweaquityDashboard = () => {
         }
       }
       
+      // Send a message to the reporter
       const { error: messageError } = await supabase
         .from('user_messages')
         .insert({
@@ -276,9 +279,12 @@ const SweaquityDashboard = () => {
         
       if (messageError) {
         console.error("Error sending message:", messageError);
-        toast.error("Failed to send reply, but message recorded in ticket notes");
+        toast.error("Failed to send reply to user dashboard, but message recorded in ticket notes");
+      } else {
+        toast.success("Reply sent to reporter's dashboard");
       }
       
+      // Also update the ticket notes for history tracking
       const { data: ticketData, error: fetchError } = await supabase
         .from('tickets')
         .select('notes')

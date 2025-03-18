@@ -46,3 +46,25 @@ export interface ApplicationStats {
   openTasks: number;
   completedTasks: number;
 }
+
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'message' | 'ticket' | 'application' | 'system';
+  createdAt: string;
+  read: boolean;
+  relatedId?: string;
+  sender?: string;
+}
+
+export interface TicketMessage {
+  id: string;
+  ticketId: string;
+  senderId: string;
+  recipientId: string;
+  subject: string;
+  message: string;
+  createdAt: string;
+  read: boolean;
+}

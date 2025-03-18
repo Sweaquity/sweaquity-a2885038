@@ -1,9 +1,11 @@
+
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { ProfileSection } from "../ProfileSection";
 import { ApplicationsTab } from "./tabs/ApplicationsTab";
 import { OpportunitiesTab } from "./OpportunitiesTab";
 import { EquityTab } from "./EquityTab";
 import { useState } from "react";
+import { TicketsList } from "@/components/job-seeker/dashboard/tickets/TicketsList";
 
 interface DashboardContentProps {
   activeTab: string;
@@ -53,6 +55,14 @@ export const DashboardContent = ({
             logEffort={dashboardData.logEffort}
             onLogEffort={dashboardData.onLogEffort}
             onLogEffortChange={dashboardData.onLogEffortChange}
+          />
+        </TabsContent>
+        
+        <TabsContent value="tickets" className="space-y-6">
+          <TicketsList 
+            userTickets={dashboardData.userTickets || []}
+            ticketMessages={dashboardData.ticketMessages || []}
+            onTicketAction={dashboardData.onTicketAction || (() => {})}
           />
         </TabsContent>
       </Tabs>

@@ -3,6 +3,7 @@ import { ProjectsOverview } from "@/components/job-seeker/ProjectsOverview";
 import { DashboardContent } from "@/components/job-seeker/dashboard/DashboardContent";
 import { EquityProject, JobApplication, Profile, Skill } from "@/types/jobSeeker";
 import { CVFile } from "@/hooks/job-seeker/useCVData";
+import { Notification, TicketMessage } from "@/types/dashboard";
 
 interface DashboardTabProps {
   activeTab: string;
@@ -13,9 +14,13 @@ interface DashboardTabProps {
   applications: JobApplication[];
   equityProjects: EquityProject[];
   availableOpportunities: EquityProject[];
+  userTickets?: any[];
+  ticketMessages?: TicketMessage[];
+  userNotifications?: Notification[];
   handleSkillsUpdate: (updatedSkills: Skill[]) => Promise<void>;
   refreshApplications: () => void;
   onDocumentAction: (projectId: string, action: 'edit' | 'approve') => void;
+  onTicketAction?: (ticketId: string, action: string, data?: any) => void;
   userCVs?: CVFile[];
   onCvListUpdated?: () => void;
 }
@@ -29,9 +34,13 @@ export const DashboardTab = ({
   applications,
   equityProjects,
   availableOpportunities,
+  userTickets = [],
+  ticketMessages = [],
+  userNotifications = [],
   handleSkillsUpdate,
   refreshApplications,
   onDocumentAction,
+  onTicketAction = () => {},
   userCVs = [],
   onCvListUpdated = () => {},
 }: DashboardTabProps) => {
@@ -59,7 +68,10 @@ export const DashboardTab = ({
           onLogEffort: () => {},
           onLogEffortChange: () => {},
           userCVs,
-          onCvListUpdated
+          onCvListUpdated,
+          userTickets,
+          ticketMessages,
+          onTicketAction
         }}
         refreshApplications={refreshApplications}
       />
