@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +40,7 @@ interface TicketCardProps {
       title?: string;
     };
   };
-  onTicketUpdated?: () => void;
+  onTicketUpdated?: (updates: any) => void;
 }
 
 export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
@@ -170,7 +169,6 @@ export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
     }
   };
 
-  // Helper function for health badge color
   const getHealthBadgeClass = (health: string) => {
     switch (health.toLowerCase()) {
       case 'green': return 'bg-green-100 text-green-800 hover:bg-green-200';
@@ -180,7 +178,6 @@ export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
     }
   };
   
-  // Helper function for priority badge color
   const getPriorityBadgeClass = (priority: string) => {
     switch (priority.toLowerCase()) {
       case 'critical': return 'bg-red-100 text-red-800 hover:bg-red-200';
@@ -191,7 +188,6 @@ export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
     }
   };
   
-  // Helper function for status badge color
   const getStatusBadgeClass = (status: string) => {
     switch (status.toLowerCase()) {
       case 'backlog': return 'bg-slate-100 text-slate-800 hover:bg-slate-200';
