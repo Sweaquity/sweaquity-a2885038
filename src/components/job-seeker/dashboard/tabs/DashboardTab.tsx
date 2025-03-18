@@ -25,11 +25,13 @@ import { DragDropContext } from "react-beautiful-dnd";
 import { FileText, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 import React from "react";
 
-// Components imports for the ticket UI
-import { KanbanBoard } from "@/components/job-seeker/dashboard/tickets/KanbanBoard";
-import { GanttChartView } from "@/components/job-seeker/dashboard/tickets/GanttChartView";
-import { ExpandedTicketDetails } from "@/components/job-seeker/dashboard/tickets/ExpandedTicketDetails";
-import { AdminTicketManager } from "@/components/job-seeker/dashboard/tickets/AdminTicketManager";
+
+
+// Components imports for the ticket UI - using the Business/Testing & admin/tickets
+import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
+import { GanttChartView } from "@/components/business/testing/GanttChartView";
+// import { ExpandedTicketDetails } from "@/components/job-seeker/dashboard/tickets/ExpandedTicketDetails";
+import { AdminTicketManager } from "@/components/admin/tickets/AdminTicketManager";
 
 interface Ticket {
   id: string;
