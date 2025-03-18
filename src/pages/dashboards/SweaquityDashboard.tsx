@@ -436,7 +436,6 @@ const SweaquityDashboard = () => {
     );
   };
 
-  // Render the expanded ticket details component
   const ExpandedTicketDetails = ({ ticket }: { ticket: BetaTicket }) => {
     return (
       <div className="p-4 border-t">
@@ -883,3 +882,126 @@ const SweaquityDashboard = () => {
                                 </TableCell>
                               </TableRow>
                             )}
+                          </React.Fragment>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-8">
+                      <AlertTriangle className="mx-auto h-12 w-12 text-yellow-500 mb-2" />
+                      <h3 className="text-lg font-medium">No Beta Testing Tickets Found</h3>
+                      <p className="text-gray-500 mt-2">
+                        There are currently no beta testing tickets in the system.
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="applications">
+          <Card>
+            <CardHeader>
+              <CardTitle>Application Statistics</CardTitle>
+              <CardDescription>Overview of all job applications in the platform</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="animate-pulse space-y-4">
+                  <div className="h-40 bg-gray-200 rounded"></div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <p className="text-sm text-gray-500">Total Applications</p>
+                          <p className="text-3xl font-bold">{stats.totalApplications}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <p className="text-sm text-gray-500">Pending</p>
+                          <p className="text-3xl font-bold">{stats.pendingApplications}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <p className="text-sm text-gray-500">Accepted</p>
+                          <p className="text-3xl font-bold">{stats.acceptedApplications}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-center">
+                          <p className="text-sm text-gray-500">Withdrawn/Rejected</p>
+                          <p className="text-3xl font-bold">{stats.withdrawnApplications + stats.rejectedApplications}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={[
+                        { name: 'Pending', value: stats.pendingApplications },
+                        { name: 'Accepted', value: stats.acceptedApplications },
+                        { name: 'Withdrawn', value: stats.withdrawnApplications },
+                        { name: 'Rejected', value: stats.rejectedApplications },
+                      ]}>
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <RechartsTooltip />
+                        <Legend />
+                        <Bar dataKey="value" fill="#8884d8" name="Applications" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+      
+      <Dialog open={replyDialogOpen} onOpenChange={setReplyDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Reply to Reporter</DialogTitle>
+            <DialogDescription>
+              Send a message to the person who reported this issue.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="message">Message</Label>
+              <Textarea
+                id="message"
+                placeholder="Type your message here..."
+                className="min-h-[150px]"
+                value={replyMessage}
+                onChange={(e) => setReplyMessage(e.target.value)}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReplyDialogOpen(false)}>Cancel</Button>
+            <Button onClick={sendReplyToReporter}>Send Reply</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default SweaquityDashboard;
