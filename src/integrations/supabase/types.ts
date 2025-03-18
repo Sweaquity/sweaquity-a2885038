@@ -1234,11 +1234,56 @@ export type Database = {
           },
         ]
       }
+      user_messages: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          read: boolean
+          recipient_id: string
+          related_ticket: string | null
+          sender_id: string
+          subject: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          read?: boolean
+          recipient_id: string
+          related_ticket?: string | null
+          sender_id: string
+          subject: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          read?: boolean
+          recipient_id?: string
+          related_ticket?: string | null
+          sender_id?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_messages_related_ticket_fkey"
+            columns: ["related_ticket"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      create_messages_table_if_not_exists: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       delete_user_profile: {
         Args: {
           user_type: string

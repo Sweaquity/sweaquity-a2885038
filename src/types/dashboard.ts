@@ -68,3 +68,4 @@ export interface TicketMessage {
   createdAt: string;
   read: boolean;
 }
+
