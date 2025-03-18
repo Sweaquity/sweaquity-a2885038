@@ -1,13 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TicketMessage, KanbanColumn } from "@/types/dashboard";
-import { AlertTriangle, CheckCircle2, Clock, MessageCircle, Plus } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, MessageCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CreateMessageDialog } from "@/components/job-seeker/dashboard/applications/CreateMessageDialog";
-import { useMessaging } from "@/components/job-seeker/dashboard/applications/hooks/useMessaging";
-import { supabase } from "@/lib/supabase";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import KanbanBoard from "@/components/ui/kanban-board";
 
@@ -20,7 +17,6 @@ interface TicketsListProps {
 export const TicketsList = ({ userTickets, ticketMessages, onTicketAction }: TicketsListProps) => {
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
-  const { fetchMessages } = useMessaging();
   const [tickets, setTickets] = useState<{[key: string]: any}>({});
   const [columns, setColumns] = useState<{[key: string]: KanbanColumn}>({
     'new': { id: 'new', title: 'New', ticketIds: [] },
@@ -30,8 +26,8 @@ export const TicketsList = ({ userTickets, ticketMessages, onTicketAction }: Tic
     'blocked': { id: 'blocked', title: 'Blocked', ticketIds: [] }
   });
   const [activeTab, setActiveTab] = useState('list');
-  const [allMessages, setAllMessages] = useState<TicketMessage[]>(ticketMessages);
 
+  // Use the ticketMessages directly from props instead of fetching again
   useEffect(() => {
     if (userTickets.length > 0) {
       // Process tickets into format needed for kanban board
@@ -67,25 +63,7 @@ export const TicketsList = ({ userTickets, ticketMessages, onTicketAction }: Tic
       setTickets(newTickets);
       setColumns(newColumns);
     }
-    
-    // Load messages for all tickets
-    const loadAllMessages = async () => {
-      const allMsgs: TicketMessage[] = [...ticketMessages];
-      
-      for (const ticket of userTickets) {
-        if (ticket.id) {
-          const msgs = await fetchMessages(ticket.id);
-          if (msgs && msgs.length > 0) {
-            allMsgs.push(...msgs);
-          }
-        }
-      }
-      
-      setAllMessages(allMsgs);
-    };
-    
-    loadAllMessages();
-  }, [userTickets, ticketMessages]);
+  }, [userTickets]);
 
   const handleSendMessage = async (message: string) => {
     if (selectedTicketId) {
@@ -129,9 +107,9 @@ export const TicketsList = ({ userTickets, ticketMessages, onTicketAction }: Tic
     return new Date(dateString).toLocaleDateString();
   };
 
-  // Get ticket messages for a specific ticket
+  // Get ticket messages for a specific ticket from the provided ticketMessages prop
   const getTicketMessages = (ticketId: string) => {
-    return allMessages.filter(msg => msg.ticketId === ticketId);
+    return ticketMessages.filter(msg => msg.ticketId === ticketId);
   };
 
   return (
