@@ -32,12 +32,16 @@ export function BetaTestingButton() {
   const [screenshots, setScreenshots] = useState<File[]>([]);
   const [screenshotPreviews, setScreenshotPreviews] = useState<string[]>([]);
   const [systemInfo, setSystemInfo] = useState<SystemLogInfo | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [projectSubTasks, setProjectSubTasks] = useState<ProjectSubTask[]>([]);
-  const [selectedSubTask, setSelectedSubTask] = useState<string>('');
+  const [selectedSubTaskId, setSelectedSubTaskId] = useState<string>('');
+  const [isLoadingSubTasks, setIsLoadingSubTasks] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Fetch project sub-tasks when dialog opens
   useEffect(() => {
     if (isOpen) {
+      fetchProjectSubTasks();
+      
       const info: SystemLogInfo = {
         url: window.location.href,
         userAgent: navigator.userAgent,
@@ -52,30 +56,34 @@ export function BetaTestingButton() {
         const pageName = pathParts[pathParts.length - 1] || pathParts[pathParts.length - 2] || 'Home';
         setErrorLocation(pageName.charAt(0).toUpperCase() + pageName.slice(1).replace(/-/g, ' '));
       }
-
-      // Fetch project sub-tasks
-      fetchProjectSubTasks();
     }
   }, [isOpen, errorLocation]);
 
   const fetchProjectSubTasks = async () => {
     try {
-      const projectId = "1ec133ba-26d6-4112-8e44-f0b67ddc8fb4";
+      setIsLoadingSubTasks(true);
       
       const { data, error } = await supabase
         .from('project_sub_tasks')
         .select('id, title')
-        .eq('project_id', projectId);
+        .eq('project_id', '1ec133ba-26d6-4112-8e44-f0b67ddc8fb4');
       
       if (error) {
         console.error("Error fetching project sub-tasks:", error);
-        toast.error("Failed to load project tasks");
         return;
       }
       
-      setProjectSubTasks(data || []);
+      if (data) {
+        setProjectSubTasks(data);
+        // Set default selected sub-task if available
+        if (data.length > 0) {
+          setSelectedSubTaskId(data[0].id);
+        }
+      }
     } catch (error) {
       console.error("Error in fetchProjectSubTasks:", error);
+    } finally {
+      setIsLoadingSubTasks(false);
     }
   };
 
@@ -145,7 +153,7 @@ export function BetaTestingButton() {
           ticket_type: 'beta_testing',
           notes: [],
           replies: [],
-          project_sub_task_id: selectedSubTask || null  // Add the selected sub-task ID
+          project_sub_task_id: selectedSubTaskId || null
         })
         .select('id')
         .single();
@@ -202,7 +210,7 @@ export function BetaTestingButton() {
       setSeverity('medium');
       setScreenshots([]);
       setScreenshotPreviews([]);
-      setSelectedSubTask('');
+      setSelectedSubTaskId('');
       setIsOpen(false);
     } catch (error) {
       console.error("Error submitting beta test feedback:", error);
@@ -270,20 +278,26 @@ export function BetaTestingButton() {
               </div>
             </div>
             
-            {/* New Project Sub-Task dropdown */}
             <div className="space-y-2">
-              <Label htmlFor="projectSubTask">Related Project Task</Label>
-              <Select value={selectedSubTask} onValueChange={setSelectedSubTask}>
-                <SelectTrigger id="projectSubTask">
-                  <SelectValue placeholder="Select related task (optional)" />
+              <Label htmlFor="subTask">Related Project Sub-Task</Label>
+              <Select 
+                value={selectedSubTaskId} 
+                onValueChange={setSelectedSubTaskId}
+                disabled={isLoadingSubTasks || projectSubTasks.length === 0}
+              >
+                <SelectTrigger id="subTask">
+                  <SelectValue placeholder={isLoadingSubTasks ? "Loading..." : "Select related sub-task"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None - General issue</SelectItem>
-                  {projectSubTasks.map((task) => (
-                    <SelectItem key={task.id} value={task.id}>
-                      {task.title}
-                    </SelectItem>
-                  ))}
+                  {projectSubTasks.length === 0 && !isLoadingSubTasks ? (
+                    <SelectItem value="none" disabled>No sub-tasks available</SelectItem>
+                  ) : (
+                    projectSubTasks.map(task => (
+                      <SelectItem key={task.id} value={task.id}>
+                        {task.title}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
