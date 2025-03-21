@@ -1,3 +1,4 @@
+
 import {
   Card,
   CardContent,
@@ -18,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ExpandedTicketDetails } from "@/components/ticket/ExpandedTicketDetails";
 
 // Update the EquityProject type to include the documents property
 interface ProjectWithDocuments extends EquityProject {
@@ -33,7 +35,6 @@ interface ProjectsOverviewProps {
   currentProjects?: ProjectWithDocuments[];
   pastProjects?: ProjectWithDocuments[];
   onDocumentAction?: (projectId: string, action: 'edit' | 'approve') => void;
-  // Add missing props that are passed from DashboardTab
   userTickets?: any[];
   onTicketAction?: (ticketId: string, action: string, data?: any) => void;
   refreshTickets?: () => void;
@@ -43,7 +44,7 @@ export const ProjectsOverview = ({
   currentProjects = [],
   pastProjects = [],
   onDocumentAction = () => {},
-  userTickets = [],  // Receive tickets from parent instead of fetching directly
+  userTickets = [],
   onTicketAction = () => {},
   refreshTickets = () => {}
 }: ProjectsOverviewProps) => {
@@ -63,12 +64,16 @@ export const ProjectsOverview = ({
   });
   const [trackingTab, setTrackingTab] = useState<'time' | 'progress'>('time');
   const [completionPercentage, setCompletionPercentage] = useState<number>(0);
+  const [timeEntries, setTimeEntries] = useState<any[]>([]);
+  const [ticketMessages, setTicketMessages] = useState<any[]>([]);
+  const [projectEquity, setProjectEquity] = useState<{[key: string]: number}>({});
 
   useEffect(() => {
     const getUserId = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setUserId(session.user.id);
+        fetchTimeEntries(session.user.id);
       }
     };
     getUserId();
@@ -91,6 +96,73 @@ export const ProjectsOverview = ({
       setProjectTickets(ticketsByProject);
     }
   }, [userTickets]);
+
+  // Fetch time entries for the current user
+  const fetchTimeEntries = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('time_entries')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      setTimeEntries(data || []);
+
+      // Calculate total hours logged per project/ticket
+      calculateProjectEquity(data || []);
+    } catch (error) {
+      console.error('Error fetching time entries:', error);
+    }
+  };
+
+  // Calculate earned equity based on task completion and time entries
+  const calculateProjectEquity = (entries: any[]) => {
+    if (!currentProjects || !entries.length) return;
+
+    const equityByProject: {[key: string]: number} = {};
+
+    currentProjects.forEach(project => {
+      let totalEarnedEquity = 0;
+      let totalAllocatedEquity = project.equity_amount || 0;
+
+      // Get all sub-tasks for this project
+      const subTasks = project.sub_tasks || [];
+      
+      subTasks.forEach(task => {
+        // Calculate what percentage of the task is complete
+        const completionPercentage = task.completion_percentage || 0;
+        
+        // Get the task's equity allocation
+        const taskEquityAllocation = task.equity_allocation || 0;
+        
+        // Calculate earned equity based on completion percentage
+        const earnedEquity = (taskEquityAllocation * completionPercentage) / 100;
+        
+        totalEarnedEquity += earnedEquity;
+      });
+
+      equityByProject[project.id] = Math.min(totalEarnedEquity, totalAllocatedEquity);
+    });
+
+    setProjectEquity(equityByProject);
+  };
+
+  // Calculate total hours logged for a specific project
+  const calculateProjectHours = (projectId: string) => {
+    const projectRelatedEntries = timeEntries.filter(entry => {
+      // Find if this time entry is related to any ticket in this project
+      const relatedTickets = projectTickets[projectId] || [];
+      return relatedTickets.some(ticket => ticket.id === entry.ticket_id);
+    });
+
+    return projectRelatedEntries.reduce((total, entry) => total + (entry.hours_logged || 0), 0);
+  };
+
+  // Calculate hours logged for a specific ticket
+  const calculateTicketHours = (ticketId: string) => {
+    const ticketEntries = timeEntries.filter(entry => entry.ticket_id === ticketId);
+    return ticketEntries.reduce((total, entry) => total + (entry.hours_logged || 0), 0);
+  };
 
   const toggleProjectExpansion = (projectId: string) => {
     setExpandedProjects(prev => ({
@@ -183,27 +255,45 @@ export const ProjectsOverview = ({
 
   // Handler for when a ticket is selected
   const handleTicketSelect = async (ticketId: string) => {
-    setSelectedTicketId(ticketId === selectedTicketId ? null : ticketId);
+    if (selectedTicketId === ticketId) {
+      setSelectedTicketId(null);
+      return;
+    }
     
-    // If selecting a ticket, fetch its task completion percentage
-    if (ticketId !== selectedTicketId) {
-      const ticket = userTickets.find(t => t.id === ticketId);
-      
-      if (ticket && ticket.task_id) {
-        try {
-          const { data: taskData, error: taskError } = await supabase
-            .from('project_sub_tasks')
-            .select('completion_percentage')
-            .eq('task_id', ticket.task_id)
-            .single();
-            
-          if (taskError) throw taskError;
+    setSelectedTicketId(ticketId);
+    
+    // Fetch ticket messages
+    try {
+      if (userId) {
+        const { data: messages, error } = await supabase
+          .from('user_messages')
+          .select('*')
+          .eq('related_ticket', ticketId);
           
-          setCompletionPercentage(taskData?.completion_percentage || 0);
-        } catch (error) {
-          console.error('Error fetching task completion:', error);
-          setCompletionPercentage(0);
-        }
+        if (error) throw error;
+        setTicketMessages(messages || []);
+      }
+    } catch (error) {
+      console.error('Error fetching ticket messages:', error);
+    }
+    
+    // Fetch task completion if this ticket is linked to a task
+    const ticket = userTickets.find(t => t.id === ticketId);
+    
+    if (ticket && ticket.task_id) {
+      try {
+        const { data: taskData, error: taskError } = await supabase
+          .from('project_sub_tasks')
+          .select('completion_percentage')
+          .eq('task_id', ticket.task_id)
+          .single();
+          
+        if (taskError) throw taskError;
+        
+        setCompletionPercentage(taskData?.completion_percentage || 0);
+      } catch (error) {
+        console.error('Error fetching task completion:', error);
+        setCompletionPercentage(0);
       }
     }
   };
@@ -211,6 +301,11 @@ export const ProjectsOverview = ({
   // Helper function to get tickets for a specific project
   const getProjectTickets = (projectId: string) => {
     return projectTickets[projectId] || [];
+  };
+
+  // Check if a ticket is currently expanded
+  const isTicketExpanded = (ticketId: string) => {
+    return selectedTicketId === ticketId;
   };
 
   return (
@@ -238,10 +333,23 @@ export const ProjectsOverview = ({
                   </CollapsibleTrigger>
                 </div>
                 
-                <div className="mt-2 space-y-2">
-                  <p className="text-sm">Status: {project.status}</p>
-                  <p className="text-sm">Equity: {project.equity_amount}%</p>
-                  <p className="text-sm">Hours logged: {project.total_hours_logged}</p>
+                <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    <p className="font-medium">{project.status}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Equity</p>
+                    <p className="font-medium">{project.equity_amount}%</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Earned Equity</p>
+                    <p className="font-medium">{projectEquity[project.id]?.toFixed(2) || 0}%</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Hours Logged</p>
+                    <p className="font-medium">{calculateProjectHours(project.id).toFixed(1)} hours</p>
+                  </div>
                 </div>
                 
                 <CollapsibleContent className="mt-4 pt-4 border-t">
@@ -289,11 +397,14 @@ export const ProjectsOverview = ({
                         {project.sub_tasks?.map((task) => (
                           <div key={task.task_id} className="mb-4 p-3 bg-secondary/20 rounded-md">
                             <div className="flex justify-between items-center">
-                              <div>
+                              <div className="flex-1">
                                 <p className="font-medium">{task.title}</p>
                                 <p className="text-sm text-muted-foreground">{task.description}</p>
                                 <div className="mt-1">
-                                  <p className="text-xs">Progress: {task.completion_percentage || 0}%</p>
+                                  <div className="flex justify-between text-xs">
+                                    <span>Progress: {task.completion_percentage || 0}%</span>
+                                    <span>Equity: {task.equity_allocation}%</span>
+                                  </div>
                                   <Progress value={task.completion_percentage || 0} className="h-1.5 mt-1" />
                                 </div>
                               </div>
@@ -314,41 +425,105 @@ export const ProjectsOverview = ({
                                 {getProjectTickets(project.id)
                                   .filter(ticket => ticket.task_id === task.task_id)
                                   .map(ticket => (
-                                    <div key={ticket.id} className="flex justify-between items-center p-2 bg-background rounded border text-sm">
-                                      <div>
-                                        <p>{ticket.title}</p>
-                                        <p className="text-xs text-muted-foreground">Status: {ticket.status}</p>
+                                    <div key={ticket.id} className="p-2 bg-background rounded border">
+                                      <div className="flex justify-between items-center">
+                                        <div className="flex-1">
+                                          <p className="font-medium">{ticket.title}</p>
+                                          <div className="flex text-xs text-muted-foreground gap-2">
+                                            <span>Status: {ticket.status}</span>
+                                            <span>Priority: {ticket.priority}</span>
+                                            <span>Hours: {calculateTicketHours(ticket.id)}</span>
+                                          </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                          <Button 
+                                            variant={isTicketExpanded(ticket.id) ? "default" : "ghost"}
+                                            size="sm"
+                                            onClick={() => handleTicketSelect(ticket.id)}
+                                          >
+                                            {isTicketExpanded(ticket.id) ? (
+                                              <span>Close</span>
+                                            ) : (
+                                              <>
+                                                <Clock className="h-4 w-4 mr-1" /> Track
+                                              </>
+                                            )}
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => onTicketAction(ticket.id, 'update_status', { 
+                                              status: ticket.status === 'done' ? 'todo' : 'done' 
+                                            })}
+                                          >
+                                            {ticket.status === 'done' ? (
+                                              <span>Reopen</span>
+                                            ) : (
+                                              <>
+                                                <Check className="h-4 w-4 mr-1" /> Complete
+                                              </>
+                                            )}
+                                          </Button>
+                                        </div>
                                       </div>
-                                      <div className="flex gap-2">
-                                        <Button 
-                                          variant={selectedTicketId === ticket.id ? "default" : "ghost"}
-                                          size="sm"
-                                          onClick={() => handleTicketSelect(ticket.id)}
-                                        >
-                                          {selectedTicketId === ticket.id ? (
-                                            <span>Close</span>
-                                          ) : (
-                                            <>
-                                              <Clock className="h-4 w-4 mr-1" /> Track
-                                            </>
-                                          )}
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => onTicketAction(ticket.id, 'update_status', { 
-                                            status: ticket.status === 'done' ? 'todo' : 'done' 
-                                          })}
-                                        >
-                                          {ticket.status === 'done' ? (
-                                            <span>Reopen</span>
-                                          ) : (
-                                            <>
-                                              <Check className="h-4 w-4 mr-1" /> Complete
-                                            </>
-                                          )}
-                                        </Button>
-                                      </div>
+                                      
+                                      {isTicketExpanded(ticket.id) && (
+                                        <div className="mt-4 border-t pt-4">
+                                          <Tabs defaultValue="time" value={trackingTab} onValueChange={(value) => setTrackingTab(value as 'time' | 'progress')}>
+                                            <TabsList className="mb-4">
+                                              <TabsTrigger value="time">
+                                                <Clock className="h-4 w-4 mr-2" />
+                                                Time Tracking
+                                              </TabsTrigger>
+                                              <TabsTrigger value="progress">
+                                                <BarChart className="h-4 w-4 mr-2" />
+                                                Progress Update
+                                              </TabsTrigger>
+                                            </TabsList>
+                                            
+                                            <TabsContent value="time">
+                                              {userId && (
+                                                <TimeTracker ticketId={ticket.id} userId={userId} />
+                                              )}
+                                            </TabsContent>
+                                            
+                                            <TabsContent value="progress">
+                                              <div className="space-y-4">
+                                                <div>
+                                                  <label className="block text-sm font-medium mb-1">
+                                                    Task Completion Percentage
+                                                  </label>
+                                                  <div className="flex items-center space-x-2">
+                                                    <Input
+                                                      type="number"
+                                                      min="0"
+                                                      max="100"
+                                                      value={completionPercentage}
+                                                      onChange={(e) => setCompletionPercentage(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                                                      className="w-20"
+                                                    />
+                                                    <span>%</span>
+                                                    <Progress value={completionPercentage} className="flex-1 h-2" />
+                                                  </div>
+                                                </div>
+                                                <Button onClick={updateTaskCompletion}>
+                                                  Update Progress
+                                                </Button>
+                                              </div>
+                                            </TabsContent>
+                                          </Tabs>
+                                          
+                                          {/* Expanded ticket details */}
+                                          <div className="mt-4 pt-4 border-t">
+                                            <ExpandedTicketDetails
+                                              ticket={ticket}
+                                              messages={ticketMessages.filter(m => m.related_ticket === ticket.id)}
+                                              hoursLogged={calculateTicketHours(ticket.id)}
+                                              onAction={onTicketAction}
+                                            />
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                   ))}
                               </div>
@@ -406,55 +581,6 @@ export const ProjectsOverview = ({
                       </>
                     )}
                   </div>
-                  
-                  {/* Time & Progress Tracker for selected ticket */}
-                  {selectedTicketId && userId && (
-                    <div className="mt-6 border-t pt-4">
-                      <Tabs defaultValue="time" value={trackingTab} onValueChange={(value) => setTrackingTab(value as 'time' | 'progress')}>
-                        <TabsList className="mb-4">
-                          <TabsTrigger value="time">
-                            <Clock className="h-4 w-4 mr-2" />
-                            Time Tracking
-                          </TabsTrigger>
-                          <TabsTrigger value="progress">
-                            <BarChart className="h-4 w-4 mr-2" />
-                            Progress Update
-                          </TabsTrigger>
-                        </TabsList>
-                        
-                        <TabsContent value="time">
-                          {userId && selectedTicketId && (
-                            <TimeTracker ticketId={selectedTicketId} userId={userId} />
-                          )}
-                        </TabsContent>
-                        
-                        <TabsContent value="progress">
-                          <div className="space-y-4">
-                            <div>
-                              <label className="block text-sm font-medium mb-1">
-                                Task Completion Percentage
-                              </label>
-                              <div className="flex items-center space-x-2">
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  value={completionPercentage}
-                                  onChange={(e) => setCompletionPercentage(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
-                                  className="w-20"
-                                />
-                                <span>%</span>
-                                <Progress value={completionPercentage} className="flex-1 h-2" />
-                              </div>
-                            </div>
-                            <Button onClick={updateTaskCompletion}>
-                              Update Progress
-                            </Button>
-                          </div>
-                        </TabsContent>
-                      </Tabs>
-                    </div>
-                  )}
                 </CollapsibleContent>
               </Collapsible>
             ))}

@@ -19,6 +19,8 @@ export const TimeTracker = ({ ticketId, userId }: TimeTrackerProps) => {
   const [description, setDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [manualHours, setManualHours] = useState<number>(0);
+  const [timeEntries, setTimeEntries] = useState<any[]>([]);
+  const [totalHoursLogged, setTotalHoursLogged] = useState(0);
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
@@ -36,6 +38,35 @@ export const TimeTracker = ({ ticketId, userId }: TimeTrackerProps) => {
     };
   }, [isTracking, startTime]);
 
+  useEffect(() => {
+    // Load existing time entries for this ticket
+    const fetchTimeEntries = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('time_entries')
+          .select('*')
+          .eq('ticket_id', ticketId)
+          .eq('user_id', userId)
+          .order('start_time', { ascending: false });
+
+        if (error) throw error;
+        
+        setTimeEntries(data || []);
+        
+        // Calculate total hours
+        const total = (data || []).reduce((sum, entry) => {
+          return sum + (entry.hours_logged || 0);
+        }, 0);
+        
+        setTotalHoursLogged(total);
+      } catch (error) {
+        console.error('Error fetching time entries:', error);
+      }
+    };
+
+    fetchTimeEntries();
+  }, [ticketId, userId]);
+
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -46,6 +77,11 @@ export const TimeTracker = ({ ticketId, userId }: TimeTrackerProps) => {
       minutes.toString().padStart(2, '0'),
       secs.toString().padStart(2, '0'),
     ].join(':');
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const toggleTracking = () => {
@@ -75,20 +111,48 @@ export const TimeTracker = ({ ticketId, userId }: TimeTrackerProps) => {
         return;
       }
 
-      const { error } = await supabase
+      const now = new Date();
+      const entry = {
+        ticket_id: ticketId,
+        user_id: userId,
+        description: description,
+        hours_logged: hoursLogged,
+        start_time: startTime ? startTime.toISOString() : now.toISOString(),
+        end_time: startTime ? now.toISOString() : null,
+      };
+
+      const { data, error } = await supabase
         .from('time_entries')
-        .insert({
-          ticket_id: ticketId,
-          user_id: userId,
-          description: description,
-          hours_logged: hoursLogged,
-          start_time: startTime ? startTime.toISOString() : new Date().toISOString(),
-          end_time: startTime ? new Date().toISOString() : null,
-        });
+        .insert(entry)
+        .select()
+        .single();
 
       if (error) throw error;
       
+      // Update ticket information if needed by looking up the task_id
+      const { data: ticketData, error: ticketError } = await supabase
+        .from('tickets')
+        .select('task_id, project_id')
+        .eq('id', ticketId)
+        .single();
+        
+      if (!ticketError && ticketData.task_id) {
+        // Update the task in project_sub_tasks if available
+        const { error: taskError } = await supabase
+          .from('project_sub_tasks')
+          .update({
+            last_activity_at: now.toISOString()
+          })
+          .eq('task_id', ticketData.task_id);
+          
+        if (taskError) console.error('Error updating task activity:', taskError);
+      }
+      
       toast.success("Time entry saved successfully");
+      
+      // Add the new entry to the state
+      setTimeEntries([data, ...timeEntries]);
+      setTotalHoursLogged(totalHoursLogged + hoursLogged);
       
       // Reset the tracker
       setIsTracking(false);
@@ -123,7 +187,7 @@ export const TimeTracker = ({ ticketId, userId }: TimeTrackerProps) => {
           <Button 
             type="button"
             size="sm"
-            variant={isTracking ? "destructive" : "success"}
+            variant={isTracking ? "destructive" : "outline"}
             onClick={toggleTracking}
             className="flex-1"
           >
@@ -141,7 +205,7 @@ export const TimeTracker = ({ ticketId, userId }: TimeTrackerProps) => {
           <Button 
             type="button"
             size="sm"
-            variant="outline"
+            variant="default"
             onClick={saveTimeEntry}
             disabled={isSaving}
             className="flex-1"
@@ -179,6 +243,32 @@ export const TimeTracker = ({ ticketId, userId }: TimeTrackerProps) => {
           rows={3}
         />
       </div>
+
+      {/* Display total logged time */}
+      <div className="rounded-md bg-secondary/30 p-3">
+        <div className="flex justify-between items-center">
+          <span className="text-sm font-medium">Total time logged</span>
+          <span className="text-sm font-bold">{totalHoursLogged.toFixed(2)} hours</span>
+        </div>
+      </div>
+      
+      {/* Recent time entries */}
+      {timeEntries.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Recent entries</h4>
+          <div className="max-h-40 overflow-y-auto space-y-2">
+            {timeEntries.slice(0, 5).map((entry) => (
+              <div key={entry.id} className="text-xs border rounded p-2">
+                <div className="flex justify-between">
+                  <span className="font-medium">{formatDate(entry.start_time)}</span>
+                  <span>{entry.hours_logged.toFixed(2)} hours</span>
+                </div>
+                <p className="text-muted-foreground mt-1 line-clamp-1">{entry.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

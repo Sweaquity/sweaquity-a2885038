@@ -67,6 +67,7 @@ export interface TicketMessage {
   message: string;
   createdAt: string;
   read: boolean;
+  related_ticket?: string;
   content?: string;
   sender?: {
     id?: string;
