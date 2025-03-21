@@ -1,4 +1,3 @@
-
 export interface Skill {
   skill: string;
   level?: string;
@@ -62,6 +61,14 @@ export interface JobApplication {
   business_roles?: BusinessRole;
   applicant_id?: string;
   task_discourse?: string;
+  id?: string; // Add id field for compatibility
+  notes?: any[]; // Add notes field for compatibility
+}
+
+// Add SkillRequirement for compatibility with existing code
+export interface SkillRequirement {
+  skill: string;
+  level?: string;
 }
 
 export interface SubTask {

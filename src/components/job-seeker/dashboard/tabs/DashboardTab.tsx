@@ -33,6 +33,7 @@ import { ExpandedTicketDetails } from "@/components/ticket/ExpandedTicketDetails
 import { AdminTicketManager } from "@/components/admin/tickets/AdminTicketManager";
 import { supabase } from "@/lib/supabase";
 
+// Define ticket interface
 interface Ticket {
   id: string;
   title: string;
@@ -94,7 +95,7 @@ export const DashboardTab = ({
   const [selectedTab, setSelectedTab] = useState("kanban");
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [expandedTickets, setExpandedTickets] = useState<Record<string, boolean>>({});
-  const [betaTickets, setBetaTickets] = useState<Ticket[]>([]);
+  const [betaTickets, setBetaTickets] = useState<BetaTicket[]>([]);
   const [timeEntries, setTimeEntries] = useState<any[]>([]);
   const [ticketStats, setTicketStats] = useState<TicketStats>({
     total: 0,
@@ -154,7 +155,7 @@ export const DashboardTab = ({
 
       setTicketStats(stats);
       setUserTickets(uniqueTickets);
-      setBetaTickets(uniqueTickets);
+      setBetaTickets(uniqueTickets as BetaTicket[]);
 
       // Load ticket messages
       await loadTicketMessages(user.id, uniqueTickets.map(t => t.id));
@@ -193,7 +194,9 @@ export const DashboardTab = ({
   }, [loadUserTickets]); // Only depends on the memoized function
 
   useEffect(() => {
-    loadConversations();
+    if (loadConversations) {
+      loadConversations();
+    }
   }, [loadConversations]);
 
   // Load time entries whenever tickets change
@@ -467,7 +470,7 @@ export const DashboardTab = ({
                   );
                 }}>
                   <KanbanBoard 
-                    tickets={betaTickets as BetaTicket[]} 
+                    tickets={betaTickets} 
                     onStatusChange={(ticketId, newStatus) => 
                       handleTicketAction(ticketId, 'update_status', { status: newStatus })
                     }
