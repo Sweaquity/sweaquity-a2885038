@@ -65,7 +65,7 @@ export function BetaTestingButton() {
       
       const { data, error } = await supabase
         .from('project_sub_tasks')
-        .select('id, title')
+        .select('project_id, title')
         .eq('project_id', '1ec133ba-26d6-4112-8e44-f0b67ddc8fb4');
       
       if (error) {
