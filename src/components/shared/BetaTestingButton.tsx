@@ -155,7 +155,7 @@ export function BetaTestingButton() {
           replies: [],
           project_sub_tasks: selectedSubTasksId || null
         })
-        .select('id')
+        .select('project_id')
         .single();
       
       if (ticketError) {
