@@ -1,8 +1,9 @@
+
 import { ProjectsOverview } from "@/components/job-seeker/ProjectsOverview";
 import { DashboardContent } from "@/components/job-seeker/dashboard/DashboardContent";
 import { EquityProject, JobApplication, Profile, Skill } from "@/types/jobSeeker";
 import { CVFile } from "@/hooks/job-seeker/useCVData";
-import { Notification, TicketMessage } from "@/types/dashboard";
+import { Notification, TicketMessage, Task, TaskType } from "@/types/dashboard";
 import { useEffect, useState } from "react";
 import { useMessaging } from "@/components/job-seeker/dashboard/applications/hooks/useMessaging";
 import {
@@ -25,10 +26,8 @@ import { DragDropContext } from "react-beautiful-dnd";
 import { FileText, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 import React from "react";
 
-
-
-// Components imports for the ticket UI - using the Business/Testing & admin/tickets
-import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
+// Components imports for the ticket UI
+import { KanbanBoard, BetaTicket } from "@/components/shared/beta-testing/KanbanBoard";
 import { GanttChartView } from "@/components/business/testing/GanttChartView";
 import { ExpandedTicketDetails } from "@/components/ticket/ExpandedTicketDetails";
 import { AdminTicketManager } from "@/components/admin/tickets/AdminTicketManager";
@@ -43,6 +42,7 @@ interface Ticket {
   expanded?: boolean;
   task_id?: string;
   project_id?: string;
+  description?: string;
 }
 
 interface TicketStats {
@@ -230,7 +230,8 @@ export const DashboardTab = ({
                ticket.status === 'review' ? 75 :
                ticket.status === 'in-progress' ? 50 :
                ticket.status === 'blocked' ? 25 : 0,
-      type: 'task',
+      type: 'task' as TaskType,
+      isDisabled: false
     }));
   };
 
@@ -336,7 +337,13 @@ export const DashboardTab = ({
                     )
                   );
                 }}>
-                  <KanbanBoard tickets={betaTickets} />
+                  <KanbanBoard 
+                    tickets={betaTickets as BetaTicket[]} 
+                    onStatusChange={(ticketId, newStatus) => 
+                      handleTicketAction(ticketId, 'update_status', { status: newStatus })
+                    }
+                    onTicketClick={toggleTicketExpanded}
+                  />
                 </DragDropContext>
               </div>
             </div>

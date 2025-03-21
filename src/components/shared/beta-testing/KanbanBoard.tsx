@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { X } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
-interface BetaTicket {
+export interface BetaTicket {
   id: string;
   title: string;
   description: string;
@@ -20,13 +20,13 @@ interface KanbanColumn {
   ticketIds: string[];
 }
 
-interface KanbanBoardProps {
+export interface KanbanBoardProps {
   tickets: BetaTicket[];
-  onStatusChange: (ticketId: string, newStatus: string) => void;
-  onTicketClick: (ticketId: string) => void;
+  onStatusChange?: (ticketId: string, newStatus: string) => void;
+  onTicketClick?: (ticketId: string) => void;
 }
 
-export function KanbanBoard({ tickets, onStatusChange, onTicketClick }: KanbanBoardProps) {
+export function KanbanBoard({ tickets, onStatusChange = () => {}, onTicketClick = () => {} }: KanbanBoardProps) {
   const getInitialColumns = () => {
     const columns: Record<string, KanbanColumn> = {
       'new': { id: 'new', title: 'New', ticketIds: [] },
@@ -88,7 +88,9 @@ export function KanbanBoard({ tickets, onStatusChange, onTicketClick }: KanbanBo
     });
     
     // Update ticket status in the database
-    onStatusChange(draggableId, destination.droppableId);
+    if (onStatusChange) {
+      onStatusChange(draggableId, destination.droppableId);
+    }
   };
 
   const formatDate = (dateString?: string) => {

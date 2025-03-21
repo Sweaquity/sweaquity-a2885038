@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -331,10 +332,10 @@ export const ExpandedTicketDetails = ({
                           {message.sender?.name || 'User'}
                         </p>
                         <span className="text-xs text-muted-foreground">
-                          {formatMessageDate(message.created_at)}
+                          {formatMessageDate(message.createdAt)}
                         </span>
                       </div>
-                      <p className="text-sm mt-1">{message.content}</p>
+                      <p className="text-sm mt-1">{message.message || message.content}</p>
                     </div>
                   </div>
                 ))
