@@ -153,7 +153,7 @@ export function BetaTestingButton() {
           ticket_type: 'beta_testing',
           notes: [],
           replies: [],
-          project_sub_tasks.id: selectedSubTasksId || null
+          project_sub_tasks: selectedSubTasksId || null
         })
         .select('id')
         .single();
