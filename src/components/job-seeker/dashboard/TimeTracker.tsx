@@ -10,9 +10,10 @@ import { Play, Pause, Save, Clock } from "lucide-react";
 interface TimeTrackerProps {
   ticketId: string;
   userId: string;
+  jobAppId?: string;
 }
 
-export const TimeTracker = ({ ticketId, userId }: TimeTrackerProps) => {
+export const TimeTracker = ({ ticketId, userId, jobAppId }: TimeTrackerProps) => {
   const [isTracking, setIsTracking] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -115,6 +116,7 @@ export const TimeTracker = ({ ticketId, userId }: TimeTrackerProps) => {
       const entry = {
         ticket_id: ticketId,
         user_id: userId,
+        job_app_id: jobAppId, // Add this field from props
         description: description,
         hours_logged: hoursLogged,
         start_time: startTime ? startTime.toISOString() : now.toISOString(),
@@ -129,7 +131,7 @@ export const TimeTracker = ({ ticketId, userId }: TimeTrackerProps) => {
 
       if (error) throw error;
       
-      // Update ticket information if needed by looking up the task_id
+      // Update ticket information
       const { data: ticketData, error: ticketError } = await supabase
         .from('tickets')
         .select('task_id, project_id')

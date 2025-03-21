@@ -1,15 +1,26 @@
 
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Profile, Skill } from "@/types/jobSeeker";
 
-export const useProfile = () => {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [skills, setSkills] = useState<Skill[]>([]);
+export interface UseProfileReturn {
+  profile: Profile | null;
+  skills: Skill[] | null;
+  isLoading: boolean;
+  isSaving: boolean;
+  loadProfile: (userId: string) => Promise<void>;
+  updateProfile: (updatedProfile: Profile) => Promise<void>;
+  handleSkillsUpdate: (newSkills: Skill[]) => Promise<void>;
+}
 
-  const loadProfile = async (userId: string) => {
+export const useProfile = (): UseProfileReturn => {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [skills, setSkills] = useState<Skill[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const loadProfile = useCallback(async (userId: string) => {
     try {
       setIsLoading(true);
       
@@ -19,88 +30,110 @@ export const useProfile = () => {
         .eq('id', userId)
         .single();
         
-      if (error) {
-        throw error;
-      }
-
-      // Parse availability from string to array if needed
-      if (data.availability) {
-        try {
-          if (typeof data.availability === 'string' && data.availability.startsWith('[')) {
-            data.availability = JSON.parse(data.availability);
-          } else if (typeof data.availability === 'string') {
-            // If it's a single string value, convert to array with one item
-            data.availability = [data.availability];
-          }
-        } catch (e) {
-          // Keep it as is if parsing fails
-        }
-      } else {
-        data.availability = [];
-      }
+      if (error) throw error;
       
-      // Load skills
-      let parsedSkills: Skill[] = [];
-      if (data.skills) {
-        try {
-          if (typeof data.skills === 'string') {
-            parsedSkills = JSON.parse(data.skills);
-          } else {
-            parsedSkills = data.skills;
-          }
-        } catch (e) {
-          // Parsing failed, keep empty array
-        }
-      }
-      
-      // Make sure to include the id and account_type in the profile data
-      const profileWithId: Profile = {
-        id: userId, // Ensure id is included
-        first_name: data.first_name,
-        last_name: data.last_name,
-        title: data.title,
-        email: data.email,
-        location: data.location,
-        account_type: data.account_type || 'job_seeker' // Include account_type with default
-      };
-      
-      setProfile(profileWithId);
-      setSkills(parsedSkills);
+      setProfile(data);
+      setSkills(data.skills || []);
     } catch (error) {
-      toast.error("Failed to load profile data");
+      console.error('Error loading profile:', error);
+      toast.error('Failed to load profile data');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const handleSkillsUpdate = async (updatedSkills: Skill[]) => {
-    if (!profile) return;
-    
+  const updateProfile = async (updatedProfile: Profile) => {
     try {
-      // Update in the database
+      setIsSaving(true);
+      
+      if (!updatedProfile.id) {
+        throw new Error('Profile ID is required');
+      }
+      
+      // Extract just the fields we want to update to avoid validation errors
+      const {
+        first_name,
+        last_name,
+        title,
+        bio,
+        phone,
+        address,
+        location,
+        availability,
+        social_links,
+        marketing_consent,
+        project_updates_consent,
+        terms_accepted
+      } = updatedProfile;
+      
+      const profileUpdate = {
+        first_name,
+        last_name,
+        title,
+        bio,
+        phone,
+        address,
+        location,
+        availability,
+        social_links,
+        marketing_consent,
+        project_updates_consent,
+        terms_accepted
+      };
+      
       const { error } = await supabase
         .from('profiles')
-        .update({
-          skills: updatedSkills,
-          updated_at: new Date().toISOString()
-        })
+        .update(profileUpdate)
+        .eq('id', updatedProfile.id);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setProfile({...profile, ...profileUpdate});
+      toast.success('Profile updated successfully');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSkillsUpdate = async (newSkills: Skill[]) => {
+    if (!profile?.id) {
+      toast.error('Profile not found');
+      return;
+    }
+    
+    try {
+      setIsSaving(true);
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ skills: newSkills })
         .eq('id', profile.id);
         
       if (error) throw error;
       
       // Update local state
-      setSkills(updatedSkills);
-      toast.success("Skills updated successfully");
+      setSkills(newSkills);
+      setProfile(prev => prev ? {...prev, skills: newSkills} : null);
+      toast.success('Skills updated successfully');
     } catch (error) {
-      toast.error("Failed to update skills");
+      console.error('Error updating skills:', error);
+      toast.error('Failed to update skills');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   return {
     profile,
-    isLoading,
     skills,
+    isLoading,
+    isSaving,
     loadProfile,
+    updateProfile,
     handleSkillsUpdate
   };
 };

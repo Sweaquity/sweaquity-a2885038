@@ -81,6 +81,8 @@ export const useAcceptedJobsCore = (onUpdate?: () => void) => {
             health: 'good',
             reporter: session.user.id,
             assigned_to: session.user.id,
+            task_id: application.task_id,
+            job_app_id: application.job_app_id, // Add the job_app_id reference
             estimated_hours: 0,
             equity_points: equityAllocation
           })
@@ -125,11 +127,28 @@ export const useAcceptedJobsCore = (onUpdate?: () => void) => {
       return null;
     }
   };
+
+  const getTicketsForAcceptedJob = async (jobAppId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('job_app_id', jobAppId);
+      
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error) {
+      console.error("Error fetching tickets for accepted job:", error);
+      return [];
+    }
+  };
   
   return {
     isLoading,
     setIsLoading,
     createAcceptedJobEntry,
-    getAcceptedJob
+    getAcceptedJob,
+    getTicketsForAcceptedJob
   };
 };

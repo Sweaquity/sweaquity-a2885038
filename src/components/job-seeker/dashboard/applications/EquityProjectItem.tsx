@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { JobApplication } from "@/types/jobSeeker";
@@ -101,32 +102,30 @@ export const EquityProjectItem = ({
   };
   
   const handleLogTime = async () => {
-    if (!application.task_id || hours <= 0) return;
+    if (!application.job_app_id || hours <= 0) return;
     
     try {
-      console.log("Logging time for task_id:", application.task_id);
-      let ticketId;
+      console.log("Logging time for job_app_id:", application.job_app_id);
       
-      // First check if there's already a ticket for this task
-      const { data: existingTicket, error: ticketError } = await supabase
+      // First check if there's a ticket for this job application
+      const { data: existingTickets, error: ticketsError } = await supabase
         .from('tickets')
-        .select('id')
-        .eq('project_id', application.project_id)
-        .eq('title', `Work on ${application.business_roles?.title || 'task'}`)
-        .maybeSingle();
+        .select('id, project_id')
+        .eq('job_app_id', application.job_app_id);
       
-      if (ticketError && ticketError.code !== 'PGRST116') {
-        // Real error, not just "no rows returned"
-        console.error("Error checking for existing ticket:", ticketError);
+      if (ticketsError) {
+        console.error("Error checking for existing tickets:", ticketsError);
         toast.error("Error checking ticket information");
         return;
       }
       
-      if (existingTicket?.id) {
+      let ticketId;
+      
+      if (existingTickets && existingTickets.length > 0) {
         // We found an existing ticket
-        ticketId = existingTicket.id;
+        ticketId = existingTickets[0].id;
       } else {
-        // Create a new ticket for this task
+        // Create a new ticket for this job application
         const currentUser = (await supabase.auth.getUser()).data.user?.id;
         const { data: newTicket, error: createError } = await supabase
           .from('tickets')
@@ -134,6 +133,7 @@ export const EquityProjectItem = ({
             title: `Work on ${application.business_roles?.title || 'task'}`,
             description: `Time tracking for ${application.business_roles?.project_title || 'project'}`,
             project_id: application.project_id,
+            job_app_id: application.job_app_id,
             status: 'open',
             reporter: currentUser,
             priority: 'medium',
@@ -152,12 +152,13 @@ export const EquityProjectItem = ({
         ticketId = newTicket.id;
       }
       
-      // Now create the time entry with the valid ticket ID
+      // Now create the time entry with the valid ticket ID and job_app_id
       const { data, error } = await supabase
         .from('time_entries')
         .insert({
           ticket_id: ticketId,
           user_id: (await supabase.auth.getUser()).data.user?.id,
+          job_app_id: application.job_app_id,
           description: description,
           start_time: new Date().toISOString(),
           end_time: new Date(new Date().getTime() + hours * 60 * 60 * 1000).toISOString(),
@@ -182,6 +183,15 @@ export const EquityProjectItem = ({
   
   const showAcceptButton = application.status === 'accepted' && !application.accepted_jobseeker;
   const showTimeLogButton = application.accepted_jobseeker && application.accepted_business;
+
+  // Helper function to safely access nested properties
+  const getTaskStatus = () => {
+    return application.business_roles?.task_status || 'pending';
+  };
+
+  const getCompletionPercentage = () => {
+    return application.business_roles?.completion_percentage || 0;
+  };
 
   return (
     <Card className="shadow-sm hover:shadow transition-shadow">
@@ -233,7 +243,7 @@ export const EquityProjectItem = ({
         
         <CardContent className="px-4 py-2">
           <ProjectInfo 
-            taskStatus={application.business_roles?.task_status}
+            taskStatus={getTaskStatus()}
             timeframe={application.business_roles?.timeframe}
             equityAllocation={application.business_roles?.equity_allocation}
             skillRequirements={application.business_roles?.skill_requirements}
@@ -334,7 +344,7 @@ export const EquityProjectItem = ({
                 type="number"
                 min="0.5"
                 step="0.5"
-                value={hours}
+                value={hours || ''}
                 onChange={(e) => setHours(parseFloat(e.target.value) || 0)}
               />
             </div>

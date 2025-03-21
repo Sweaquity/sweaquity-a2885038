@@ -1,127 +1,112 @@
 
-import React, { useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { format } from "date-fns";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { useState } from "react";
+import { JobApplication } from "@/types/jobSeeker";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { JobApplication, SkillRequirement } from "@/types/jobSeeker";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { StatusBadge } from "./StatusBadge";
+import { ApplicationStatus } from "./components/ApplicationStatus";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 
 interface PastApplicationItemProps {
   application: JobApplication;
-  getMatchedSkills: (application: JobApplication) => string[];
 }
 
-export const PastApplicationItem = ({ application, getMatchedSkills }: PastApplicationItemProps) => {
+export const PastApplicationItem = ({ application }: PastApplicationItemProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const matchedSkills = getMatchedSkills(application);
 
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), "PPP");
-    } catch (error) {
-      return "Unknown date";
-    }
+  // Helper functions to safely access nested properties
+  const getTaskStatus = () => {
+    return application.business_roles?.task_status || 'pending';
   };
 
-  const getReasonText = () => {
-    if (application.status.toLowerCase() === "withdrawn") {
-      return "You withdrew this application" + (application.notes ? ": " + application.notes : "");
-    } else if (application.status.toLowerCase() === "rejected") {
-      return "This application was rejected" + (application.notes ? ": " + application.notes : "");
-    }
-    return "";
+  const getCompletionPercentage = () => {
+    return application.business_roles?.completion_percentage || 0;
   };
 
-  const requiredSkills = application.business_roles?.skill_requirements || [];
-  const title = application.business_roles?.title || "Untitled Role";
-  const company = application.business_roles?.company_name || "Unknown Company";
-  const project = application.business_roles?.project_title || "";
-  const description = application.business_roles?.description || "";
-  const status = application.status;
-  const timeframe = application.business_roles?.timeframe || "";
-  const equityAllocation = application.business_roles?.equity_allocation || 0;
-  const taskStatus = application.business_roles?.task_status || "";
-  const completionPercentage = application.business_roles?.completion_percentage || 0;
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Unknown date';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="shadow-sm">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0">
-          <div className="flex flex-col space-y-1">
+        <CardHeader className="p-4 pb-2 flex flex-row items-start justify-between space-y-0">
+          <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <h3 className="font-medium text-base">{title}</h3>
-              <StatusBadge status={status} />
+              <h3 className="text-base font-semibold">{application.business_roles?.title || 'Untitled Role'}</h3>
+              <ApplicationStatus status={application.status} />
             </div>
             <p className="text-sm text-muted-foreground">
-              {company}
-              {project && ` • ${project}`}
+              {application.business_roles?.company_name || 'Unknown Company'} {application.business_roles?.project_title && `• ${application.business_roles.project_title}`}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Applied on {formatDate(application.applied_at)}
             </p>
           </div>
+          
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
               {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
           </CollapsibleTrigger>
         </CardHeader>
-
-        <CollapsibleContent>
-          <CardContent className="p-4 pt-0">
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-medium mb-1">Role Description</h4>
-                <p className="text-sm text-muted-foreground">{description || "No description provided."}</p>
-              </div>
-              
-              <div>
-                <h4 className="text-sm font-medium mb-1">Application Status</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Status: {status}</p>
-                    <p className="text-sm text-muted-foreground">Applied: {formatDate(application.applied_at)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Timeframe: {timeframe}</p>
-                    <p className="text-sm text-muted-foreground">Equity: {equityAllocation}%</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="text-sm font-medium mb-1">Reason</h4>
-                <p className="text-sm text-muted-foreground">{getReasonText() || "No reason provided."}</p>
-              </div>
-              
-              <div>
-                <h4 className="text-sm font-medium mb-1">Skills Required</h4>
-                <div className="flex flex-wrap gap-1">
-                  {requiredSkills.map((skill, index) => {
-                    const skillName = typeof skill === 'string' ? skill : skill.skill;
-                    const isMatched = matchedSkills.includes(skillName);
-                    
-                    return (
-                      <Badge 
-                        key={index} 
-                        variant={isMatched ? "default" : "outline"}
-                        className={isMatched ? "bg-green-100 text-green-800 hover:bg-green-200" : ""}
-                      >
-                        {skillName}
-                        {typeof skill !== 'string' && skill.level && 
-                          <span className="ml-1 opacity-70">({skill.level})</span>
-                        }
-                      </Badge>
-                    );
-                  })}
-                  {requiredSkills.length === 0 && (
-                    <span className="text-sm text-muted-foreground">No specific skills required</span>
-                  )}
-                </div>
-              </div>
+        
+        <CardContent className="px-4 py-2">
+          <div className="text-sm flex flex-wrap gap-x-4 gap-y-2">
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">Status:</span>
+              <Badge variant="outline" className="text-xs font-normal">
+                {getTaskStatus()}
+              </Badge>
             </div>
-          </CardContent>
-        </CollapsibleContent>
+            
+            {application.business_roles?.timeframe && (
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">Timeframe:</span>
+                <span>{application.business_roles.timeframe}</span>
+              </div>
+            )}
+            
+            {application.business_roles?.equity_allocation && (
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">Equity:</span>
+                <span>{application.business_roles.equity_allocation}%</span>
+              </div>
+            )}
+          </div>
+          
+          <CollapsibleContent className="mt-4 space-y-4">
+            {application.business_roles?.description && (
+              <div className="space-y-1">
+                <h4 className="text-sm font-medium">Description</h4>
+                <p className="text-sm text-muted-foreground">{application.business_roles.description}</p>
+              </div>
+            )}
+            
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-sm">
+                <h4 className="font-medium">Completion</h4>
+                <span>{getCompletionPercentage()}%</span>
+              </div>
+              <Progress value={getCompletionPercentage()} className="h-2" />
+            </div>
+            
+            {application.message && (
+              <div className="space-y-1">
+                <h4 className="text-sm font-medium">Your Application Message</h4>
+                <p className="text-sm text-muted-foreground">{application.message}</p>
+              </div>
+            )}
+          </CollapsibleContent>
+        </CardContent>
       </Collapsible>
     </Card>
   );

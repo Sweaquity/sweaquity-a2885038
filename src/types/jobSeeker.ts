@@ -1,3 +1,4 @@
+
 export interface Skill {
   skill: string;
   level?: string;
@@ -42,6 +43,8 @@ export interface BusinessRole {
   skill_requirements?: Skill[] | string[];
   company_name?: string;
   project_title?: string;
+  task_status?: string;
+  completion_percentage?: number;
 }
 
 export interface JobApplication {
@@ -144,6 +147,7 @@ export interface TimeEntry {
   id: string;
   ticket_id: string;
   user_id: string;
+  job_app_id?: string;
   start_time: string;
   end_time?: string;
   hours_logged: number;

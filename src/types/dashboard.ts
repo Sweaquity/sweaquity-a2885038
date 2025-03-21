@@ -68,10 +68,17 @@ export interface TicketMessage {
   createdAt: string;
   read: boolean;
   related_ticket?: string;
-  content?: string;
   sender?: {
     id?: string;
     name?: string;
     avatar?: string;
   };
+  content?: string;
+}
+
+export interface ExpandedTicketDetailsProps {
+  ticket: any;
+  messages: any[];
+  hoursLogged?: any;
+  onAction: (ticketId: string, action: string, data?: any) => void;
 }

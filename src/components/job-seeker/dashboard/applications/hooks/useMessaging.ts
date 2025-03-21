@@ -27,7 +27,23 @@ export const useMessaging = (onMessageSent?: () => void) => {
         return;
       }
       
-      setConversations(data || []);
+      // Transform database messages to TicketMessage format
+      const formattedMessages: TicketMessage[] = (data || []).map(msg => ({
+        id: msg.id,
+        ticketId: msg.related_ticket || '',
+        senderId: msg.sender_id,
+        recipientId: msg.recipient_id,
+        subject: msg.subject,
+        message: msg.message,
+        createdAt: msg.created_at,
+        read: msg.read,
+        related_ticket: msg.related_ticket,
+        sender: {
+          id: msg.sender_id
+        }
+      }));
+      
+      setConversations(formattedMessages);
       
       // Count unread messages
       const unread = (data || []).filter(msg => !msg.read).length;
@@ -114,16 +130,17 @@ export const useMessaging = (onMessageSent?: () => void) => {
         throw error;
       }
       
+      // Transform to TicketMessage format
       return data.map(msg => ({
         id: msg.id,
-        ticketId: msg.related_ticket,
+        ticketId: msg.related_ticket || '',
         senderId: msg.sender_id,
         recipientId: msg.recipient_id,
         subject: msg.subject,
         message: msg.message,
         createdAt: msg.created_at,
         read: msg.read,
-        // Add sender field for compatibility
+        related_ticket: msg.related_ticket,
         sender: {
           id: msg.sender_id
         }
