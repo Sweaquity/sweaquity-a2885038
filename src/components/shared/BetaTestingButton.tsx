@@ -10,13 +10,17 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-
 interface SystemLogInfo {
   url: string;
   userAgent: string;
   timestamp: string;
   viewportSize: string;
   referrer: string;
+}
+
+interface ProjectSubTask {
+  id: string;
+  title: string;
 }
 
 export function BetaTestingButton() {
@@ -29,6 +33,8 @@ export function BetaTestingButton() {
   const [screenshotPreviews, setScreenshotPreviews] = useState<string[]>([]);
   const [systemInfo, setSystemInfo] = useState<SystemLogInfo | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [projectSubTasks, setProjectSubTasks] = useState<ProjectSubTask[]>([]);
+  const [selectedSubTask, setSelectedSubTask] = useState<string>('');
 
   useEffect(() => {
     if (isOpen) {
@@ -46,8 +52,32 @@ export function BetaTestingButton() {
         const pageName = pathParts[pathParts.length - 1] || pathParts[pathParts.length - 2] || 'Home';
         setErrorLocation(pageName.charAt(0).toUpperCase() + pageName.slice(1).replace(/-/g, ' '));
       }
+
+      // Fetch project sub-tasks
+      fetchProjectSubTasks();
     }
   }, [isOpen, errorLocation]);
+
+  const fetchProjectSubTasks = async () => {
+    try {
+      const projectId = "1ec133ba-26d6-4112-8e44-f0b67ddc8fb4";
+      
+      const { data, error } = await supabase
+        .from('project_sub_tasks')
+        .select('id, title')
+        .eq('project_id', projectId);
+      
+      if (error) {
+        console.error("Error fetching project sub-tasks:", error);
+        toast.error("Failed to load project tasks");
+        return;
+      }
+      
+      setProjectSubTasks(data || []);
+    } catch (error) {
+      console.error("Error in fetchProjectSubTasks:", error);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -114,7 +144,8 @@ export function BetaTestingButton() {
           reproduction_steps: description,
           ticket_type: 'beta_testing',
           notes: [],
-          replies: []
+          replies: [],
+          project_sub_task_id: selectedSubTask || null  // Add the selected sub-task ID
         })
         .select('id')
         .single();
@@ -171,6 +202,7 @@ export function BetaTestingButton() {
       setSeverity('medium');
       setScreenshots([]);
       setScreenshotPreviews([]);
+      setSelectedSubTask('');
       setIsOpen(false);
     } catch (error) {
       console.error("Error submitting beta test feedback:", error);
@@ -180,26 +212,26 @@ export function BetaTestingButton() {
     }
   };
       
-    return (
-      <>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="fixed bottom-4 right-4 md:top-4 md:bottom-auto z-50 bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
-                onClick={() => setIsOpen(true)}
-              >
-                <AlertTriangle className="mr-2 h-4 w-4" />
-                Report Beta Issue
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs">
-              <p>By reporting errors you can earn equity in Sweaquity (if they then get fixed)</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+  return (
+    <>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="fixed bottom-4 right-4 md:top-4 md:bottom-auto z-50 bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
+              onClick={() => setIsOpen(true)}
+            >
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              Report Beta Issue
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">
+            <p>By reporting errors you can earn equity in Sweaquity (if they then get fixed)</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-xl">
@@ -236,6 +268,24 @@ export function BetaTestingButton() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            
+            {/* New Project Sub-Task dropdown */}
+            <div className="space-y-2">
+              <Label htmlFor="projectSubTask">Related Project Task</Label>
+              <Select value={selectedSubTask} onValueChange={setSelectedSubTask}>
+                <SelectTrigger id="projectSubTask">
+                  <SelectValue placeholder="Select related task (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None - General issue</SelectItem>
+                  {projectSubTasks.map((task) => (
+                    <SelectItem key={task.id} value={task.id}>
+                      {task.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             <div className="space-y-2">
