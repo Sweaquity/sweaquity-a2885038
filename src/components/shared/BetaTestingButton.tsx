@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Camera, Upload, X } from "lucide-react";
@@ -65,7 +66,7 @@ export function BetaTestingButton() {
       
       const { data, error } = await supabase
         .from('project_sub_tasks')
-        .select('project_id, title')
+        .select('task_id, title')
         .eq('project_id', '1ec133ba-26d6-4112-8e44-f0b67ddc8fb4');
       
       if (error) {
@@ -74,10 +75,16 @@ export function BetaTestingButton() {
       }
       
       if (data) {
-        setProjectSubTasks(data);
+        // Map to the correct interface
+        const mappedData = data.map(task => ({
+          id: task.task_id,
+          title: task.title
+        }));
+        
+        setProjectSubTasks(mappedData);
         // Set default selected sub-task if available
-        if (data.length > 0) {
-          setSelectedSubTaskId(data[0].id);
+        if (mappedData.length > 0) {
+          setSelectedSubTaskId(mappedData[0].id);
         }
       }
     } catch (error) {
@@ -139,6 +146,7 @@ export function BetaTestingButton() {
         return;
       }
       
+      // Create the ticket in the database - note that we're using only fields that exist in the schema
       const { data: ticketData, error: ticketError } = await supabase
         .from('tickets')
         .insert({
@@ -153,9 +161,9 @@ export function BetaTestingButton() {
           ticket_type: 'beta_testing',
           notes: [],
           replies: [],
-          project_sub_tasks: selectedSubTasksId || null
+          task_id: selectedSubTaskId || null // Use task_id instead of project_sub_tasks or project_sub_task_id
         })
-        .select('project_id')
+        .select('id')
         .single();
       
       if (ticketError) {

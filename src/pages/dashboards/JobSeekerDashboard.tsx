@@ -5,7 +5,7 @@ import { useJobSeekerDashboard } from "@/hooks/useJobSeekerDashboard";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
-// Import new components
+// Import components
 import { DashboardHeaderWithActions } from "@/components/job-seeker/dashboard/DashboardHeaderWithActions";
 import { DashboardHeader } from "@/components/job-seeker/dashboard/DashboardHeader";
 import { DashboardTabs } from "@/components/job-seeker/dashboard/DashboardTabs";
@@ -14,6 +14,8 @@ import { ProfileTab } from "@/components/job-seeker/dashboard/tabs/ProfileTab";
 import { ApplicationsTab } from "@/components/job-seeker/dashboard/tabs/ApplicationsTab";
 import { OpportunitiesTab } from "@/components/job-seeker/dashboard/tabs/OpportunitiesTab";
 import { DashboardSkeleton } from "@/components/job-seeker/dashboard/DashboardSkeleton";
+import { BetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
+import { supabase } from "@/lib/supabase";
 
 const JobSeekerDashboard = () => {
   const location = useLocation();
@@ -24,6 +26,7 @@ const JobSeekerDashboard = () => {
   const [activeTab, setActiveTab] = useState<string>(tabFromUrl || "dashboard");
   const [localLoading, setLocalLoading] = useState(true);
   const [forceRefresh, setForceRefresh] = useState(0);
+  const [userId, setUserId] = useState<string | undefined>(undefined);
 
   const {
     isLoading,
@@ -41,6 +44,18 @@ const JobSeekerDashboard = () => {
     userCVs,
     onCvListUpdated
   } = useJobSeekerDashboard(forceRefresh);
+
+  useEffect(() => {
+    // Get the current user's ID for the BetaTestingTab
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+      }
+    };
+    
+    getCurrentUser();
+  }, []);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -60,7 +75,7 @@ const JobSeekerDashboard = () => {
   };
 
   useEffect(() => {
-    if (tabFromUrl && ['dashboard', 'profile', 'applications', 'opportunities'].includes(tabFromUrl)) {
+    if (tabFromUrl && ['dashboard', 'profile', 'applications', 'opportunities', 'beta-testing'].includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
   }, [tabFromUrl]);
@@ -109,6 +124,13 @@ const JobSeekerDashboard = () => {
           <DashboardTabs 
             activeTab={activeTab}
             onTabChange={handleTabChange}
+            tabs={[
+              { id: "dashboard", label: "Dashboard" },
+              { id: "profile", label: "Profile" },
+              { id: "applications", label: "Applications" },
+              { id: "opportunities", label: "Opportunities" },
+              { id: "beta-testing", label: "Beta Testing" }
+            ]}
           />
 
           <TabsContent value="dashboard">
@@ -152,6 +174,13 @@ const JobSeekerDashboard = () => {
             <OpportunitiesTab
               projects={availableOpportunities}
               userSkills={skills || []}
+            />
+          </TabsContent>
+
+          <TabsContent value="beta-testing">
+            <BetaTestingTab 
+              userType="job_seeker"
+              userId={userId}
             />
           </TabsContent>
         </Tabs>

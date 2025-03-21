@@ -1128,7 +1128,9 @@ export type Database = {
           project_id: string | null
           replies: Json | null
           reporter: string | null
+          reproduction_steps: string | null
           status: string
+          system_info: string | null
           task_id: string | null
           ticket_type: string | null
           title: string
@@ -1149,7 +1151,9 @@ export type Database = {
           project_id?: string | null
           replies?: Json | null
           reporter?: string | null
+          reproduction_steps?: string | null
           status: string
+          system_info?: string | null
           task_id?: string | null
           ticket_type?: string | null
           title: string
@@ -1170,7 +1174,9 @@ export type Database = {
           project_id?: string | null
           replies?: Json | null
           reporter?: string | null
+          reproduction_steps?: string | null
           status?: string
+          system_info?: string | null
           task_id?: string | null
           ticket_type?: string | null
           title?: string

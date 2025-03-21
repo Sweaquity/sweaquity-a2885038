@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -7,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ProjectsSection } from "@/components/business/ProjectsSection";
 import { BusinessProfileCompletion } from "@/components/business/BusinessProfileCompletion";
-import { UserCircle2, Menu, Bell, Pencil } from "lucide-react";
+import { UserCircle2, Menu, Bell } from "lucide-react";
 import { ActiveRolesTable } from "@/components/business/roles/ActiveRolesTable";
 import { ProjectApplicationsSection } from "@/components/business/ProjectApplicationsSection";
 import { RequestAccessButton } from "@/components/business/users/RequestAccessButton";
@@ -21,6 +22,7 @@ import {
 import { AccountSettingsCard } from "@/components/shared/AccountSettingsCard";
 import { BusinessProfileEditor } from "@/components/business/profile/BusinessProfileEditor";
 import { TestingTab } from "@/components/business/testing/TestingTab";
+import { BetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
 
 interface SubTask {
   id: string;
@@ -52,6 +54,8 @@ const BusinessDashboard = () => {
   const [newApplicationsCount, setNewApplicationsCount] = useState(0);
   const [newMessagesCount, setNewMessagesCount] = useState(0);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [userId, setUserId] = useState<string | undefined>(undefined);
+  const [activeTab, setActiveTab] = useState("account");
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -60,6 +64,8 @@ const BusinessDashboard = () => {
         navigate('/auth/business');
         return;
       }
+
+      setUserId(session.user.id);
 
       try {
         const { data: businessData, error: businessError } = await supabase
@@ -203,6 +209,7 @@ const BusinessDashboard = () => {
   };
 
   const handleTabChange = (value: string) => {
+    setActiveTab(value);
     if (value === 'applications') {
       setNewApplicationsCount(0);
     }
@@ -264,8 +271,8 @@ const BusinessDashboard = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="account" className="space-y-6" onValueChange={handleTabChange}>
-          <TabsList className="w-full grid grid-cols-6 md:flex md:w-auto">
+        <Tabs value={activeTab} className="space-y-6" onValueChange={handleTabChange}>
+          <TabsList className="w-full grid grid-cols-7 md:flex md:w-auto">
             <TabsTrigger value="account" className="px-3 py-1.5">Account</TabsTrigger>
             <TabsTrigger value="projects" className="px-3 py-1.5">Projects</TabsTrigger>
             <TabsTrigger value="users" className="px-3 py-1.5">Users</TabsTrigger>
@@ -286,6 +293,7 @@ const BusinessDashboard = () => {
               )}
             </TabsTrigger>
             <TabsTrigger value="testing" className="px-3 py-1.5">Testing</TabsTrigger>
+            <TabsTrigger value="beta-testing" className="px-3 py-1.5">Beta Testing</TabsTrigger>
           </TabsList>
 
           <TabsContent value="account">
@@ -357,6 +365,13 @@ const BusinessDashboard = () => {
 
           <TabsContent value="testing">
             <TestingTab />
+          </TabsContent>
+
+          <TabsContent value="beta-testing">
+            <BetaTestingTab 
+              userType="business"
+              userId={userId}
+            />
           </TabsContent>
         </Tabs>
       </div>
