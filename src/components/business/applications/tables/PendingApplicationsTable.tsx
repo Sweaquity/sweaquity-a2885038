@@ -1,4 +1,3 @@
-
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ChevronDown, ChevronRight, FileText } from "lucide-react";
@@ -81,7 +80,6 @@ export const PendingApplicationsTable = ({
                   disabled={isUpdatingStatus === application.job_app_id}
                   onOpenChange={(open) => {
                     if (open) {
-                      // Prevent the row click event when clicking on the select
                       event?.stopPropagation();
                     }
                   }}
