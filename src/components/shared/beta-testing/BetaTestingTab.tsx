@@ -190,10 +190,17 @@ export const BetaTestingTab: React.FC<BetaTestingTabProps> = ({
     }
   };
 
-  const refreshData = () => {
-    loadTickets();
-    if (userType === 'job_seeker') {
-      loadActiveProjects();
+  // Update refreshData to return a Promise
+  const refreshData = (): Promise<void> => {
+    try {
+      loadTickets();
+      if (userType === 'job_seeker') {
+        loadActiveProjects();
+      }
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      return Promise.reject(error);
     }
   };
 
