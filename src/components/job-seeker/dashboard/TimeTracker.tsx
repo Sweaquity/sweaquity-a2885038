@@ -11,11 +11,9 @@ interface TimeTrackerProps {
   ticketId: string;
   userId: string;
   jobAppId?: string;
-  projectId?: string;
-  taskId?: string;
 }
 
-export const TimeTracker = ({ ticketId, userId, jobAppId, projectId, taskId }: TimeTrackerProps) => {
+export const TimeTracker = ({ ticketId, userId, jobAppId }: TimeTrackerProps) => {
   const [isTracking, setIsTracking] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -123,8 +121,6 @@ export const TimeTracker = ({ ticketId, userId, jobAppId, projectId, taskId }: T
         hours_logged: hoursLogged,
         start_time: startTime ? startTime.toISOString() : now.toISOString(),
         end_time: startTime ? now.toISOString() : null,
-        task_id: taskId,
-        project_id: projectId
       };
 
       console.log("Saving time entry with data:", entry);

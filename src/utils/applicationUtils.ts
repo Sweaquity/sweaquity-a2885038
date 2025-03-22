@@ -22,11 +22,11 @@ export function convertApplicationToJobApplication(application: Application): Jo
     accepted_jobseeker: application.accepted_jobseeker || false,
     accepted_business: application.accepted_business || false,
     business_roles: {
-      id: application.business_roles?.title || "", // Use title as fallback for id
+      id: application.business_roles?.id, // Use id instead of role_id
       title: application.business_roles?.title || "",
       description: application.business_roles?.description || "",
       project_title: application.business_roles?.project?.title || "",
-      timeframe: application.business_roles?.timeframe || "",
+      timeframe: application.business_roles?.timeframe,
       skill_requirements: Array.isArray(application.business_roles?.skill_requirements) 
         ? application.business_roles.skill_requirements.map(req => {
             if (typeof req === 'string') {

@@ -10,37 +10,7 @@ interface Project {
   skills_required: string[];
   project_timeframe: string;
   tasks: any[];
-  id?: string; // Add id as an optional property for compatibility
 }
-
-export const fetchProjects = async (): Promise<Project[]> => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return [];
-    
-    const { data, error } = await supabase
-      .from('business_projects')
-      .select(`
-        *,
-        businesses!inner (
-          company_name
-        )
-      `);
-      
-    if (error) throw error;
-    
-    // Map the data to ensure it has both project_id and id for compatibility
-    const projectsWithId = data.map((project: any) => ({
-      ...project,
-      id: project.project_id, // Ensure each project has an id that matches project_id
-    }));
-    
-    return projectsWithId;
-  } catch (error) {
-    console.error('Error fetching projects:', error);
-    return [];
-  }
-};
 
 export const ProjectService = {
   updateProject: async (project: Project, updatedData: Partial<Project>) => {
