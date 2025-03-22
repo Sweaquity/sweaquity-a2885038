@@ -74,7 +74,7 @@ export interface TicketMessage {
     name?: string;
     avatar?: string;
   };
-  job_app_id?: string; // Add job_app_id field for connecting to accepted jobs
+  job_app_id?: string; // Add job_app_id field
 }
 
 export interface ExpandedTicketDetailsProps {
