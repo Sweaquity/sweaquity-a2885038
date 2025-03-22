@@ -65,6 +65,7 @@ export interface TicketMessage {
   recipientId: string;
   subject: string;
   message: string;
+  content?: string; // For compatibility with different message formats
   createdAt: string;
   read: boolean;
   related_ticket?: string;
@@ -73,7 +74,7 @@ export interface TicketMessage {
     name?: string;
     avatar?: string;
   };
-  content?: string;
+  job_app_id?: string; // Add job_app_id field for connecting to accepted jobs
 }
 
 export interface ExpandedTicketDetailsProps {

@@ -59,13 +59,27 @@ export const PastApplicationsList = ({
       }
 
       // Process the data to make sure company_name is properly extracted
-      const processedData = data.map((app: any) => ({
-        ...app,
-        business_roles: {
-          ...app.business_roles,
-          company_name: app.business_roles?.company_name?.[0]?.company_name || 'Unknown Company'
+      const processedData = data.map((app: any) => {
+        let companyName = 'Unknown Company';
+        
+        // Safely access the nested company_name property
+        if (app.business_roles && 
+            app.business_roles.company_name && 
+            Array.isArray(app.business_roles.company_name) && 
+            app.business_roles.company_name.length > 0 && 
+            app.business_roles.company_name[0] && 
+            app.business_roles.company_name[0].company_name) {
+          companyName = app.business_roles.company_name[0].company_name;
         }
-      }));
+        
+        return {
+          ...app,
+          business_roles: {
+            ...app.business_roles,
+            company_name: companyName
+          }
+        };
+      });
       
       setApplications(processedData);
     } catch (error) {

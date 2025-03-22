@@ -116,12 +116,14 @@ export const TimeTracker = ({ ticketId, userId, jobAppId }: TimeTrackerProps) =>
       const entry = {
         ticket_id: ticketId,
         user_id: userId,
-        job_app_id: jobAppId, // Add this field from props
+        job_app_id: jobAppId, // Use the job_app_id provided from props
         description: description,
         hours_logged: hoursLogged,
         start_time: startTime ? startTime.toISOString() : now.toISOString(),
         end_time: startTime ? now.toISOString() : null,
       };
+
+      console.log("Saving time entry with data:", entry);
 
       const { data, error } = await supabase
         .from('time_entries')
@@ -134,7 +136,7 @@ export const TimeTracker = ({ ticketId, userId, jobAppId }: TimeTrackerProps) =>
       // Update ticket information
       const { data: ticketData, error: ticketError } = await supabase
         .from('tickets')
-        .select('task_id, project_id')
+        .select('task_id, project_id, job_app_id')
         .eq('id', ticketId)
         .single();
         

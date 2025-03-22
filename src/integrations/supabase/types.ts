@@ -44,7 +44,7 @@ export type Database = {
           {
             foreignKeyName: "accepted_jobs_job_app_id_fkey"
             columns: ["job_app_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "job_applications"
             referencedColumns: ["job_app_id"]
           },
@@ -448,6 +448,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "business_projects"
             referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "documents_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "jobseeker_active_projects"
+            referencedColumns: ["ticket_id"]
           },
           {
             foreignKeyName: "documents_ticket_id_fkey"
@@ -1012,6 +1019,13 @@ export type Database = {
             foreignKeyName: "ticket_comments_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
+            referencedRelation: "jobseeker_active_projects"
+            referencedColumns: ["ticket_id"]
+          },
+          {
+            foreignKeyName: "ticket_comments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
             referencedRelation: "tickets"
             referencedColumns: ["id"]
           },
@@ -1066,6 +1080,13 @@ export type Database = {
             foreignKeyName: "ticket_documents_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
+            referencedRelation: "jobseeker_active_projects"
+            referencedColumns: ["ticket_id"]
+          },
+          {
+            foreignKeyName: "ticket_documents_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
             referencedRelation: "tickets"
             referencedColumns: ["id"]
           },
@@ -1107,6 +1128,13 @@ export type Database = {
             foreignKeyName: "ticket_time_entries_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
+            referencedRelation: "jobseeker_active_projects"
+            referencedColumns: ["ticket_id"]
+          },
+          {
+            foreignKeyName: "ticket_time_entries_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
             referencedRelation: "tickets"
             referencedColumns: ["id"]
           },
@@ -1123,6 +1151,7 @@ export type Database = {
           estimated_hours: number | null
           health: string
           id: string
+          job_app_id: string | null
           notes: Json | null
           priority: string
           project_id: string | null
@@ -1146,6 +1175,7 @@ export type Database = {
           estimated_hours?: number | null
           health: string
           id?: string
+          job_app_id?: string | null
           notes?: Json | null
           priority: string
           project_id?: string | null
@@ -1169,6 +1199,7 @@ export type Database = {
           estimated_hours?: number | null
           health?: string
           id?: string
+          job_app_id?: string | null
           notes?: Json | null
           priority?: string
           project_id?: string | null
@@ -1183,6 +1214,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "tickets_job_app_id_fkey"
+            columns: ["job_app_id"]
+            isOneToOne: false
+            referencedRelation: "accepted_jobs"
+            referencedColumns: ["job_app_id"]
+          },
           {
             foreignKeyName: "tickets_project_id_fkey"
             columns: ["project_id"]
@@ -1206,6 +1244,7 @@ export type Database = {
           end_time: string | null
           hours_logged: number | null
           id: string
+          job_app_id: string | null
           start_time: string
           ticket_id: string | null
           user_id: string | null
@@ -1216,6 +1255,7 @@ export type Database = {
           end_time?: string | null
           hours_logged?: number | null
           id?: string
+          job_app_id?: string | null
           start_time: string
           ticket_id?: string | null
           user_id?: string | null
@@ -1226,11 +1266,26 @@ export type Database = {
           end_time?: string | null
           hours_logged?: number | null
           id?: string
+          job_app_id?: string | null
           start_time?: string
           ticket_id?: string | null
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "time_entries_job_app_id_fkey"
+            columns: ["job_app_id"]
+            isOneToOne: false
+            referencedRelation: "accepted_jobs"
+            referencedColumns: ["job_app_id"]
+          },
+          {
+            foreignKeyName: "time_entries_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "jobseeker_active_projects"
+            referencedColumns: ["ticket_id"]
+          },
           {
             foreignKeyName: "time_entries_ticket_id_fkey"
             columns: ["ticket_id"]
@@ -1276,6 +1331,13 @@ export type Database = {
             foreignKeyName: "user_messages_related_ticket_fkey"
             columns: ["related_ticket"]
             isOneToOne: false
+            referencedRelation: "jobseeker_active_projects"
+            referencedColumns: ["ticket_id"]
+          },
+          {
+            foreignKeyName: "user_messages_related_ticket_fkey"
+            columns: ["related_ticket"]
+            isOneToOne: false
             referencedRelation: "tickets"
             referencedColumns: ["id"]
           },
@@ -1283,7 +1345,66 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      jobseeker_active_projects: {
+        Row: {
+          application_status: string | null
+          assigned_to: string | null
+          business_id: string | null
+          date_accepted: string | null
+          due_date: string | null
+          equity_agreed: number | null
+          equity_points: number | null
+          estimated_hours: number | null
+          job_app_id: string | null
+          project_completion: number | null
+          project_description: string | null
+          project_id: string | null
+          project_status: string | null
+          project_title: string | null
+          reporter: string | null
+          task_id: string | null
+          ticket_created_at: string | null
+          ticket_description: string | null
+          ticket_health: string | null
+          ticket_id: string | null
+          ticket_priority: string | null
+          ticket_status: string | null
+          ticket_title: string | null
+          ticket_updated_at: string | null
+          total_hours_logged: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_projects_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["businesses_id"]
+          },
+          {
+            foreignKeyName: "tickets_job_app_id_fkey"
+            columns: ["job_app_id"]
+            isOneToOne: false
+            referencedRelation: "accepted_jobs"
+            referencedColumns: ["job_app_id"]
+          },
+          {
+            foreignKeyName: "tickets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "tickets_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "project_sub_tasks"
+            referencedColumns: ["task_id"]
+          },
+        ]
+      }
     }
     Functions: {
       create_messages_table_if_not_exists: {
