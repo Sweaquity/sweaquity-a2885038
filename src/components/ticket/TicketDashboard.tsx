@@ -1,14 +1,16 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { TicketList } from "./TicketList";
 import { FilterBar } from "./FilterBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TicketDetails } from "./TicketDetails";
-import { TicketStats } from "./TicketStats";
+import TicketDetails from "./TicketDetails";
+import TicketStats from "./TicketStats";
 import { Eye, EyeOff, Plus } from "lucide-react";
 import { TicketForm } from "./TicketForm";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Ticket } from "@/types/types";
+import { TicketService } from "./TicketService";
 
 interface TicketDashboardProps {
   initialTickets: Ticket[];
@@ -112,7 +114,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     setIsDetailsOpen(true);
   };
 
-  const handleCreateTicket = (newTicket: Partial<Ticket>) => {
+  const handleCreateTicket = async (newTicket: any) => {
     // In a real implementation, this would save to the backend
     // For now, just add to the local state
     const ticket = {
@@ -127,6 +129,8 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     setTickets([ticket, ...tickets]);
     filterTickets(activeFilter, [ticket, ...tickets]);
     setIsCreateTicketOpen(false);
+
+    return Promise.resolve();
   };
 
   const handleRefresh = () => {
@@ -138,12 +142,39 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <FilterBar 
-          onFilterChange={handleFilterChange}
-          activeFilter={activeFilter}
-          onSortChange={handleSortChange}
-          sortCriteria={sortCriteria}
-        />
+        <div className="space-y-2 w-full md:w-auto">
+          <h2 className="text-xl font-bold">Tickets</h2>
+          <div className="flex space-x-2">
+            <Button 
+              variant={activeFilter === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleFilterChange("all")}
+            >
+              All
+            </Button>
+            <Button 
+              variant={activeFilter === "open" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleFilterChange("open")}
+            >
+              Open
+            </Button>
+            <Button 
+              variant={activeFilter === "closed" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleFilterChange("closed")}
+            >
+              Closed
+            </Button>
+            <Button 
+              variant={activeFilter === "high" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleFilterChange("high")}
+            >
+              High Priority
+            </Button>
+          </div>
+        </div>
         
         <div className="flex gap-2">
           <Button 
@@ -193,10 +224,51 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         </TabsList>
         
         <TabsContent value="list" className="mt-4">
-          <TicketList 
-            tickets={filteredTickets} 
-            onTicketClick={handleTicketClick}
-          />
+          <div className="border rounded-lg">
+            <div className="p-4">
+              {filteredTickets.length === 0 ? (
+                <div className="text-center p-6">
+                  <p>No tickets found.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredTickets.map(ticket => (
+                    <div 
+                      key={ticket.id}
+                      className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50" 
+                      onClick={() => handleTicketClick(ticket)}
+                    >
+                      <div className="flex justify-between">
+                        <h3 className="font-medium">{ticket.title}</h3>
+                        <div className={`
+                          px-2 py-1 text-xs rounded-full
+                          ${ticket.priority === 'high' ? 'bg-red-100 text-red-800' : 
+                            ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-blue-100 text-blue-800'}
+                        `}>
+                          {ticket.priority}
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-500 mt-1">{ticket.description}</p>
+                      <div className="flex justify-between mt-2">
+                        <div className={`
+                          px-2 py-1 text-xs rounded-full
+                          ${ticket.status === 'done' || ticket.status === 'closed' ? 'bg-green-100 text-green-800' : 
+                            ticket.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'}
+                        `}>
+                          {ticket.status}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {ticket.due_date && `Due: ${new Date(ticket.due_date).toLocaleDateString()}`}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </TabsContent>
         
         <TabsContent value="timeline" className="mt-4">
@@ -240,3 +312,5 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     </div>
   );
 };
+
+export default TicketDashboard;

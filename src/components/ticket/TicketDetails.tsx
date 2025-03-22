@@ -89,7 +89,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
                   </li>
                   <li className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">Assigned to: {ticket.assigned_to || "Unassigned"}</span>
+                    <span className="text-sm">Assigned to: {ticket.assignee || "Unassigned"}</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <CalendarIcon className="h-4 w-4 text-muted-foreground" />
@@ -145,3 +145,5 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
     </div>
   );
 };
+
+export default TicketDetails;
