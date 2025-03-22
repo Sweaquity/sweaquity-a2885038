@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Clock, CheckCircle, AlertTriangle } from "lucide-react";
@@ -23,7 +23,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   onRefresh
 }) => {
   const [isLoading, setIsLoading] = useState(true);
-  const [tickets, setTickets] = useState<Ticket[]>(initialTickets || []);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [showKanban, setShowKanban] = useState(true);
   const [showGantt, setShowGantt] = useState(true);
   const [ticketStats, setTicketStats] = useState<TicketStatistics>({
@@ -39,7 +39,10 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     if (!initialTickets) {
       loadTickets();
     } else {
-      setTickets(initialTickets);
+      setTickets(initialTickets.map(ticket => ({
+        ...ticket,
+        expanded: false
+      })));
       calculateTicketStatistics(initialTickets);
       setIsLoading(false);
     }
@@ -49,7 +52,10 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     setIsLoading(true);
     try {
       const ticketData = await fetchTickets(projectFilter);
-      setTickets(ticketData);
+      setTickets(ticketData.map(ticket => ({
+        ...ticket,
+        expanded: false
+      })));
       calculateTicketStatistics(ticketData);
     } catch (error) {
       console.error("Error loading tickets:", error);
@@ -142,11 +148,15 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     }
   };
 
-  const toggleTicketExpanded = (ticketId: string) => {
-    setTickets(prev => prev.map(ticket =>
-      ticket.id === ticketId ? { ...ticket, expanded: !ticket.expanded } : ticket
-    ));
-  };
+  const toggleTicketExpanded = useCallback((ticketId: string) => {
+    setTickets(prev => 
+      prev.map(ticket => 
+        ticket.id === ticketId 
+          ? { ...ticket, expanded: !ticket.expanded } 
+          : ticket
+      )
+    );
+  }, []);
 
   const getGanttTasks = () => {
     return tickets.map((ticket) => {
@@ -181,12 +191,10 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     return new Date(dateString).toLocaleDateString();
   };
 
-  // Create a flat array of TableRow elements instead of using Fragment
   const renderTicketRows = () => {
     const rows: JSX.Element[] = [];
     
     tickets.forEach(ticket => {
-      // Main ticket row
       rows.push(
         <TableRow key={`ticket-${ticket.id}`}>
           <TableCell className="font-medium">{ticket.title}</TableCell>
@@ -217,7 +225,10 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => toggleTicketExpanded(ticket.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleTicketExpanded(ticket.id);
+              }}
             >
               {ticket.expanded ? 'Collapse' : 'Expand'}
             </Button>
@@ -225,7 +236,6 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         </TableRow>
       );
       
-      // Expanded details row (if expanded)
       if (ticket.expanded) {
         rows.push(
           <TableRow key={`details-${ticket.id}`}>
@@ -336,7 +346,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
               <TicketKanbanBoard 
                 tickets={tickets} 
                 onStatusChange={handleUpdateTicketStatus} 
-                onViewTicket={toggleTicketExpanded}
+                onViewTicket={toggleTicketExpanded} 
               />
             </div>
           </div>
@@ -365,7 +375,6 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* Use the new function to render ticket rows without React.Fragment */}
               {renderTicketRows()}
             </TableBody>
           </Table>
