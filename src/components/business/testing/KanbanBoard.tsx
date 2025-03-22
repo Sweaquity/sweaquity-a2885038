@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,9 +22,10 @@ export interface BetaTicket {
 }
 
 interface KanbanBoardProps {
-  tickets: BetaTicket[];
-  onStatusChange: (ticketId: string, newStatus: string) => void;
-  onTicketClick: (ticket: BetaTicket) => void;
+  tickets?: BetaTicket[];
+  onStatusChange?: (ticketId: string, newStatus: string) => void;
+  onTicketClick?: (ticket: BetaTicket) => void;
+  projectId?: string;
 }
 
 const statusColumns = [
@@ -35,11 +35,35 @@ const statusColumns = [
   { id: "done", title: "Done", color: "bg-green-100 text-green-800" },
 ];
 
-export const KanbanBoard = ({ tickets, onStatusChange, onTicketClick }: KanbanBoardProps) => {
+export const KanbanBoard = ({ tickets = [], onStatusChange = () => {}, onTicketClick = () => {}, projectId }: KanbanBoardProps) => {
   const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
+  const [localTickets, setLocalTickets] = useState<BetaTicket[]>(tickets);
+  
+  useEffect(() => {
+    if (projectId && tickets.length === 0) {
+      fetchProjectTickets(projectId);
+    } else {
+      setLocalTickets(tickets);
+    }
+  }, [projectId, tickets]);
+  
+  const fetchProjectTickets = async (projectId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('project_id', projectId);
+        
+      if (error) throw error;
+      
+      setLocalTickets(data || []);
+    } catch (error) {
+      console.error('Error fetching project tickets:', error);
+    }
+  };
 
   const getTicketsForStatus = (status: string) => {
-    return tickets.filter(ticket => ticket.status === status);
+    return localTickets.filter(ticket => ticket.status === status);
   };
 
   const getPriorityColor = (priority: string) => {
@@ -79,15 +103,12 @@ export const KanbanBoard = ({ tickets, onStatusChange, onTicketClick }: KanbanBo
 
   const handleViewTicket = async (ticket: BetaTicket) => {
     try {
-      // Navigate to ticket detail page or open a modal
       onTicketClick(ticket);
       
-      // For now, just toggle the expanded state
       setExpandedTicket(expandedTicket === ticket.id ? null : ticket.id);
       
       console.log("Viewing ticket:", ticket);
       
-      // Example of fetching additional ticket details:
       if (ticket.id) {
         const { data, error } = await supabase
           .from('tickets')
