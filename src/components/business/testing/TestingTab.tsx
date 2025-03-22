@@ -25,13 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Task, TaskType } from "@/types/dashboard";
-
-interface GanttTask extends Task {
-  styles?: {
-    progressColor?: string;
-    progressSelectedColor?: string;
-  };
-}
+import { GanttTask } from "@/types/business";
 
 export function TestingTab() {
   const [projectsData, setProjectsData] = useState<any[]>([]);
@@ -158,7 +152,7 @@ export function TestingTab() {
       if (error) throw error;
       
       if (data && data.length > 0) {
-        const ganttTasksData: Task[] = data.map((task) => {
+        const ganttTasksData: GanttTask[] = data.map((task) => {
           const start = task.created_at ? new Date(task.created_at) : new Date();
           let end = new Date(start);
           if (task.timeframe) {

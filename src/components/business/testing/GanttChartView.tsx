@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Gantt, Task, ViewMode, StylingOption } from 'gantt-task-react';
+import { Gantt, Task, ViewMode } from 'gantt-task-react';
 import "gantt-task-react/dist/index.css";
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';

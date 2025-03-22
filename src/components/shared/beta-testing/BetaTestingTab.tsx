@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { KanbanBoard, BetaTicket } from "./KanbanBoard";
 import { DragDropContext } from "react-beautiful-dnd";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 
 interface BetaTestingTabProps {
   userType: "job_seeker" | "business";
@@ -17,6 +18,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
   const [tickets, setTickets] = useState<BetaTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [projectTickets, setProjectTickets] = useState<BetaTicket[]>([]);
+  const [showKanban, setShowKanban] = useState(true);
 
   const createTicket = async () => {
     if (!userId) return;
@@ -94,24 +96,27 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       if (userType === 'job_seeker') {
         // Find accepted projects for job seeker
         const { data: acceptedProjects, error: projectsError } = await supabase
-          .from('jobseeker_active_projects')
+          .from('job_applications')
           .select('project_id')
-          .eq('user_id', userId);
+          .eq('user_id', userId)
+          .eq('status', 'accepted');
 
         if (projectsError) throw projectsError;
 
         if (acceptedProjects && acceptedProjects.length > 0) {
-          const projectIds = acceptedProjects.map(p => p.project_id);
+          const projectIds = acceptedProjects.map(p => p.project_id).filter(Boolean);
           
-          // Get tickets related to these projects
-          const { data: projectTickets, error: ticketsError } = await supabase
-            .from('tickets')
-            .select('*')
-            .in('project_id', projectIds);
+          if (projectIds.length > 0) {
+            // Get tickets related to these projects
+            const { data: projectTickets, error: ticketsError } = await supabase
+              .from('tickets')
+              .select('*')
+              .in('project_id', projectIds);
 
-          if (ticketsError) throw ticketsError;
-          
-          projectTicketsData = projectTickets || [];
+            if (ticketsError) throw ticketsError;
+            
+            projectTicketsData = projectTickets || [];
+          }
         }
       } else if (userType === 'business') {
         // Find business projects
@@ -180,6 +185,14 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
               <CardDescription>View and manage your project tasks</CardDescription>
             </div>
             <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowKanban(!showKanban)}
+                size="sm"
+              >
+                {showKanban ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                {showKanban ? "Hide Kanban" : "Show Kanban"}
+              </Button>
               <Button onClick={loadTickets}>Refresh</Button>
               <Button onClick={createTicket}>Create Test Ticket</Button>
             </div>
@@ -196,18 +209,22 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
               <Button onClick={createTicket}>Create a test ticket</Button>
             </div>
           ) : (
-            <DragDropContext onDragEnd={(result) => {
-              if (!result.destination) return;
-              const { draggableId, destination } = result;
-              
-              updateTicketStatus(draggableId, destination.droppableId);
-            }}>
-              <KanbanBoard 
-                tickets={allTickets} 
-                onStatusChange={updateTicketStatus}
-                onTicketClick={() => {}}
-              />
-            </DragDropContext>
+            <>
+              {showKanban && (
+                <DragDropContext onDragEnd={(result) => {
+                  if (!result.destination) return;
+                  const { draggableId, destination } = result;
+                  
+                  updateTicketStatus(draggableId, destination.droppableId);
+                }}>
+                  <KanbanBoard 
+                    tickets={allTickets} 
+                    onStatusChange={updateTicketStatus}
+                    onTicketClick={() => {}}
+                  />
+                </DragDropContext>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

@@ -1,263 +1,211 @@
 
-import React, { useState, useEffect } from 'react';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { supabase } from '@/lib/supabase';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Clock, AlertTriangle } from 'lucide-react';
-import { toast } from 'sonner';
+import React, { useState } from "react";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
+import { Eye, Clock, AlertTriangle, CheckCircle2, ArrowUpRight } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
-interface KanbanBoardProps {
-  projectId: string | null;
-  onTicketSelect?: (ticketId: string) => void;
-}
-
-interface Ticket {
+export interface BetaTicket {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   status: string;
   priority: string;
   health: string;
-  estimated_hours?: number;
-  due_date?: string;
+  created_at?: string;
+  updated_at?: string;
+  reporter?: string;
+  project_id?: string;
+  job_app_id?: string;
 }
 
-interface Column {
-  id: string;
-  title: string;
-  ticketIds: string[];
+interface KanbanBoardProps {
+  tickets: BetaTicket[];
+  onStatusChange: (ticketId: string, newStatus: string) => void;
+  onTicketClick: (ticket: BetaTicket) => void;
 }
 
-interface ColumnsState {
-  [key: string]: Column;
-}
+const statusColumns = [
+  { id: "todo", title: "To Do", color: "bg-blue-100 text-blue-800" },
+  { id: "in_progress", title: "In Progress", color: "bg-yellow-100 text-yellow-800" },
+  { id: "in_review", title: "In Review", color: "bg-purple-100 text-purple-800" },
+  { id: "done", title: "Done", color: "bg-green-100 text-green-800" },
+];
 
-export function KanbanBoard({ projectId, onTicketSelect }: KanbanBoardProps) {
-  const [columns, setColumns] = useState<ColumnsState>({
-    'backlog': { id: 'backlog', title: 'Backlog', ticketIds: [] },
-    'todo': { id: 'todo', title: 'To Do', ticketIds: [] },
-    'in_progress': { id: 'in_progress', title: 'In Progress', ticketIds: [] },
-    'review': { id: 'review', title: 'Review', ticketIds: [] },
-    'done': { id: 'done', title: 'Done', ticketIds: [] }
-  });
-  const [tickets, setTickets] = useState<Record<string, Ticket>>({});
-  const [loading, setLoading] = useState(true);
+export const KanbanBoard = ({ tickets, onStatusChange, onTicketClick }: KanbanBoardProps) => {
+  const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (projectId) {
-      fetchTickets();
-    } else {
-      setLoading(false);
-    }
-  }, [projectId]);
+  const getTicketsForStatus = (status: string) => {
+    return tickets.filter(ticket => ticket.status === status);
+  };
 
-  const fetchTickets = async () => {
-    setLoading(true);
-    try {
-      let query = supabase
-        .from('tickets')
-        .select('*');
-      
-      if (projectId) {
-        query = query.eq('project_id', projectId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      // Process the tickets into the format needed for the Kanban board
-      const newTickets: Record<string, Ticket> = {};
-      const newColumns = {
-        'backlog': { id: 'backlog', title: 'Backlog', ticketIds: [] },
-        'todo': { id: 'todo', title: 'To Do', ticketIds: [] },
-        'in_progress': { id: 'in_progress', title: 'In Progress', ticketIds: [] },
-        'review': { id: 'review', title: 'Review', ticketIds: [] },
-        'done': { id: 'done', title: 'Done', ticketIds: [] }
-      };
-
-      data?.forEach(ticket => {
-        newTickets[ticket.id] = ticket;
-        if (newColumns[ticket.status]) {
-          newColumns[ticket.status].ticketIds.push(ticket.id);
-        } else {
-          // If status doesn't match our columns, put in backlog
-          newColumns['backlog'].ticketIds.push(ticket.id);
-        }
-      });
-
-      setTickets(newTickets);
-      setColumns(newColumns);
-    } catch (error) {
-      console.error('Error fetching tickets:', error);
-      toast.error("Failed to load tickets");
-    } finally {
-      setLoading(false);
+  const getPriorityColor = (priority: string) => {
+    switch (priority.toLowerCase()) {
+      case "high":
+        return "bg-red-100 text-red-800";
+      case "medium":
+        return "bg-orange-100 text-orange-800";
+      case "low":
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  const onDragEnd = async (result: any) => {
-    const { destination, source, draggableId } = result;
-
-    // If there's no destination or the item was dropped back in the same place
-    if (!destination || 
-        (destination.droppableId === source.droppableId && 
-         destination.index === source.index)) {
-      return;
-    }
-
-    const startColumn = columns[source.droppableId];
-    const endColumn = columns[destination.droppableId];
-
-    // Moving within the same column
-    if (startColumn === endColumn) {
-      const newTicketIds = Array.from(startColumn.ticketIds);
-      newTicketIds.splice(source.index, 1);
-      newTicketIds.splice(destination.index, 0, draggableId);
-
-      const newColumn = {
-        ...startColumn,
-        ticketIds: newTicketIds
-      };
-
-      setColumns({
-        ...columns,
-        [newColumn.id]: newColumn
-      });
-    } else {
-      // Moving from one column to another
-      const startTicketIds = Array.from(startColumn.ticketIds);
-      startTicketIds.splice(source.index, 1);
-      
-      const newStartColumn = {
-        ...startColumn,
-        ticketIds: startTicketIds
-      };
-
-      const endTicketIds = Array.from(endColumn.ticketIds);
-      endTicketIds.splice(destination.index, 0, draggableId);
-      
-      const newEndColumn = {
-        ...endColumn,
-        ticketIds: endTicketIds
-      };
-
-      setColumns({
-        ...columns,
-        [newStartColumn.id]: newStartColumn,
-        [newEndColumn.id]: newEndColumn
-      });
-
-      // Update the ticket's status in the database
-      try {
-        const { error } = await supabase
-          .from('tickets')
-          .update({ status: destination.droppableId })
-          .eq('id', draggableId);
-
-        if (error) throw error;
-      } catch (error) {
-        console.error('Error updating ticket status:', error);
-        toast.error("Failed to update ticket status");
-        // Revert the UI change if the database update fails
-        fetchTickets();
-      }
-    }
-  };
-
-  // Function to determine ticket color based on health
   const getHealthColor = (health: string) => {
-    switch(health) {
-      case 'red': return 'border-l-4 border-l-red-500 bg-red-50';
-      case 'amber': return 'border-l-4 border-l-amber-500 bg-amber-50';
-      case 'green': return 'border-l-4 border-l-green-500 bg-green-50';
-      default: return 'border-l-4 border-l-gray-500 bg-gray-50';
+    switch (health.toLowerCase()) {
+      case "green":
+        return "bg-green-100 text-green-800";
+      case "yellow":
+        return "bg-yellow-100 text-yellow-800";
+      case "red":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  // Function to determine priority badge color
-  const getPriorityBadge = (priority: string) => {
-    switch(priority) {
-      case 'urgent': return <Badge className="bg-red-500">Urgent</Badge>;
-      case 'high': return <Badge className="bg-orange-500">High</Badge>;
-      case 'medium': return <Badge className="bg-yellow-500">Medium</Badge>;
-      case 'low': return <Badge className="bg-green-500">Low</Badge>;
-      default: return <Badge>Medium</Badge>;
+  const getTimeAgo = (dateString?: string) => {
+    if (!dateString) return "Unknown";
+    try {
+      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+    } catch (e) {
+      return "Invalid date";
     }
   };
 
-  if (loading) return <div className="flex justify-center p-8">Loading tickets...</div>;
-
-  if (!projectId) return <div className="text-center p-8">Please select a project to view the Kanban board.</div>;
+  const handleViewTicket = async (ticket: BetaTicket) => {
+    try {
+      // Navigate to ticket detail page or open a modal
+      onTicketClick(ticket);
+      
+      // For now, just toggle the expanded state
+      setExpandedTicket(expandedTicket === ticket.id ? null : ticket.id);
+      
+      console.log("Viewing ticket:", ticket);
+      
+      // Example of fetching additional ticket details:
+      if (ticket.id) {
+        const { data, error } = await supabase
+          .from('tickets')
+          .select(`
+            *,
+            job_applications(status, message),
+            business_projects(title)
+          `)
+          .eq('id', ticket.id)
+          .single();
+          
+        if (error) throw error;
+        console.log("Ticket details:", data);
+      }
+    } catch (error) {
+      console.error("Error viewing ticket:", error);
+    }
+  };
 
   return (
-    <div>
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 overflow-x-auto pb-8">
-          {Object.values(columns).map(column => (
-            <div key={column.id} className="min-w-[250px] bg-gray-100 rounded-md p-2 h-[600px] flex flex-col">
-              <h3 className="font-bold mb-2 p-2 flex justify-between items-center">
-                {column.title} 
-                <span className="text-sm bg-gray-200 px-2 py-1 rounded-full">{column.ticketIds.length}</span>
-              </h3>
-              
-              <Droppable droppableId={column.id}>
-                {(provided) => (
-                  <div 
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    className="flex-1 overflow-y-auto"
-                  >
-                    {column.ticketIds.map((ticketId, index) => {
-                      const ticket = tickets[ticketId];
-                      if (!ticket) return null;
-                      
-                      return (
-                        <Draggable 
-                          key={ticket.id} 
-                          draggableId={ticket.id} 
-                          index={index}
-                        >
-                          {(provided) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className={`p-3 mb-2 rounded shadow-sm ${getHealthColor(ticket.health)} cursor-pointer`}
-                              onClick={() => onTicketSelect && onTicketSelect(ticket.id)}
-                            >
-                              <h4 className="font-semibold text-sm mb-1">{ticket.title}</h4>
-                              <div className="text-xs text-gray-600 mb-2 line-clamp-2">
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {statusColumns.map((column) => (
+        <div key={column.id} className="flex flex-col">
+          <div className="rounded-t-lg px-3 py-2 mb-2 border border-gray-200 bg-gray-50">
+            <h3 className="font-medium">{column.title}</h3>
+            <p className="text-xs text-muted-foreground">
+              {getTicketsForStatus(column.id).length} items
+            </p>
+          </div>
+          
+          <Droppable droppableId={column.id}>
+            {(provided) => (
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className="flex-1 min-h-[200px] bg-gray-50/50 rounded-b-lg p-2 space-y-2"
+              >
+                {getTicketsForStatus(column.id).map((ticket, index) => (
+                  <Draggable key={ticket.id} draggableId={ticket.id} index={index}>
+                    {(provided) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                      >
+                        <Card className="mb-2 cursor-grab">
+                          <CardHeader className="py-3 px-3">
+                            <div className="flex justify-between items-start">
+                              <CardTitle className="text-sm font-medium line-clamp-2">
+                                {ticket.title}
+                              </CardTitle>
+                              <div className="flex items-center space-x-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => handleViewTicket(ticket)}
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                  <span className="sr-only">View</span>
+                                </Button>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="py-0 px-3">
+                            {ticket.description && (
+                              <CardDescription className="line-clamp-2 text-xs mt-1">
                                 {ticket.description}
-                              </div>
-                              <div className="flex justify-between items-center mt-2 text-xs">
-                                <div>{getPriorityBadge(ticket.priority)}</div>
-                                {ticket.due_date && (
-                                  <div className="flex items-center gap-1 text-gray-500">
-                                    <Clock className="h-3 w-3" />
-                                    <span>{new Date(ticket.due_date).toLocaleDateString()}</span>
-                                  </div>
-                                )}
-                              </div>
-                              {ticket.estimated_hours && (
-                                <div className="mt-1 text-xs text-right text-gray-500">
-                                  Est: {ticket.estimated_hours}h
+                              </CardDescription>
+                            )}
+                          </CardContent>
+                          <CardFooter className="py-2 px-3 flex justify-between">
+                            <div className="flex space-x-1">
+                              <Badge variant="outline" className={getPriorityColor(ticket.priority)}>
+                                {ticket.priority}
+                              </Badge>
+                              <Badge variant="outline" className={getHealthColor(ticket.health)}>
+                                {ticket.health}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center text-xs text-muted-foreground">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {getTimeAgo(ticket.created_at)}
+                            </div>
+                          </CardFooter>
+                          
+                          {expandedTicket === ticket.id && (
+                            <div className="px-3 py-2 border-t border-gray-100 bg-gray-50 text-xs">
+                              <h4 className="font-medium mb-1">Details</h4>
+                              <div className="space-y-1">
+                                <p><span className="font-medium">Created:</span> {getTimeAgo(ticket.created_at)}</p>
+                                <p><span className="font-medium">Updated:</span> {getTimeAgo(ticket.updated_at)}</p>
+                                <p><span className="font-medium">Status:</span> {ticket.status}</p>
+                                <div className="flex justify-end mt-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs"
+                                    onClick={() => window.open(`/tickets/${ticket.id}`, '_blank')}
+                                  >
+                                    <ArrowUpRight className="h-3 w-3 mr-1" />
+                                    Open Details
+                                  </Button>
                                 </div>
-                              )}
+                              </div>
                             </div>
                           )}
-                        </Draggable>
-                      );
-                    })}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </div>
-          ))}
+                        </Card>
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
         </div>
-      </DragDropContext>
+      ))}
     </div>
   );
-}
+};

@@ -1,5 +1,13 @@
 
 import { Skill, SkillRequirement } from "./jobSeeker";
+import { Task, TaskType } from "./dashboard";
+
+export interface GanttTask extends Task {
+  styles?: {
+    progressColor?: string;
+    progressSelectedColor?: string;
+  };
+}
 
 export interface Application {
   job_app_id: string;
