@@ -1,15 +1,23 @@
-
-import React, { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { KanbanBoard, BetaTicket } from "./KanbanBoard";
-import { DragDropContext } from "react-beautiful-dnd";
-import { toast } from "sonner";
-import { Eye, EyeOff } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
-import { Ticket } from "@/types/types";
-import TicketStats from "@/components/ticket/TicketStats";
+import { ProjectCard } from "@/components/business/projects/ProjectCard";
+import { fetchProjects } from "@/components/business/projects/services/ProjectService";
+import { Project } from "@/types/business";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { supabase } from "@/lib/supabase";
 
 interface BetaTestingTabProps {
   userType: "job_seeker" | "business";
@@ -17,270 +25,194 @@ interface BetaTestingTabProps {
   includeProjectTickets?: boolean;
 }
 
-export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false }: BetaTestingTabProps) => {
-  const [tickets, setTickets] = useState<BetaTicket[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [projectTickets, setProjectTickets] = useState<BetaTicket[]>([]);
-  const [showKanban, setShowKanban] = useState(true);
-  const [showDashboard, setShowDashboard] = useState(true);
-  const [ticketStatistics, setTicketStatistics] = useState({
-    totalTickets: 0,
-    openTickets: 0,
-    closedTickets: 0,
-    highPriorityTickets: 0
+interface ProjectFormValues {
+  title: string;
+  description: string;
+}
+
+export const BetaTestingTab: React.FC<BetaTestingTabProps> = ({ userType, userId, includeProjectTickets = true }) => {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
+  const [projectFormValues, setProjectFormValues] = useState<ProjectFormValues>({
+    title: "",
+    description: ""
   });
+  const { toast } = useToast();
 
-  const createTicket = async () => {
-    if (!userId) return;
-    
+  const fetchProjectsData = useCallback(async () => {
     try {
-      const { data: userData } = await supabase
-        .from(userType === 'job_seeker' ? 'profiles' : 'businesses')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      setIsLoading(true);
+      const fetchedProjects = await fetchProjects();
+      setProjects(fetchedProjects);
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load projects. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
 
-      const userName = userType === 'job_seeker'
-        ? `${userData.first_name} ${userData.last_name}`
-        : userData.company_name;
+  useEffect(() => {
+    fetchProjectsData();
+  }, [fetchProjectsData]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setProjectFormValues(prevValues => ({
+      ...prevValues,
+      [name]: value
+    }));
+  };
+
+  const createProject = async () => {
+    try {
+      setIsLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
+      const newProject = {
+        title: projectFormValues.title,
+        description: projectFormValues.description,
+        business_id: user.id,
+        status: "active",
+        equity_allocation: 100,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
 
       const { data, error } = await supabase
-        .from('tickets')
-        .insert({
-          title: `New feature request by ${userName}`,
-          description: "I would like to request a new feature...",
-          reporter: userId,
-          status: 'new',
-          priority: 'medium',
-          health: 'green',
-          created_at: new Date().toISOString()
-        })
+        .from('business_projects')
+        .insert([newProject])
         .select()
         .single();
 
-      if (error) throw error;
-      
-      toast.success("Test ticket created successfully!");
-      loadTickets();
-    } catch (error) {
-      console.error('Error creating ticket:', error);
-      toast.error("Failed to create test ticket");
-    }
-  };
-
-  const loadTickets = async () => {
-    setLoading(true);
-    try {
-      if (!userId) return;
-
-      // Load beta testing tickets
-      const { data: betaTickets, error: betaError } = await supabase
-        .from('tickets')
-        .select('*')
-        .or(`reporter.eq.${userId},assigned_to.eq.${userId}`)
-        .is('project_id', null);
-
-      if (betaError) throw betaError;
-      
-      setTickets(betaTickets || []);
-      calculateTicketStatistics(betaTickets);
-
-      // Load project tickets if includeProjectTickets is true
-      if (includeProjectTickets) {
-        await loadProjectTickets();
+      if (error) {
+        console.error("Error creating project:", error);
+        throw error;
       }
-      
-    } catch (error) {
-      console.error('Error loading tickets:', error);
-      toast.error("Failed to load tickets");
+
+      setProjects(prevProjects => [...prevProjects, data]);
+      setIsProjectDialogOpen(false);
+      setProjectFormValues({ title: "", description: "" });
+      toast({
+        title: "Success",
+        description: "Project created successfully.",
+      });
+    } catch (error: any) {
+      console.error("Error creating project:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create project. Please try again.",
+        variant: "destructive",
+      });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const calculateTicketStatistics = (ticketData: Ticket[]) => {
-    const totalTickets = ticketData.length;
-    const openTickets = ticketData.filter(ticket => 
-      ticket.status !== 'done' && ticket.status !== 'closed'
-    ).length;
-    const closedTickets = totalTickets - openTickets;
-    const highPriorityTickets = ticketData.filter(ticket => 
-      ticket.priority === 'high'
-    ).length;
-
-    setTicketStatistics({
-      totalTickets,
-      openTickets,
-      closedTickets,
-      highPriorityTickets
-    });
+  const fetchTickets = async () => {
+    fetchProjectsData();
   };
-
-  const loadProjectTickets = async () => {
-    try {
-      if (!userId) return;
-
-      let projectTicketsData: BetaTicket[] = [];
-
-      if (userType === 'job_seeker') {
-        // Find accepted projects for job seeker
-        const { data: acceptedProjects, error: projectsError } = await supabase
-          .from('job_applications')
-          .select('project_id')
-          .eq('user_id', userId)
-          .eq('status', 'accepted');
-
-        if (projectsError) throw projectsError;
-
-        if (acceptedProjects && acceptedProjects.length > 0) {
-          const projectIds = acceptedProjects.map(p => p.project_id).filter(Boolean);
-          
-          if (projectIds.length > 0) {
-            // Get tickets related to these projects
-            const { data: projectTickets, error: ticketsError } = await supabase
-              .from('tickets')
-              .select('*')
-              .in('project_id', projectIds);
-
-            if (ticketsError) throw ticketsError;
-            
-            projectTicketsData = projectTickets || [];
-          }
-        }
-      } else if (userType === 'business') {
-        // Find business projects
-        const { data: businessProjects, error: projectsError } = await supabase
-          .from('business_projects')
-          .select('project_id')
-          .eq('business_id', userId);
-
-        if (projectsError) throw projectsError;
-
-        if (businessProjects && businessProjects.length > 0) {
-          const projectIds = businessProjects.map(p => p.project_id);
-          
-          // Get tickets related to these projects
-          const { data: projectTickets, error: ticketsError } = await supabase
-            .from('tickets')
-            .select('*')
-            .in('project_id', projectIds);
-
-          if (ticketsError) throw ticketsError;
-          
-          projectTicketsData = projectTickets || [];
-        }
-      }
-
-      setProjectTickets(projectTicketsData);
-      
-    } catch (error) {
-      console.error('Error loading project tickets:', error);
-      toast.error("Failed to load project tickets");
-    }
-  };
-
-  const updateTicketStatus = async (ticketId: string, newStatus: string) => {
-    try {
-      const { error } = await supabase
-        .from('tickets')
-        .update({ status: newStatus })
-        .eq('id', ticketId);
-
-      if (error) throw error;
-      
-      toast.success("Ticket status updated");
-      loadTickets();
-    } catch (error) {
-      console.error('Error updating ticket status:', error);
-      toast.error("Failed to update ticket status");
-    }
-  };
-
-  useEffect(() => {
-    if (userId) {
-      loadTickets();
-    }
-  }, [userId]);
-
-  const allTickets = [...tickets, ...projectTickets] as Ticket[];
 
   return (
-    <div>
-      <Card className="mb-6">
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>Live Projects</CardTitle>
-              <CardDescription>View and manage your project tasks</CardDescription>
-            </div>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowKanban(!showKanban)}
-                size="sm"
-              >
-                {showKanban ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                {showKanban ? "Hide Kanban" : "Show Kanban"}
-              </Button>
-              <Button
-                variant="outline" 
-                onClick={() => setShowDashboard(!showDashboard)}
-                size="sm"
-              >
-                {showDashboard ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                {showDashboard ? "Hide Dashboard" : "Show Dashboard"}
-              </Button>
-              <Button onClick={loadTickets}>Refresh</Button>
-              <Button onClick={createTicket}>Create Test Ticket</Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex justify-center items-center h-40">
-              Loading tickets...
-            </div>
-          ) : allTickets.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground mb-4">No tickets found.</p>
-              <Button onClick={createTicket}>Create a test ticket</Button>
-            </div>
-          ) : (
-            <>
-              {!showDashboard ? (
-                <>
-                  <TicketStats
-                    totalTickets={ticketStatistics.totalTickets}
-                    openTickets={ticketStatistics.openTickets}
-                    closedTickets={ticketStatistics.closedTickets}
-                    highPriorityTickets={ticketStatistics.highPriorityTickets}
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Live Projects</h2>
+        {userType === "business" && (
+          <Dialog open={isProjectDialogOpen} onOpenChange={setIsProjectDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">Create Project</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Create New Project</DialogTitle>
+                <DialogDescription>
+                  Create a new project to start collaborating with job seekers.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="title" className="text-right">
+                    Title
+                  </Label>
+                  <Input
+                    type="text"
+                    id="title"
+                    name="title"
+                    value={projectFormValues.title}
+                    onChange={handleInputChange}
+                    className="col-span-3"
                   />
-                  
-                  {showKanban && (
-                    <DragDropContext onDragEnd={(result) => {
-                      if (!result.destination) return;
-                      const { draggableId, destination } = result;
-                      
-                      updateTicketStatus(draggableId, destination.droppableId);
-                    }}>
-                      <KanbanBoard 
-                        tickets={allTickets} 
-                        onStatusChange={updateTicketStatus}
-                        onTicketClick={() => {}}
-                      />
-                    </DragDropContext>
-                  )}
-                </>
-              ) : (
-                <TicketDashboard
-                  initialTickets={allTickets}
-                  onRefresh={loadTickets}
-                />
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="description" className="text-right">
+                    Description
+                  </Label>
+                  <Input
+                    type="text"
+                    id="description"
+                    name="description"
+                    value={projectFormValues.description}
+                    onChange={handleInputChange}
+                    className="col-span-3"
+                  />
+                </div>
+              </div>
+              <Button onClick={createProject} disabled={isLoading}>
+                {isLoading ? "Creating..." : "Create Project"}
+              </Button>
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <Skeleton key={i} className="h-40 rounded-md" />
+          ))}
+        </div>
+      ) : projects.length > 0 ? (
+        <Tabs defaultValue={projects[0].id} className="w-full">
+          <TabsList>
+            {projects.map((project) => (
+              <TabsTrigger key={project.id} value={project.id}>
+                {project.title}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {projects.map((project) => (
+            <TabsContent key={project.id} value={project.id}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <ProjectCard project={project} />
+                </div>
+                {includeProjectTickets && project.id && userId && (
+                  <TicketDashboard
+                    projectFilter={project.id}
+                    userFilter={userId}
+                    onRefresh={fetchTickets}
+                  />
+                )}
+              </div>
+            </TabsContent>
+          ))}
+        </Tabs>
+      ) : (
+        <div className="text-center py-10">
+          <p className="text-lg text-muted-foreground">
+            No projects available.
+          </p>
+        </div>
+      )}
     </div>
   );
 };

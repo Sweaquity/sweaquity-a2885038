@@ -1,8 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { TicketStats } from "@/components/ticket/TicketStats";
 import { FilterBar } from "@/components/ticket/FilterBar";
-import { TicketTable } from "@/components/ticket/TicketTable";
 import { Button } from "@/components/ui/button";
 import { KanbanBoard } from "@/components/ticket/KanbanBoard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,17 +12,19 @@ interface TicketDashboardProps {
   projectFilter?: string;
   userFilter?: string;
   includeProjectTickets?: boolean;
+  onRefresh?: () => Promise<void>;
 }
 
 export const TicketDashboard: React.FC<TicketDashboardProps> = ({ 
   projectFilter, 
   userFilter,
-  includeProjectTickets = true
+  includeProjectTickets = true,
+  onRefresh
 }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [view, setView] = useState<'table' | 'kanban'>('table');
+  const [view, setView] = useState<'table' | 'kanban'>('kanban');
   
   // Filter states
   const [statusFilter, setStatusFilter] = useState("");
@@ -48,13 +48,13 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
       const fetchedTickets = await fetchTickets(projectFilter);
       
       // Apply user filtering if provided
-      const userFilteredTickets = userFilter 
+      const userFilteredTickets = userFilter && fetchedTickets 
         ? fetchedTickets.filter(ticket => 
-            ticket.assigned_to === userFilter || ticket.reporter === userFilter
+            ticket.assignee === userFilter || ticket.reporter === userFilter
           ) 
         : fetchedTickets;
       
-      setTickets(userFilteredTickets);
+      setTickets(userFilteredTickets || []);
     } catch (error) {
       console.error("Error loading tickets:", error);
       toast({
@@ -114,6 +114,10 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         title: "Status Updated",
         description: `Ticket status changed to ${newStatus}`,
       });
+      
+      if (onRefresh) {
+        await onRefresh();
+      }
     } catch (error) {
       console.error("Error updating ticket status:", error);
       toast({
@@ -142,6 +146,27 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     console.log("View ticket:", ticketId);
     // This would typically navigate to a ticket detail page or open a modal
   };
+
+  const TicketStats = () => (
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="bg-white p-4 rounded-lg shadow-sm border">
+        <div className="text-sm text-muted-foreground">Total Tickets</div>
+        <div className="text-2xl font-bold">{totalTickets}</div>
+      </div>
+      <div className="bg-white p-4 rounded-lg shadow-sm border">
+        <div className="text-sm text-muted-foreground">Open Tickets</div>
+        <div className="text-2xl font-bold">{openTickets}</div>
+      </div>
+      <div className="bg-white p-4 rounded-lg shadow-sm border">
+        <div className="text-sm text-muted-foreground">Closed Tickets</div>
+        <div className="text-2xl font-bold">{closedTickets}</div>
+      </div>
+      <div className="bg-white p-4 rounded-lg shadow-sm border">
+        <div className="text-sm text-muted-foreground">High Priority</div>
+        <div className="text-2xl font-bold">{highPriorityTickets}</div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -172,12 +197,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         </div>
       </div>
 
-      <TicketStats 
-        totalTickets={totalTickets}
-        openTickets={openTickets}
-        closedTickets={closedTickets}
-        highPriorityTickets={highPriorityTickets}
-      />
+      <TicketStats />
 
       <FilterBar 
         statusFilter={statusFilter}
@@ -199,55 +219,44 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         </TabsList>
         
         <TabsContent value="all">
-          {view === 'table' ? (
-            <TicketTable 
-              tickets={filteredTickets} 
-              isLoading={isLoading} 
-              onStatusChange={handleStatusChange}
-              onViewTicket={handleViewTicket}
-            />
-          ) : (
+          {view === 'kanban' ? (
             <KanbanBoard 
               tickets={filteredTickets}
               onStatusChange={handleStatusChange}
               onViewTicket={handleViewTicket}
             />
+          ) : (
+            <div className="p-4 bg-muted rounded-md text-center">
+              Table view not implemented
+            </div>
           )}
         </TabsContent>
         
         <TabsContent value="my-tickets">
-          {/* Filter for assigned tickets would go here */}
-          {view === 'table' ? (
-            <TicketTable 
-              tickets={filteredTickets.filter(ticket => ticket.assigned_to === userFilter)} 
-              isLoading={isLoading}
+          {view === 'kanban' ? (
+            <KanbanBoard 
+              tickets={filteredTickets.filter(ticket => ticket.assignee === userFilter)}
               onStatusChange={handleStatusChange}
               onViewTicket={handleViewTicket}
             />
           ) : (
-            <KanbanBoard 
-              tickets={filteredTickets.filter(ticket => ticket.assigned_to === userFilter)}
-              onStatusChange={handleStatusChange}
-              onViewTicket={handleViewTicket}
-            />
+            <div className="p-4 bg-muted rounded-md text-center">
+              Table view not implemented
+            </div>
           )}
         </TabsContent>
         
         <TabsContent value="reported">
-          {/* Filter for reported tickets would go here */}
-          {view === 'table' ? (
-            <TicketTable 
-              tickets={filteredTickets.filter(ticket => ticket.reporter === userFilter)} 
-              isLoading={isLoading}
-              onStatusChange={handleStatusChange}
-              onViewTicket={handleViewTicket}
-            />
-          ) : (
+          {view === 'kanban' ? (
             <KanbanBoard 
               tickets={filteredTickets.filter(ticket => ticket.reporter === userFilter)}
               onStatusChange={handleStatusChange}
               onViewTicket={handleViewTicket}
             />
+          ) : (
+            <div className="p-4 bg-muted rounded-md text-center">
+              Table view not implemented
+            </div>
           )}
         </TabsContent>
       </Tabs>

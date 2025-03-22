@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,7 +42,6 @@ export const TaskCompletionCard: React.FC<TaskCompletionCardProps> = ({
   const [completionNotes, setCompletionNotes] = useState("");
   const [showTimeTracker, setShowTimeTracker] = useState(false);
 
-  // Submit task as complete for business review
   const handleMarkAsComplete = async () => {
     if (!completionNotes.trim()) {
       toast.error("Please provide completion notes before submitting");
@@ -85,11 +83,37 @@ export const TaskCompletionCard: React.FC<TaskCompletionCardProps> = ({
       
       // Create or update associated ticket if ticketId is provided
       if (ticketId) {
+        // First fetch the current notes array
+        const { data: ticketData, error: fetchError } = await supabase
+          .from('tickets')
+          .select('notes')
+          .eq('id', ticketId)
+          .single();
+          
+        if (fetchError) {
+          console.error("Error fetching ticket:", fetchError);
+          throw fetchError;
+        }
+        
+        // Create new note object
+        const noteObject = {
+          action: 'Task completed by job seeker',
+          user: userId,
+          timestamp: new Date().toISOString(),
+          comment: completionNotes
+        };
+        
+        // Prepare notes array (append to existing or create new)
+        const updatedNotes = Array.isArray(ticketData.notes) 
+          ? [...ticketData.notes, noteObject] 
+          : [noteObject];
+        
+        // Update the ticket
         const { error: ticketError } = await supabase
           .from('tickets')
           .update({
             status: 'review',
-            notes: supabase.sql`array_append(notes, jsonb_build_object('action', 'Task completed by job seeker', 'user', ${userId}, 'timestamp', ${new Date().toISOString()}, 'comment', ${completionNotes}))`,
+            notes: updatedNotes,
             updated_at: new Date().toISOString()
           })
           .eq('id', ticketId);
