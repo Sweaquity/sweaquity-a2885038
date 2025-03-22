@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +10,9 @@ import { TicketForm } from "./TicketForm";
 import { TicketList } from "./TicketList";
 import { TicketKanbanBoard } from "./TicketKanbanBoard";
 import { FilterBar } from "./FilterBar";
-import { TicketStats } from "./TicketStats";
+import TicketStats from "./TicketStats";
 import { fetchTickets } from "./TicketService";
-import { Badge } from "@/components/ui/badge"; // Add Badge import to fix error
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Ticket } from "@/types/types";
@@ -23,6 +24,8 @@ interface TicketDashboardProps {
   viewOnly?: boolean;
   defaultView?: "list" | "kanban";
   showCreateButton?: boolean;
+  tickets?: Ticket[];
+  onRefresh?: () => Promise<void>;
 }
 
 export const TicketDashboard: React.FC<TicketDashboardProps> = ({
