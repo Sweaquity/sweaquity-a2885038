@@ -6,10 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 
 import { fetchTickets, updateTicketStatus, updateTicketPriority, setTicketDueDate } from "./TicketService";
-import { TicketKanbanBoard } from "./KanbanBoard";
-import { GanttChartView } from "./GanttChart";
-import { TicketDetails } from "./TicketDetails";
-import { Ticket, TicketStatistics } from "./types";
+import { KanbanBoard as TicketKanbanBoard } from "./KanbanBoard";
+import { GanttChart as GanttChartView } from "./GanttChart";
+import { TicketDetails } from "@/components/ticket/TicketDetails";
+import { Ticket, TicketStatistics, Task } from "@/types/types";
 
 interface TicketDashboardProps {
   projectFilter?: string;

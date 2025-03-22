@@ -1,44 +1,5 @@
 // types.ts - Shared types for ticket management
-export interface Ticket {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  priority: string;
-  health?: string;
-  due_date?: string;
-  created_at: string;
-  updated_at: string;
-  reporter_email?: string;
-  reporter?: string;
-  expanded?: boolean;
-  newNote?: string;
-  notes?: Array<{
-    action: string;
-    user: string;
-    timestamp: string;
-    comment?: string;
-  }> | null;
-  system_info?: {
-    url: string;
-    userAgent: string;
-    timestamp: string;
-    viewportSize: string;
-    referrer: string;
-  };
-  reported_url?: string;
-  attachments?: string[];
-  reproduction_steps?: string;
-}
-
-export interface TicketStats {
-  totalTickets: number;
-  openTickets: number;
-  closedTickets: number;
-  highPriorityTickets: number;
-  byStatus: { [key: string]: number };
-  byPriority: { [key: string]: number };
-}
+import { Ticket, TicketStatistics } from "@/types/types";
 
 export interface KanbanData {
   columns: {
@@ -66,13 +27,12 @@ export interface GanttTask {
 
 // hooks/useTicketManagement.ts - Custom hook for ticket data and operations
 import { useState, useEffect } from 'react';
-import { Ticket, TicketStats } from '../types';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 export function useTicketManagement(filter?: string) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [ticketStats, setTicketStats] = useState<TicketStats>({
+  const [ticketStats, setTicketStats] = useState<TicketStatistics>({
     totalTickets: 0,
     openTickets: 0,
     closedTickets: 0,
@@ -463,8 +423,6 @@ export function useTicketManagement(filter?: string) {
 }
 
 // utils/ticketUtils.ts - Utility functions for ticket data transformation
-import { Ticket, KanbanData, GanttTask } from '../types';
-
 export const formatDate = (dateString: string) => {
   if (!dateString) return '';
   return new Date(dateString).toLocaleDateString();

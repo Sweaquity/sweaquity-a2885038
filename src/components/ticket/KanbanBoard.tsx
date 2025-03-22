@@ -1,9 +1,10 @@
+
 // TicketKanbanBoard.tsx
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { Ticket, DragResult } from "./types";
+import { Ticket, DragResult } from "@/types/types";
 
 interface TicketKanbanBoardProps {
   tickets: Ticket[];
