@@ -7,6 +7,9 @@ import { KanbanBoard, BetaTicket } from "./KanbanBoard";
 import { DragDropContext } from "react-beautiful-dnd";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
+import { TicketDashboard } from "@/components/ticket/TicketDashboard";
+import { Ticket } from "@/types/types";
+import TicketStats from "@/components/ticket/TicketStats";
 
 interface BetaTestingTabProps {
   userType: "job_seeker" | "business";
@@ -19,6 +22,13 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
   const [loading, setLoading] = useState(true);
   const [projectTickets, setProjectTickets] = useState<BetaTicket[]>([]);
   const [showKanban, setShowKanban] = useState(true);
+  const [showDashboard, setShowDashboard] = useState(true);
+  const [ticketStatistics, setTicketStatistics] = useState({
+    totalTickets: 0,
+    openTickets: 0,
+    closedTickets: 0,
+    highPriorityTickets: 0
+  });
 
   const createTicket = async () => {
     if (!userId) return;
@@ -40,7 +50,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
           title: `New feature request by ${userName}`,
           description: "I would like to request a new feature...",
           reporter: userId,
-          status: 'todo',
+          status: 'new',
           priority: 'medium',
           health: 'green',
           created_at: new Date().toISOString()
@@ -73,6 +83,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       if (betaError) throw betaError;
       
       setTickets(betaTickets || []);
+      calculateTicketStatistics(betaTickets);
 
       // Load project tickets if includeProjectTickets is true
       if (includeProjectTickets) {
@@ -85,6 +96,24 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculateTicketStatistics = (ticketData: Ticket[]) => {
+    const totalTickets = ticketData.length;
+    const openTickets = ticketData.filter(ticket => 
+      ticket.status !== 'done' && ticket.status !== 'closed'
+    ).length;
+    const closedTickets = totalTickets - openTickets;
+    const highPriorityTickets = ticketData.filter(ticket => 
+      ticket.priority === 'high'
+    ).length;
+
+    setTicketStatistics({
+      totalTickets,
+      openTickets,
+      closedTickets,
+      highPriorityTickets
+    });
   };
 
   const loadProjectTickets = async () => {
@@ -173,7 +202,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     }
   }, [userId]);
 
-  const allTickets = [...tickets, ...projectTickets];
+  const allTickets = [...tickets, ...projectTickets] as Ticket[];
 
   return (
     <div>
@@ -193,6 +222,14 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
                 {showKanban ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
                 {showKanban ? "Hide Kanban" : "Show Kanban"}
               </Button>
+              <Button
+                variant="outline" 
+                onClick={() => setShowDashboard(!showDashboard)}
+                size="sm"
+              >
+                {showDashboard ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                {showDashboard ? "Hide Dashboard" : "Show Dashboard"}
+              </Button>
               <Button onClick={loadTickets}>Refresh</Button>
               <Button onClick={createTicket}>Create Test Ticket</Button>
             </div>
@@ -210,19 +247,35 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
             </div>
           ) : (
             <>
-              {showKanban && (
-                <DragDropContext onDragEnd={(result) => {
-                  if (!result.destination) return;
-                  const { draggableId, destination } = result;
-                  
-                  updateTicketStatus(draggableId, destination.droppableId);
-                }}>
-                  <KanbanBoard 
-                    tickets={allTickets} 
-                    onStatusChange={updateTicketStatus}
-                    onTicketClick={() => {}}
+              {!showDashboard ? (
+                <>
+                  <TicketStats
+                    totalTickets={ticketStatistics.totalTickets}
+                    openTickets={ticketStatistics.openTickets}
+                    closedTickets={ticketStatistics.closedTickets}
+                    highPriorityTickets={ticketStatistics.highPriorityTickets}
                   />
-                </DragDropContext>
+                  
+                  {showKanban && (
+                    <DragDropContext onDragEnd={(result) => {
+                      if (!result.destination) return;
+                      const { draggableId, destination } = result;
+                      
+                      updateTicketStatus(draggableId, destination.droppableId);
+                    }}>
+                      <KanbanBoard 
+                        tickets={allTickets} 
+                        onStatusChange={updateTicketStatus}
+                        onTicketClick={() => {}}
+                      />
+                    </DragDropContext>
+                  )}
+                </>
+              ) : (
+                <TicketDashboard
+                  initialTickets={allTickets}
+                  onRefresh={loadTickets}
+                />
               )}
             </>
           )}

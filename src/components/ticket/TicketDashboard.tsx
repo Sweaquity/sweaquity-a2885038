@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,10 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 
 import { fetchTickets, updateTicketStatus, updateTicketPriority, setTicketDueDate } from "./TicketService";
-import { KanbanBoard as TicketKanbanBoard } from "./KanbanBoard";
-import { GanttChart as GanttChartView } from "./GanttChart";
-import { TicketDetails } from "@/components/ticket/TicketDetails";
-import { Ticket, TicketStatistics, Task } from "@/types/types";
+import { TicketKanbanBoard } from "./KanbanBoard";
+import { GanttChart } from "./GanttChart";
+import { TicketDetails } from "./TicketDetails";
+import { Ticket, TicketStatistics, TaskType } from "@/types/types";
 
 interface TicketDashboardProps {
   projectFilter?: string;
@@ -163,7 +164,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         name: ticket.title,
         start: startDate,
         end: endDate,
-        type: 'task',
+        type: 'task' as TaskType,
         progress: ticket.status === 'done' || ticket.status === 'closed' ? 100 : 
                  ticket.status === 'in-progress' ? 50 : 
                  ticket.status === 'review' ? 75 : 25,
@@ -281,7 +282,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
           <div className="mb-8">
             <h3 className="text-lg font-medium mb-4">Timeline</h3>
             <div className="border rounded-lg overflow-hidden p-4">
-              <GanttChartView tasks={getGanttTasks()} />
+              <GanttChart tasks={getGanttTasks()} />
             </div>
           </div>
         )}

@@ -121,3 +121,6 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
     </DragDropContext>
   );
 };
+
+// Export with alias for backward compatibility
+export { TicketKanbanBoard as KanbanBoard };

@@ -1,4 +1,6 @@
+
 import React from "react";
+import { Task, TaskType } from "@/types/types";
 
 // Types
 export interface GanttTask {
@@ -15,8 +17,6 @@ export interface GanttTask {
   };
 }
 
-export type TaskType = 'task' | 'milestone' | 'project';
-
 export interface GanttChartProps {
   tasks: GanttTask[];
 }
@@ -26,9 +26,6 @@ export interface GanttChartProps {
 export const GanttChart: React.FC<GanttChartProps> = ({ tasks }) => {
   return (
     <div className="border rounded-lg overflow-hidden p-4">
-      {/* Import your GanttChartView component here */}
-      {/* <GanttChartView tasks={tasks} /> */}
-      
       {/* Placeholder implementation for reference */}
       <div className="text-center p-4 bg-gray-50">
         <p>Gantt Chart View - Import your GanttChartView component here</p>
