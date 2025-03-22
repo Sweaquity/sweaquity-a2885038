@@ -14,6 +14,7 @@ import { ActiveApplicationsTable } from "./applications/tables/ActiveApplication
 import { WithdrawnApplicationsTable } from "./applications/tables/WithdrawnApplicationsTable";
 import { RejectedApplicationsTable } from "./applications/tables/RejectedApplicationsTable";
 import { Application, Project } from "@/types/business";
+import { convertApplicationToJobApplication } from "@/utils/applicationUtils";
 
 export const ProjectApplicationsSection = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -40,48 +41,6 @@ export const ProjectApplicationsSection = () => {
       cleanupRealtimeListener();
     };
   }, []);
-
-    // Add this to a utils file or at the top of your component file
-    import { Application } from "@/types/business";
-    import { JobApplication, Skill } from "@/types/jobSeeker";
-    
-    /**
-     * Converts an Application object to a JobApplication object
-     * Handles type differences and ensures proper type conversion
-     */
-    export function convertApplicationToJobApplication(application: Application): JobApplication {
-      return {
-        job_app_id: application.job_app_id,
-        user_id: application.user_id,
-        task_id: application.task_id,
-        project_id: application.project_id,
-        status: application.status,
-        applied_at: application.applied_at || "",
-        notes: application.notes ? [application.notes] : [], // Convert string to array
-        message: application.message || "",
-        cv_url: application.cv_url,
-        task_discourse: application.task_discourse || "",
-        id: application.job_app_id,
-        accepted_jobseeker: application.accepted_jobseeker || false,
-        accepted_business: application.accepted_business || false,
-        business_roles: {
-          id: application.business_roles?.role_id,
-          title: application.business_roles?.title || "",
-          description: application.business_roles?.description || "",
-          project_title: application.business_roles?.project?.title || "",
-          timeframe: application.business_roles?.timeframe,
-          skill_requirements: Array.isArray(application.business_roles?.skill_requirements) 
-            ? application.business_roles.skill_requirements.map(req => {
-                if (typeof req === 'string') {
-                  return { skill: req, level: "Intermediate" };
-                }
-                return req;
-              }) 
-            : [],
-          equity_allocation: application.business_roles?.equity_allocation
-        }
-      };
-    }
   
   const setupRealtimeListener = () => {
     const channel = supabase
@@ -331,30 +290,14 @@ export const ProjectApplicationsSection = () => {
     }
   };
 
-  const handleStatusChange = async (applicationId: string, newStatus: string) => {
-    const application = findApplicationById(applicationId);
-    
-    if (application && (application.accepted_business || application.accepted_jobseeker)) {
-      toast.error("Cannot change status after acceptance. Use contract management instead.");
-      return;
+  const findApplicationById = (applicationId: string): Application | undefined => {
+    for (const project of projects) {
+      const application = project.applications.find(app => app.job_app_id === applicationId);
+      if (application) return application;
     }
-    
-    if (newStatus === 'rejected') {
-      setSelectedApplicationId(applicationId);
-      setRejectDialogOpen(true);
-      return;
-    }
-    
-    await updateApplicationStatus(applicationId, newStatus);
+    return undefined;
   };
 
-  const openAcceptJobDialog = async (application: Application) => {
-    const jobApp = convertApplicationToJobApplication(application);
-    setSelectedApplication(jobApp);
-    setAcceptJobDialogOpen(true);
-    return Promise.resolve();
-  };
-  
   const handleStatusChange = async (applicationId: string, newStatus: string) => {
     const application = findApplicationById(applicationId);
     
@@ -375,6 +318,13 @@ export const ProjectApplicationsSection = () => {
     }
     
     await updateApplicationStatus(applicationId, newStatus);
+  };
+
+  const openAcceptJobDialog = async (application: Application) => {
+    const jobApp = convertApplicationToJobApplication(application);
+    setSelectedApplication(jobApp);
+    setAcceptJobDialogOpen(true);
+    return Promise.resolve();
   };
 
   const handleRejectWithNote = async (applicationId: string, note: string) => {
@@ -448,21 +398,6 @@ export const ProjectApplicationsSection = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <h2 className="text-lg font-semibold">Project Applications</h2>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center p-4">
-            <p>Loading applications...</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   const getPendingApplications = () => {
     const pendingApps: Application[] = [];
     projects.forEach(project => {
@@ -516,42 +451,21 @@ export const ProjectApplicationsSection = () => {
   const withdrawnApplications = getWithdrawnApplications();
   const rejectedApplications = getRejectedApplications();
 
-  const openAcceptJobDialog = async (application: Application) => {
-    const jobApp: JobApplication = {
-      job_app_id: application.job_app_id,
-      user_id: application.user_id, // This is missing in your current conversion
-      role_id: application.role_id || "",
-      task_id: application.task_id,
-      project_id: application.project_id,
-      status: application.status,
-      applied_at: application.applied_at || "",
-      notes: application.notes ? [application.notes] : [], // Convert string to array
-      message: application.message || "",
-      cv_url: application.cv_url,
-      task_discourse: application.task_discourse,
-      id: application.job_app_id,
-      accepted_jobseeker: application.accepted_jobseeker || false,
-      accepted_business: application.accepted_business || false,
-      business_roles: {
-        title: application.business_roles?.title || "",
-        description: application.business_roles?.description || "",
-        project_title: application.business_roles?.project?.title || "",
-        timeframe: application.business_roles?.timeframe,
-        skill_requirements: application.business_roles?.skill_requirements?.map(req => {
-          if (typeof req === 'string') {
-            return { skill: req, level: "Intermediate" };
-          }
-          return req;
-        }) || [],
-        equity_allocation: application.business_roles?.equity_allocation
-      }
-    };
-    
-    setSelectedApplication(jobApp);
-    setAcceptJobDialogOpen(true);
-    return Promise.resolve();
-  };
-  
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <h2 className="text-lg font-semibold">Project Applications</h2>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center p-4">
+            <p>Loading applications...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
