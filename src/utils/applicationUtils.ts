@@ -22,8 +22,8 @@ export function convertApplicationToJobApplication(application: Application): Jo
     accepted_jobseeker: application.accepted_jobseeker || false,
     accepted_business: application.accepted_business || false,
     business_roles: {
-      // Use role_id from the application or any id that might exist in business_roles
-      id: application.business_roles?.id || application.role_id || "",
+      // Use id if it exists in the business_roles object
+      id: application.business_roles?.id || application.role_id,
       title: application.business_roles?.title || "",
       description: application.business_roles?.description || "",
       project_title: application.business_roles?.project?.title || "",
