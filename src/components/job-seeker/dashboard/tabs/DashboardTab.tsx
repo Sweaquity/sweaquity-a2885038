@@ -1,4 +1,3 @@
-
 import ProjectsOverview from "@/components/job-seeker/ProjectsOverview";
 import { DashboardContent } from "@/components/job-seeker/dashboard/DashboardContent";
 import { EquityProject, JobApplication, Profile, Skill } from "@/types/jobSeeker";
@@ -572,7 +571,7 @@ export const DashboardTab = ({
                       <td className="p-3 text-sm">
                         <Badge variant={
                           project.ticket_status === 'done' ? 'success' : 
-                          project.ticket_status === 'in-progress' ? 'warning' : 'default'
+                          project.ticket_status === 'in-progress' ? 'secondary' : 'default'
                         }>
                           {project.ticket_status || project.application_status || 'Unknown'}
                         </Badge>
@@ -692,7 +691,18 @@ export const DashboardTab = ({
               <ExpandedTicketDetails
                 ticket={userTickets.find(t => t.id === selectedTicketId) || null}
                 messages={ticketMessages.filter(m => m.related_ticket === selectedTicketId)}
-                onAction={handleTicketAction}
+                onReply={(message) => 
+                  handleTicketAction(selectedTicketId, 'reply', { 
+                    message,
+                    recipientId: userTickets.find(t => t.id === selectedTicketId)?.assigned_to
+                  })
+                }
+                onStatusChange={(status) => 
+                  handleTicketAction(selectedTicketId, 'update_status', { status })
+                }
+                onPriorityChange={(priority) => 
+                  handleTicketAction(selectedTicketId, 'update_priority', { priority })
+                }
               />
               
               {selectedTicketId && (

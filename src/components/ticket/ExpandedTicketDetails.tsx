@@ -11,7 +11,7 @@ import { formatDistanceToNow } from "date-fns";
 import { AlertTriangle, CheckCircle2, Clock, MessageCircle, User } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-interface ExpandedTicketDetailsProps {
+export interface ExpandedTicketDetailsProps {
   ticket: any;
   messages: TicketMessage[];
   onReply: (message: string) => void;
