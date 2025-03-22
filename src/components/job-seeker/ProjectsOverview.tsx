@@ -21,7 +21,23 @@ import {
 } from "@/components/ui/resizable";
 import { RefreshCw, ExternalLink } from "lucide-react";
 
-const ProjectsOverview = () => {
+interface ProjectsOverviewProps {
+  currentProjects: any[];
+  pastProjects: any[];
+  onDocumentAction: (projectId: string, action: "edit" | "approve") => void;
+  userTickets: any[];
+  onTicketAction: (ticketId: string, action: string, data?: any) => Promise<void>;
+  refreshTickets: () => Promise<void>;
+}
+
+const ProjectsOverview = ({
+  currentProjects = [],
+  pastProjects = [],
+  onDocumentAction,
+  userTickets = [],
+  onTicketAction,
+  refreshTickets
+}: ProjectsOverviewProps) => {
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 

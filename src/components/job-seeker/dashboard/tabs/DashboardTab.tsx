@@ -1,5 +1,4 @@
-
-import { ProjectsOverview } from "@/components/job-seeker/ProjectsOverview";
+import ProjectsOverview from "@/components/job-seeker/ProjectsOverview";
 import { DashboardContent } from "@/components/job-seeker/dashboard/DashboardContent";
 import { EquityProject, JobApplication, Profile, Skill } from "@/types/jobSeeker";
 import { CVFile } from "@/hooks/job-seeker/useCVData";
@@ -106,14 +105,12 @@ export const DashboardTab = ({
     closed: 0,
   });
 
-  // Fix for infinite render - memoize loadUserTickets function with useCallback
   const loadUserTickets = useCallback(async () => {
     setTicketsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Load tickets where the user is assigned or is the reporter
       const { data: assignedTickets, error: assignedError } = await supabase
         .from('tickets')
         .select('*')
@@ -127,11 +124,9 @@ export const DashboardTab = ({
       if (assignedError) console.error("Error fetching assigned tickets:", assignedError);
       if (reportedError) console.error("Error fetching reported tickets:", reportedError);
 
-      // Combine and deduplicate tickets
       const allTickets = [...(assignedTickets || []), ...(reportedTickets || [])];
       const uniqueTickets = Array.from(new Map(allTickets.map(ticket => [ticket.id, ticket])).values());
 
-      // Load time entries for calculating hours logged
       const { data: timeEntriesData, error: timeEntriesError } = await supabase
         .from('time_entries')
         .select('*')
@@ -143,7 +138,6 @@ export const DashboardTab = ({
         setTimeEntries(timeEntriesData || []);
       }
 
-      // Calculate ticket stats
       const stats = {
         total: uniqueTickets.length,
         todo: uniqueTickets.filter(t => t.status === 'todo').length,
@@ -157,14 +151,13 @@ export const DashboardTab = ({
       setUserTickets(uniqueTickets);
       setBetaTickets(uniqueTickets as BetaTicket[]);
 
-      // Load ticket messages
       await loadTicketMessages(user.id, uniqueTickets.map(t => t.id));
     } catch (error) {
       console.error("Error loading tickets:", error);
     } finally {
       setTicketsLoading(false);
     }
-  }, []); // Empty dependency array as this doesn't depend on props/state
+  }, []);
 
   const loadTicketMessages = async (userId: string, ticketIds: string[]) => {
     if (!ticketIds.length) return;
@@ -188,10 +181,9 @@ export const DashboardTab = ({
     }
   };
 
-  // Fix for infinite render - use loadUserTickets in useEffect with proper dependencies
   useEffect(() => {
     loadUserTickets();
-  }, [loadUserTickets]); // Only depends on the memoized function
+  }, [loadUserTickets]);
 
   useEffect(() => {
     if (loadConversations) {
@@ -199,7 +191,6 @@ export const DashboardTab = ({
     }
   }, [loadConversations]);
 
-  // Load time entries whenever tickets change
   useEffect(() => {
     const loadTimeEntriesForTickets = async () => {
       try {
@@ -335,7 +326,6 @@ export const DashboardTab = ({
         if (error) throw error;
       }
       
-      // Refresh tickets after any action
       await loadUserTickets();
       
     } catch (error) {
@@ -363,7 +353,6 @@ export const DashboardTab = ({
     return entries.reduce((sum, entry) => sum + (entry.hours_logged || 0), 0);
   };
 
-  // Render functions
   const renderTicketStats = () => {
     return (
       <div className="grid grid-cols-3 md:grid-cols-6 gap-4 mb-6">
@@ -397,7 +386,7 @@ export const DashboardTab = ({
               <div className="text-2xl font-bold">{ticketStats.review}</div>
               <p className="text-sm text-muted-foreground">In Review</p>
             </div>
-          </CardContent>
+          </Card>
         </Card>
         <Card>
           <CardContent className="pt-6">
@@ -513,7 +502,6 @@ export const DashboardTab = ({
     );
   };
 
-  // Now let's update the types for the dashboard content
   const dashboardData = {
     profile,
     cvUrl,
@@ -537,7 +525,6 @@ export const DashboardTab = ({
 
   return (
     <>
-      {/* Active Projects Section */}
       <div className="space-y-6">
         <ProjectsOverview 
           currentProjects={equityProjects}
@@ -549,10 +536,8 @@ export const DashboardTab = ({
         />
       </div>
 
-      {/* Ticket Management UI */}
       {activeTab === 'tickets' && renderTicketManagementUI()}
       
-      {/* Dashboard Content */}
       {activeTab === 'dashboard' && (
         <DashboardContent 
           activeTab={activeTab} 
