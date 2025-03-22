@@ -102,16 +102,8 @@ export const GanttChartView = ({ tasks: propTasks, projectId }: GanttChartViewPr
     console.log('Task clicked:', task);
   };
 
-  const customStyling: StylingOption = {
-    headerHeight: 40,
-    rowHeight: 35,
-    columnWidth: 40,
-    listCellWidth: '100px',
-    fontFamily: 'inherit',
-  };
-
   // Create a proper tooltip component with type checking
-  const CustomTooltipContent = ({ task }: { task: Task; fontSize: string; fontFamily: string }) => {
+  const CustomTooltipContent: React.FC<{ task: Task; fontSize: string; fontFamily: string }> = ({ task }) => {
     if (!task || !task.start || !task.end) {
       return <div>Invalid task data</div>;
     }
@@ -151,7 +143,6 @@ export const GanttChartView = ({ tasks: propTasks, projectId }: GanttChartViewPr
           arrowColor="#9E9E9E"
           fontFamily="inherit"
           TooltipContent={CustomTooltipContent}
-          stylingOption={customStyling}
         />
       </div>
     </div>
