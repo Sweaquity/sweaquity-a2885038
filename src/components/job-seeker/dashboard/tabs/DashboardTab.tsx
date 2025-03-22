@@ -1,3 +1,4 @@
+
 import ProjectsOverview from "@/components/job-seeker/ProjectsOverview";
 import { DashboardContent } from "@/components/job-seeker/dashboard/DashboardContent";
 import { EquityProject, JobApplication, Profile, Skill } from "@/types/jobSeeker";
@@ -386,7 +387,7 @@ export const DashboardTab = ({
               <div className="text-2xl font-bold">{ticketStats.review}</div>
               <p className="text-sm text-muted-foreground">In Review</p>
             </div>
-          </Card>
+          </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
