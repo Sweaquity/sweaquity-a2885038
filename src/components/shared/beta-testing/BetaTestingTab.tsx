@@ -6,10 +6,15 @@ import { Button } from "@/components/ui/button";
 import { KanbanBoard, BetaTicket } from "./KanbanBoard";
 import { DragDropContext } from "react-beautiful-dnd";
 import { toast } from "sonner";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Clock, Plus } from "lucide-react";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { Ticket } from "@/types/types";
 import TicketStats from "@/components/ticket/TicketStats";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { GanttChart, convertItemsToGanttTasks } from "@/components/ticket/GanttChart";
 
 interface BetaTestingTabProps {
   userType: "job_seeker" | "business";
@@ -22,7 +27,13 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
   const [loading, setLoading] = useState(true);
   const [projectTickets, setProjectTickets] = useState<BetaTicket[]>([]);
   const [showKanban, setShowKanban] = useState(true);
-  const [showDashboard, setShowDashboard] = useState(true);
+  const [showDashboard, setShowDashboard] = useState(false);
+  const [showGanttChart, setShowGanttChart] = useState(false);
+  const [isTimeLogDialogOpen, setIsTimeLogDialogOpen] = useState(false);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [hours, setHours] = useState<number>(0);
+  const [description, setDescription] = useState<string>('');
   const [ticketStatistics, setTicketStatistics] = useState({
     totalTickets: 0,
     openTickets: 0,
@@ -196,6 +207,48 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     }
   };
 
+  const handleLogTime = async () => {
+    if (!selectedTicketId || hours <= 0) return;
+    
+    try {
+      // Create the time entry with the selected ticket ID
+      const { data, error } = await supabase
+        .from('time_entries')
+        .insert({
+          ticket_id: selectedTicketId,
+          user_id: userId,
+          description: description,
+          start_time: new Date().toISOString(),
+          end_time: new Date(new Date().getTime() + hours * 60 * 60 * 1000).toISOString(),
+          hours_logged: hours
+        });
+      
+      if (error) {
+        console.error("Error inserting time entry:", error);
+        throw error;
+      }
+      
+      toast.success("Time logged successfully");
+      setIsTimeLogDialogOpen(false);
+      setHours(0);
+      setDescription('');
+      loadTickets();
+    } catch (error) {
+      console.error("Error logging time:", error);
+      toast.error("Failed to log time");
+    }
+  };
+
+  const handleTicketClick = (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+    setSelectedTicketId(ticket.id);
+  };
+
+  const handleTimeLogClick = (ticketId: string) => {
+    setSelectedTicketId(ticketId);
+    setIsTimeLogDialogOpen(true);
+  };
+
   useEffect(() => {
     if (userId) {
       loadTickets();
@@ -224,6 +277,14 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
               </Button>
               <Button
                 variant="outline" 
+                onClick={() => setShowGanttChart(!showGanttChart)}
+                size="sm"
+              >
+                {showGanttChart ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                {showGanttChart ? "Hide Gantt" : "Show Gantt"}
+              </Button>
+              <Button
+                variant="outline" 
                 onClick={() => setShowDashboard(!showDashboard)}
                 size="sm"
               >
@@ -246,41 +307,137 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
               <Button onClick={createTicket}>Create a test ticket</Button>
             </div>
           ) : (
-            <>
-              {!showDashboard ? (
-                <>
-                  <TicketStats
-                    totalTickets={ticketStatistics.totalTickets}
-                    openTickets={ticketStatistics.openTickets}
-                    closedTickets={ticketStatistics.closedTickets}
-                    highPriorityTickets={ticketStatistics.highPriorityTickets}
-                  />
-                  
-                  {showKanban && (
-                    <DragDropContext onDragEnd={(result) => {
-                      if (!result.destination) return;
-                      const { draggableId, destination } = result;
-                      
-                      updateTicketStatus(draggableId, destination.droppableId);
-                    }}>
-                      <KanbanBoard 
-                        tickets={allTickets} 
-                        onStatusChange={updateTicketStatus}
-                        onTicketClick={() => {}}
-                      />
-                    </DragDropContext>
-                  )}
-                </>
-              ) : (
-                <TicketDashboard
-                  initialTickets={allTickets}
-                  onRefresh={loadTickets}
-                />
+            <div className="space-y-6">
+              <TicketStats
+                totalTickets={ticketStatistics.totalTickets}
+                openTickets={ticketStatistics.openTickets}
+                closedTickets={ticketStatistics.closedTickets}
+                highPriorityTickets={ticketStatistics.highPriorityTickets}
+              />
+              
+              {showKanban && (
+                <div className="mt-4">
+                  <h3 className="text-lg font-medium mb-4">Kanban Board</h3>
+                  <DragDropContext onDragEnd={(result) => {
+                    if (!result.destination) return;
+                    const { draggableId, destination } = result;
+                    
+                    updateTicketStatus(draggableId, destination.droppableId);
+                  }}>
+                    <KanbanBoard 
+                      tickets={allTickets} 
+                      onStatusChange={updateTicketStatus}
+                      onTicketClick={handleTicketClick}
+                    />
+                  </DragDropContext>
+                </div>
               )}
-            </>
+              
+              {showGanttChart && (
+                <div className="mt-4">
+                  <h3 className="text-lg font-medium mb-4">Gantt Chart</h3>
+                  <GanttChart tasks={convertItemsToGanttTasks(allTickets)} />
+                </div>
+              )}
+              
+              {showDashboard && (
+                <div className="mt-4">
+                  <h3 className="text-lg font-medium mb-4">Ticket Dashboard</h3>
+                  <TicketDashboard
+                    initialTickets={allTickets}
+                    onRefresh={loadTickets}
+                  />
+                </div>
+              )}
+              
+              {userType === 'job_seeker' && !showDashboard && (
+                <div className="mt-4">
+                  <h3 className="text-lg font-medium mb-4">Time Logging</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {allTickets.map(ticket => (
+                      <Card key={ticket.id} className="overflow-hidden">
+                        <CardHeader className="p-4 pb-2">
+                          <div className="flex justify-between">
+                            <CardTitle className="text-base">{ticket.title}</CardTitle>
+                            <Badge variant={
+                              ticket.priority === 'high' ? 'destructive' :
+                              ticket.priority === 'medium' ? 'warning' : 'secondary'
+                            }>
+                              {ticket.priority}
+                            </Badge>
+                          </div>
+                          <CardDescription className="line-clamp-2">
+                            {ticket.description}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-4 pt-0">
+                          <div className="flex items-center justify-between mt-4">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleTicketClick(ticket)}
+                            >
+                              View Details
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleTimeLogClick(ticket.id)}
+                            >
+                              <Clock className="h-4 w-4 mr-2" />
+                              Log Time
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
+      
+      {/* Time logging dialog */}
+      <Dialog open={isTimeLogDialogOpen} onOpenChange={setIsTimeLogDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Log Time for Task</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="hours">Hours Worked</Label>
+              <Input
+                id="hours"
+                type="number"
+                min="0.5"
+                step="0.5"
+                value={hours || ''}
+                onChange={(e) => setHours(parseFloat(e.target.value) || 0)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="description">Description of Work</Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe what you accomplished during this time"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsTimeLogDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleLogTime} disabled={hours <= 0 || !description.trim()}>
+              Log Time
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

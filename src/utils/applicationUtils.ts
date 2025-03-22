@@ -1,6 +1,6 @@
 
 import { Application } from "@/types/business";
-import { JobApplication } from "@/types/jobSeeker";
+import { JobApplication, Skill } from "@/types/jobSeeker";
 
 /**
  * Converts an Application object to a JobApplication object
@@ -22,7 +22,8 @@ export function convertApplicationToJobApplication(application: Application): Jo
     accepted_jobseeker: application.accepted_jobseeker || false,
     accepted_business: application.accepted_business || false,
     business_roles: {
-      id: application.business_roles?.id, // Use id instead of role_id
+      // Use role_id if it exists in the business_roles object
+      id: application.business_roles?.role_id || application.role_id,
       title: application.business_roles?.title || "",
       description: application.business_roles?.description || "",
       project_title: application.business_roles?.project?.title || "",
