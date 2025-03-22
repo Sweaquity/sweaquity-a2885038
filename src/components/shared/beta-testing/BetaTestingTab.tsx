@@ -1,332 +1,286 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Ticket } from '@/types/types';
-import { KanbanBoard } from '@/components/ticket/KanbanBoard';
-import TicketDashboard from '@/components/ticket/TicketDashboard';
-import ProjectsOverview from '@/components/job-seeker/ProjectsOverview';
-import { toast } from 'sonner';
+import { KanbanBoard, BetaTicket } from "./KanbanBoard";
+import { DragDropContext } from "react-beautiful-dnd";
+import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
+import { TicketDashboard } from "@/components/ticket/TicketDashboard";
+import { Ticket } from "@/types/types";
+import TicketStats from "@/components/ticket/TicketStats";
 
 interface BetaTestingTabProps {
-  userType: 'job_seeker' | 'business' | 'admin';
+  userType: "job_seeker" | "business";
   userId?: string;
   includeProjectTickets?: boolean;
 }
 
-export const BetaTestingTab: React.FC<BetaTestingTabProps> = ({ 
-  userType, 
-  userId,
-  includeProjectTickets = false
-}) => {
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'basic' | 'full'>('basic');
+export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false }: BetaTestingTabProps) => {
+  const [tickets, setTickets] = useState<BetaTicket[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [projectTickets, setProjectTickets] = useState<BetaTicket[]>([]);
   const [showKanban, setShowKanban] = useState(true);
+  const [showDashboard, setShowDashboard] = useState(true);
+  const [ticketStatistics, setTicketStatistics] = useState({
+    totalTickets: 0,
+    openTickets: 0,
+    closedTickets: 0,
+    highPriorityTickets: 0
+  });
 
-  const loadTickets = useCallback(async () => {
+  const createTicket = async () => {
     if (!userId) return;
     
     try {
-      setIsLoading(true);
-      
-      let query = supabase
+      const { data: userData } = await supabase
+        .from(userType === 'job_seeker' ? 'profiles' : 'businesses')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      const userName = userType === 'job_seeker'
+        ? `${userData.first_name} ${userData.last_name}`
+        : userData.company_name;
+
+      const { data, error } = await supabase
         .from('tickets')
-        .select('*');
+        .insert({
+          title: `New feature request by ${userName}`,
+          description: "I would like to request a new feature...",
+          reporter: userId,
+          status: 'new',
+          priority: 'medium',
+          health: 'green',
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      toast.success("Test ticket created successfully!");
+      loadTickets();
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      toast.error("Failed to create test ticket");
+    }
+  };
+
+  const loadTickets = async () => {
+    setLoading(true);
+    try {
+      if (!userId) return;
+
+      // Load beta testing tickets
+      const { data: betaTickets, error: betaError } = await supabase
+        .from('tickets')
+        .select('*')
+        .or(`reporter.eq.${userId},assigned_to.eq.${userId}`)
+        .is('project_id', null);
+
+      if (betaError) throw betaError;
+      
+      setTickets(betaTickets || []);
+      calculateTicketStatistics(betaTickets);
+
+      // Load project tickets if includeProjectTickets is true
+      if (includeProjectTickets) {
+        await loadProjectTickets();
+      }
+      
+    } catch (error) {
+      console.error('Error loading tickets:', error);
+      toast.error("Failed to load tickets");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calculateTicketStatistics = (ticketData: Ticket[]) => {
+    const totalTickets = ticketData.length;
+    const openTickets = ticketData.filter(ticket => 
+      ticket.status !== 'done' && ticket.status !== 'closed'
+    ).length;
+    const closedTickets = totalTickets - openTickets;
+    const highPriorityTickets = ticketData.filter(ticket => 
+      ticket.priority === 'high'
+    ).length;
+
+    setTicketStatistics({
+      totalTickets,
+      openTickets,
+      closedTickets,
+      highPriorityTickets
+    });
+  };
+
+  const loadProjectTickets = async () => {
+    try {
+      if (!userId) return;
+
+      let projectTicketsData: BetaTicket[] = [];
 
       if (userType === 'job_seeker') {
-        query = query.or(`reporter.eq.${userId},assigned_to.eq.${userId}`);
-      } else if (userType === 'business') {
-        if (includeProjectTickets) {
-          const { data: projectIds } = await supabase
-            .from('business_projects')
-            .select('project_id')
-            .eq('business_id', userId);
-            
-          if (projectIds && projectIds.length > 0) {
-            const ids = projectIds.map(p => p.project_id);
-            query = query.or(`reporter.eq.${userId},assigned_to.eq.${userId},project_id.in.(${ids.join(',')})`);
-          } else {
-            query = query.or(`reporter.eq.${userId},assigned_to.eq.${userId}`);
-          }
-        } else {
-          query = query.or(`reporter.eq.${userId},assigned_to.eq.${userId}`);
-        }
-      }
-      
-      const { data, error } = await query.order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error('Error fetching tickets:', error);
-        toast.error('Failed to load tickets');
-        return;
-      }
-      
-      if (data) {
-        const formattedTickets: Ticket[] = data.map(ticket => ({
-          id: ticket.id,
-          title: ticket.title,
-          description: ticket.description,
-          status: ticket.status,
-          priority: ticket.priority,
-          health: ticket.health,
-          reporter: ticket.reporter,
-          assigned_to: ticket.assigned_to,
-          created_at: ticket.created_at,
-          updated_at: ticket.updated_at,
-          due_date: ticket.due_date,
-          notes: ticket.notes || [],
-          created_by: ticket.created_by,
-          task_id: ticket.task_id,
-          project_id: ticket.project_id,
-          job_app_id: ticket.job_app_id
-        }));
-        
-        setTickets(formattedTickets);
-      } else {
-        setTickets([]);
-      }
-    } catch (err) {
-      console.error('Error in loadTickets:', err);
-      toast.error('Failed to load tickets');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userId, userType, includeProjectTickets]);
+        // Find accepted projects for job seeker
+        const { data: acceptedProjects, error: projectsError } = await supabase
+          .from('job_applications')
+          .select('project_id')
+          .eq('user_id', userId)
+          .eq('status', 'accepted');
 
-  useEffect(() => {
-    loadTickets();
-  }, [loadTickets]);
+        if (projectsError) throw projectsError;
 
-  const [activeProjects, setActiveProjects] = useState<any[]>([]);
-  const [userProjectTickets, setUserProjectTickets] = useState<any[]>([]);
-  
-  const loadActiveProjects = useCallback(async () => {
-    if (!userId || userType !== 'job_seeker') return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('jobseeker_active_projects')
-        .select('*')
-        .eq('user_id', userId);
-        
-      if (error) {
-        console.error('Error fetching active projects:', error);
-        return;
-      }
-      
-      setActiveProjects(data || []);
-      
-      if (data && data.length > 0) {
-        const ticketIds = data
-          .filter(project => project.ticket_id)
-          .map(project => project.ticket_id);
+        if (acceptedProjects && acceptedProjects.length > 0) {
+          const projectIds = acceptedProjects.map(p => p.project_id).filter(Boolean);
           
-        if (ticketIds.length > 0) {
-          const { data: ticketData, error: ticketError } = await supabase
+          if (projectIds.length > 0) {
+            // Get tickets related to these projects
+            const { data: projectTickets, error: ticketsError } = await supabase
+              .from('tickets')
+              .select('*')
+              .in('project_id', projectIds);
+
+            if (ticketsError) throw ticketsError;
+            
+            projectTicketsData = projectTickets || [];
+          }
+        }
+      } else if (userType === 'business') {
+        // Find business projects
+        const { data: businessProjects, error: projectsError } = await supabase
+          .from('business_projects')
+          .select('project_id')
+          .eq('business_id', userId);
+
+        if (projectsError) throw projectsError;
+
+        if (businessProjects && businessProjects.length > 0) {
+          const projectIds = businessProjects.map(p => p.project_id);
+          
+          // Get tickets related to these projects
+          const { data: projectTickets, error: ticketsError } = await supabase
             .from('tickets')
             .select('*')
-            .in('id', ticketIds);
-            
-          if (ticketError) {
-            console.error('Error fetching project tickets:', ticketError);
-            return;
-          }
+            .in('project_id', projectIds);
+
+          if (ticketsError) throw ticketsError;
           
-          setUserProjectTickets(ticketData || []);
+          projectTicketsData = projectTickets || [];
         }
       }
-    } catch (err) {
-      console.error('Error loading active projects:', err);
+
+      setProjectTickets(projectTicketsData);
+      
+    } catch (error) {
+      console.error('Error loading project tickets:', error);
+      toast.error("Failed to load project tickets");
     }
-  }, [userId, userType]);
+  };
+
+  const updateTicketStatus = async (ticketId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('tickets')
+        .update({ status: newStatus })
+        .eq('id', ticketId);
+
+      if (error) throw error;
+      
+      toast.success("Ticket status updated");
+      loadTickets();
+    } catch (error) {
+      console.error('Error updating ticket status:', error);
+      toast.error("Failed to update ticket status");
+    }
+  };
 
   useEffect(() => {
-    if (userType === 'job_seeker') {
-      loadActiveProjects();
-    }
-  }, [loadActiveProjects, userType]);
-
-  const handleTicketAction = async (ticketId: string, action: string, data?: any) => {
-    try {
-      if (action === 'log-time') {
-        if (!data || !data.hours || isNaN(parseFloat(data.hours))) {
-          toast.error('Please enter valid hours');
-          return Promise.resolve();
-        }
-        
-        const { data: userData } = await supabase.auth.getUser();
-        
-        const timeEntry = {
-          ticket_id: ticketId,
-          user_id: userData.user?.id,
-          hours_logged: parseFloat(data.hours),
-          description: data.description || '',
-          start_time: new Date().toISOString()
-        };
-        
-        const { error } = await supabase
-          .from('time_entries')
-          .insert(timeEntry);
-          
-        if (error) {
-          console.error('Error logging time:', error);
-          toast.error('Failed to log time');
-          return Promise.resolve();
-        }
-        
-        toast.success('Time logged successfully');
-        loadActiveProjects();
-        return Promise.resolve();
-      }
-      return Promise.resolve();
-    } catch (error) {
-      console.error('Error in handleTicketAction:', error);
-      toast.error('Failed to perform action');
-      return Promise.reject(error);
-    }
-  };
-
-  // Update refreshData to return a Promise
-  const refreshData = (): Promise<void> => {
-    try {
+    if (userId) {
       loadTickets();
-      if (userType === 'job_seeker') {
-        loadActiveProjects();
-      }
-      return Promise.resolve();
-    } catch (error) {
-      console.error('Error refreshing data:', error);
-      return Promise.reject(error);
     }
-  };
+  }, [userId]);
+
+  const allTickets = [...tickets, ...projectTickets] as Ticket[];
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Live Projects</h2>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setViewMode(viewMode === 'basic' ? 'full' : 'basic')}
-          >
-            {viewMode === 'basic' ? 'Show Full Dashboard' : 'Show Basic View'}
-          </Button>
-          
-          {viewMode === 'basic' && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowKanban(!showKanban)}
-            >
-              {showKanban ? 'Hide Kanban Board' : 'Show Kanban Board'}
-            </Button>
-          )}
-          
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={refreshData}
-          >
-            Refresh Data
-          </Button>
-        </div>
-      </div>
-      
-      {isLoading ? (
-        <Card>
-          <CardContent className="p-8">
-            <div className="flex justify-center">
-              <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+    <div>
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Live Projects</CardTitle>
+              <CardDescription>View and manage your project tasks</CardDescription>
             </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          {viewMode === 'full' ? (
-            <TicketDashboard initialTickets={tickets} onRefresh={refreshData} />
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowKanban(!showKanban)}
+                size="sm"
+              >
+                {showKanban ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                {showKanban ? "Hide Kanban" : "Show Kanban"}
+              </Button>
+              <Button
+                variant="outline" 
+                onClick={() => setShowDashboard(!showDashboard)}
+                size="sm"
+              >
+                {showDashboard ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                {showDashboard ? "Hide Dashboard" : "Show Dashboard"}
+              </Button>
+              <Button onClick={loadTickets}>Refresh</Button>
+              <Button onClick={createTicket}>Create Test Ticket</Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center items-center h-40">
+              Loading tickets...
+            </div>
+          ) : allTickets.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">No tickets found.</p>
+              <Button onClick={createTicket}>Create a test ticket</Button>
+            </div>
           ) : (
-            userType === 'job_seeker' ? (
-              <ProjectsOverview 
-                currentProjects={activeProjects}
-                pastProjects={[]}
-                onDocumentAction={(id, action) => {}}
-                userTickets={userProjectTickets}
-                onTicketAction={handleTicketAction}
-                refreshTickets={refreshData}
-              />
-            ) : (
-              <Tabs defaultValue="active-tickets">
-                <TabsList>
-                  <TabsTrigger value="active-tickets">Active Tickets</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="active-tickets">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Tickets</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {tickets.length === 0 ? (
-                        <div className="text-center p-6">
-                          <p className="text-muted-foreground">No active tickets found</p>
-                        </div>
-                      ) : (
-                        <>
-                          {showKanban ? (
-                            <KanbanBoard 
-                              tickets={tickets}
-                              onStatusChange={(ticketId, newStatus) => {
-                                // Handle status change
-                              }}
-                              onViewTicket={(ticketId) => {
-                                // Handle view
-                              }}
-                            />
-                          ) : (
-                            <div className="space-y-4">
-                              {tickets.map(ticket => (
-                                <div 
-                                  key={ticket.id}
-                                  className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                                >
-                                  <div className="flex justify-between">
-                                    <h3 className="font-medium">{ticket.title}</h3>
-                                    <Badge 
-                                      variant="outline" 
-                                      className={ticket.priority === 'high' ? 'bg-red-100 text-red-800' : 
-                                        ticket.priority === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}
-                                    >
-                                      {ticket.priority}
-                                    </Badge>
-                                  </div>
-                                  <p className="text-sm text-gray-500 mt-1">{ticket.description}</p>
-                                  <div className="flex justify-between mt-2">
-                                    <Badge>{ticket.status}</Badge>
-                                    <span className="text-xs text-gray-500">
-                                      {ticket.due_date ? `Due: ${new Date(ticket.due_date).toLocaleDateString()}` : 'No due date'}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            )
+            <>
+              {!showDashboard ? (
+                <>
+                  <TicketStats
+                    totalTickets={ticketStatistics.totalTickets}
+                    openTickets={ticketStatistics.openTickets}
+                    closedTickets={ticketStatistics.closedTickets}
+                    highPriorityTickets={ticketStatistics.highPriorityTickets}
+                  />
+                  
+                  {showKanban && (
+                    <DragDropContext onDragEnd={(result) => {
+                      if (!result.destination) return;
+                      const { draggableId, destination } = result;
+                      
+                      updateTicketStatus(draggableId, destination.droppableId);
+                    }}>
+                      <KanbanBoard 
+                        tickets={allTickets} 
+                        onStatusChange={updateTicketStatus}
+                        onTicketClick={() => {}}
+                      />
+                    </DragDropContext>
+                  )}
+                </>
+              ) : (
+                <TicketDashboard
+                  initialTickets={allTickets}
+                  onRefresh={loadTickets}
+                />
+              )}
+            </>
           )}
-        </>
-      )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
-
-export default BetaTestingTab;

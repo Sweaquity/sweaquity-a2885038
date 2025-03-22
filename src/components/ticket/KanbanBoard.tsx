@@ -10,18 +10,13 @@ interface TicketKanbanBoardProps {
   tickets: Ticket[];
   onStatusChange: (ticketId: string, newStatus: string) => void;
   onViewTicket: (ticketId: string) => void;
-  items?: Ticket[]; // For backward compatibility
 }
 
 export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
-  tickets: propTickets,
-  items, // Support the old 'items' prop name
+  tickets,
   onStatusChange,
   onViewTicket
 }) => {
-  // Use items as fallback for backward compatibility
-  const tickets = propTickets || items || [];
-  
   const getKanbanData = () => {
     const columns = {
       'new': { id: 'new', title: 'New', ticketIds: [] as string[] },
