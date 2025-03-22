@@ -8,7 +8,7 @@ import TicketDetails from "./TicketDetails";
 import TicketStats from "./TicketStats";
 import { Eye, EyeOff, Plus } from "lucide-react";
 import { TicketForm } from "./TicketForm";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Ticket } from "@/types/types";
 import { TicketService } from "./TicketService";
 
@@ -274,10 +274,43 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         <TabsContent value="timeline" className="mt-4">
           {showTimeline ? (
             <div className="border rounded-lg p-4">
-              {/* Timeline implementation goes here */}
-              <div className="text-center p-6 bg-muted/20">
-                <p>Timeline view - Include your timeline component here</p>
-                <p className="text-sm text-muted-foreground mt-2">This would display tickets on a timeline.</p>
+              <div className="space-y-4">
+                {filteredTickets.length === 0 ? (
+                  <div className="text-center p-6">
+                    <p>No tickets found for the timeline view.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredTickets
+                      .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+                      .map((ticket, index) => (
+                        <div 
+                          key={ticket.id}
+                          className="border-l-2 border-gray-200 pl-4 ml-4 relative cursor-pointer hover:bg-gray-50 p-3 rounded"
+                          onClick={() => handleTicketClick(ticket)}
+                        >
+                          <div className="absolute w-3 h-3 bg-blue-500 rounded-full -left-[7px] top-2"></div>
+                          <div className="text-xs text-gray-500 mb-1">
+                            {new Date(ticket.created_at || '').toLocaleString()}
+                          </div>
+                          <div className="flex justify-between items-start">
+                            <h4 className="font-medium">{ticket.title}</h4>
+                            <Badge variant="outline" className={
+                              ticket.status === 'done' || ticket.status === 'closed' 
+                                ? 'bg-green-100 text-green-800' 
+                                : ticket.status === 'in-progress' 
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-gray-100 text-gray-800'
+                            }>
+                              {ticket.status}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-1 line-clamp-2">{ticket.description}</p>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -291,6 +324,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
       {/* Ticket details dialog */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <DialogContent className="sm:max-w-[90%] max-h-[90vh] overflow-y-auto">
+          <DialogTitle>Ticket Details</DialogTitle>
           {selectedTicket && (
             <TicketDetails 
               ticket={selectedTicket} 
@@ -303,9 +337,9 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
       {/* Create ticket dialog */}
       <Dialog open={isCreateTicketOpen} onOpenChange={setIsCreateTicketOpen}>
         <DialogContent className="sm:max-w-[90%]">
+          <DialogTitle>Create New Ticket</DialogTitle>
           <TicketForm 
-            onSubmit={handleCreateTicket} 
-            onCancel={() => setIsCreateTicketOpen(false)}
+            onSubmit={handleCreateTicket}
           />
         </DialogContent>
       </Dialog>
