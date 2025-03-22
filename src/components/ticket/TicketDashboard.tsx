@@ -181,6 +181,71 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     return new Date(dateString).toLocaleDateString();
   };
 
+  // Create a flat array of TableRow elements instead of using Fragment
+  const renderTicketRows = () => {
+    const rows: JSX.Element[] = [];
+    
+    tickets.forEach(ticket => {
+      // Main ticket row
+      rows.push(
+        <TableRow key={`ticket-${ticket.id}`}>
+          <TableCell className="font-medium">{ticket.title}</TableCell>
+          <TableCell>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+              ticket.status === 'new' ? 'bg-blue-100 text-blue-800' :
+              ticket.status === 'in-progress' ? 'bg-purple-100 text-purple-800' :
+              ticket.status === 'blocked' ? 'bg-red-100 text-red-800' :
+              ticket.status === 'review' ? 'bg-yellow-100 text-yellow-800' :
+              ticket.status === 'done' ? 'bg-green-100 text-green-800' :
+              'bg-gray-100 text-gray-800'
+            }`}>
+              {ticket.status}
+            </span>
+          </TableCell>
+          <TableCell>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+              ticket.priority === 'high' ? 'bg-red-100 text-red-800' :
+              ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+              'bg-green-100 text-green-800'
+            }`}>
+              {ticket.priority}
+            </span>
+          </TableCell>
+          <TableCell>{formatDate(ticket.created_at)}</TableCell>
+          <TableCell>{ticket.due_date ? formatDate(ticket.due_date) : '-'}</TableCell>
+          <TableCell className="text-right">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toggleTicketExpanded(ticket.id)}
+            >
+              {ticket.expanded ? 'Collapse' : 'Expand'}
+            </Button>
+          </TableCell>
+        </TableRow>
+      );
+      
+      // Expanded details row (if expanded)
+      if (ticket.expanded) {
+        rows.push(
+          <TableRow key={`details-${ticket.id}`}>
+            <TableCell colSpan={6} className="p-0 border-t-0">
+              <TicketDetails 
+                ticket={ticket}
+                onStatusChange={handleUpdateTicketStatus}
+                onPriorityChange={handleUpdateTicketPriority}
+                onDueDateChange={handleSetDueDate}
+                formatDate={formatDate}
+              />
+            </TableCell>
+          </TableRow>
+        );
+      }
+    });
+    
+    return rows;
+  };
+
   return (
     <Card className="mb-6">
       <CardHeader>
@@ -300,59 +365,8 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tickets.map(ticket => (
-                // Fixed issue: Using a React key in the fragment instead of any other props
-                <React.Fragment key={`ticket-row-${ticket.id}`}>
-                  <TableRow>
-                    <TableCell className="font-medium">{ticket.title}</TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        ticket.status === 'new' ? 'bg-blue-100 text-blue-800' :
-                        ticket.status === 'in-progress' ? 'bg-purple-100 text-purple-800' :
-                        ticket.status === 'blocked' ? 'bg-red-100 text-red-800' :
-                        ticket.status === 'review' ? 'bg-yellow-100 text-yellow-800' :
-                        ticket.status === 'done' ? 'bg-green-100 text-green-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {ticket.status}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        ticket.priority === 'high' ? 'bg-red-100 text-red-800' :
-                        ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {ticket.priority}
-                      </span>
-                    </TableCell>
-                    <TableCell>{formatDate(ticket.created_at)}</TableCell>
-                    <TableCell>{ticket.due_date ? formatDate(ticket.due_date) : '-'}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleTicketExpanded(ticket.id)}
-                      >
-                        {ticket.expanded ? 'Collapse' : 'Expand'}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  {ticket.expanded && (
-                    <TableRow key={`ticket-details-${ticket.id}`}>
-                      <TableCell colSpan={6} className="p-0 border-t-0">
-                        <TicketDetails 
-                          ticket={ticket}
-                          onStatusChange={handleUpdateTicketStatus}
-                          onPriorityChange={handleUpdateTicketPriority}
-                          onDueDateChange={handleSetDueDate}
-                          formatDate={formatDate}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </React.Fragment>
-              ))}
+              {/* Use the new function to render ticket rows without React.Fragment */}
+              {renderTicketRows()}
             </TableBody>
           </Table>
         </div>
