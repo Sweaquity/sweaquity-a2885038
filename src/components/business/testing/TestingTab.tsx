@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { KanbanBoard } from "./KanbanBoard";
@@ -15,7 +14,6 @@ import {
   TableCell 
 } from "@/components/ui/table";
 import { supabase } from "@/lib/supabase";
-import { useEffect } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Clock, Users } from "lucide-react";
@@ -26,13 +24,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { 
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+
+interface GanttTask {
+  id: string;
+  name: string;
+  start: Date;
+  end: Date;
+  progress: number;
+  type: string;
+  isDisabled: boolean;
+  styles?: {
+    progressColor?: string;
+    progressSelectedColor?: string;
+  };
+}
 
 export function TestingTab() {
   const [projectsData, setProjectsData] = useState<any[]>([]);
@@ -40,6 +45,7 @@ export function TestingTab() {
   const [applicationsData, setApplicationsData] = useState<any[]>([]);
   const [tasksData, setTasksData] = useState<any[]>([]);
   const [ticketsData, setTicketsData] = useState<any[]>([]);
+  const [ganttTasks, setGanttTasks] = useState<GanttTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingProjects, setLoadingProjects] = useState(true);
 
@@ -52,6 +58,7 @@ export function TestingTab() {
       fetchApplications(selectedProject);
       fetchTasks(selectedProject);
       fetchTickets(selectedProject);
+      prepareGanttData(selectedProject);
     }
   }, [selectedProject]);
 
@@ -75,7 +82,6 @@ export function TestingTab() {
       
       setProjectsData(data || []);
       
-      // Set the first project as selected by default if there are projects
       if (data && data.length > 0 && !selectedProject) {
         setSelectedProject(data[0].project_id);
       }
@@ -145,6 +151,59 @@ export function TestingTab() {
       toast.error("Failed to load tickets");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const prepareGanttData = async (projectId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('project_sub_tasks')
+        .select('*')
+        .eq('project_id', projectId);
+        
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        const ganttTasksData: GanttTask[] = data.map((task) => {
+          const start = task.created_at ? new Date(task.created_at) : new Date();
+          let end = new Date(start);
+          if (task.timeframe) {
+            const timeframe = task.timeframe.toLowerCase();
+            if (timeframe.includes('week')) {
+              const weeks = parseInt(timeframe) || 1;
+              end.setDate(end.getDate() + (weeks * 7));
+            } else if (timeframe.includes('month')) {
+              const months = parseInt(timeframe) || 1;
+              end.setMonth(end.getMonth() + months);
+            } else if (timeframe.includes('day')) {
+              const days = parseInt(timeframe) || 1;
+              end.setDate(end.getDate() + days);
+            } else {
+              end.setDate(end.getDate() + 7);
+            }
+          } else {
+            end.setDate(end.getDate() + 7);
+          }
+          
+          return {
+            id: task.task_id,
+            name: task.title,
+            start,
+            end,
+            progress: task.completion_percentage ? task.completion_percentage / 100 : 0,
+            type: 'task',
+            isDisabled: false,
+            styles: { progressColor: '#2196F3', progressSelectedColor: '#1976D2' }
+          };
+        });
+        
+        setGanttTasks(ganttTasksData);
+      } else {
+        setGanttTasks([]);
+      }
+    } catch (error) {
+      console.error('Error preparing Gantt data:', error);
+      setGanttTasks([]);
     }
   };
 
@@ -359,7 +418,7 @@ export function TestingTab() {
             </TabsContent>
             
             <TabsContent value="gantt">
-              <GanttChartView projectId={selectedProject} />
+              <GanttChartView projectId={selectedProject} tasks={ganttTasks} />
             </TabsContent>
           </Tabs>
         )}

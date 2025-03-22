@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -92,11 +93,26 @@ export const ProjectApplicationsSection = () => {
       }
 
       if (data) {
-        setApplications(data);
-        setAcceptedApplications(data.filter(app => app.status === 'accepted'));
-        setPendingApplications(data.filter(app => app.status === 'pending'));
-        setRejectedApplications(data.filter(app => app.status === 'rejected'));
-        setWithdrawnApplications(data.filter(app => app.status === 'withdrawn'));
+        // Transform the data to match the JobApplication interface
+        const processedData: JobApplication[] = data.map((item: any) => ({
+          job_app_id: item.job_app_id,
+          project_id: item.project_id,
+          user_id: item.user_id,
+          task_id: item.task_id,
+          status: item.status,
+          applied_at: item.applied_at,
+          notes: item.notes,
+          // Convert nested arrays to single objects
+          profiles: item.profiles && item.profiles.length > 0 ? item.profiles[0] : undefined,
+          business_projects: item.business_projects && item.business_projects.length > 0 ? item.business_projects[0] : undefined,
+          project_sub_tasks: item.project_sub_tasks && item.project_sub_tasks.length > 0 ? item.project_sub_tasks[0] : undefined
+        }));
+        
+        setApplications(processedData);
+        setAcceptedApplications(processedData.filter(app => app.status === 'accepted'));
+        setPendingApplications(processedData.filter(app => app.status === 'pending'));
+        setRejectedApplications(processedData.filter(app => app.status === 'rejected'));
+        setWithdrawnApplications(processedData.filter(app => app.status === 'withdrawn'));
       }
     } catch (err: any) {
       setError(err.message || "Failed to fetch applications");
@@ -127,7 +143,6 @@ export const ProjectApplicationsSection = () => {
     return rejectedApplications || [];
   };
 
-  // Only fixing the getWithdrawnApplications method which was returning a string instead of an array
   const getWithdrawnApplications = () => {
     return withdrawnApplications || [];
   };

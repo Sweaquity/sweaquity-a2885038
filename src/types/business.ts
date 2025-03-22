@@ -46,3 +46,24 @@ export interface Project {
   skills_required?: string[];
   applications: Application[];
 }
+
+// Add our ProjectJobApplication interface for consistency
+export interface ProjectJobApplication {
+  job_app_id: string;
+  project_id: string;
+  user_id: string;
+  task_id: string;
+  status: string;
+  applied_at: string;
+  notes: string;
+  profiles?: {
+    first_name: string;
+    last_name: string;
+  };
+  business_projects?: {
+    title: string;
+  };
+  project_sub_tasks?: {
+    title: string;
+  };
+}
