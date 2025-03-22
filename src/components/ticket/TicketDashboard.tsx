@@ -1,362 +1,256 @@
 
 import React, { useState, useEffect } from "react";
+import { TicketStats } from "@/components/ticket/TicketStats";
+import { FilterBar } from "@/components/ticket/FilterBar";
+import { TicketTable } from "@/components/ticket/TicketTable";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Clock, CheckCircle, AlertTriangle } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from "sonner";
-
-import { fetchTickets, updateTicketStatus, updateTicketPriority, setTicketDueDate } from "./TicketService";
-import { TicketKanbanBoard } from "./KanbanBoard";
-import { GanttChart } from "./GanttChart";
-import { TicketDetails } from "./TicketDetails";
-import { Ticket, TicketStatistics, TaskType } from "@/types/types";
+import { KanbanBoard } from "@/components/ticket/KanbanBoard";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/use-toast";
+import { fetchTickets, updateTicketStatus } from "./TicketService";
+import { Ticket } from "@/types/types";
 
 interface TicketDashboardProps {
   projectFilter?: string;
-  initialTickets?: Ticket[];
-  onRefresh?: () => void;
+  userFilter?: string;
+  includeProjectTickets?: boolean;
 }
 
 export const TicketDashboard: React.FC<TicketDashboardProps> = ({ 
-  projectFilter,
-  initialTickets,
-  onRefresh
+  projectFilter, 
+  userFilter,
+  includeProjectTickets = true
 }) => {
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [tickets, setTickets] = useState<Ticket[]>(initialTickets || []);
-  const [showKanban, setShowKanban] = useState(true);
-  const [showGantt, setShowGantt] = useState(true);
-  const [ticketStats, setTicketStats] = useState<TicketStatistics>({
-    totalTickets: 0,
-    openTickets: 0,
-    closedTickets: 0,
-    highPriorityTickets: 0,
-    byStatus: {},
-    byPriority: {}
-  });
+  const [view, setView] = useState<'table' | 'kanban'>('table');
+  
+  // Filter states
+  const [statusFilter, setStatusFilter] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
+  const [dueDateFilter, setDueDateFilter] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  const { toast } = useToast();
 
   useEffect(() => {
-    if (!initialTickets) {
-      loadTickets();
-    } else {
-      setTickets(initialTickets);
-      calculateTicketStatistics(initialTickets);
-      setIsLoading(false);
-    }
-  }, [initialTickets, projectFilter]);
+    loadTickets();
+  }, [projectFilter, userFilter]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [tickets, statusFilter, priorityFilter, dueDateFilter, searchQuery]);
 
   const loadTickets = async () => {
-    setIsLoading(true);
     try {
-      const ticketData = await fetchTickets(projectFilter);
-      setTickets(ticketData);
-      calculateTicketStatistics(ticketData);
+      setIsLoading(true);
+      const fetchedTickets = await fetchTickets(projectFilter);
+      
+      // Apply user filtering if provided
+      const userFilteredTickets = userFilter 
+        ? fetchedTickets.filter(ticket => 
+            ticket.assigned_to === userFilter || ticket.reporter === userFilter
+          ) 
+        : fetchedTickets;
+      
+      setTickets(userFilteredTickets);
     } catch (error) {
       console.error("Error loading tickets:", error);
-      toast.error("Failed to load ticket data");
+      toast({
+        title: "Error",
+        description: "Failed to load tickets. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const calculateTicketStatistics = (ticketData: Ticket[]) => {
-    const totalTickets = ticketData.length;
-    const openTickets = ticketData.filter(ticket => 
-      ticket.status !== 'done' && ticket.status !== 'closed'
-    ).length;
-    const closedTickets = totalTickets - openTickets;
-    const highPriorityTickets = ticketData.filter(ticket => 
-      ticket.priority === 'high'
-    ).length;
-
-    const byStatus: { [key: string]: number } = {};
-    const byPriority: { [key: string]: number } = {};
-
-    ticketData.forEach(ticket => {
-      byStatus[ticket.status] = (byStatus[ticket.status] || 0) + 1;
-      byPriority[ticket.priority] = (byPriority[ticket.priority] || 0) + 1;
-    });
-
-    setTicketStats({
-      totalTickets,
-      openTickets,
-      closedTickets,
-      highPriorityTickets,
-      byStatus,
-      byPriority,
-    });
+  const applyFilters = () => {
+    let result = [...tickets];
+    
+    if (statusFilter) {
+      result = result.filter(ticket => ticket.status === statusFilter);
+    }
+    
+    if (priorityFilter) {
+      result = result.filter(ticket => ticket.priority === priorityFilter);
+    }
+    
+    if (dueDateFilter) {
+      result = result.filter(ticket => {
+        if (!ticket.due_date) return false;
+        const dueDate = new Date(ticket.due_date).toISOString().split('T')[0];
+        return dueDate === dueDateFilter;
+      });
+    }
+    
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(ticket => 
+        ticket.title?.toLowerCase().includes(query) || 
+        ticket.description?.toLowerCase().includes(query)
+      );
+    }
+    
+    setFilteredTickets(result);
   };
 
-  const handleRefreshData = async () => {
-    await loadTickets();
-    if (onRefresh) onRefresh();
-  };
-
-  const handleUpdateTicketStatus = async (ticketId: string, newStatus: string) => {
+  const handleStatusChange = async (ticketId: string, newStatus: string) => {
     try {
       await updateTicketStatus(ticketId, newStatus);
       
-      const updatedTickets = tickets.map(ticket =>
-        ticket.id === ticketId ? { ...ticket, status: newStatus } : ticket
+      // Update local state
+      setTickets(prevTickets => 
+        prevTickets.map(ticket => 
+          ticket.id === ticketId 
+            ? { ...ticket, status: newStatus } 
+            : ticket
+        )
       );
       
-      setTickets(updatedTickets);
-      calculateTicketStatistics(updatedTickets);
-      toast.success("Ticket status updated successfully");
+      toast({
+        title: "Status Updated",
+        description: `Ticket status changed to ${newStatus}`,
+      });
     } catch (error) {
       console.error("Error updating ticket status:", error);
-      toast.error("Failed to update ticket status");
+      toast({
+        title: "Error",
+        description: "Failed to update ticket status",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleUpdateTicketPriority = async (ticketId: string, newPriority: string) => {
-    try {
-      await updateTicketPriority(ticketId, newPriority);
-      
-      const updatedTickets = tickets.map(ticket =>
-        ticket.id === ticketId ? { ...ticket, priority: newPriority } : ticket
-      );
-      
-      setTickets(updatedTickets);
-      calculateTicketStatistics(updatedTickets);
-      toast.success("Ticket priority updated successfully");
-    } catch (error) {
-      console.error("Error updating ticket priority:", error);
-      toast.error("Failed to update ticket priority");
-    }
+  const handleClearFilters = () => {
+    setStatusFilter("");
+    setPriorityFilter("");
+    setDueDateFilter("");
+    setSearchQuery("");
   };
 
-  const handleSetDueDate = async (ticketId: string, newDueDate: string) => {
-    try {
-      await setTicketDueDate(ticketId, newDueDate);
-      
-      const updatedTickets = tickets.map(ticket =>
-        ticket.id === ticketId ? { ...ticket, due_date: newDueDate } : ticket
-      );
-      
-      setTickets(updatedTickets);
-      toast.success("Due date updated successfully");
-    } catch (error) {
-      console.error("Error setting due date:", error);
-      toast.error("Failed to set due date");
-    }
-  };
+  // Statistics calculations
+  const totalTickets = tickets.length;
+  const openTickets = tickets.filter(ticket => ticket.status !== 'done' && ticket.status !== 'closed').length;
+  const closedTickets = tickets.filter(ticket => ticket.status === 'done' || ticket.status === 'closed').length;
+  const highPriorityTickets = tickets.filter(ticket => ticket.priority === 'high').length;
 
-  const toggleTicketExpanded = (ticketId: string) => {
-    setTickets(prev => prev.map(ticket =>
-      ticket.id === ticketId ? { ...ticket, expanded: !ticket.expanded } : ticket
-    ));
-  };
-
-  const getGanttTasks = () => {
-    return tickets.map((ticket) => {
-      const startDate = new Date(ticket.created_at);
-      let endDate = ticket.due_date ? new Date(ticket.due_date) : new Date();
-      
-      if (!ticket.due_date || endDate < new Date()) {
-        endDate = new Date();
-        endDate.setDate(endDate.getDate() + 7);
-      }
-      
-      return {
-        id: ticket.id,
-        name: ticket.title,
-        start: startDate,
-        end: endDate,
-        type: 'task' as TaskType,
-        progress: ticket.status === 'done' || ticket.status === 'closed' ? 100 : 
-                 ticket.status === 'in-progress' ? 50 : 
-                 ticket.status === 'review' ? 75 : 25,
-        isDisabled: false,
-        styles: { 
-          progressColor: 
-            ticket.priority === 'high' ? '#ef4444' : 
-            ticket.priority === 'medium' ? '#f59e0b' : '#3b82f6'
-        }
-      };
-    });
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+  const handleViewTicket = (ticketId: string) => {
+    // Implement ticket view functionality
+    console.log("View ticket:", ticketId);
+    // This would typically navigate to a ticket detail page or open a modal
   };
 
   return (
-    <Card className="mb-6">
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle>{projectFilter ? `${projectFilter} Tickets` : "All Tickets"}</CardTitle>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowKanban(!showKanban)}
-            >
-              {showKanban ? "Hide" : "Show"} Kanban Board
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowGantt(!showGantt)}
-            >
-              {showGantt ? "Hide" : "Show"} Gantt Chart
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleRefreshData} 
-              disabled={isLoading}
-            >
-              {isLoading ? "Refreshing..." : "Refresh"}
-            </Button>
-          </div>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Tickets Dashboard</h1>
+        <div className="space-x-2">
+          <Button 
+            variant={view === 'table' ? "default" : "outline"} 
+            onClick={() => setView('table')}
+            size="sm"
+          >
+            Table View
+          </Button>
+          <Button 
+            variant={view === 'kanban' ? "default" : "outline"}
+            onClick={() => setView('kanban')}
+            size="sm"
+          >
+            Kanban Board
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={loadTickets}
+            size="sm"
+          >
+            Refresh
+          </Button>
         </div>
-        <CardDescription>Manage tickets and track progress</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-xs font-medium text-blue-600">Total Tickets</p>
-                <p className="text-2xl font-bold">{ticketStats.totalTickets}</p>
-              </div>
-              <div className="p-1.5 bg-blue-100 rounded-full">
-                <FileText className="h-5 w-5 text-blue-500" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-amber-50 p-4 rounded-lg">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-xs font-medium text-amber-600">Open Tickets</p>
-                <p className="text-2xl font-bold">{ticketStats.openTickets}</p>
-              </div>
-              <div className="p-1.5 bg-amber-100 rounded-full">
-                <Clock className="h-5 w-5 text-amber-500" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-xs font-medium text-green-600">Closed Tickets</p>
-                <p className="text-2xl font-bold">{ticketStats.closedTickets}</p>
-              </div>
-              <div className="p-1.5 bg-green-100 rounded-full">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-red-50 p-4 rounded-lg">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-xs font-medium text-red-600">High Priority</p>
-                <p className="text-2xl font-bold">{ticketStats.highPriorityTickets}</p>
-              </div>
-              <div className="p-1.5 bg-red-100 rounded-full">
-                <AlertTriangle className="h-5 w-5 text-red-500" />
-              </div>
-            </div>
-          </div>
-        </div>
+      </div>
+
+      <TicketStats 
+        totalTickets={totalTickets}
+        openTickets={openTickets}
+        closedTickets={closedTickets}
+        highPriorityTickets={highPriorityTickets}
+      />
+
+      <FilterBar 
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        priorityFilter={priorityFilter}
+        setPriorityFilter={setPriorityFilter}
+        dueDateFilter={dueDateFilter}
+        setDueDateFilter={setDueDateFilter}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onClearFilters={handleClearFilters}
+      />
+
+      <Tabs defaultValue="all" className="w-full">
+        <TabsList>
+          <TabsTrigger value="all">All Tickets</TabsTrigger>
+          <TabsTrigger value="my-tickets">My Tickets</TabsTrigger>
+          <TabsTrigger value="reported">Reported by Me</TabsTrigger>
+        </TabsList>
         
-        {showKanban && (
-          <div className="mb-8">
-            <h3 className="text-lg font-medium mb-4">Ticket Board</h3>
-            <div className="border rounded-lg overflow-hidden">
-              <TicketKanbanBoard 
-                tickets={tickets} 
-                onStatusChange={handleUpdateTicketStatus} 
-                onViewTicket={toggleTicketExpanded}
-              />
-            </div>
-          </div>
-        )}
+        <TabsContent value="all">
+          {view === 'table' ? (
+            <TicketTable 
+              tickets={filteredTickets} 
+              isLoading={isLoading} 
+              onStatusChange={handleStatusChange}
+              onViewTicket={handleViewTicket}
+            />
+          ) : (
+            <KanbanBoard 
+              tickets={filteredTickets}
+              onStatusChange={handleStatusChange}
+              onViewTicket={handleViewTicket}
+            />
+          )}
+        </TabsContent>
         
-        {showGantt && (
-          <div className="mb-8">
-            <h3 className="text-lg font-medium mb-4">Timeline</h3>
-            <div className="border rounded-lg overflow-hidden p-4">
-              <GanttChart tasks={getGanttTasks()} />
-            </div>
-          </div>
-        )}
+        <TabsContent value="my-tickets">
+          {/* Filter for assigned tickets would go here */}
+          {view === 'table' ? (
+            <TicketTable 
+              tickets={filteredTickets.filter(ticket => ticket.assigned_to === userFilter)} 
+              isLoading={isLoading}
+              onStatusChange={handleStatusChange}
+              onViewTicket={handleViewTicket}
+            />
+          ) : (
+            <KanbanBoard 
+              tickets={filteredTickets.filter(ticket => ticket.assigned_to === userFilter)}
+              onStatusChange={handleStatusChange}
+              onViewTicket={handleViewTicket}
+            />
+          )}
+        </TabsContent>
         
-        <div>
-          <h3 className="text-lg font-medium mb-4">All Tickets</h3>
-          <Table className="w-full">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[250px]">Title</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tickets.map(ticket => (
-                <React.Fragment key={ticket.id}>
-                  <TableRow className="group">
-                    <TableCell className="font-medium">{ticket.title}</TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        ticket.status === 'new' ? 'bg-blue-100 text-blue-800' :
-                        ticket.status === 'in-progress' ? 'bg-purple-100 text-purple-800' :
-                        ticket.status === 'blocked' ? 'bg-red-100 text-red-800' :
-                        ticket.status === 'review' ? 'bg-yellow-100 text-yellow-800' :
-                        ticket.status === 'done' ? 'bg-green-100 text-green-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {ticket.status}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        ticket.priority === 'high' ? 'bg-red-100 text-red-800' :
-                        ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {ticket.priority}
-                      </span>
-                    </TableCell>
-                    <TableCell>{formatDate(ticket.created_at)}</TableCell>
-                    <TableCell>{ticket.due_date ? formatDate(ticket.due_date) : '-'}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleTicketExpanded(ticket.id)}
-                      >
-                        {ticket.expanded ? 'Collapse' : 'Expand'}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  {ticket.expanded && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="p-0 border-t-0">
-                        <TicketDetails 
-                          ticket={ticket}
-                          onStatusChange={handleUpdateTicketStatus}
-                          onPriorityChange={handleUpdateTicketPriority}
-                          onDueDateChange={handleSetDueDate}
-                          formatDate={formatDate}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </React.Fragment>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+        <TabsContent value="reported">
+          {/* Filter for reported tickets would go here */}
+          {view === 'table' ? (
+            <TicketTable 
+              tickets={filteredTickets.filter(ticket => ticket.reporter === userFilter)} 
+              isLoading={isLoading}
+              onStatusChange={handleStatusChange}
+              onViewTicket={handleViewTicket}
+            />
+          ) : (
+            <KanbanBoard 
+              tickets={filteredTickets.filter(ticket => ticket.reporter === userFilter)}
+              onStatusChange={handleStatusChange}
+              onViewTicket={handleViewTicket}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
