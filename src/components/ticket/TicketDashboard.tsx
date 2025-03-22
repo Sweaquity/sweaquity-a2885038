@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -302,8 +301,9 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
             </TableHeader>
             <TableBody>
               {tickets.map(ticket => (
-                <React.Fragment key={ticket.id}>
-                  <TableRow className="group">
+                // Fixed issue: Using a React key in the fragment instead of any other props
+                <React.Fragment key={`ticket-row-${ticket.id}`}>
+                  <TableRow>
                     <TableCell className="font-medium">{ticket.title}</TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -339,7 +339,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                     </TableCell>
                   </TableRow>
                   {ticket.expanded && (
-                    <TableRow>
+                    <TableRow key={`ticket-details-${ticket.id}`}>
                       <TableCell colSpan={6} className="p-0 border-t-0">
                         <TicketDetails 
                           ticket={ticket}
