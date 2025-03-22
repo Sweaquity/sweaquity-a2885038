@@ -8,18 +8,12 @@ export const useApplicationActions = (onApplicationUpdated?: () => void) => {
 
   const updateApplicationStatus = async (applicationId: string, status: string, reason?: string) => {
     try {
-      if (!applicationId || !status) {
-        console.error('Invalid application ID or status');
-        toast.error("Cannot update application with invalid data");
-        return;
-      }
-
       setIsUpdatingStatus(applicationId);
       
       const updateData: { status: string; notes?: string } = { status };
       
-      // Only include notes if a reason is provided and it's not an empty string
-      if (reason && reason.trim()) {
+      // Only include notes if a reason is provided
+      if (reason) {
         updateData.notes = reason;
       }
       

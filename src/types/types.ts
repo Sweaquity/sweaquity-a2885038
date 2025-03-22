@@ -1,4 +1,3 @@
-
 // types.ts
 export interface Ticket {
   id: string;
@@ -14,10 +13,6 @@ export interface Ticket {
   reporter?: string;
   expanded?: boolean;
   newNote?: string;
-  assigned_to?: string;
-  task_id?: string;
-  job_app_id?: string;
-  project_id?: string;
   notes?: Array<{
     action: string;
     user: string;

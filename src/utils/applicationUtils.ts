@@ -22,7 +22,7 @@ export function convertApplicationToJobApplication(application: Application): Jo
     accepted_jobseeker: application.accepted_jobseeker || false,
     accepted_business: application.accepted_business || false,
     business_roles: {
-      id: application.business_roles?.id || application.task_id || "", // Add fallbacks for missing id
+      id: application.business_roles?.id || undefined, // Add fallback for missing id
       title: application.business_roles?.title || "",
       description: application.business_roles?.description || "",
       project_title: application.business_roles?.project?.title || "",

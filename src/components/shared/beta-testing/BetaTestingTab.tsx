@@ -204,17 +204,6 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
 
   const allTickets = [...tickets, ...projectTickets] as Ticket[];
 
-  // Update handleRefreshData to return a Promise
-  const handleRefreshData = async (): Promise<void> => {
-    try {
-      await loadTickets();
-      return Promise.resolve();
-    } catch (error) {
-      console.error("Error refreshing data:", error);
-      return Promise.reject(error);
-    }
-  };
-
   return (
     <div>
       <Card className="mb-6">
@@ -284,8 +273,8 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
                 </>
               ) : (
                 <TicketDashboard
-                  tickets={allTickets}
-                  onRefresh={handleRefreshData}
+                  initialTickets={allTickets}
+                  onRefresh={loadTickets}
                 />
               )}
             </>

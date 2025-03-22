@@ -289,7 +289,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      <SelectItem value="">Unassigned</SelectItem>
                       {users.map((user) => (
                         <SelectItem key={user.id} value={user.id}>
                           {user.first_name} {user.last_name}
@@ -311,7 +311,11 @@ export const TicketForm: React.FC<TicketFormProps> = ({
                 Cancel
               </Button>
               <Button type="submit" disabled={loading}>
-                {loading ? "Saving..." : mode === "create" ? "Create" : "Update"}
+                {loading
+                  ? "Saving..."
+                  : mode === "create"
+                  ? "Create Ticket"
+                  : "Update Ticket"}
               </Button>
             </DialogFooter>
           </form>
