@@ -1,341 +1,286 @@
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Eye, EyeOff, Plus, RefreshCw } from 'lucide-react';
-import { KanbanBoard } from './KanbanBoard';
-import { Badge } from '@/components/ui/badge';
-import TicketDashboard from '@/components/ticket/TicketDashboard';
-import { TicketService } from '@/components/ticket/TicketService';
-import { Ticket } from '@/types/types';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import TicketDetails from '@/components/ticket/TicketDetails';
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { KanbanBoard, BetaTicket } from "./KanbanBoard";
+import { DragDropContext } from "react-beautiful-dnd";
+import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
+import { TicketDashboard } from "@/components/ticket/TicketDashboard";
+import { Ticket } from "@/types/types";
+import TicketStats from "@/components/ticket/TicketStats";
 
-const dummyTickets: Ticket[] = [
-  {
-    id: '1',
-    title: 'Fix authentication bug',
-    description: 'Users are unable to login after password reset',
-    status: 'new',
-    priority: 'high',
-    created_at: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
-    reporter: 'user123',
-    assignee: 'dev456',
-    health: 'red',
-    project_id: 'proj1'
-  },
-  {
-    id: '2',
-    title: 'Update landing page design',
-    description: 'Implement the new landing page design from Figma',
-    status: 'in-progress',
-    priority: 'medium',
-    created_at: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
-    reporter: 'user123',
-    assignee: 'dev789',
-    health: 'amber',
-    project_id: 'proj1'
-  },
-  {
-    id: '3',
-    title: 'Optimize database queries',
-    description: 'Several queries are taking too long to execute',
-    status: 'review',
-    priority: 'medium',
-    created_at: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString(),
-    reporter: 'user456',
-    assignee: 'dev456',
-    health: 'green',
-    project_id: 'proj1'
-  },
-  {
-    id: '4',
-    title: 'Add new payment method',
-    description: 'Integrate with Stripe for Apple Pay',
-    status: 'done',
-    priority: 'low',
-    created_at: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString(),
-    due_date: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString(),
-    reporter: 'user789',
-    assignee: 'dev123',
-    health: 'green',
-    project_id: 'proj1'
-  }
-];
+interface BetaTestingTabProps {
+  userType: "job_seeker" | "business";
+  userId?: string;
+  includeProjectTickets?: boolean;
+}
 
-export const BetaTestingTab = () => {
-  const [showKanban, setShowKanban] = useState(true);
-  const [showGantt, setShowGantt] = useState(true);
-  const [showFullDashboard, setShowFullDashboard] = useState(false);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false }: BetaTestingTabProps) => {
+  const [tickets, setTickets] = useState<BetaTicket[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  
-  // Ticket statistics
-  const ticketStats = {
-    total: tickets.length,
-    todo: tickets.filter(t => t.status === 'new' || t.status === 'todo').length,
-    inProgress: tickets.filter(t => t.status === 'in-progress').length,
-    review: tickets.filter(t => t.status === 'review').length,
-    done: tickets.filter(t => t.status === 'done').length,
-    closed: tickets.filter(t => t.status === 'closed').length,
-    highPriority: tickets.filter(t => t.priority === 'high').length
-  };
+  const [projectTickets, setProjectTickets] = useState<BetaTicket[]>([]);
+  const [showKanban, setShowKanban] = useState(true);
+  const [showDashboard, setShowDashboard] = useState(true);
+  const [ticketStatistics, setTicketStatistics] = useState({
+    totalTickets: 0,
+    openTickets: 0,
+    closedTickets: 0,
+    highPriorityTickets: 0
+  });
 
-  useEffect(() => {
-    // In a real app, we would load tickets from an API
-    // For now, we'll just use dummy data after a small delay to simulate loading
-    const loadTickets = async () => {
-      setLoading(true);
-      try {
-        // Comment out actual API call for now
-        // const loadedTickets = await TicketService.getTickets();
-        // setTickets(loadedTickets);
-        
-        // Use dummy data instead
-        setTimeout(() => {
-          setTickets(dummyTickets);
-          setLoading(false);
-        }, 800);
-      } catch (error) {
-        console.error('Error loading tickets:', error);
-        setTickets(dummyTickets); // Fallback to dummy data
-        setLoading(false);
-      }
-    };
+  const createTicket = async () => {
+    if (!userId) return;
     
-    loadTickets();
-  }, []);
+    try {
+      const { data: userData } = await supabase
+        .from(userType === 'job_seeker' ? 'profiles' : 'businesses')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-  const handleTicketClick = (ticketId: string) => {
-    const ticket = tickets.find(t => t.id === ticketId);
-    if (ticket) {
-      setSelectedTicket(ticket);
-      setIsDetailsOpen(true);
+      const userName = userType === 'job_seeker'
+        ? `${userData.first_name} ${userData.last_name}`
+        : userData.company_name;
+
+      const { data, error } = await supabase
+        .from('tickets')
+        .insert({
+          title: `New feature request by ${userName}`,
+          description: "I would like to request a new feature...",
+          reporter: userId,
+          status: 'new',
+          priority: 'medium',
+          health: 'green',
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      toast.success("Test ticket created successfully!");
+      loadTickets();
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      toast.error("Failed to create test ticket");
     }
   };
 
-  const handleRefresh = async () => {
+  const loadTickets = async () => {
     setLoading(true);
     try {
-      // In a real app, we would refresh from the API
-      // const refreshedTickets = await TicketService.getTickets();
-      // setTickets(refreshedTickets);
+      if (!userId) return;
+
+      // Load beta testing tickets
+      const { data: betaTickets, error: betaError } = await supabase
+        .from('tickets')
+        .select('*')
+        .or(`reporter.eq.${userId},assigned_to.eq.${userId}`)
+        .is('project_id', null);
+
+      if (betaError) throw betaError;
       
-      // For demo, just shuffle the array to simulate new data
-      setTickets([...tickets].sort(() => Math.random() - 0.5));
+      setTickets(betaTickets || []);
+      calculateTicketStatistics(betaTickets);
+
+      // Load project tickets if includeProjectTickets is true
+      if (includeProjectTickets) {
+        await loadProjectTickets();
+      }
+      
     } catch (error) {
-      console.error('Error refreshing tickets:', error);
+      console.error('Error loading tickets:', error);
+      toast.error("Failed to load tickets");
     } finally {
       setLoading(false);
     }
   };
 
-  const renderTicketStats = () => {
-    return (
-      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold">{ticketStats.total}</div>
-              <p className="text-sm text-muted-foreground">Total</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold">{ticketStats.todo}</div>
-              <p className="text-sm text-muted-foreground">To Do</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold">{ticketStats.inProgress}</div>
-              <p className="text-sm text-muted-foreground">In Progress</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold">{ticketStats.review}</div>
-              <p className="text-sm text-muted-foreground">In Review</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold">{ticketStats.done}</div>
-              <p className="text-sm text-muted-foreground">Done</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold">{ticketStats.closed}</div>
-              <p className="text-sm text-muted-foreground">Closed</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold">{ticketStats.highPriority}</div>
-              <p className="text-sm text-muted-foreground">High Priority</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  const calculateTicketStatistics = (ticketData: Ticket[]) => {
+    const totalTickets = ticketData.length;
+    const openTickets = ticketData.filter(ticket => 
+      ticket.status !== 'done' && ticket.status !== 'closed'
+    ).length;
+    const closedTickets = totalTickets - openTickets;
+    const highPriorityTickets = ticketData.filter(ticket => 
+      ticket.priority === 'high'
+    ).length;
+
+    setTicketStatistics({
+      totalTickets,
+      openTickets,
+      closedTickets,
+      highPriorityTickets
+    });
   };
-  
-  const renderBasicTicketBoard = () => {
-    return (
-      <Card className="mt-6">
+
+  const loadProjectTickets = async () => {
+    try {
+      if (!userId) return;
+
+      let projectTicketsData: BetaTicket[] = [];
+
+      if (userType === 'job_seeker') {
+        // Find accepted projects for job seeker
+        const { data: acceptedProjects, error: projectsError } = await supabase
+          .from('job_applications')
+          .select('project_id')
+          .eq('user_id', userId)
+          .eq('status', 'accepted');
+
+        if (projectsError) throw projectsError;
+
+        if (acceptedProjects && acceptedProjects.length > 0) {
+          const projectIds = acceptedProjects.map(p => p.project_id).filter(Boolean);
+          
+          if (projectIds.length > 0) {
+            // Get tickets related to these projects
+            const { data: projectTickets, error: ticketsError } = await supabase
+              .from('tickets')
+              .select('*')
+              .in('project_id', projectIds);
+
+            if (ticketsError) throw ticketsError;
+            
+            projectTicketsData = projectTickets || [];
+          }
+        }
+      } else if (userType === 'business') {
+        // Find business projects
+        const { data: businessProjects, error: projectsError } = await supabase
+          .from('business_projects')
+          .select('project_id')
+          .eq('business_id', userId);
+
+        if (projectsError) throw projectsError;
+
+        if (businessProjects && businessProjects.length > 0) {
+          const projectIds = businessProjects.map(p => p.project_id);
+          
+          // Get tickets related to these projects
+          const { data: projectTickets, error: ticketsError } = await supabase
+            .from('tickets')
+            .select('*')
+            .in('project_id', projectIds);
+
+          if (ticketsError) throw ticketsError;
+          
+          projectTicketsData = projectTickets || [];
+        }
+      }
+
+      setProjectTickets(projectTicketsData);
+      
+    } catch (error) {
+      console.error('Error loading project tickets:', error);
+      toast.error("Failed to load project tickets");
+    }
+  };
+
+  const updateTicketStatus = async (ticketId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('tickets')
+        .update({ status: newStatus })
+        .eq('id', ticketId);
+
+      if (error) throw error;
+      
+      toast.success("Ticket status updated");
+      loadTickets();
+    } catch (error) {
+      console.error('Error updating ticket status:', error);
+      toast.error("Failed to update ticket status");
+    }
+  };
+
+  useEffect(() => {
+    if (userId) {
+      loadTickets();
+    }
+  }, [userId]);
+
+  const allTickets = [...tickets, ...projectTickets] as Ticket[];
+
+  return (
+    <div>
+      <Card className="mb-6">
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>Project Tickets</CardTitle>
-              <CardDescription>Manage and track tickets for all your projects</CardDescription>
+              <CardTitle>Live Projects</CardTitle>
+              <CardDescription>View and manage your project tasks</CardDescription>
             </div>
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
-                size="sm"
                 onClick={() => setShowKanban(!showKanban)}
+                size="sm"
               >
                 {showKanban ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                {showKanban ? "Hide Board" : "Show Board"}
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleRefresh}
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
+                {showKanban ? "Hide Kanban" : "Show Kanban"}
               </Button>
               <Button
+                variant="outline" 
+                onClick={() => setShowDashboard(!showDashboard)}
                 size="sm"
-                onClick={() => setShowFullDashboard(true)}
               >
-                Full Dashboard
+                {showDashboard ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                {showDashboard ? "Hide Dashboard" : "Show Dashboard"}
               </Button>
+              <Button onClick={loadTickets}>Refresh</Button>
+              <Button onClick={createTicket}>Create Test Ticket</Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex justify-center items-center h-40">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              Loading tickets...
+            </div>
+          ) : allTickets.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">No tickets found.</p>
+              <Button onClick={createTicket}>Create a test ticket</Button>
             </div>
           ) : (
             <>
-              {showKanban && (
-                <div className="overflow-x-auto pb-4">
-                  <KanbanBoard 
-                    tickets={tickets} 
-                    onStatusChange={(ticketId, newStatus) => {
-                      // In a real app, we'd update the status via API
-                      console.log(`Changing ticket ${ticketId} status to ${newStatus}`);
-                      setTickets(tickets.map(ticket => 
-                        ticket.id === ticketId ? { ...ticket, status: newStatus } : ticket
-                      ));
-                    }}
-                    onTicketClick={handleTicketClick}
+              {!showDashboard ? (
+                <>
+                  <TicketStats
+                    totalTickets={ticketStatistics.totalTickets}
+                    openTickets={ticketStatistics.openTickets}
+                    closedTickets={ticketStatistics.closedTickets}
+                    highPriorityTickets={ticketStatistics.highPriorityTickets}
                   />
-                </div>
+                  
+                  {showKanban && (
+                    <DragDropContext onDragEnd={(result) => {
+                      if (!result.destination) return;
+                      const { draggableId, destination } = result;
+                      
+                      updateTicketStatus(draggableId, destination.droppableId);
+                    }}>
+                      <KanbanBoard 
+                        tickets={allTickets} 
+                        onStatusChange={updateTicketStatus}
+                        onTicketClick={() => {}}
+                      />
+                    </DragDropContext>
+                  )}
+                </>
+              ) : (
+                <TicketDashboard
+                  initialTickets={allTickets}
+                  onRefresh={loadTickets}
+                />
               )}
-              
-              <div className="mt-6 space-y-4">
-                <h3 className="font-medium">All Tickets</h3>
-                {tickets.map(ticket => (
-                  <div 
-                    key={ticket.id}
-                    className="border rounded-md p-4 hover:bg-gray-50 cursor-pointer"
-                    onClick={() => handleTicketClick(ticket.id)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium">{ticket.title}</h4>
-                        <p className="text-sm text-gray-500 mt-1">{ticket.description}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{ticket.status}</Badge>
-                        <Badge className={
-                          ticket.priority === 'high' ? 'bg-red-500' : 
-                          ticket.priority === 'medium' ? 'bg-amber-500' : 
-                          'bg-green-500'
-                        }>
-                          {ticket.priority}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </>
           )}
         </CardContent>
       </Card>
-    );
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold">Beta Testing Dashboard</h2>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Ticket
-        </Button>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Ticket Overview</CardTitle>
-          <CardDescription>Key metrics about your project tickets</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex justify-center items-center h-20">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : (
-            renderTicketStats()
-          )}
-        </CardContent>
-      </Card>
-
-      {showFullDashboard ? (
-        <TicketDashboard 
-          initialTickets={tickets} 
-          onRefresh={handleRefresh}
-        />
-      ) : (
-        renderBasicTicketBoard()
-      )}
-
-      {/* Ticket details dialog */}
-      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="sm:max-w-[90%] max-h-[90vh] overflow-y-auto">
-          {selectedTicket && (
-            <TicketDetails 
-              ticket={selectedTicket} 
-              onClose={() => setIsDetailsOpen(false)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
-
-export default BetaTestingTab;
