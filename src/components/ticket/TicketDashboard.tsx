@@ -5,9 +5,9 @@ import { FileText, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 
-import { fetchTickets, updateTicketStatus, updateTicketPriority, setTicketDueDate } from "./ticketService";
-import { TicketKanbanBoard } from "./TicketKanbanBoard";
-import { GanttChartView } from "./GanttChartView";
+import { fetchTickets, updateTicketStatus, updateTicketPriority, setTicketDueDate } from "./TicketService";
+import { TicketKanbanBoard } from "./KanbanBoard";
+import { GanttChartView } from "./GanttChart";
 import { TicketDetails } from "./TicketDetails";
 import { Ticket, TicketStatistics } from "./types";
 
