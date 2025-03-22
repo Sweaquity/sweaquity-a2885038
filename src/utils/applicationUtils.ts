@@ -5,6 +5,12 @@ import { JobApplication } from "@/types/jobSeeker";
 /**
  * Converts an Application object to a JobApplication object
  * Handles type differences and ensures proper type conversion
+ * 
+ * ID Mapping:
+ * - job_app_id: The unique ID of the application itself
+ * - project_id: The ID of the project the application is for
+ * - task_id: The ID of the specific task/role within the project
+ * - business_roles.id: References the task_id (the specific role being applied for)
  */
 export function convertApplicationToJobApplication(application: Application): JobApplication {
   return {
@@ -18,12 +24,12 @@ export function convertApplicationToJobApplication(application: Application): Jo
     message: application.message || "",
     cv_url: application.cv_url,
     task_discourse: application.task_discourse || "",
-    id: application.job_app_id,
+    id: application.job_app_id, // Ensure id matches job_app_id for consistency
     accepted_jobseeker: application.accepted_jobseeker || false,
     accepted_business: application.accepted_business || false,
     business_roles: {
-      // Handle different possible id field names in business_roles
-      id: application.business_roles?.id || application.business_roles?.role_id || application.role_id || "",
+      // The ID here should reference the task_id - this is the specific role/task the applicant is applying for
+      id: application.task_id || "",
       title: application.business_roles?.title || "",
       description: application.business_roles?.description || "",
       project_title: application.business_roles?.project?.title || "",
