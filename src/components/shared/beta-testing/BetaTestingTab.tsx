@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { ProjectCard } from "@/components/business/projects/ProjectCard";
@@ -99,7 +100,13 @@ export const BetaTestingTab: React.FC<BetaTestingTabProps> = ({ userType, userId
         throw error;
       }
 
-      setProjects(prevProjects => [...prevProjects, data]);
+      // Ensure the new project has both id and project_id for compatibility
+      const projectWithId = {
+        ...data,
+        id: data.project_id
+      };
+
+      setProjects(prevProjects => [...prevProjects, projectWithId]);
       setIsProjectDialogOpen(false);
       setProjectFormValues({ title: "", description: "" });
       toast({
@@ -181,23 +188,23 @@ export const BetaTestingTab: React.FC<BetaTestingTabProps> = ({ userType, userId
           ))}
         </div>
       ) : projects.length > 0 ? (
-        <Tabs defaultValue={projects[0].id} className="w-full">
+        <Tabs defaultValue={projects[0].project_id} className="w-full">
           <TabsList>
             {projects.map((project) => (
-              <TabsTrigger key={project.id} value={project.id}>
+              <TabsTrigger key={project.project_id} value={project.project_id}>
                 {project.title}
               </TabsTrigger>
             ))}
           </TabsList>
           {projects.map((project) => (
-            <TabsContent key={project.id} value={project.id}>
+            <TabsContent key={project.project_id} value={project.project_id}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <ProjectCard project={project} />
                 </div>
-                {includeProjectTickets && project.id && userId && (
+                {includeProjectTickets && project.project_id && userId && (
                   <TicketDashboard
-                    projectFilter={project.id}
+                    projectFilter={project.project_id}
                     userFilter={userId}
                     onRefresh={fetchTickets}
                   />
