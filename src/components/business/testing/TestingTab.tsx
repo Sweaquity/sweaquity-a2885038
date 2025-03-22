@@ -24,15 +24,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Task, TaskType } from "@/types/dashboard";
 
-interface GanttTask {
-  id: string;
-  name: string;
-  start: Date;
-  end: Date;
-  progress: number;
-  type: string;
-  isDisabled: boolean;
+interface GanttTask extends Task {
   styles?: {
     progressColor?: string;
     progressSelectedColor?: string;
@@ -164,7 +158,7 @@ export function TestingTab() {
       if (error) throw error;
       
       if (data && data.length > 0) {
-        const ganttTasksData: GanttTask[] = data.map((task) => {
+        const ganttTasksData: Task[] = data.map((task) => {
           const start = task.created_at ? new Date(task.created_at) : new Date();
           let end = new Date(start);
           if (task.timeframe) {
@@ -191,7 +185,7 @@ export function TestingTab() {
             start,
             end,
             progress: task.completion_percentage ? task.completion_percentage / 100 : 0,
-            type: 'task',
+            type: 'task' as TaskType,
             isDisabled: false,
             styles: { progressColor: '#2196F3', progressSelectedColor: '#1976D2' }
           };

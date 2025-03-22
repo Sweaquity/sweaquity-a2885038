@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Gantt, Task, ViewMode, StylingOption } from 'gantt-task-react';
 import "gantt-task-react/dist/index.css";
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
+import { TaskType } from '@/types/dashboard';
 
 interface GanttChartViewProps {
   projectId?: string;
@@ -61,7 +63,7 @@ export const GanttChartView = ({ tasks: propTasks, projectId }: GanttChartViewPr
             start,
             end,
             progress: task.completion_percentage ? task.completion_percentage / 100 : 0,
-            type: 'task',
+            type: 'task' as TaskType,
             isDisabled: false,
             styles: { progressColor: '#2196F3', progressSelectedColor: '#1976D2' }
           };
@@ -108,7 +110,8 @@ export const GanttChartView = ({ tasks: propTasks, projectId }: GanttChartViewPr
     fontFamily: 'inherit',
   };
 
-  const customTooltipContent = ({ task }: { task: Task; fontSize: string; fontFamily: string }) => {
+  // Create a proper tooltip component with type checking
+  const CustomTooltipContent = ({ task }: { task: Task; fontSize: string; fontFamily: string }) => {
     if (!task || !task.start || !task.end) {
       return <div>Invalid task data</div>;
     }
@@ -140,11 +143,14 @@ export const GanttChartView = ({ tasks: propTasks, projectId }: GanttChartViewPr
           rowHeight={35}
           headerHeight={40}
           todayColor="#FF9800"
+          barFill={75}
+          barCornerRadius={3}
+          barProgressColor="#4CAF50"
           projectProgressColor="#4CAF50"
-          progressColor="#2196F3"
+          barProgressSelectedColor="#2196F3"
           arrowColor="#9E9E9E"
           fontFamily="inherit"
-          TooltipContent={customTooltipContent}
+          TooltipContent={CustomTooltipContent}
           stylingOption={customStyling}
         />
       </div>
