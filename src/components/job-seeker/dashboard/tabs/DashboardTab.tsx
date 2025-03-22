@@ -23,8 +23,9 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { FileText, Clock, CheckCircle, AlertTriangle } from "lucide-react";
+import { FileText, Clock, CheckCircle, AlertTriangle, Info } from "lucide-react";
 import React from "react";
+import { useAcceptedJobsCore } from "@/hooks/jobs/useAcceptedJobsCore";
 
 // Components imports for the ticket UI
 import { KanbanBoard, BetaTicket } from "@/components/shared/beta-testing/KanbanBoard";
@@ -32,6 +33,7 @@ import { GanttChartView } from "@/components/business/testing/GanttChartView";
 import { ExpandedTicketDetails } from "@/components/ticket/ExpandedTicketDetails";
 import { AdminTicketManager } from "@/components/admin/tickets/AdminTicketManager";
 import { supabase } from "@/lib/supabase";
+import { TimeTracker } from "@/components/job-seeker/dashboard/TimeTracker";
 
 // Define ticket interface
 interface Ticket {
@@ -46,6 +48,7 @@ interface Ticket {
   task_id?: string;
   project_id?: string;
   description?: string;
+  job_app_id?: string;
 }
 
 interface TicketStats {
@@ -55,6 +58,15 @@ interface TicketStats {
   review: number;
   done: number;
   closed: number;
+}
+
+interface AcceptedJob {
+  id: string;
+  job_app_id: string;
+  date_accepted: string;
+  document_url: string | null;
+  accepted_discourse: string | null;
+  equity_agreed: number;
 }
 
 interface DashboardTabProps {
@@ -97,6 +109,10 @@ export const DashboardTab = ({
   const [expandedTickets, setExpandedTickets] = useState<Record<string, boolean>>({});
   const [betaTickets, setBetaTickets] = useState<BetaTicket[]>([]);
   const [timeEntries, setTimeEntries] = useState<any[]>([]);
+  const [acceptedJobs, setAcceptedJobs] = useState<AcceptedJob[]>([]);
+  const [denormalizedProjects, setDenormalizedProjects] = useState<any[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const { getAcceptedJob } = useAcceptedJobsCore();
   const [ticketStats, setTicketStats] = useState<TicketStats>({
     total: 0,
     todo: 0,
@@ -160,6 +176,50 @@ export const DashboardTab = ({
     }
   }, []);
 
+  const loadAcceptedJobs = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Load accepted jobs from the normalized table
+      const { data: acceptedJobsData, error: acceptedJobsError } = await supabase
+        .from('accepted_jobs')
+        .select(`
+          *,
+          job_applications!inner (
+            job_app_id,
+            user_id,
+            project_id,
+            task_id,
+            status
+          )
+        `)
+        .eq('job_applications.user_id', user.id);
+
+      if (acceptedJobsError) {
+        console.error("Error fetching accepted jobs:", acceptedJobsError);
+      } else {
+        setAcceptedJobs(acceptedJobsData || []);
+      }
+
+      // Load denormalized projects view
+      const { data: denormalizedData, error: denormalizedError } = await supabase
+        .from('jobseeker_active_projects')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (denormalizedError) {
+        console.error("Error fetching denormalized projects:", denormalizedError);
+      } else {
+        setDenormalizedProjects(denormalizedData || []);
+      }
+    } catch (error) {
+      console.error("Error loading projects data:", error);
+    } finally {
+      setIsLoadingProjects(false);
+    }
+  }, []);
+
   const loadTicketMessages = async (userId: string, ticketIds: string[]) => {
     if (!ticketIds.length) return;
     
@@ -184,7 +244,8 @@ export const DashboardTab = ({
 
   useEffect(() => {
     loadUserTickets();
-  }, [loadUserTickets]);
+    loadAcceptedJobs();
+  }, [loadUserTickets, loadAcceptedJobs]);
 
   useEffect(() => {
     if (loadConversations) {
@@ -296,7 +357,7 @@ export const DashboardTab = ({
             message: data.message,
             related_ticket: ticketId,
             read: false,
-            createdAt: new Date().toISOString()
+            created_at: new Date().toISOString()
           });
 
         if (error) throw error;
@@ -328,6 +389,7 @@ export const DashboardTab = ({
       }
       
       await loadUserTickets();
+      await loadAcceptedJobs();
       
     } catch (error) {
       console.error(`Error handling ticket action ${action}:`, error);
@@ -409,6 +471,139 @@ export const DashboardTab = ({
     );
   };
 
+  const renderAcceptedJobsTable = () => {
+    return (
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Info className="h-5 w-5" />
+            Normalized Data: Accepted Jobs
+          </CardTitle>
+          <CardDescription>
+            Data from the normalized 'accepted_jobs' table (joined with job_applications)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {acceptedJobs.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No accepted jobs found in the normalized table.
+            </div>
+          ) : (
+            <div className="border rounded-md overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left p-3 text-xs font-medium">ID</th>
+                    <th className="text-left p-3 text-xs font-medium">Job Application ID</th>
+                    <th className="text-left p-3 text-xs font-medium">Date Accepted</th>
+                    <th className="text-left p-3 text-xs font-medium">Equity Agreed</th>
+                    <th className="text-left p-3 text-xs font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {acceptedJobs.map((job) => (
+                    <tr key={job.id} className="border-t">
+                      <td className="p-3 text-sm">{job.id.substring(0, 8)}...</td>
+                      <td className="p-3 text-sm">{job.job_app_id.substring(0, 8)}...</td>
+                      <td className="p-3 text-sm">{new Date(job.date_accepted).toLocaleDateString()}</td>
+                      <td className="p-3 text-sm">{job.equity_agreed}%</td>
+                      <td className="p-3 text-sm">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            // Find corresponding ticket
+                            const ticket = userTickets.find(t => t.job_app_id === job.job_app_id);
+                            if (ticket) {
+                              setSelectedTicketId(ticket.id);
+                            }
+                          }}
+                        >
+                          View Ticket
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderDenormalizedProjectsTable = () => {
+    return (
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Info className="h-5 w-5" />
+            Denormalized Data: Jobseeker Active Projects
+          </CardTitle>
+          <CardDescription>
+            Data from the denormalized 'jobseeker_active_projects' view
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {denormalizedProjects.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No active projects found in the denormalized view.
+            </div>
+          ) : (
+            <div className="border rounded-md overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left p-3 text-xs font-medium">Project</th>
+                    <th className="text-left p-3 text-xs font-medium">Task</th>
+                    <th className="text-left p-3 text-xs font-medium">Status</th>
+                    <th className="text-left p-3 text-xs font-medium">Equity</th>
+                    <th className="text-left p-3 text-xs font-medium">Completion</th>
+                    <th className="text-left p-3 text-xs font-medium">Hours Logged</th>
+                    <th className="text-left p-3 text-xs font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {denormalizedProjects.map((project) => (
+                    <tr key={project.job_app_id || project.ticket_id} className="border-t">
+                      <td className="p-3 text-sm">{project.project_title || 'Unknown'}</td>
+                      <td className="p-3 text-sm">{project.ticket_title || 'Unknown'}</td>
+                      <td className="p-3 text-sm">
+                        <Badge variant={
+                          project.ticket_status === 'done' ? 'success' : 
+                          project.ticket_status === 'in-progress' ? 'warning' : 'default'
+                        }>
+                          {project.ticket_status || project.application_status || 'Unknown'}
+                        </Badge>
+                      </td>
+                      <td className="p-3 text-sm">{project.equity_agreed || project.equity_points || 0}%</td>
+                      <td className="p-3 text-sm">{project.project_completion || 0}%</td>
+                      <td className="p-3 text-sm">{project.total_hours_logged || 0} hrs</td>
+                      <td className="p-3 text-sm">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (project.ticket_id) {
+                              setSelectedTicketId(project.ticket_id);
+                            }
+                          }}
+                        >
+                          View Ticket
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
   const renderTicketManagementUI = () => {
     return (
       <div className="space-y-6">
@@ -440,6 +635,7 @@ export const DashboardTab = ({
                 size="sm"
                 onClick={() => {
                   loadUserTickets();
+                  loadAcceptedJobs();
                 }}
               >
                 Refresh
@@ -475,6 +671,9 @@ export const DashboardTab = ({
           </CardContent>
         </Card>
 
+        {renderAcceptedJobsTable()}
+        {renderDenormalizedProjectsTable()}
+
         {selectedTicketId && (
           <Card className="mt-6">
             <CardHeader>
@@ -489,13 +688,25 @@ export const DashboardTab = ({
                 Close
               </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-8">
               <ExpandedTicketDetails
                 ticket={userTickets.find(t => t.id === selectedTicketId) || null}
                 messages={ticketMessages.filter(m => m.related_ticket === selectedTicketId)}
-                hoursLogged={calculateTotalHoursLogged(selectedTicketId)}
                 onAction={handleTicketAction}
               />
+              
+              {selectedTicketId && (
+                <div className="border rounded-md p-4 bg-card">
+                  <h3 className="text-lg font-medium mb-4">Time Tracking</h3>
+                  {profile && (
+                    <TimeTracker 
+                      ticketId={selectedTicketId}
+                      userId={profile.id}
+                      jobAppId={userTickets.find(t => t.id === selectedTicketId)?.job_app_id}
+                    />
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
