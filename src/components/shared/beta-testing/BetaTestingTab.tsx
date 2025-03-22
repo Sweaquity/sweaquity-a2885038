@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -154,7 +155,7 @@ export const BetaTestingTab: React.FC<BetaTestingTabProps> = ({
       if (action === 'log-time') {
         if (!data || !data.hours || isNaN(parseFloat(data.hours))) {
           toast.error('Please enter valid hours');
-          return;
+          return Promise.resolve();
         }
         
         const { data: userData } = await supabase.auth.getUser();
@@ -174,15 +175,18 @@ export const BetaTestingTab: React.FC<BetaTestingTabProps> = ({
         if (error) {
           console.error('Error logging time:', error);
           toast.error('Failed to log time');
-          return;
+          return Promise.resolve();
         }
         
         toast.success('Time logged successfully');
         loadActiveProjects();
+        return Promise.resolve();
       }
+      return Promise.resolve();
     } catch (error) {
       console.error('Error in handleTicketAction:', error);
       toast.error('Failed to perform action');
+      return Promise.reject(error);
     }
   };
 
@@ -268,9 +272,12 @@ export const BetaTestingTab: React.FC<BetaTestingTabProps> = ({
                         <>
                           {showKanban ? (
                             <KanbanBoard 
-                              items={tickets}
-                              onItemClick={(ticket) => {
-                                // Handle click
+                              tickets={tickets}
+                              onStatusChange={(ticketId, newStatus) => {
+                                // Handle status change
+                              }}
+                              onViewTicket={(ticketId) => {
+                                // Handle view
                               }}
                             />
                           ) : (

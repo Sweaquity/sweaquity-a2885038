@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { TicketList } from "./TicketList";
@@ -11,6 +10,7 @@ import { TicketForm } from "./TicketForm";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Ticket } from "@/types/types";
 import { TicketService } from "./TicketService";
+import { Badge } from "@/components/ui/badge";
 
 interface TicketDashboardProps {
   initialTickets: Ticket[];
@@ -115,8 +115,6 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   };
 
   const handleCreateTicket = async (newTicket: any) => {
-    // In a real implementation, this would save to the backend
-    // For now, just add to the local state
     const ticket = {
       ...newTicket,
       id: `temp-${Date.now()}`,
@@ -321,7 +319,6 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         </TabsContent>
       </Tabs>
       
-      {/* Ticket details dialog */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <DialogContent className="sm:max-w-[90%] max-h-[90vh] overflow-y-auto">
           <DialogTitle>Ticket Details</DialogTitle>
@@ -334,12 +331,14 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         </DialogContent>
       </Dialog>
       
-      {/* Create ticket dialog */}
       <Dialog open={isCreateTicketOpen} onOpenChange={setIsCreateTicketOpen}>
         <DialogContent className="sm:max-w-[90%]">
           <DialogTitle>Create New Ticket</DialogTitle>
           <TicketForm 
+            isOpen={isCreateTicketOpen}
+            onOpenChange={setIsCreateTicketOpen}
             onSubmit={handleCreateTicket}
+            mode="create"
           />
         </DialogContent>
       </Dialog>
