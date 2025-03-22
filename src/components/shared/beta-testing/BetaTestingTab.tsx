@@ -29,6 +29,8 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     closedTickets: 0,
     highPriorityTickets: 0
   });
+  // Add a key to force remounting of the TicketDashboard when needed
+  const [dashboardKey, setDashboardKey] = useState(0);
 
   const createTicket = async () => {
     if (!userId) return;
@@ -90,6 +92,8 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
         await loadProjectTickets();
       }
       
+      // Increment dashboard key to force remount and reset state properly
+      setDashboardKey(prevKey => prevKey + 1);
     } catch (error) {
       console.error('Error loading tickets:', error);
       toast.error("Failed to load tickets");
@@ -196,13 +200,27 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     }
   };
 
+  const handleRefresh = () => {
+    loadTickets();
+  };
+
+  const toggleShowDashboard = () => {
+    setShowDashboard(!showDashboard);
+    // Force a remount of the TicketDashboard when toggling view
+    setDashboardKey(prevKey => prevKey + 1);
+  };
+
   useEffect(() => {
     if (userId) {
       loadTickets();
     }
   }, [userId]);
 
-  const allTickets = [...tickets, ...projectTickets] as Ticket[];
+  // Prepare the tickets with expanded: false property
+  const allTickets = [...tickets, ...projectTickets].map(ticket => ({
+    ...ticket,
+    expanded: false
+  })) as Ticket[];
 
   return (
     <div>
@@ -224,13 +242,13 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
               </Button>
               <Button
                 variant="outline" 
-                onClick={() => setShowDashboard(!showDashboard)}
+                onClick={toggleShowDashboard}
                 size="sm"
               >
                 {showDashboard ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
                 {showDashboard ? "Hide Dashboard" : "Show Dashboard"}
               </Button>
-              <Button onClick={loadTickets}>Refresh</Button>
+              <Button onClick={handleRefresh}>Refresh</Button>
               <Button onClick={createTicket}>Create Test Ticket</Button>
             </div>
           </div>
@@ -273,8 +291,9 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
                 </>
               ) : (
                 <TicketDashboard
+                  key={dashboardKey}
                   initialTickets={allTickets}
-                  onRefresh={loadTickets}
+                  onRefresh={handleRefresh}
                 />
               )}
             </>
