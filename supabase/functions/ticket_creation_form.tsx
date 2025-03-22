@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
@@ -9,7 +10,7 @@ const TicketForm = () => {
   const [health, setHealth] = useState('green');
   const [estimatedHours, setEstimatedHours] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [projectId, setProjectId] = useState('');
+  const [projectId, setProjectId] = useState('none'); // Changed from empty string to 'none'
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -54,7 +55,7 @@ const TicketForm = () => {
           health,
           estimated_hours: estimatedHours || null,
           due_date: dueDate || null,
-          project_id: projectId || null, // Optional project reference
+          project_id: projectId === 'none' ? null : projectId, // Handle 'none' value
           reporter: user.id,
           assigned_to: user.id // Default to self-assigned
         })
@@ -72,7 +73,7 @@ const TicketForm = () => {
       setHealth('green');
       setEstimatedHours('');
       setDueDate('');
-      setProjectId('');
+      setProjectId('none');
     } catch (error) {
       console.error('Error creating ticket:', error);
       setMessage(`Error: ${error.message}`);
@@ -189,7 +190,7 @@ const TicketForm = () => {
               onChange={(e) => setProjectId(e.target.value)}
               className="w-full p-2 border rounded"
             >
-              <option value="">-- None --</option>
+              <option value="none">-- None --</option>
               {projects.map(project => (
                 <option key={project.id} value={project.id}>
                   {project.title}
