@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,12 +16,14 @@ interface TicketDashboardProps {
   projectFilter?: string;
   initialTickets?: Ticket[];
   onRefresh?: () => void;
+  onTicketExpand?: (ticketId: string, isExpanded: boolean) => void;
 }
 
 export const TicketDashboard: React.FC<TicketDashboardProps> = ({ 
   projectFilter,
   initialTickets,
-  onRefresh
+  onRefresh,
+  onTicketExpand
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -39,10 +42,8 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     if (!initialTickets) {
       loadTickets();
     } else {
-      setTickets(initialTickets.map(ticket => ({
-        ...ticket,
-        expanded: false
-      })));
+      // Use initialTickets with their expanded state preserved
+      setTickets(initialTickets);
       calculateTicketStatistics(initialTickets);
       setIsLoading(false);
     }
@@ -149,14 +150,24 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   };
 
   const toggleTicketExpanded = useCallback((ticketId: string) => {
-    setTickets(prev => 
-      prev.map(ticket => 
+    setTickets(prev => {
+      const updatedTickets = prev.map(ticket => 
         ticket.id === ticketId 
           ? { ...ticket, expanded: !ticket.expanded } 
           : ticket
-      )
-    );
-  }, []);
+      );
+      
+      // Call the parent callback if provided
+      if (onTicketExpand) {
+        const expandedTicket = updatedTickets.find(t => t.id === ticketId);
+        if (expandedTicket) {
+          onTicketExpand(ticketId, expandedTicket.expanded);
+        }
+      }
+      
+      return updatedTickets;
+    });
+  }, [onTicketExpand]);
 
   const getGanttTasks = () => {
     return tickets.map((ticket) => {

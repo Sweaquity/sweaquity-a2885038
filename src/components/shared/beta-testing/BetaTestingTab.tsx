@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,8 +28,8 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     closedTickets: 0,
     highPriorityTickets: 0
   });
-  // Add a key to force remounting of the TicketDashboard when needed
   const [dashboardKey, setDashboardKey] = useState(0);
+  const [expandedTickets, setExpandedTickets] = useState<Record<string, boolean>>({});
 
   const createTicket = async () => {
     if (!userId) return;
@@ -70,12 +69,11 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     }
   };
 
-  const loadTickets = async () => {
+  const loadTickets = useCallback(async () => {
     setLoading(true);
     try {
       if (!userId) return;
 
-      // Load beta testing tickets
       const { data: betaTickets, error: betaError } = await supabase
         .from('tickets')
         .select('*')
@@ -84,23 +82,24 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
 
       if (betaError) throw betaError;
       
-      setTickets(betaTickets || []);
-      calculateTicketStatistics(betaTickets);
+      const updatedTickets = (betaTickets || []).map(ticket => ({
+        ...ticket,
+        expanded: expandedTickets[ticket.id] || false
+      }));
+      
+      setTickets(updatedTickets);
+      calculateTicketStatistics(updatedTickets);
 
-      // Load project tickets if includeProjectTickets is true
       if (includeProjectTickets) {
         await loadProjectTickets();
       }
-      
-      // Increment dashboard key to force remount and reset state properly
-      setDashboardKey(prevKey => prevKey + 1);
     } catch (error) {
       console.error('Error loading tickets:', error);
       toast.error("Failed to load tickets");
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, expandedTickets, includeProjectTickets]);
 
   const calculateTicketStatistics = (ticketData: Ticket[]) => {
     const totalTickets = ticketData.length;
@@ -120,14 +119,13 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     });
   };
 
-  const loadProjectTickets = async () => {
+  const loadProjectTickets = useCallback(async () => {
     try {
       if (!userId) return;
 
       let projectTicketsData: BetaTicket[] = [];
 
       if (userType === 'job_seeker') {
-        // Find accepted projects for job seeker
         const { data: acceptedProjects, error: projectsError } = await supabase
           .from('job_applications')
           .select('project_id')
@@ -140,7 +138,6 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
           const projectIds = acceptedProjects.map(p => p.project_id).filter(Boolean);
           
           if (projectIds.length > 0) {
-            // Get tickets related to these projects
             const { data: projectTickets, error: ticketsError } = await supabase
               .from('tickets')
               .select('*')
@@ -148,11 +145,13 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
 
             if (ticketsError) throw ticketsError;
             
-            projectTicketsData = projectTickets || [];
+            projectTicketsData = (projectTickets || []).map(ticket => ({
+              ...ticket,
+              expanded: expandedTickets[ticket.id] || false
+            }));
           }
         }
       } else if (userType === 'business') {
-        // Find business projects
         const { data: businessProjects, error: projectsError } = await supabase
           .from('business_projects')
           .select('project_id')
@@ -163,7 +162,6 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
         if (businessProjects && businessProjects.length > 0) {
           const projectIds = businessProjects.map(p => p.project_id);
           
-          // Get tickets related to these projects
           const { data: projectTickets, error: ticketsError } = await supabase
             .from('tickets')
             .select('*')
@@ -171,7 +169,10 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
 
           if (ticketsError) throw ticketsError;
           
-          projectTicketsData = projectTickets || [];
+          projectTicketsData = (projectTickets || []).map(ticket => ({
+            ...ticket,
+            expanded: expandedTickets[ticket.id] || false
+          }));
         }
       }
 
@@ -181,7 +182,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       console.error('Error loading project tickets:', error);
       toast.error("Failed to load project tickets");
     }
-  };
+  }, [userId, userType, expandedTickets]);
 
   const updateTicketStatus = async (ticketId: string, newStatus: string) => {
     try {
@@ -200,26 +201,31 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     }
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     loadTickets();
-  };
+  }, [loadTickets]);
 
-  const toggleShowDashboard = () => {
+  const toggleShowDashboard = useCallback(() => {
     setShowDashboard(!showDashboard);
-    // Force a remount of the TicketDashboard when toggling view
     setDashboardKey(prevKey => prevKey + 1);
-  };
+  }, [showDashboard]);
+
+  const handleToggleTicket = useCallback((ticketId: string, isExpanded: boolean) => {
+    setExpandedTickets(prev => ({
+      ...prev,
+      [ticketId]: isExpanded
+    }));
+  }, []);
 
   useEffect(() => {
     if (userId) {
       loadTickets();
     }
-  }, [userId]);
+  }, [userId, loadTickets]);
 
-  // Prepare the tickets with expanded: false property
   const allTickets = [...tickets, ...projectTickets].map(ticket => ({
     ...ticket,
-    expanded: false
+    expanded: expandedTickets[ticket.id] || false
   })) as Ticket[];
 
   return (
@@ -294,6 +300,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
                   key={dashboardKey}
                   initialTickets={allTickets}
                   onRefresh={handleRefresh}
+                  onTicketExpand={handleToggleTicket}
                 />
               )}
             </>
