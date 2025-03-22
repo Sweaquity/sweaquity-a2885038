@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -21,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AccountSettingsCard } from "@/components/shared/AccountSettingsCard";
 import { BusinessProfileEditor } from "@/components/business/profile/BusinessProfileEditor";
-import { TestingTab } from "@/components/business/testing/TestingTab";
+import { LiveProjectsTab } from "@/components/business/projects/LiveProjectsTab";
 import { BetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
 
 interface SubTask {
@@ -56,6 +55,7 @@ const BusinessDashboard = () => {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [userId, setUserId] = useState<string | undefined>(undefined);
   const [activeTab, setActiveTab] = useState("account");
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -274,16 +274,8 @@ const BusinessDashboard = () => {
         <Tabs value={activeTab} className="space-y-6" onValueChange={handleTabChange}>
           <TabsList className="w-full grid grid-cols-7 md:flex md:w-auto">
             <TabsTrigger value="account" className="px-3 py-1.5">Account</TabsTrigger>
-            <TabsTrigger value="projects" className="px-3 py-1.5">Projects</TabsTrigger>
             <TabsTrigger value="users" className="px-3 py-1.5">Users</TabsTrigger>
-            <TabsTrigger value="roles" className="px-3 py-1.5 relative">
-              Active Roles
-              {newMessagesCount > 0 && (
-                <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
-                  {newMessagesCount}
-                </Badge>
-              )}
-            </TabsTrigger>
+            <TabsTrigger value="projects" className="px-3 py-1.5">Projects</TabsTrigger>
             <TabsTrigger value="applications" className="px-3 py-1.5 relative">
               Applications
               {newApplicationsCount > 0 && (
@@ -292,7 +284,15 @@ const BusinessDashboard = () => {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="testing" className="px-3 py-1.5">Testing</TabsTrigger>
+            <TabsTrigger value="roles" className="px-3 py-1.5 relative">
+              Active Roles
+              {newMessagesCount > 0 && (
+                <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                  {newMessagesCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="live-projects" className="px-3 py-1.5">Live Projects</TabsTrigger>
             <TabsTrigger value="beta-testing" className="px-3 py-1.5">Beta Testing</TabsTrigger>
           </TabsList>
 
@@ -319,10 +319,6 @@ const BusinessDashboard = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="projects">
-            <ProjectsSection />
-          </TabsContent>
-
           <TabsContent value="users">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -333,6 +329,14 @@ const BusinessDashboard = () => {
                 <p className="text-muted-foreground">No users have been added to your business yet. Use the "Request Access" button to invite team members.</p>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="projects">
+            <ProjectsSection />
+          </TabsContent>
+
+          <TabsContent value="applications">
+            <ProjectApplicationsSection />
           </TabsContent>
 
           <TabsContent value="roles">
@@ -359,18 +363,15 @@ const BusinessDashboard = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="applications">
-            <ProjectApplicationsSection />
-          </TabsContent>
-
-          <TabsContent value="testing">
-            <TestingTab />
+          <TabsContent value="live-projects">
+            <LiveProjectsTab projectId={selectedProject} />
           </TabsContent>
 
           <TabsContent value="beta-testing">
             <BetaTestingTab 
               userType="business"
               userId={userId}
+              includeProjectTickets={true}
             />
           </TabsContent>
         </Tabs>

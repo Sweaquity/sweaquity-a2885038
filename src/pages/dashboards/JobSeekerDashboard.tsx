@@ -23,7 +23,8 @@ const JobSeekerDashboard = () => {
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
   
-  const [activeTab, setActiveTab] = useState<string>(tabFromUrl || "dashboard");
+  // Changed the default tab to "profile"
+  const [activeTab, setActiveTab] = useState<string>(tabFromUrl || "profile");
   const [localLoading, setLocalLoading] = useState(true);
   const [forceRefresh, setForceRefresh] = useState(0);
   const [userId, setUserId] = useState<string | undefined>(undefined);
@@ -75,7 +76,8 @@ const JobSeekerDashboard = () => {
   };
 
   useEffect(() => {
-    if (tabFromUrl && ['dashboard', 'profile', 'applications', 'opportunities', 'beta-testing'].includes(tabFromUrl)) {
+    // Updated array to include the "beta-testing" tab for new tab order
+    if (tabFromUrl && ['profile', 'opportunities', 'applications', 'beta-testing'].includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
   }, [tabFromUrl]);
@@ -125,31 +127,12 @@ const JobSeekerDashboard = () => {
             activeTab={activeTab}
             onTabChange={handleTabChange}
             tabs={[
-              { id: "dashboard", label: "Dashboard" },
               { id: "profile", label: "Profile" },
-              { id: "applications", label: "Applications" },
               { id: "opportunities", label: "Opportunities" },
-              { id: "beta-testing", label: "Beta Testing" }
+              { id: "applications", label: "Applications" },
+              { id: "beta-testing", label: "Live Projects" }
             ]}
           />
-
-          <TabsContent value="dashboard">
-            <DashboardTab
-              activeTab={activeTab}
-              profile={profile}
-              cvUrl={cvUrl}
-              parsedCvData={parsedCvData}
-              skills={skills}
-              applications={applications}
-              equityProjects={equityProjects}
-              availableOpportunities={availableOpportunities}
-              handleSkillsUpdate={handleSkillsUpdate}
-              refreshApplications={refreshApplications}
-              onDocumentAction={handleDocumentAction}
-              userCVs={userCVs}
-              onCvListUpdated={onCvListUpdated}
-            />
-          </TabsContent>
 
           <TabsContent value="profile">
             <ProfileTab
@@ -163,13 +146,6 @@ const JobSeekerDashboard = () => {
             />
           </TabsContent>
 
-          <TabsContent value="applications">
-            <ApplicationsTab
-              applications={applications}
-              onApplicationUpdated={handleApplicationUpdated}
-            />
-          </TabsContent>
-
           <TabsContent value="opportunities">
             <OpportunitiesTab
               projects={availableOpportunities}
@@ -177,10 +153,18 @@ const JobSeekerDashboard = () => {
             />
           </TabsContent>
 
+          <TabsContent value="applications">
+            <ApplicationsTab
+              applications={applications}
+              onApplicationUpdated={handleApplicationUpdated}
+            />
+          </TabsContent>
+
           <TabsContent value="beta-testing">
             <BetaTestingTab 
               userType="job_seeker"
               userId={userId}
+              includeProjectTickets={true}
             />
           </TabsContent>
         </Tabs>

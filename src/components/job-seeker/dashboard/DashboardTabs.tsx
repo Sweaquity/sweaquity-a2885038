@@ -13,11 +13,12 @@ interface DashboardTabsProps {
 }
 
 export function DashboardTabs({ activeTab, onTabChange, tabs }: DashboardTabsProps) {
+  // Updated default tabs with new order and renamed "Beta Testing" to "Live Projects"
   const defaultTabs: Tab[] = [
-    { id: "dashboard", label: "Dashboard" },
     { id: "profile", label: "Profile" },
-    { id: "applications", label: "Applications" },
     { id: "opportunities", label: "Opportunities" },
+    { id: "applications", label: "Applications" },
+    { id: "beta-testing", label: "Live Projects" },
   ];
 
   const tabsToRender = tabs || defaultTabs;
