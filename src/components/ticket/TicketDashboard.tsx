@@ -1,471 +1,349 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Filter } from "lucide-react";
-import { TicketForm } from "./TicketForm";
 import { TicketList } from "./TicketList";
-import { TicketKanbanBoard } from "./TicketKanbanBoard";
 import { FilterBar } from "./FilterBar";
-import { TicketStats } from "./TicketStats";
-import { fetchTickets } from "./TicketService";
-import { Badge } from "@/components/ui/badge"; // Add Badge import to fix error
-import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import TicketDetails from "./TicketDetails";
+import TicketStats from "./TicketStats";
+import { Eye, EyeOff, Plus } from "lucide-react";
+import { TicketForm } from "./TicketForm";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Ticket } from "@/types/types";
+import { TicketService } from "./TicketService";
+import { Badge } from "@/components/ui/badge";
 
 interface TicketDashboardProps {
-  projectId?: string;
-  userId?: string;
-  onTicketClick?: (ticket: Ticket) => void;
-  viewOnly?: boolean;
-  defaultView?: "list" | "kanban";
-  showCreateButton?: boolean;
+  initialTickets: Ticket[];
+  onRefresh?: () => void;
 }
 
-export const TicketDashboard: React.FC<TicketDashboardProps> = ({
-  projectId,
-  userId,
-  onTicketClick,
-  viewOnly = false,
-  defaultView = "list",
-  showCreateButton = true
+export const TicketDashboard: React.FC<TicketDashboardProps> = ({ 
+  initialTickets,
+  onRefresh
 }) => {
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isTicketFormOpen, setIsTicketFormOpen] = useState(false);
-  const [view, setView] = useState<"list" | "kanban">(defaultView);
+  const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
+  const [filteredTickets, setFilteredTickets] = useState<Ticket[]>(initialTickets);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [sortCriteria, setSortCriteria] = useState("newest");
+  const [showTimeline, setShowTimeline] = useState(true);
+  const [showStats, setShowStats] = useState(true);
+  const [isCreateTicketOpen, setIsCreateTicketOpen] = useState(false);
   
-  // Filter states
-  const [statusFilter, setStatusFilter] = useState("");
-  const [priorityFilter, setPriorityFilter] = useState("");
-  const [dueDateFilter, setDueDateFilter] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  
-  // Stats
-  const [totalTickets, setTotalTickets] = useState(0);
-  const [openTickets, setOpenTickets] = useState(0);
-  const [closedTickets, setClosedTickets] = useState(0);
-  const [highPriorityTickets, setHighPriorityTickets] = useState(0);
+  const ticketStats = {
+    totalTickets: tickets.length,
+    openTickets: tickets.filter(ticket => 
+      ticket.status !== 'done' && ticket.status !== 'closed'
+    ).length,
+    closedTickets: tickets.filter(ticket => 
+      ticket.status === 'done' || ticket.status === 'closed'
+    ).length,
+    highPriorityTickets: tickets.filter(ticket => 
+      ticket.priority === 'high'
+    ).length
+  };
 
   useEffect(() => {
-    loadTickets();
-  }, [projectId]);
+    setTickets(initialTickets);
+    filterTickets(activeFilter, initialTickets);
+  }, [initialTickets, activeFilter]);
 
-  useEffect(() => {
-    filterTickets();
-  }, [tickets, statusFilter, priorityFilter, dueDateFilter, searchQuery]);
-
-  const loadTickets = async () => {
-    try {
-      setLoading(true);
-      
-      let ticketsData: Ticket[] = [];
-      
-      if (projectId) {
-        // If projectId is provided, fetch tickets for that project
-        ticketsData = await fetchTickets(projectId);
-      } else {
-        // Otherwise, fetch all tickets or user-specific tickets
-        let query = supabase.from('tickets').select('*');
-        
-        if (userId) {
-          query = query.eq('assigned_to', userId);
-        }
-        
-        const { data, error } = await query.order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        
-        ticketsData = data.map((ticket: any) => ({
-          ...ticket,
-          expanded: false,
-          newNote: ''
-        }));
-      }
-      
-      setTickets(ticketsData);
-      calculateStats(ticketsData);
-    } catch (err) {
-      console.error("Error loading tickets:", err);
-      setError("Failed to load tickets");
-      toast.error("Failed to load tickets");
-    } finally {
-      setLoading(false);
+  const filterTickets = (filter: string, ticketsToFilter = tickets) => {
+    let filtered = [...ticketsToFilter];
+    
+    switch (filter) {
+      case "all":
+        // No filtering needed
+        break;
+      case "open":
+        filtered = filtered.filter(ticket => 
+          ticket.status !== 'done' && ticket.status !== 'closed'
+        );
+        break;
+      case "closed":
+        filtered = filtered.filter(ticket => 
+          ticket.status === 'done' || ticket.status === 'closed'
+        );
+        break;
+      case "high":
+        filtered = filtered.filter(ticket => ticket.priority === 'high');
+        break;
+      default:
+        break;
     }
+    
+    sortTickets(sortCriteria, filtered);
   };
 
-  const calculateStats = (ticketsData: Ticket[]) => {
-    setTotalTickets(ticketsData.length);
-    setOpenTickets(ticketsData.filter(t => t.status !== 'closed' && t.status !== 'done').length);
-    setClosedTickets(ticketsData.filter(t => t.status === 'closed' || t.status === 'done').length);
-    setHighPriorityTickets(ticketsData.filter(t => t.priority === 'high').length);
+  const sortTickets = (criteria: string, ticketsToSort = filteredTickets) => {
+    let sorted = [...ticketsToSort];
+    
+    switch (criteria) {
+      case "newest":
+        sorted.sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime());
+        break;
+      case "oldest":
+        sorted.sort((a, b) => new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime());
+        break;
+      case "priority":
+        sorted.sort((a, b) => {
+          const priorityOrder = { high: 0, medium: 1, low: 2 };
+          return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
+        });
+        break;
+      default:
+        break;
+    }
+    
+    setFilteredTickets(sorted);
   };
 
-  const filterTickets = () => {
-    let filtered = [...tickets];
-    
-    if (statusFilter) {
-      filtered = filtered.filter(ticket => ticket.status === statusFilter);
-    }
-    
-    if (priorityFilter) {
-      filtered = filtered.filter(ticket => ticket.priority === priorityFilter);
-    }
-    
-    if (dueDateFilter) {
-      filtered = filtered.filter(ticket => {
-        if (!ticket.due_date) return false;
-        return new Date(ticket.due_date).toISOString().split('T')[0] === dueDateFilter;
-      });
-    }
-    
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(ticket => 
-        ticket.title.toLowerCase().includes(query) || 
-        (ticket.description && ticket.description.toLowerCase().includes(query))
-      );
-    }
-    
-    setFilteredTickets(filtered);
+  const handleFilterChange = (newFilter: string) => {
+    setActiveFilter(newFilter);
+    filterTickets(newFilter);
   };
 
-  const clearFilters = () => {
-    setStatusFilter("");
-    setPriorityFilter("");
-    setDueDateFilter("");
-    setSearchQuery("");
+  const handleSortChange = (newSort: string) => {
+    setSortCriteria(newSort);
+    sortTickets(newSort);
+  };
+
+  const handleTicketClick = (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+    setIsDetailsOpen(true);
   };
 
   const handleCreateTicket = async (newTicket: any) => {
-    try {
-      // Set project_id if provided
-      if (projectId) {
-        newTicket.project_id = projectId;
-      }
-      
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast.error("You must be logged in to create a ticket");
-        return;
-      }
-      
-      // Set reporter to current user
-      newTicket.reporter = user.id;
-      
-      // Add new ticket to database
-      const { data: ticketData, error } = await supabase
-        .from('tickets')
-        .insert(newTicket)
-        .select('*')
-        .single();
-      
-      if (error) throw error;
-      
-      // Add expanded and newNote properties
-      const newTicketWithProps = {
-        ...ticketData,
-        expanded: false,
-        newNote: ''
-      };
-      
-      // Update tickets state
-      const updatedTickets = [newTicketWithProps, ...tickets];
-      setTickets(updatedTickets);
-      calculateStats(updatedTickets);
-      
-      toast.success("Ticket created successfully");
-      setIsTicketFormOpen(false);
-    } catch (err) {
-      console.error("Error creating ticket:", err);
-      toast.error("Failed to create ticket");
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric', 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    };
-    return new Date(dateString).toLocaleDateString(undefined, options);
-  };
-
-  // Functions to update ticket status, priority, due date
-  const handleStatusChange = async (ticketId: string, newStatus: string) => {
-    try {
-      await supabase
-        .from('tickets')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', ticketId);
-      
-      // Update local state
-      const updatedTickets = tickets.map(ticket => 
-        ticket.id === ticketId ? { ...ticket, status: newStatus } : ticket
-      );
-      
-      setTickets(updatedTickets);
-      calculateStats(updatedTickets);
-      
-      toast.success(`Ticket status updated to ${newStatus}`);
-    } catch (error) {
-      console.error("Error updating ticket status:", error);
-      toast.error("Failed to update ticket status");
-    }
-  };
-
-  const handlePriorityChange = async (ticketId: string, newPriority: string) => {
-    try {
-      await supabase
-        .from('tickets')
-        .update({ priority: newPriority, updated_at: new Date().toISOString() })
-        .eq('id', ticketId);
-      
-      // Update local state
-      const updatedTickets = tickets.map(ticket => 
-        ticket.id === ticketId ? { ...ticket, priority: newPriority } : ticket
-      );
-      
-      setTickets(updatedTickets);
-      calculateStats(updatedTickets);
-      
-      toast.success(`Ticket priority updated to ${newPriority}`);
-    } catch (error) {
-      console.error("Error updating ticket priority:", error);
-      toast.error("Failed to update ticket priority");
-    }
-  };
-
-  const handleDueDateChange = async (ticketId: string, newDueDate: string) => {
-    try {
-      await supabase
-        .from('tickets')
-        .update({ due_date: newDueDate, updated_at: new Date().toISOString() })
-        .eq('id', ticketId);
-      
-      // Update local state
-      const updatedTickets = tickets.map(ticket => 
-        ticket.id === ticketId ? { ...ticket, due_date: newDueDate } : ticket
-      );
-      
-      setTickets(updatedTickets);
-      
-      toast.success("Due date updated");
-    } catch (error) {
-      console.error("Error updating due date:", error);
-      toast.error("Failed to update due date");
-    }
-  };
-
-  // Function to handle equity allocation approval for tasks
-  const approveTaskEquityAllocation = async (ticket: Ticket) => {
-    if (!ticket.job_app_id || !ticket.task_id || !ticket.project_id) {
-      toast.error("Missing required ticket information");
-      return;
-    }
-
-    try {
-      // First, get the task equity allocation
-      const { data: taskData, error: taskError } = await supabase
-        .from('project_sub_tasks')
-        .select('equity_allocation')
-        .eq('task_id', ticket.task_id)
-        .single();
-      
-      if (taskError) throw taskError;
-      
-      // Update the accepted_jobs table with the approved equity
-      const { error: updateError } = await supabase
-        .from('accepted_jobs')
-        .update({ 
-          equity_agreed: taskData.equity_allocation 
-        })
-        .eq('job_app_id', ticket.job_app_id);
-      
-      if (updateError) throw updateError;
-      
-      // Mark ticket as completed
-      await supabase
-        .from('tickets')
-        .update({ 
-          status: 'closed',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', ticket.id);
-      
-      // Update project_sub_tasks status
-      await supabase
-        .from('project_sub_tasks')
-        .update({ 
-          task_status: 'completed',
-          completion_percentage: 100
-        })
-        .eq('task_id', ticket.task_id);
-      
-      // Update business_projects equity_allocated
-      await updateProjectEquityAllocated(ticket.project_id);
-      
-      // Refresh ticket list
-      await loadTickets();
-      
-      toast.success("Equity allocation approved and task marked as completed");
-    } catch (error) {
-      console.error("Error approving equity allocation:", error);
-      toast.error("Failed to approve equity allocation");
-    }
-  };
-
-  // Function to update project equity allocated
-  const updateProjectEquityAllocated = async (projectId: string) => {
-    try {
-      // Get all completed tasks for this project
-      const { data: completedTasks, error: tasksError } = await supabase
-        .from('project_sub_tasks')
-        .select('equity_allocation')
-        .eq('project_id', projectId)
-        .eq('task_status', 'completed');
-      
-      if (tasksError) throw tasksError;
-      
-      // Calculate total allocated equity
-      const totalAllocated = completedTasks.reduce(
-        (sum, task) => sum + (task.equity_allocation || 0), 
-        0
-      );
-      
-      // Update the project's equity_allocated field
-      const { error: updateError } = await supabase
-        .from('business_projects')
-        .update({ equity_allocated: totalAllocated })
-        .eq('project_id', projectId);
-      
-      if (updateError) throw updateError;
-    } catch (error) {
-      console.error("Error updating project equity allocated:", error);
-      throw error;
-    }
-  };
-
-  // Beta testing specific equity allocation
-  const approveBetaTestingEquityAllocation = async (ticket: Ticket) => {
-    if (!ticket.project_id) {
-      toast.error("Missing project information");
-      return;
-    }
+    const ticket = {
+      ...newTicket,
+      id: `temp-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: newTicket.status || 'new',
+      priority: newTicket.priority || 'medium',
+    } as Ticket;
     
-    // Check if this is the beta testing project
-    if (ticket.project_id !== "1ec133ba-26d6-4112-8e44-f0b67ddc8fb4") {
-      toast.error("This is not a beta testing ticket");
-      return;
-    }
-    
-    try {
-      // Mark ticket as completed/closed
-      await supabase
-        .from('tickets')
-        .update({ 
-          status: 'closed',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', ticket.id);
-      
-      // Calculate beta testing equity - will be done later when distributing
-      toast.success("Beta testing ticket approved. Equity will be calculated at distribution time.");
-      
-      // Refresh ticket list
-      await loadTickets();
-    } catch (error) {
-      console.error("Error approving beta testing ticket:", error);
-      toast.error("Failed to approve beta testing ticket");
+    setTickets([ticket, ...tickets]);
+    filterTickets(activeFilter, [ticket, ...tickets]);
+    setIsCreateTicketOpen(false);
+
+    return Promise.resolve();
+  };
+
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh();
     }
   };
 
   return (
-    <div>
-      <div className="flex flex-col space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Tickets</h2>
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="space-y-2 w-full md:w-auto">
+          <h2 className="text-xl font-bold">Tickets</h2>
           <div className="flex space-x-2">
-            {showCreateButton && !viewOnly && (
-              <Button onClick={() => setIsTicketFormOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Ticket
-              </Button>
-            )}
+            <Button 
+              variant={activeFilter === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleFilterChange("all")}
+            >
+              All
+            </Button>
+            <Button 
+              variant={activeFilter === "open" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleFilterChange("open")}
+            >
+              Open
+            </Button>
+            <Button 
+              variant={activeFilter === "closed" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleFilterChange("closed")}
+            >
+              Closed
+            </Button>
+            <Button 
+              variant={activeFilter === "high" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleFilterChange("high")}
+            >
+              High Priority
+            </Button>
           </div>
         </div>
         
-        <TicketStats
-          totalTickets={totalTickets}
-          openTickets={openTickets}
-          closedTickets={closedTickets}
-          highPriorityTickets={highPriorityTickets}
-        />
-
-        {/* Filter Bar */}
-        <FilterBar
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-          priorityFilter={priorityFilter}
-          setPriorityFilter={setPriorityFilter}
-          dueDateFilter={dueDateFilter}
-          setDueDateFilter={setDueDateFilter}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          onClearFilters={clearFilters}
-        />
-
-        <Tabs defaultValue={view} onValueChange={(value) => setView(value as "list" | "kanban")}>
-          <TabsList>
-            <TabsTrigger value="list">List View</TabsTrigger>
-            <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
-          </TabsList>
-          <TabsContent value="list">
-            <TicketList
-              tickets={filteredTickets}
-              onStatusChange={handleStatusChange}
-              onPriorityChange={handlePriorityChange}
-              onDueDateChange={handleDueDateChange}
-              formatDate={formatDate}
-              onTicketClick={onTicketClick}
-              viewOnly={viewOnly}
-              onApproveEquity={(ticket) => {
-                // Check if this is a beta testing ticket
-                if (ticket.project_id === "1ec133ba-26d6-4112-8e44-f0b67ddc8fb4") {
-                  approveBetaTestingEquityAllocation(ticket);
-                } else {
-                  approveTaskEquityAllocation(ticket);
-                }
-              }}
-            />
-          </TabsContent>
-          <TabsContent value="kanban">
-            <TicketKanbanBoard
-              tickets={filteredTickets}
-              onStatusChange={handleStatusChange}
-              onTicketClick={onTicketClick}
-              viewOnly={viewOnly}
-            />
-          </TabsContent>
-        </Tabs>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowStats(!showStats)}
+          >
+            {showStats ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+            {showStats ? "Hide Stats" : "Show Stats"}
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowTimeline(!showTimeline)}
+          >
+            {showTimeline ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+            {showTimeline ? "Hide Timeline" : "Show Timeline"}
+          </Button>
+          
+          <Button onClick={handleRefresh} variant="outline" size="sm">
+            Refresh
+          </Button>
+          
+          <Button onClick={() => setIsCreateTicketOpen(true)} size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            New Ticket
+          </Button>
+        </div>
       </div>
       
-      {/* Ticket Form Modal */}
-      <TicketForm
-        isOpen={isTicketFormOpen}
-        onOpenChange={setIsTicketFormOpen}
-        onSubmit={handleCreateTicket}
-        mode="create"
-      />
+      {showStats && (
+        <div className="mb-6">
+          <TicketStats
+            totalTickets={ticketStats.totalTickets}
+            openTickets={ticketStats.openTickets}
+            closedTickets={ticketStats.closedTickets}
+            highPriorityTickets={ticketStats.highPriorityTickets}
+          />
+        </div>
+      )}
+      
+      <Tabs defaultValue="list" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="list">List View</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="list" className="mt-4">
+          <div className="border rounded-lg">
+            <div className="p-4">
+              {filteredTickets.length === 0 ? (
+                <div className="text-center p-6">
+                  <p>No tickets found.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredTickets.map(ticket => (
+                    <div 
+                      key={ticket.id}
+                      className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50" 
+                      onClick={() => handleTicketClick(ticket)}
+                    >
+                      <div className="flex justify-between">
+                        <h3 className="font-medium">{ticket.title}</h3>
+                        <div className={`
+                          px-2 py-1 text-xs rounded-full
+                          ${ticket.priority === 'high' ? 'bg-red-100 text-red-800' : 
+                            ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-blue-100 text-blue-800'}
+                        `}>
+                          {ticket.priority}
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-500 mt-1">{ticket.description}</p>
+                      <div className="flex justify-between mt-2">
+                        <div className={`
+                          px-2 py-1 text-xs rounded-full
+                          ${ticket.status === 'done' || ticket.status === 'closed' ? 'bg-green-100 text-green-800' : 
+                            ticket.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'}
+                        `}>
+                          {ticket.status}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {ticket.due_date && `Due: ${new Date(ticket.due_date).toLocaleDateString()}`}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="timeline" className="mt-4">
+          {showTimeline ? (
+            <div className="border rounded-lg p-4">
+              <div className="space-y-4">
+                {filteredTickets.length === 0 ? (
+                  <div className="text-center p-6">
+                    <p>No tickets found for the timeline view.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredTickets
+                      .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+                      .map((ticket, index) => (
+                        <div 
+                          key={ticket.id}
+                          className="border-l-2 border-gray-200 pl-4 ml-4 relative cursor-pointer hover:bg-gray-50 p-3 rounded"
+                          onClick={() => handleTicketClick(ticket)}
+                        >
+                          <div className="absolute w-3 h-3 bg-blue-500 rounded-full -left-[7px] top-2"></div>
+                          <div className="text-xs text-gray-500 mb-1">
+                            {new Date(ticket.created_at || '').toLocaleString()}
+                          </div>
+                          <div className="flex justify-between items-start">
+                            <h4 className="font-medium">{ticket.title}</h4>
+                            <Badge variant="outline" className={
+                              ticket.status === 'done' || ticket.status === 'closed' 
+                                ? 'bg-green-100 text-green-800' 
+                                : ticket.status === 'in-progress' 
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-gray-100 text-gray-800'
+                            }>
+                              {ticket.status}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-1 line-clamp-2">{ticket.description}</p>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center p-6 bg-muted/20 rounded-lg">
+              <p>Timeline view is hidden</p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+      
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="sm:max-w-[90%] max-h-[90vh] overflow-y-auto">
+          <DialogTitle>Ticket Details</DialogTitle>
+          {selectedTicket && (
+            <TicketDetails 
+              ticket={selectedTicket} 
+              onClose={() => setIsDetailsOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isCreateTicketOpen} onOpenChange={setIsCreateTicketOpen}>
+        <DialogContent className="sm:max-w-[90%]">
+          <DialogTitle>Create New Ticket</DialogTitle>
+          <TicketForm 
+            isOpen={isCreateTicketOpen}
+            onOpenChange={setIsCreateTicketOpen}
+            onSubmit={handleCreateTicket}
+            mode="create"
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
+
+export default TicketDashboard;

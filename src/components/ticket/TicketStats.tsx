@@ -1,3 +1,4 @@
+
 import React from "react";
 import { FileText, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 
@@ -8,7 +9,7 @@ interface TicketStatsProps {
   highPriorityTickets: number;
 }
 
-const TicketStats: React.FC<TicketStatsProps> = ({
+export const TicketStats: React.FC<TicketStatsProps> = ({
   totalTickets,
   openTickets,
   closedTickets,
