@@ -28,4 +28,7 @@ export interface Ticket {
   equity_points?: number;
   isTaskTicket?: boolean;
   completion_percentage?: number;
+  attachments?: string[];
+  ticket_type?: string; 
+  estimated_hours?: number;
 }
