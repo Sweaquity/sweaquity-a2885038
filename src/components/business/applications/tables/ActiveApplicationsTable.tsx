@@ -131,7 +131,7 @@ export const ActiveApplicationsTable = ({
                 <div className="flex flex-col gap-1">
                   {canChangeStatus(app) ? (
                     <Select 
-                      value={app.status || "pending"} 
+                      value={app.status} 
                       onValueChange={(value) => handleStatusChange(app.job_app_id, value)}
                       disabled={isUpdatingStatus === app.job_app_id}
                     >
@@ -153,7 +153,7 @@ export const ActiveApplicationsTable = ({
                         'bg-blue-100 text-blue-800 hover:bg-blue-200'
                       }`}
                     >
-                      {app.status?.charAt(0).toUpperCase() + app.status?.slice(1) || "Pending"}
+                      {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
                     </Badge>
                   )}
                   

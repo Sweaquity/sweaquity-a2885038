@@ -233,14 +233,14 @@ export const ExpandedTicketDetails = ({
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Assigned to:</span>
                       <Select
-                        value={ticket.assigned_to || undefined}
+                        value={ticket.assigned_to || ''}
                         onValueChange={onAssigneeChange}
                       >
                         <SelectTrigger className="w-32 h-7 text-xs">
                           <SelectValue placeholder="Assignee" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={null}>Unassigned</SelectItem>
+                          <SelectItem value="">Unassigned</SelectItem>
                           {users.map(user => (
                             <SelectItem key={user.id} value={user.id}>
                               {user.first_name} {user.last_name}

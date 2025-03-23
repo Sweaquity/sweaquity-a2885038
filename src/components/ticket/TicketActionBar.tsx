@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,16 +27,12 @@ export const TicketActionBar: React.FC<TicketActionBarProps> = ({
   onDueDateChange,
   onReplyClick
 }) => {
-  // Ensure we have safe non-empty default values
-  const safeStatus = status || "new";
-  const safePriority = priority || "medium";
-  
   return (
     <div className="border-t pt-4 flex flex-wrap gap-4">
       <div>
         <Label htmlFor={`status-${ticketId}`} className="text-xs block mb-1">Update Status</Label>
         <Select
-          defaultValue={safeStatus}
+          defaultValue={status}
           onValueChange={(value) => onStatusChange(ticketId, value)}
         >
           <SelectTrigger id={`status-${ticketId}`} className="w-[140px]">
@@ -57,7 +52,7 @@ export const TicketActionBar: React.FC<TicketActionBarProps> = ({
       <div>
         <Label htmlFor={`priority-${ticketId}`} className="text-xs block mb-1">Update Priority</Label>
         <Select
-          defaultValue={safePriority}
+          defaultValue={priority}
           onValueChange={(value) => onPriorityChange(ticketId, value)}
         >
           <SelectTrigger id={`priority-${ticketId}`} className="w-[140px]">

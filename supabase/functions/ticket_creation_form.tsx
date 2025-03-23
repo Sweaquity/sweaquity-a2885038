@@ -9,7 +9,7 @@ const TicketForm = () => {
   const [health, setHealth] = useState('green');
   const [estimatedHours, setEstimatedHours] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [projectId, setProjectId] = useState('none'); // Changed from empty string to 'none'
+  const [projectId, setProjectId] = useState('');
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -20,9 +20,7 @@ const TicketForm = () => {
   
   const fetchUserProjects = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser(); // Updated auth method
-      
-      if (!user) throw new Error("User not authenticated");
+      const user = supabase.auth.user();
       
       // Fetch projects that belong to the current user
       const { data, error } = await supabase
@@ -43,9 +41,7 @@ const TicketForm = () => {
     setMessage('');
     
     try {
-      const { data: { user } } = await supabase.auth.getUser(); // Updated auth method
-      
-      if (!user) throw new Error("User not authenticated");
+      const user = supabase.auth.user();
       
       // Create the new ticket
       const { data, error } = await supabase
@@ -58,7 +54,7 @@ const TicketForm = () => {
           health,
           estimated_hours: estimatedHours || null,
           due_date: dueDate || null,
-          project_id: projectId !== 'none' ? projectId : null, // Use null if 'none' is selected
+          project_id: projectId || null, // Optional project reference
           reporter: user.id,
           assigned_to: user.id // Default to self-assigned
         })
@@ -76,10 +72,10 @@ const TicketForm = () => {
       setHealth('green');
       setEstimatedHours('');
       setDueDate('');
-      setProjectId('none'); // Reset to 'none' instead of empty string
+      setProjectId('');
     } catch (error) {
       console.error('Error creating ticket:', error);
-      setMessage(`Error: ${error.message || 'An unknown error occurred'}`);
+      setMessage(`Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -193,7 +189,7 @@ const TicketForm = () => {
               onChange={(e) => setProjectId(e.target.value)}
               className="w-full p-2 border rounded"
             >
-              <option value="none">-- None --</option>
+              <option value="">-- None --</option>
               {projects.map(project => (
                 <option key={project.id} value={project.id}>
                   {project.title}
