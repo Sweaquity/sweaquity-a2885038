@@ -34,13 +34,21 @@ export interface Ticket {
 export interface Task {
   id: string;
   title: string;
-  // Add other properties as needed
+  description?: string;
+  status?: string;
+  priority?: string;
+  assignee?: string;
+  dueDate?: string;
+  projectId?: string;
+  equity?: number;
+  completion?: number;
 }
 
 export interface TaskType {
   id: string;
   name: string;
-  // Add other properties as needed
+  color?: string;
+  description?: string;
 }
 
 export interface DragResult {
@@ -60,5 +68,7 @@ export interface TicketStatistics {
   open: number;
   inProgress: number;
   completed: number;
-  // Add other properties as needed
+  backlog?: number;
+  review?: number;
+  totalTickets?: number;
 }
