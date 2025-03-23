@@ -54,6 +54,11 @@ export interface Task {
   projectId?: string;
   equity?: number;
   completion?: number;
+  start?: Date;
+  end?: Date;
+  progress?: number;
+  type?: string;
+  isDisabled?: boolean;
 }
 
 export interface TaskType {

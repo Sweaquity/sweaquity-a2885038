@@ -1,13 +1,14 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { KanbanBoard, BetaTicket } from "./KanbanBoard";
+import { KanbanBoard } from "./KanbanBoard";
 import { DragDropContext } from "react-beautiful-dnd";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
-import { Ticket, TicketStatistics, UserData } from "@/types/types";
+import { Ticket, TicketStatistics, UserData, BetaTicket } from "@/types/types";
 import TicketStats from "@/components/ticket/TicketStats";
 import { TimeTracker } from "@/components/job-seeker/dashboard/TimeTracker";
 
@@ -18,11 +19,7 @@ interface JobApplication {
 }
 
 interface ExtendedBetaTicket extends BetaTicket {
-  task_id?: string;
-  job_app_id?: string;
-  expanded?: boolean;
-  isTaskTicket?: boolean;
-  job_applications?: JobApplication;
+  job_applications?: JobApplication | null;
 }
 
 interface BetaTestingTabProps {
@@ -57,12 +54,27 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     if (!userId) return;
     
     try {
-      const { data: userData } = await supabase
-        .from(userType === 'job_seeker' ? 'profiles' : 'businesses')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
+      let userData;
+      if (userType === 'job_seeker') {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', userId)
+          .single();
+          
+        if (error) throw error;
+        userData = data;
+      } else {
+        const { data, error } = await supabase
+          .from('businesses')
+          .select('company_name')
+          .eq('businesses_id', userId)
+          .single();
+          
+        if (error) throw error;
+        userData = data;
+      }
+      
       const typedUserData = userData as UserData;
       
       const userName = userType === 'job_seeker'
@@ -138,7 +150,6 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     const byStatus: Record<string, number> = {};
     const byPriority: Record<string, number> = {};
     
-    // Count tickets by status
     ticketData.forEach(ticket => {
       const status = ticket.status || 'unknown';
       byStatus[status] = (byStatus[status] || 0) + 1;
@@ -168,26 +179,30 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       let projectTicketsData: ExtendedBetaTicket[] = [];
 
       if (userType === 'job_seeker') {
+        // First check for accepted jobs
         const { data: acceptedJobsData, error: acceptedJobsError } = await supabase
           .from('accepted_jobs')
           .select(`
             job_app_id,
             equity_agreed,
-            job_applications!inner (
+            job_applications (
               task_id,
               project_id
             )
           `)
           .eq('job_applications.user_id', userId);
 
-        if (acceptedJobsError) throw acceptedJobsError;
+        if (acceptedJobsError) {
+          console.error('Error loading accepted jobs:', acceptedJobsError);
+          return;
+        }
         
         if (acceptedJobsData && acceptedJobsData.length > 0) {
           const projectIds: string[] = [];
           const taskIds: string[] = [];
           
           acceptedJobsData.forEach(job => {
-            if (job.job_applications && typeof job.job_applications === 'object') {
+            if (job.job_applications) {
               const jobApp = job.job_applications as unknown as { project_id?: string; task_id?: string };
               if (jobApp.project_id) projectIds.push(jobApp.project_id);
               if (jobApp.task_id) taskIds.push(jobApp.task_id);
@@ -197,33 +212,67 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
           if (projectIds.length > 0) {
             const { data: projectTickets, error: ticketsError } = await supabase
               .from('tickets')
-              .select('*, job_applications(*)')
+              .select('*')
               .in('project_id', projectIds);
 
-            if (ticketsError) throw ticketsError;
+            if (ticketsError) {
+              console.error('Error loading project tickets:', ticketsError);
+            } else {
+              const projectTicketsWithMeta = (projectTickets || []).map(ticket => ({
+                ...ticket,
+                expanded: expandedTickets[ticket.id] || false
+              }));
+              
+              projectTicketsData = [...projectTicketsData, ...projectTicketsWithMeta];
+            }
             
             if (taskIds.length > 0) {
               const { data: taskTickets, error: taskTicketsError } = await supabase
                 .from('tickets')
-                .select('*, job_applications(*)')
+                .select('*')
                 .in('task_id', taskIds);
               
-              if (taskTicketsError) throw taskTicketsError;
-              
-              const allTickets = [...(projectTickets || []), ...(taskTickets || [])];
-              const uniqueTicketIds = new Set();
-              const uniqueTickets = allTickets.filter(ticket => {
-                if (uniqueTicketIds.has(ticket.id)) return false;
-                uniqueTicketIds.add(ticket.id);
-                return true;
-              });
-              
-              projectTicketsData = uniqueTickets.map(ticket => ({
-                ...ticket,
-                expanded: expandedTickets[ticket.id] || false,
-                isTaskTicket: Boolean(ticket.task_id)
-              })) as ExtendedBetaTicket[];
+              if (taskTicketsError) {
+                console.error('Error loading task tickets:', taskTicketsError);
+              } else {
+                const taskTicketsWithMeta = (taskTickets || []).map(ticket => ({
+                  ...ticket,
+                  expanded: expandedTickets[ticket.id] || false,
+                  isTaskTicket: true
+                }));
+                
+                projectTicketsData = [...projectTicketsData, ...taskTicketsWithMeta];
+              }
             }
+          }
+        }
+        
+        // Attempt to load time entries for all tickets
+        if (projectTicketsData.length > 0) {
+          const ticketIds = projectTicketsData.map(ticket => ticket.id);
+          
+          const { data: timeEntries, error: timeEntriesError } = await supabase
+            .from('time_entries')
+            .select('*')
+            .eq('user_id', userId)
+            .in('ticket_id', ticketIds);
+            
+          if (timeEntriesError) {
+            console.error('Error loading time entries:', timeEntriesError);
+          } else if (timeEntries) {
+            // Add time entries data to tickets
+            const ticketsWithTimeEntries = projectTicketsData.map(ticket => {
+              const ticketTimeEntries = timeEntries.filter(entry => entry.ticket_id === ticket.id);
+              const totalHours = ticketTimeEntries.reduce((sum, entry) => sum + (entry.hours_logged || 0), 0);
+              
+              return {
+                ...ticket,
+                time_entries: ticketTimeEntries,
+                total_hours_logged: totalHours
+              };
+            });
+            
+            projectTicketsData = ticketsWithTimeEntries;
           }
         }
       } else if (userType === 'business') {
@@ -232,7 +281,10 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
           .select('project_id')
           .eq('business_id', userId);
 
-        if (projectsError) throw projectsError;
+        if (projectsError) {
+          console.error('Error loading business projects:', projectsError);
+          return;
+        }
 
         if (businessProjects && businessProjects.length > 0) {
           const projectIds = businessProjects.map(p => p.project_id);
@@ -242,16 +294,55 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
             .select('*')
             .in('project_id', projectIds);
 
-          if (ticketsError) throw ticketsError;
+          if (ticketsError) {
+            console.error('Error loading project tickets:', ticketsError);
+          } else {
+            projectTicketsData = (projectTickets || []).map(ticket => ({
+              ...ticket,
+              expanded: expandedTickets[ticket.id] || false
+            }));
+          }
           
-          projectTicketsData = (projectTickets || []).map(ticket => ({
-            ...ticket,
-            expanded: expandedTickets[ticket.id] || false
-          })) as ExtendedBetaTicket[];
+          // Also load task tickets
+          const { data: tasks, error: tasksError } = await supabase
+            .from('project_sub_tasks')
+            .select('task_id')
+            .in('project_id', projectIds);
+            
+          if (tasksError) {
+            console.error('Error loading tasks:', tasksError);
+          } else if (tasks && tasks.length > 0) {
+            const taskIds = tasks.map(t => t.task_id);
+            
+            const { data: taskTickets, error: taskTicketsError } = await supabase
+              .from('tickets')
+              .select('*')
+              .in('task_id', taskIds);
+              
+            if (taskTicketsError) {
+              console.error('Error loading task tickets:', taskTicketsError);
+            } else if (taskTickets) {
+              const taskTicketsWithMeta = (taskTickets || []).map(ticket => ({
+                ...ticket,
+                expanded: expandedTickets[ticket.id] || false,
+                isTaskTicket: true
+              }));
+              
+              projectTicketsData = [...projectTicketsData, ...taskTicketsWithMeta];
+            }
+          }
         }
       }
 
-      setProjectTickets(projectTicketsData);
+      // Remove duplicates by ticket ID
+      const uniqueTicketIds = new Set();
+      const uniqueTickets = projectTicketsData.filter(ticket => {
+        if (uniqueTicketIds.has(ticket.id)) return false;
+        uniqueTicketIds.add(ticket.id);
+        return true;
+      });
+
+      setProjectTickets(uniqueTickets);
       
     } catch (error) {
       console.error('Error loading project tickets:', error);
@@ -261,10 +352,13 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
 
   const updateTicketStatus = async (ticketId: string, newStatus: string) => {
     try {
+      // Ensure status is never empty
+      const status = newStatus || 'new';
+      
       const { error } = await supabase
         .from('tickets')
         .update({ 
-          status: newStatus,
+          status,
           updated_at: new Date().toISOString()
         })
         .eq('id', ticketId);
@@ -273,8 +367,8 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       
       toast.success("Ticket status updated");
       
-      const ticketToUpdate = [...tickets, ...projectTickets].find(t => t.id === ticketId) as ExtendedBetaTicket;
-      if (ticketToUpdate?.task_id && newStatus === 'done') {
+      const ticketToUpdate = [...tickets, ...projectTickets].find(t => t.id === ticketId);
+      if (ticketToUpdate?.task_id && status === 'done') {
         const { error: taskError } = await supabase
           .from('project_sub_tasks')
           .update({ 
@@ -319,10 +413,13 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
 
   const updateTicketPriority = async (ticketId: string, newPriority: string) => {
     try {
+      // Ensure priority is never empty
+      const priority = newPriority || 'medium';
+      
       const { error } = await supabase
         .from('tickets')
         .update({ 
-          priority: newPriority,
+          priority,
           updated_at: new Date().toISOString()
         })
         .eq('id', ticketId);
@@ -351,23 +448,38 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       
       const currentNotes = ticketData.notes || [];
       
-      const { data: userData, error: userError } = await supabase
-        .from(userType === 'job_seeker' ? 'profiles' : 'businesses')
-        .select(userType === 'job_seeker' ? 'first_name, last_name' : 'company_name')
-        .eq('id', userId)
-        .single();
+      let userName = '';
       
-      if (userError) throw userError;
-      
-      const typedUserData = userData as UserData;
-      
-      const userName = userType === 'job_seeker'
-        ? `${typedUserData.first_name || ''} ${typedUserData.last_name || ''}`
-        : typedUserData.company_name || '';
+      try {
+        if (userType === 'job_seeker') {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', userId)
+            .single();
+            
+          if (profileData) {
+            userName = `${profileData.first_name || ''} ${profileData.last_name || ''}`;
+          }
+        } else {
+          const { data: businessData } = await supabase
+            .from('businesses')
+            .select('company_name')
+            .eq('businesses_id', userId)
+            .single();
+            
+          if (businessData) {
+            userName = businessData.company_name || '';
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        userName = userType === 'job_seeker' ? 'Job Seeker' : 'Business';
+      }
       
       const newNote = {
         id: crypto.randomUUID(),
-        user: userName,
+        user: userName.trim() || 'User',
         timestamp: new Date().toISOString(),
         content: note
       };
@@ -394,7 +506,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
 
   const updateProjectCompletion = async (ticketId: string, completionPercent: number) => {
     try {
-      const ticket = [...tickets, ...projectTickets].find(t => t.id === ticketId) as ExtendedBetaTicket;
+      const ticket = [...tickets, ...projectTickets].find(t => t.id === ticketId);
       if (!ticket || !ticket.task_id) {
         toast.error("This ticket is not associated with a task");
         return;
@@ -468,13 +580,13 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
   const handleTicketAction = useCallback((ticketId: string, action: string, data: any) => {
     switch (action) {
       case 'updateStatus':
-        updateTicketStatus(ticketId, data);
+        updateTicketStatus(ticketId, data || 'new');
         break;
       case 'updateDueDate':
         updateTicketDueDate(ticketId, data);
         break;
       case 'updatePriority':
-        updateTicketPriority(ticketId, data);
+        updateTicketPriority(ticketId, data || 'medium');
         break;
       case 'addNote':
         addTicketNote(ticketId, data);
@@ -495,7 +607,9 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
 
   const allTickets = [...tickets, ...projectTickets].map(ticket => ({
     ...ticket,
-    expanded: expandedTickets[ticket.id] || false
+    expanded: expandedTickets[ticket.id] || false,
+    status: ticket.status || 'new',
+    priority: ticket.priority || 'medium'
   })) as Ticket[];
 
   return (
