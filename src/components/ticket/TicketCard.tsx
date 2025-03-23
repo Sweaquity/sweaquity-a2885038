@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -213,6 +212,11 @@ export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
     }
   };
 
+  // Ensure we have valid values for the select components
+  const safeStatus = ticket.status || "backlog";
+  const safePriority = ticket.priority || "medium";
+  const safeHealth = ticket.health || "green";
+
   return (
     <Collapsible
       open={isExpanded}
@@ -232,19 +236,19 @@ export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
         <div className="flex items-center gap-2">
           <div>
             <Badge className={getHealthBadgeClass(ticket.health)}>
-              {ticket.health}
+              {ticket.health || "N/A"}
             </Badge>
           </div>
           
           <div>
             <Badge className={getPriorityBadgeClass(ticket.priority)}>
-              {ticket.priority}
+              {ticket.priority || "N/A"}
             </Badge>
           </div>
           
           <div>
             <Badge className={getStatusBadgeClass(ticket.status)}>
-              {ticket.status.replace('_', ' ')}
+              {ticket.status ? ticket.status.replace('_', ' ') : "N/A"}
             </Badge>
           </div>
           
@@ -274,12 +278,12 @@ export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
                   <div>
                     <p className="text-xs text-gray-500">Status</p>
                     <Select
-                      value={ticket.status}
+                      value={safeStatus}
                       onValueChange={handleStatusChange}
                       disabled={isUpdating}
                     >
                       <SelectTrigger className="w-full h-8 text-xs">
-                        <SelectValue />
+                        <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="backlog">Backlog</SelectItem>
@@ -294,12 +298,12 @@ export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
                   <div>
                     <p className="text-xs text-gray-500">Priority</p>
                     <Select
-                      value={ticket.priority}
+                      value={safePriority}
                       onValueChange={handlePriorityChange}
                       disabled={isUpdating}
                     >
                       <SelectTrigger className="w-full h-8 text-xs">
-                        <SelectValue />
+                        <SelectValue placeholder="Select priority" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="critical">Critical</SelectItem>
@@ -313,12 +317,12 @@ export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
                   <div>
                     <p className="text-xs text-gray-500">Health</p>
                     <Select
-                      value={ticket.health}
+                      value={safeHealth}
                       onValueChange={handleHealthChange}
                       disabled={isUpdating}
                     >
                       <SelectTrigger className="w-full h-8 text-xs">
-                        <SelectValue />
+                        <SelectValue placeholder="Select health" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="green">Green</SelectItem>

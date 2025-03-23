@@ -59,7 +59,6 @@ export const TicketForm: React.FC<TicketFormProps> = ({
 
   const handleSubmit = async () => {
     if (!formData.title.trim() || !formData.description.trim()) {
-      // Show validation error
       return;
     }
 
@@ -67,7 +66,6 @@ export const TicketForm: React.FC<TicketFormProps> = ({
     try {
       await onSubmit(formData);
       onOpenChange(false);
-      // Reset form if create mode
       if (mode === 'create') {
         setFormData(defaultData);
       }
@@ -141,7 +139,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({
             <div>
               <Label htmlFor="ticket-status">Status</Label>
               <Select
-                value={formData.status}
+                value={formData.status || "new"}
                 onValueChange={(value) => handleChange('status', value)}
               >
                 <SelectTrigger id="ticket-status">
@@ -161,7 +159,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({
             <div>
               <Label htmlFor="ticket-priority">Priority</Label>
               <Select
-                value={formData.priority}
+                value={formData.priority || "medium"}
                 onValueChange={(value) => handleChange('priority', value)}
               >
                 <SelectTrigger id="ticket-priority">
@@ -216,8 +214,6 @@ export const TicketForm: React.FC<TicketFormProps> = ({
               variant="outline" 
               type="button"
               onClick={() => {
-                // In a real implementation, this would open a file upload dialog
-                // For this example, we'll just add a placeholder URL
                 handleAddAttachment(`https://placeholder.com/ticket-attachment-${Date.now()}`);
               }}
               className="w-full"

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,9 +7,23 @@ import { DragDropContext } from "react-beautiful-dnd";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
-import { Ticket } from "@/types/types";
+import { Ticket, TicketStatistics, UserData } from "@/types/types";
 import TicketStats from "@/components/ticket/TicketStats";
 import { TimeTracker } from "@/components/job-seeker/dashboard/TimeTracker";
+
+interface JobApplication {
+  task_id?: string;
+  project_id?: string;
+  user_id: string;
+}
+
+interface ExtendedBetaTicket extends BetaTicket {
+  task_id?: string;
+  job_app_id?: string;
+  expanded?: boolean;
+  isTaskTicket?: boolean;
+  job_applications?: JobApplication;
+}
 
 interface BetaTestingTabProps {
   userType: "job_seeker" | "business";
@@ -19,16 +32,22 @@ interface BetaTestingTabProps {
 }
 
 export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false }: BetaTestingTabProps) => {
-  const [tickets, setTickets] = useState<BetaTicket[]>([]);
+  const [tickets, setTickets] = useState<ExtendedBetaTicket[]>([]);
   const [loading, setLoading] = useState(true);
-  const [projectTickets, setProjectTickets] = useState<BetaTicket[]>([]);
+  const [projectTickets, setProjectTickets] = useState<ExtendedBetaTicket[]>([]);
   const [showKanban, setShowKanban] = useState(true);
   const [showDashboard, setShowDashboard] = useState(true);
-  const [ticketStatistics, setTicketStatistics] = useState({
+  const [ticketStatistics, setTicketStatistics] = useState<TicketStatistics>({
+    total: 0,
+    open: 0,
+    inProgress: 0,
+    completed: 0,
     totalTickets: 0,
     openTickets: 0,
     closedTickets: 0,
-    highPriorityTickets: 0
+    highPriorityTickets: 0,
+    byStatus: {},
+    byPriority: {}
   });
   const [dashboardKey, setDashboardKey] = useState(0);
   const [expandedTickets, setExpandedTickets] = useState<Record<string, boolean>>({});
@@ -44,9 +63,11 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
         .eq('id', userId)
         .single();
 
+      const typedUserData = userData as UserData;
+      
       const userName = userType === 'job_seeker'
-        ? `${userData.first_name} ${userData.last_name}`
-        : userData.company_name;
+        ? `${typedUserData?.first_name || ''} ${typedUserData?.last_name || ''}`
+        : typedUserData?.company_name || '';
 
       const { data, error } = await supabase
         .from('tickets')
@@ -90,8 +111,8 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
         expanded: expandedTickets[ticket.id] || false
       }));
       
-      setTickets(updatedTickets);
-      calculateTicketStatistics(updatedTickets);
+      setTickets(updatedTickets as ExtendedBetaTicket[]);
+      calculateTicketStatistics(updatedTickets as Ticket[]);
 
       if (includeProjectTickets) {
         await loadProjectTickets();
@@ -114,11 +135,29 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       ticket.priority === 'high'
     ).length;
 
+    const byStatus: Record<string, number> = {};
+    const byPriority: Record<string, number> = {};
+    
+    // Count tickets by status
+    ticketData.forEach(ticket => {
+      const status = ticket.status || 'unknown';
+      byStatus[status] = (byStatus[status] || 0) + 1;
+      
+      const priority = ticket.priority || 'unknown';
+      byPriority[priority] = (byPriority[priority] || 0) + 1;
+    });
+
     setTicketStatistics({
+      total: totalTickets,
+      open: openTickets,
+      inProgress: 0, // Calculate this if needed
+      completed: closedTickets,
       totalTickets,
       openTickets,
       closedTickets,
-      highPriorityTickets
+      highPriorityTickets,
+      byStatus,
+      byPriority
     });
   };
 
@@ -126,10 +165,9 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     try {
       if (!userId) return;
 
-      let projectTicketsData: BetaTicket[] = [];
+      let projectTicketsData: ExtendedBetaTicket[] = [];
 
       if (userType === 'job_seeker') {
-        // For job seekers, we need to get tickets from accepted projects
         const { data: acceptedJobsData, error: acceptedJobsError } = await supabase
           .from('accepted_jobs')
           .select(`
@@ -145,16 +183,18 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
         if (acceptedJobsError) throw acceptedJobsError;
         
         if (acceptedJobsData && acceptedJobsData.length > 0) {
-          const projectIds = acceptedJobsData
-            .map(job => job.job_applications?.project_id)
-            .filter(Boolean) as string[];
+          const projectIds: string[] = [];
+          const taskIds: string[] = [];
           
-          const taskIds = acceptedJobsData
-            .map(job => job.job_applications?.task_id)
-            .filter(Boolean) as string[];
+          acceptedJobsData.forEach(job => {
+            if (job.job_applications && typeof job.job_applications === 'object') {
+              const jobApp = job.job_applications as unknown as { project_id?: string; task_id?: string };
+              if (jobApp.project_id) projectIds.push(jobApp.project_id);
+              if (jobApp.task_id) taskIds.push(jobApp.task_id);
+            }
+          });
           
           if (projectIds.length > 0) {
-            // Get tickets linked to these projects and tasks
             const { data: projectTickets, error: ticketsError } = await supabase
               .from('tickets')
               .select('*, job_applications(*)')
@@ -162,28 +202,28 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
 
             if (ticketsError) throw ticketsError;
             
-            // Add task-specific tickets if they exist
-            const { data: taskTickets, error: taskTicketsError } = await supabase
-              .from('tickets')
-              .select('*, job_applications(*)')
-              .in('task_id', taskIds);
-            
-            if (taskTicketsError) throw taskTicketsError;
-            
-            // Combine project and task tickets, removing duplicates
-            const allTickets = [...(projectTickets || []), ...(taskTickets || [])];
-            const uniqueTicketIds = new Set();
-            const uniqueTickets = allTickets.filter(ticket => {
-              if (uniqueTicketIds.has(ticket.id)) return false;
-              uniqueTicketIds.add(ticket.id);
-              return true;
-            });
-            
-            projectTicketsData = uniqueTickets.map(ticket => ({
-              ...ticket,
-              expanded: expandedTickets[ticket.id] || false,
-              isTaskTicket: !!ticket.task_id
-            }));
+            if (taskIds.length > 0) {
+              const { data: taskTickets, error: taskTicketsError } = await supabase
+                .from('tickets')
+                .select('*, job_applications(*)')
+                .in('task_id', taskIds);
+              
+              if (taskTicketsError) throw taskTicketsError;
+              
+              const allTickets = [...(projectTickets || []), ...(taskTickets || [])];
+              const uniqueTicketIds = new Set();
+              const uniqueTickets = allTickets.filter(ticket => {
+                if (uniqueTicketIds.has(ticket.id)) return false;
+                uniqueTicketIds.add(ticket.id);
+                return true;
+              });
+              
+              projectTicketsData = uniqueTickets.map(ticket => ({
+                ...ticket,
+                expanded: expandedTickets[ticket.id] || false,
+                isTaskTicket: Boolean(ticket.task_id)
+              })) as ExtendedBetaTicket[];
+            }
           }
         }
       } else if (userType === 'business') {
@@ -207,7 +247,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
           projectTicketsData = (projectTickets || []).map(ticket => ({
             ...ticket,
             expanded: expandedTickets[ticket.id] || false
-          }));
+          })) as ExtendedBetaTicket[];
         }
       }
 
@@ -233,10 +273,8 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       
       toast.success("Ticket status updated");
       
-      // If a ticket is marked as complete and it has a task_id, trigger business review
-      const ticketToUpdate = [...tickets, ...projectTickets].find(t => t.id === ticketId);
-      if (ticketToUpdate && ticketToUpdate.task_id && newStatus === 'done') {
-        // Update the task status to pending review
+      const ticketToUpdate = [...tickets, ...projectTickets].find(t => t.id === ticketId) as ExtendedBetaTicket;
+      if (ticketToUpdate?.task_id && newStatus === 'done') {
         const { error: taskError } = await supabase
           .from('project_sub_tasks')
           .update({ 
@@ -303,7 +341,6 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     if (!userId || !note.trim()) return;
     
     try {
-      // Get the current notes
       const { data: ticketData, error: getError } = await supabase
         .from('tickets')
         .select('notes')
@@ -314,7 +351,6 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       
       const currentNotes = ticketData.notes || [];
       
-      // Get user info for the note
       const { data: userData, error: userError } = await supabase
         .from(userType === 'job_seeker' ? 'profiles' : 'businesses')
         .select(userType === 'job_seeker' ? 'first_name, last_name' : 'company_name')
@@ -323,11 +359,12 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       
       if (userError) throw userError;
       
-      const userName = userType === 'job_seeker'
-        ? `${userData.first_name} ${userData.last_name}`
-        : userData.company_name;
+      const typedUserData = userData as UserData;
       
-      // Add the new note
+      const userName = userType === 'job_seeker'
+        ? `${typedUserData.first_name || ''} ${typedUserData.last_name || ''}`
+        : typedUserData.company_name || '';
+      
       const newNote = {
         id: crypto.randomUUID(),
         user: userName,
@@ -337,7 +374,6 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       
       const updatedNotes = [...currentNotes, newNote];
       
-      // Update the ticket
       const { error } = await supabase
         .from('tickets')
         .update({ 
@@ -358,13 +394,12 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
 
   const updateProjectCompletion = async (ticketId: string, completionPercent: number) => {
     try {
-      const ticket = [...tickets, ...projectTickets].find(t => t.id === ticketId);
+      const ticket = [...tickets, ...projectTickets].find(t => t.id === ticketId) as ExtendedBetaTicket;
       if (!ticket || !ticket.task_id) {
         toast.error("This ticket is not associated with a task");
         return;
       }
       
-      // Update the task completion percentage
       const { error: taskError } = await supabase
         .from('project_sub_tasks')
         .update({ 
@@ -375,7 +410,6 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       
       if (taskError) throw taskError;
       
-      // Calculate equity points based on completion percentage
       if (ticket.job_app_id) {
         const { data: acceptedJob, error: jobError } = await supabase
           .from('accepted_jobs')
@@ -388,7 +422,6 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
         if (acceptedJob) {
           const equityPoints = (acceptedJob.equity_agreed * (completionPercent / 100)).toFixed(2);
           
-          // Update the ticket's equity points
           const { error: equityError } = await supabase
             .from('tickets')
             .update({ 
@@ -511,10 +544,12 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
               {!showDashboard ? (
                 <>
                   <TicketStats
-                    totalTickets={ticketStatistics.totalTickets}
-                    openTickets={ticketStatistics.openTickets}
-                    closedTickets={ticketStatistics.closedTickets}
-                    highPriorityTickets={ticketStatistics.highPriorityTickets}
+                    totalTickets={ticketStatistics.totalTickets || 0}
+                    openTickets={ticketStatistics.openTickets || 0}
+                    closedTickets={ticketStatistics.closedTickets || 0}
+                    highPriorityTickets={ticketStatistics.highPriorityTickets || 0}
+                    byStatus={ticketStatistics.byStatus || {}}
+                    byPriority={ticketStatistics.byPriority || {}}
                   />
                   
                   {showKanban && (
@@ -522,11 +557,16 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
                       if (!result.destination) return;
                       const { draggableId, destination } = result;
                       
-                      updateTicketStatus(draggableId, destination.droppableId);
+                      // Ensure we never pass an empty string as a status
+                      const newStatus = destination.droppableId || 'new';
+                      updateTicketStatus(draggableId, newStatus);
                     }}>
                       <KanbanBoard 
                         tickets={allTickets} 
-                        onStatusChange={updateTicketStatus}
+                        onStatusChange={(id, status) => {
+                          // Ensure status is never an empty string
+                          updateTicketStatus(id, status || 'new');
+                        }}
                         onTicketClick={() => {}}
                       />
                     </DragDropContext>
@@ -555,7 +595,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
                         <TimeTracker 
                           ticketId={selectedTicket} 
                           userId={userId} 
-                          jobAppId={allTickets.find(t => t.id === selectedTicket)?.job_app_id}
+                          jobAppId={(allTickets.find(t => t.id === selectedTicket) as ExtendedBetaTicket)?.job_app_id}
                         />
                       )}
                     </CardContent>

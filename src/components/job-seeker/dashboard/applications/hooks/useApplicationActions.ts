@@ -8,6 +8,13 @@ export const useApplicationActions = (onApplicationUpdated?: () => void) => {
 
   const updateApplicationStatus = async (applicationId: string, status: string, reason?: string) => {
     try {
+      // Validate status to ensure it's never empty
+      if (!status || status.trim() === '') {
+        console.error('Attempted to update with empty status');
+        toast.error("Cannot update with an empty status value");
+        return;
+      }
+      
       setIsUpdatingStatus(applicationId);
       
       const updateData: { status: string; notes?: string } = { status };

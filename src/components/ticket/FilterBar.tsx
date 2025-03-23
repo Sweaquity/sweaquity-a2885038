@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -38,7 +39,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Statuses</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="new">New</SelectItem>
               <SelectItem value="in-progress">In Progress</SelectItem>
               <SelectItem value="blocked">Blocked</SelectItem>
@@ -56,7 +57,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <SelectValue placeholder="All Priorities" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Priorities</SelectItem>
+              <SelectItem value="all">All Priorities</SelectItem>
               <SelectItem value="low">Low</SelectItem>
               <SelectItem value="medium">Medium</SelectItem>
               <SelectItem value="high">High</SelectItem>
