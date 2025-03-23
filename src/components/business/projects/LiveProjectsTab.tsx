@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { DragDropContext } from "react-beautiful-dnd";
-import { Task, TaskType } from "@/types/dashboard";
+import { Task, TaskType } from "@/types/types";
 
 interface LiveProjectsTabProps {
   projectId?: string | null;
