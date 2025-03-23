@@ -2,7 +2,7 @@
 export interface Ticket {
   id: string;
   title: string;
-  description: string; // Make this required
+  description: string; // Required field
   status: string;
   priority: string;
   reporter?: string;
@@ -14,7 +14,7 @@ export interface Ticket {
     id: string;
     user: string;
     timestamp: string;
-    content: string;
+    content?: string;
     action?: string;
     comment?: string;
   }>;
@@ -30,9 +30,11 @@ export interface Ticket {
   equity_points?: number;
   isTaskTicket?: boolean;
   completion_percentage?: number;
+  estimated_hours?: number;
+  hours_logged?: number;
 }
 
-// Update BetaTicket to explicitly include all required properties
+// BetaTicket interface with all required properties
 export interface BetaTicket extends Ticket {
   task_id?: string;
   project_id?: string;
@@ -42,7 +44,7 @@ export interface BetaTicket extends Ticket {
   completion_percentage?: number;
 }
 
-// Add missing exported types that are referenced in the code
+// Task interface for project tasks
 export interface Task {
   id: string;
   title: string;

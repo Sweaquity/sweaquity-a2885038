@@ -69,12 +69,47 @@ export const LiveProjectsTab: React.FC<LiveProjectsTabProps> = ({ projectId }) =
 
   const updateTicketStatus = async (ticketId: string, newStatus: string) => {
     try {
-      const { error } = await supabase
+      // First update the ticket status in the tickets table
+      const { error: ticketError } = await supabase
         .from('tickets')
-        .update({ status: newStatus })
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', ticketId);
 
-      if (error) throw error;
+      if (ticketError) throw ticketError;
+      
+      // Get the ticket to check if it's a task ticket
+      const { data: ticketData, error: getError } = await supabase
+        .from('tickets')
+        .select('task_id, project_id')
+        .eq('id', ticketId)
+        .single();
+        
+      if (getError) throw getError;
+      
+      // If this is a task ticket, also update the project_sub_tasks table
+      if (ticketData.task_id) {
+        let taskStatus = newStatus;
+        // Map ticket status to task status if different terminology is used
+        if (newStatus === 'done') {
+          taskStatus = 'pending_review';
+        } else if (newStatus === 'closed') {
+          taskStatus = 'completed';
+        }
+        
+        const { error: taskError } = await supabase
+          .from('project_sub_tasks')
+          .update({ 
+            task_status: taskStatus,
+            last_activity_at: new Date().toISOString()
+          })
+          .eq('task_id', ticketData.task_id);
+        
+        if (taskError) throw taskError;
+      }
+      
       toast.success("Ticket status updated");
       fetchTickets();
     } catch (error) {
@@ -127,45 +162,7 @@ export const LiveProjectsTab: React.FC<LiveProjectsTabProps> = ({ projectId }) =
     }
   };
 
-  const approveTaskCompletion = async () => {
-    if (!selectedTask) return;
-
-    try {
-      const { error } = await supabase
-        .from('project_sub_tasks')
-        .update({ task_status: 'completed' })
-        .eq('task_id', selectedTask.task_id);
-
-      if (error) throw error;
-      toast.success("Task completion approved!");
-      setShowReviewDialog(false);
-      fetchTickets();
-    } catch (error) {
-      console.error('Error approving task completion:', error);
-      toast.error("Failed to approve task completion");
-    }
-  };
-
-  const rejectTaskCompletion = async () => {
-    if (!selectedTask) return;
-
-    try {
-      const { error } = await supabase
-        .from('project_sub_tasks')
-        .update({ task_status: 'in_progress' })
-        .eq('task_id', selectedTask.task_id);
-
-      if (error) throw error;
-      toast.success("Task completion rejected");
-      setShowReviewDialog(false);
-      fetchTickets();
-    } catch (error) {
-      console.error('Error rejecting task completion:', error);
-      toast.error("Failed to reject task completion");
-    }
-  };
-
-  const getGanttTasks = useCallback((): Task[] => {
+  const getGanttTasks = useCallback((): any[] => {
     return tickets.map(ticket => ({
       id: ticket.id,
       name: ticket.title,
@@ -229,15 +226,6 @@ export const LiveProjectsTab: React.FC<LiveProjectsTabProps> = ({ projectId }) =
       {selectedTask && businessId && (
         <TaskCompletionReview 
           businessId={businessId}
-          /* The props below are expected by your implementation but are not available in the 
-             read-only TaskCompletionReview component. You may need to adapt your component
-             to match the available props */
-          // For testing purposes, we'll pass these props and adjust them later
-          // isOpen={showReviewDialog}
-          // onOpenChange={setShowReviewDialog}
-          // task={selectedTask}
-          // onApprove={approveTaskCompletion}
-          // onReject={rejectTaskCompletion}
         />
       )}
     </div>

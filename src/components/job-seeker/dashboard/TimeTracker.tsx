@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Save, Clock } from "lucide-react";
+import { Save, Clock, History } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface TimeTrackerProps {
   ticketId: string;
@@ -20,6 +21,7 @@ export const TimeTracker = ({ ticketId, userId, jobAppId }: TimeTrackerProps) =>
   const [timeEntries, setTimeEntries] = useState<any[]>([]);
   const [totalHoursLogged, setTotalHoursLogged] = useState(0);
   const [isTaskTicket, setIsTaskTicket] = useState(false);
+  const [showTimeEntries, setShowTimeEntries] = useState(false);
 
   useEffect(() => {
     // Load existing time entries for this ticket
@@ -151,64 +153,90 @@ export const TimeTracker = ({ ticketId, userId, jobAppId }: TimeTrackerProps) =>
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <label className="text-sm font-medium">Log Time for Task</label>
-        
-        <div className="flex items-center space-x-2 mb-2">
-          <Clock className="h-4 w-4 text-muted-foreground" />
-          <Input
-            type="number"
-            min="0.1"
-            step="0.1"
-            placeholder="Hours"
-            value={manualHours || ''}
-            onChange={(e) => setManualHours(parseFloat(e.target.value) || 0)}
-            className="w-24"
-          />
-          <span className="text-sm text-muted-foreground">hours</span>
-        </div>
-        
-        <Textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe what you're working on..."
-          rows={2}
-        />
-        
-        <Button 
-          type="button"
-          onClick={saveTimeEntry}
-          disabled={isSaving}
-          className="w-full"
-        >
-          <Save className="h-4 w-4 mr-1" /> Log Time
-        </Button>
-      </div>
-
-      {/* Display total logged time */}
-      <div className="rounded-md bg-secondary/30 p-3">
-        <div className="flex justify-between items-center">
-          <span className="text-sm font-medium">Total time logged</span>
-          <span className="text-sm font-bold">{totalHoursLogged.toFixed(2)} hours</span>
-        </div>
-      </div>
-      
-      {/* Recent time entries */}
-      {timeEntries.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium">Recent entries</h4>
-          <div className="max-h-40 overflow-y-auto space-y-2">
-            {timeEntries.slice(0, 5).map((entry) => (
-              <div key={entry.id} className="text-xs border rounded p-2">
-                <div className="flex justify-between">
-                  <span className="font-medium">{formatDate(entry.start_time)}</span>
-                  <span>{entry.hours_logged.toFixed(2)} hours</span>
+        <div className="flex space-x-2 items-center">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline" className="flex items-center">
+                <Clock className="h-4 w-4 mr-2" />
+                Log Time
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Log Time for Task</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    placeholder="Hours"
+                    value={manualHours || ''}
+                    onChange={(e) => setManualHours(parseFloat(e.target.value) || 0)}
+                    className="w-24"
+                  />
+                  <span className="text-sm text-muted-foreground">hours</span>
                 </div>
-                <p className="text-muted-foreground mt-1 line-clamp-1">{entry.description}</p>
+                
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe what you're working on..."
+                  rows={2}
+                />
+                
+                <Button 
+                  type="button"
+                  onClick={saveTimeEntry}
+                  disabled={isSaving}
+                  className="w-full"
+                >
+                  <Save className="h-4 w-4 mr-1" /> Log Time
+                </Button>
               </div>
-            ))}
-          </div>
+            </DialogContent>
+          </Dialog>
+          
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline" className="flex items-center">
+                <History className="h-4 w-4 mr-2" />
+                View Time Entries
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[80vh] overflow-auto">
+              <DialogHeader>
+                <DialogTitle>Time Entry History</DialogTitle>
+              </DialogHeader>
+              
+              <div className="rounded-md bg-secondary/30 p-3 mb-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Total time logged</span>
+                  <span className="text-sm font-bold">{totalHoursLogged.toFixed(2)} hours</span>
+                </div>
+              </div>
+              
+              {timeEntries.length === 0 ? (
+                <p className="text-center text-muted-foreground py-4">No time entries yet</p>
+              ) : (
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                  {timeEntries.map((entry) => (
+                    <div key={entry.id} className="border rounded p-3">
+                      <div className="flex justify-between">
+                        <span className="font-medium">{formatDate(entry.start_time)}</span>
+                        <span className="font-bold">{entry.hours_logged.toFixed(2)} hours</span>
+                      </div>
+                      <p className="text-muted-foreground mt-2">{entry.description}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
-      )}
+      </div>
     </div>
   );
 };

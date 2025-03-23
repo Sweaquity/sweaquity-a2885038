@@ -82,6 +82,26 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
           return;
         }
         
+        // Get time entries to calculate earnings based on hours
+        const { data: timeEntries, error: timeError } = await supabase
+          .from('time_entries')
+          .select('ticket_id, job_app_id, hours_logged')
+          .in('job_app_id', appIds);
+          
+        if (timeError) {
+          console.error('Error fetching time entries:', timeError);
+        }
+        
+        // Get ticket information to link tasks and time entries
+        const { data: tickets, error: ticketsError } = await supabase
+          .from('tickets')
+          .select('id, task_id, estimated_hours')
+          .in('task_id', taskIds);
+          
+        if (ticketsError) {
+          console.error('Error fetching tickets:', ticketsError);
+        }
+        
         // Join accepted jobs with applications to get task-to-equity mapping
         const taskEquityMap = new Map<string, number>();
         applications.forEach(app => {
@@ -95,7 +115,7 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
         // Get completion percentage for each task
         const { data: subTasks, error: tasksError } = await supabase
           .from('project_sub_tasks')
-          .select('task_id, completion_percentage')
+          .select('task_id, completion_percentage, task_status')
           .in('task_id', taskIds);
           
         if (tasksError) {
@@ -103,11 +123,38 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
           return;
         }
         
-        // Calculate earned equity based on completion percentage
+        // Calculate earned equity based on multiple methods
         const updatedTasks = project.tasks.map(task => {
           const acceptedEquity = taskEquityMap.get(task.id) || 0;
-          const taskCompletion = subTasks?.find(t => t.task_id === task.id)?.completion_percentage || 0;
-          const earnedEquity = (acceptedEquity * (taskCompletion / 100));
+          const taskData = subTasks?.find(t => t.task_id === task.id);
+          const taskStatus = taskData?.task_status || '';
+          const completionPercentage = taskData?.completion_percentage || 0;
+          
+          // Get relevant ticket for this task
+          const taskTicket = tickets?.find(t => t.task_id === task.id);
+          const estimatedHours = taskTicket?.estimated_hours || 0;
+          
+          // Get time entries for this task's ticket
+          let hoursLogged = 0;
+          if (taskTicket) {
+            const relevantTimeEntries = timeEntries?.filter(te => te.ticket_id === taskTicket.id) || [];
+            hoursLogged = relevantTimeEntries.reduce((sum, entry) => sum + (entry.hours_logged || 0), 0);
+          }
+          
+          // Calculate earned equity based on different methods:
+          let earnedEquity = 0;
+          
+          if (taskStatus === 'completed' || taskStatus === 'closed') {
+            // Method C: If task is completed/closed, full equity is earned
+            earnedEquity = acceptedEquity;
+          } else if (estimatedHours > 0 && hoursLogged > 0) {
+            // Method A: Based on logged hours / estimated hours
+            const hoursRatio = Math.min(hoursLogged / estimatedHours, 1);
+            earnedEquity = acceptedEquity * hoursRatio;
+          } else if (completionPercentage > 0) {
+            // Method B: Based on completion percentage
+            earnedEquity = acceptedEquity * (completionPercentage / 100);
+          }
           
           return {
             ...task,
@@ -138,8 +185,8 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
             <TableHead className="w-[10%]">Number of Tasks</TableHead>
             <TableHead className="w-[25%]">Required Skills</TableHead>
             <TableHead className="w-[10%]">Total Equity</TableHead>
-            <TableHead className="w-[10%]">Claimed Equity</TableHead>
-            <TableHead className="w-[10%]">Earned Equity</TableHead>
+            <TableHead className="w-[10%]">Equity Offered</TableHead>
+            <TableHead className="w-[10%]">Equity Earned</TableHead>
             <TableHead className="w-[15%]">Remaining Equity</TableHead>
           </TableRow>
         </TableHeader>

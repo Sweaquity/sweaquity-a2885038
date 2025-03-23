@@ -1,126 +1,112 @@
 
-// TicketKanbanBoard.tsx
 import React from "react";
+import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
+import { Ticket } from "@/types/types";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { Ticket, DragResult } from "@/types/types";
+import { Clock, MoreHorizontal, CheckCircle } from "lucide-react";
 
-interface TicketKanbanBoardProps {
+export interface TicketKanbanBoardProps {
   tickets: Ticket[];
   onStatusChange: (ticketId: string, newStatus: string) => void;
-  onViewTicket: (ticketId: string) => void;
+  onTicketClick?: (ticket: Ticket) => void;  // Made this prop optional
 }
 
-export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
+export const KanbanBoard: React.FC<TicketKanbanBoardProps> = ({
   tickets,
   onStatusChange,
-  onViewTicket
+  onTicketClick = () => {},  // Default empty function
 }) => {
-  const getKanbanData = () => {
-    const columns = {
-      'new': { id: 'new', title: 'New', ticketIds: [] as string[] },
-      'in-progress': { id: 'in-progress', title: 'In Progress', ticketIds: [] as string[] },
-      'blocked': { id: 'blocked', title: 'Blocked', ticketIds: [] as string[] },
-      'review': { id: 'review', title: 'Review', ticketIds: [] as string[] },
-      'done': { id: 'done', title: 'Done', ticketIds: [] as string[] },
-      'closed': { id: 'closed', title: 'Closed', ticketIds: [] as string[] }
-    };
-    
-    const ticketMap: Record<string, Ticket> = {};
-    
-    tickets.forEach(ticket => {
-      ticketMap[ticket.id] = ticket;
-      const status = ticket.status || 'new';
-      if (columns[status as keyof typeof columns]) {
-        columns[status as keyof typeof columns].ticketIds.push(ticket.id);
-      } else {
-        columns['new'].ticketIds.push(ticket.id);
-      }
-    });
-    
-    return { columns, tickets: ticketMap };
-  };
-
-  const onDragEnd = (result: DragResult) => {
-    const { source, destination, draggableId } = result;
-    
-    if (!destination) return;
-    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
-    
-    onStatusChange(draggableId, destination.droppableId);
-  };
+  const columns = [
+    { id: 'todo', title: 'To Do' },
+    { id: 'in-progress', title: 'In Progress' },
+    { id: 'review', title: 'Review' },
+    { id: 'done', title: 'Done' },
+    { id: 'closed', title: 'Closed' }
+  ];
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
+    if (!dateString) return 'No due date';
     return new Date(dateString).toLocaleDateString();
   };
-  
-  const { columns, tickets: ticketMap } = getKanbanData();
 
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <div className="overflow-x-auto p-4">
-        <div className="flex space-x-4 min-w-fit">
-          {Object.values(columns).map(column => (
-            <div key={column.id} className="w-64 bg-gray-50 rounded-md p-2">
-              <h3 className="font-medium mb-2">{column.title} ({column.ticketIds.length})</h3>
-              <Droppable droppableId={column.id}>
-                {(provided) => (
-                  <div 
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    className="space-y-2 min-h-[50px]"
-                  >
-                    {column.ticketIds.map((ticketId, index) => {
-                      const ticket = ticketMap[ticketId];
-                      return (
-                        <Draggable key={ticketId} draggableId={ticketId} index={index}>
-                          {(provided) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                            >
-                              <Card className={`
-                                p-2 cursor-pointer
-                                ${ticket.priority === 'high' ? 'border-l-4 border-l-red-500' : 
-                                  ticket.priority === 'medium' ? 'border-l-4 border-l-yellow-500' :
-                                  'border-l-4 border-l-blue-500'}`
-                              }>
-                                <div className="text-sm font-medium">{ticket.title}</div>
-                                <div className="text-xs text-gray-500 truncate">{ticket.description}</div>
-                                <div className="flex justify-between mt-1">
-                                  <div className="text-xs">{formatDate(ticket.due_date)}</div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 text-xs px-2"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onViewTicket(ticket.id);
-                                    }}
-                                  >
-                                    View
-                                  </Button>
-                                </div>
-                              </Card>
-                            </div>
-                          )}
-                        </Draggable>
-                      );
-                    })}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </div>
-          ))}
-        </div>
-      </div>
-    </DragDropContext>
+    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      {columns.map(column => {
+        const columnTickets = tickets.filter(ticket => ticket.status === column.id);
+        
+        return (
+          <Droppable key={column.id} droppableId={column.id}>
+            {(provided) => (
+              <div 
+                {...provided.droppableProps}
+                ref={provided.innerRef}
+                className="bg-gray-50 p-3 rounded-lg min-h-[300px]"
+              >
+                <h3 className="font-medium text-sm mb-3">{column.title} ({columnTickets.length})</h3>
+                
+                {columnTickets.map((ticket, index) => (
+                  <Draggable key={ticket.id} draggableId={ticket.id} index={index}>
+                    {(provided) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                        className="bg-white mb-2 p-3 rounded-md shadow-sm border border-gray-100"
+                        onClick={() => onTicketClick(ticket)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <h4 className="font-medium">{ticket.title}</h4>
+                          <div className={`text-xs font-medium px-2 py-1 rounded-full ${
+                            ticket.priority === 'high' ? 'bg-red-100 text-red-800' :
+                            ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {ticket.priority}
+                          </div>
+                        </div>
+                        
+                        <p className="text-xs text-gray-500 line-clamp-2 mt-1">{ticket.description}</p>
+                        
+                        {ticket.isTaskTicket && (
+                          <div className="mt-2 flex items-center text-xs text-blue-600">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            <span>Task Ticket</span>
+                            {ticket.equity_points !== undefined && ticket.equity_points > 0 && (
+                              <span className="ml-1">(Equity: {ticket.equity_points}%)</span>
+                            )}
+                          </div>
+                        )}
+                        
+                        {ticket.due_date && (
+                          <div className="mt-2 flex items-center text-xs text-gray-500">
+                            <Clock className="h-3 w-3 mr-1" />
+                            <span>Due: {formatDate(ticket.due_date)}</span>
+                          </div>
+                        )}
+                        
+                        <div className="mt-2 flex justify-end">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-5 w-5 p-0" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTicketClick(ticket);
+                            }}
+                          >
+                            <MoreHorizontal className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        );
+      })}
+    </div>
   );
 };
-
-// Export with alias for backward compatibility
-export { TicketKanbanBoard as KanbanBoard };
