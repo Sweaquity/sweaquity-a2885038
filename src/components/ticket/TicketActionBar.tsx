@@ -28,7 +28,7 @@ export const TicketActionBar: React.FC<TicketActionBarProps> = ({
   onDueDateChange,
   onReplyClick
 }) => {
-  // Ensure we have valid default values
+  // Ensure we have safe non-empty default values
   const safeStatus = status || "new";
   const safePriority = priority || "medium";
   

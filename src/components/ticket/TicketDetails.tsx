@@ -23,6 +23,10 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
   onDueDateChange,
   formatDate
 }) => {
+  // Make sure we have a safe value for ticket status and priority
+  const safeStatus = ticket.status || "new";
+  const safePriority = ticket.priority || "medium";
+  
   return (
     <Card className="shadow-none border-t-0 rounded-t-none pt-0">
       <CardContent className="p-4">
@@ -41,7 +45,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
                   {['new', 'in-progress', 'blocked', 'review', 'done', 'closed'].map(status => (
                     <Badge 
                       key={status}
-                      variant={ticket.status === status ? "default" : "outline"}
+                      variant={safeStatus === status ? "default" : "outline"}
                       className="cursor-pointer"
                       onClick={() => onStatusChange(ticket.id, status)}
                     >
@@ -57,7 +61,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
                   {['low', 'medium', 'high'].map(priority => (
                     <Badge 
                       key={priority}
-                      variant={ticket.priority === priority ? "default" : "outline"}
+                      variant={safePriority === priority ? "default" : "outline"}
                       className={`cursor-pointer ${
                         priority === 'high' ? 'bg-red-100 text-red-800 hover:bg-red-200' :
                         priority === 'medium' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
@@ -91,7 +95,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
             <div className="space-y-2">
               <div className="flex items-center">
                 <Clock className="h-4 w-4 mr-2 text-gray-500" />
-                <span className="text-sm">Created: {formatDate(ticket.created_at)}</span>
+                <span className="text-sm">Created: {formatDate(ticket.created_at || '')}</span>
               </div>
               
               {ticket.updated_at && ticket.updated_at !== ticket.created_at && (
@@ -113,7 +117,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
                   <div className="space-y-2 mt-2">
                     {ticket.notes.map((note, index) => (
                       <div key={index} className="bg-gray-50 p-2 rounded text-sm">
-                        <div className="font-medium">{note.user} - {note.action}</div>
+                        <div className="font-medium">{note.user} - {note.action || "commented"}</div>
                         <div className="text-gray-500 text-xs">{formatDate(note.timestamp)}</div>
                         {note.comment && <p className="mt-1">{note.comment}</p>}
                       </div>

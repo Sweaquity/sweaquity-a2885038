@@ -33,7 +33,7 @@ export const ApplicationStatus = ({
   isAcceptingJob,
   compact = false
 }: ApplicationStatusProps) => {
-  // Ensure we always have a valid status
+  // Ensure we have a non-empty default value
   const safeStatus = status || "pending";
   
   return (

@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { DragDropContext } from "react-beautiful-dnd";
-import { Task, TaskType } from "@/types/dashboard";
+import { Task, TaskType } from "@/types/types";
 
 interface LiveProjectsTabProps {
   projectId?: string | null;
@@ -114,8 +114,15 @@ export function LiveProjectsTab({ projectId }: LiveProjectsTabProps) {
         
       if (error) throw error;
       
-      setTicketsData(data || []);
-      setBetaTickets(data || []);
+      // Make sure we don't have any empty status values before setting to state
+      const sanitizedTickets = (data || []).map(ticket => ({
+        ...ticket,
+        status: ticket.status || 'new', // Provide defaults for empty values
+        priority: ticket.priority || 'medium'
+      }));
+      
+      setTicketsData(sanitizedTickets);
+      setBetaTickets(sanitizedTickets);
     } catch (error) {
       console.error('Error fetching tickets:', error);
       toast.error("Failed to load tickets");
@@ -126,6 +133,13 @@ export function LiveProjectsTab({ projectId }: LiveProjectsTabProps) {
 
   const handleTicketStatusChange = async (ticketId: string, newStatus: string) => {
     try {
+      // Validate status to ensure it's never empty
+      if (!newStatus || newStatus.trim() === '') {
+        console.error('Attempted to update with empty status');
+        toast.error("Cannot update with an empty status value");
+        return;
+      }
+      
       const { error } = await supabase
         .from('tickets')
         .update({ status: newStatus })
@@ -144,7 +158,7 @@ export function LiveProjectsTab({ projectId }: LiveProjectsTabProps) {
   const getGanttTasks = (): Task[] => {
     return ticketsData.map(ticket => ({
       id: ticket.id,
-      name: ticket.title,
+      title: ticket.title,  // This should be 'title' instead of 'name'
       start: new Date(new Date().setDate(new Date().getDate() - 3)),
       end: ticket.due_date ? new Date(ticket.due_date) : new Date(new Date().setDate(new Date().getDate() + 4)),
       progress: ticket.status === 'done' ? 100 :
@@ -174,9 +188,12 @@ export function LiveProjectsTab({ projectId }: LiveProjectsTabProps) {
               <SelectContent>
                 {projectsData.map((project) => (
                   <SelectItem key={project.project_id} value={project.project_id}>
-                    {project.title}
+                    {project.title || `Project ${project.project_id.slice(0, 8)}`}
                   </SelectItem>
                 ))}
+                {projectsData.length === 0 && (
+                  <SelectItem value="no-projects" disabled>No projects available</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -222,38 +239,39 @@ export function LiveProjectsTab({ projectId }: LiveProjectsTabProps) {
             <TabsContent value="tasks">
               {tasksData.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-muted-foreground">No tasks for this project.</p>
+                  <p className="text-muted-foreground">No tasks found for this project.</p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Task</TableHead>
+                      <TableHead>Title</TableHead>
                       <TableHead>Description</TableHead>
-                      <TableHead>Timeframe</TableHead>
-                      <TableHead>Status</TableHead>
                       <TableHead>Equity</TableHead>
                       <TableHead>Completion</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tasksData.map(task => (
+                    {tasksData.map((task) => (
                       <TableRow key={task.task_id}>
                         <TableCell className="font-medium">{task.title}</TableCell>
-                        <TableCell className="max-w-xs truncate">{task.description}</TableCell>
-                        <TableCell>{task.timeframe}</TableCell>
-                        <TableCell>
-                          <Badge className={
-                            task.status === 'completed' ? 'bg-green-500' : 
-                            task.status === 'in_progress' ? 'bg-blue-500' : 
-                            task.status === 'open' ? 'bg-yellow-500' : 
-                            'bg-gray-500'
-                          }>
-                            {task.status}
-                          </Badge>
-                        </TableCell>
+                        <TableCell>{task.description}</TableCell>
                         <TableCell>{task.equity_allocation}%</TableCell>
-                        <TableCell>{task.completion_percentage}%</TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-full bg-gray-200 rounded-full h-2.5">
+                              <div 
+                                className="bg-primary h-2.5 rounded-full" 
+                                style={{ width: `${task.completion_percentage || 0}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-sm">{task.completion_percentage || 0}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="outline" size="sm">View Details</Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

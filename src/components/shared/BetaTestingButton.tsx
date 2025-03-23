@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Camera, Upload, X } from "lucide-react";
@@ -54,7 +55,7 @@ export function BetaTestingButton() {
       if (!errorLocation) {
         const pathParts = window.location.pathname.split('/');
         const pageName = pathParts[pathParts.length - 1] || pathParts[pathParts.length - 2] || 'Home';
-        setErrorLocation(pageName.charAt(0).toUpperCase() + pageName.slice(1).replace(/-/g, ''));
+        setErrorLocation(pageName.charAt(0).toUpperCase() + pageName.slice(1).replace(/-/g, ' '));
       }
     }
   }, [isOpen, errorLocation]);
@@ -84,9 +85,6 @@ export function BetaTestingButton() {
         // Set default selected sub-task if available
         if (mappedData.length > 0) {
           setSelectedSubTaskId(mappedData[0].id);
-        } else {
-          // If no tasks are available, set a default placeholder value
-          setSelectedSubTaskId('none');
         }
       }
     } catch (error) {
@@ -229,7 +227,7 @@ export function BetaTestingButton() {
       setIsSubmitting(false);
     }
   };
-
+      
   return (
     <>
       <TooltipProvider>
@@ -300,7 +298,7 @@ export function BetaTestingButton() {
                 </SelectTrigger>
                 <SelectContent>
                   {projectSubTasks.length === 0 && !isLoadingSubTasks ? (
-                    <SelectItem value="none">No sub-tasks available</SelectItem>
+                    <SelectItem value="none" disabled>No sub-tasks available</SelectItem>
                   ) : (
                     projectSubTasks.map(task => (
                       <SelectItem key={task.id} value={task.id}>
