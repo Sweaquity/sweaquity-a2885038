@@ -29,3 +29,36 @@ export interface Ticket {
   isTaskTicket?: boolean;
   completion_percentage?: number;
 }
+
+// Add missing exported types that are referenced in the code
+export interface Task {
+  id: string;
+  title: string;
+  // Add other properties as needed
+}
+
+export interface TaskType {
+  id: string;
+  name: string;
+  // Add other properties as needed
+}
+
+export interface DragResult {
+  destination?: {
+    droppableId: string;
+    index: number;
+  };
+  source: {
+    droppableId: string;
+    index: number;
+  };
+  draggableId: string;
+}
+
+export interface TicketStatistics {
+  total: number;
+  open: number;
+  inProgress: number;
+  completed: number;
+  // Add other properties as needed
+}

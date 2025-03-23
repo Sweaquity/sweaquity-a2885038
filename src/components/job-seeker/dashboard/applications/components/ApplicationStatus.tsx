@@ -41,7 +41,7 @@ export const ApplicationStatus = ({
         <div className="flex flex-col items-end space-y-2">
           <div className="flex flex-wrap gap-2 items-center justify-end">
             <Select 
-              value={String(status) || "pending"} 
+              value={String(status || "pending")} 
               onValueChange={onStatusChange}
               disabled={isUpdatingStatus}
             >

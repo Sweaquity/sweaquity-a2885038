@@ -141,7 +141,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({
             <div>
               <Label htmlFor="ticket-status">Status</Label>
               <Select
-                value={formData.status}
+                value={formData.status || "new"}
                 onValueChange={(value) => handleChange('status', value)}
               >
                 <SelectTrigger id="ticket-status">
@@ -161,7 +161,7 @@ export const TicketForm: React.FC<TicketFormProps> = ({
             <div>
               <Label htmlFor="ticket-priority">Priority</Label>
               <Select
-                value={formData.priority}
+                value={formData.priority || "medium"}
                 onValueChange={(value) => handleChange('priority', value)}
               >
                 <SelectTrigger id="ticket-priority">

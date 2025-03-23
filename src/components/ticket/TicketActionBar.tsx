@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -32,7 +33,7 @@ export const TicketActionBar: React.FC<TicketActionBarProps> = ({
       <div>
         <Label htmlFor={`status-${ticketId}`} className="text-xs block mb-1">Update Status</Label>
         <Select
-          defaultValue={status}
+          defaultValue={status || "new"}
           onValueChange={(value) => onStatusChange(ticketId, value)}
         >
           <SelectTrigger id={`status-${ticketId}`} className="w-[140px]">
@@ -52,7 +53,7 @@ export const TicketActionBar: React.FC<TicketActionBarProps> = ({
       <div>
         <Label htmlFor={`priority-${ticketId}`} className="text-xs block mb-1">Update Priority</Label>
         <Select
-          defaultValue={priority}
+          defaultValue={priority || "medium"}
           onValueChange={(value) => onPriorityChange(ticketId, value)}
         >
           <SelectTrigger id={`priority-${ticketId}`} className="w-[140px]">
