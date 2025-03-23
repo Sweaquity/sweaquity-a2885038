@@ -2,7 +2,7 @@
 export interface Ticket {
   id: string;
   title: string;
-  description: string;
+  description: string; // Make this required
   status: string;
   priority: string;
   reporter?: string;
