@@ -32,8 +32,8 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
 }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
 
   // Initialize tickets with their expanded state from initialTickets
   useEffect(() => {
@@ -96,18 +96,17 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     }
   }, [onTicketAction]);
 
-    const filteredTickets = tickets.filter(ticket => {
+  const filteredTickets = tickets.filter(ticket => {
     // Apply filters
     const matchesSearch = !searchTerm || 
       ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (ticket.description && ticket.description.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    // Updated to handle 'all' value
-    const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
-    const matchesPriority = priorityFilter === 'all' || ticket.priority === priorityFilter;
+    const matchesStatus = !statusFilter || ticket.status === statusFilter;
+    const matchesPriority = !priorityFilter || ticket.priority === priorityFilter;
     
     return matchesSearch && matchesStatus && matchesPriority;
-    });
+  });
 
   return (
     <div className="space-y-4">
@@ -119,12 +118,12 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
           className="sm:max-w-xs"
         />
         <div className="flex gap-2">
-          <Select value={statusFilter || 'all'} onValueChange={setStatusFilter}>
+          <Select value={statusFilter || ''} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="">All statuses</SelectItem>
               <SelectItem value="open">Open</SelectItem>
               <SelectItem value="in-progress">In Progress</SelectItem>
               <SelectItem value="review">Review</SelectItem>
@@ -138,7 +137,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
               <SelectValue placeholder="Filter by priority" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All priorities</SelectItem>
+              <SelectItem value="">All priorities</SelectItem>
               <SelectItem value="high">High</SelectItem>
               <SelectItem value="medium">Medium</SelectItem>
               <SelectItem value="low">Low</SelectItem>
@@ -208,7 +207,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                         <div>
                           <label className="text-sm text-muted-foreground">Status</label>
                           <Select 
-                            value={ticket.status || "open"} 
+                            value={ticket.status} 
                             onValueChange={(value) => handleStatusChange(ticket.id, value)}
                           >
                             <SelectTrigger className="mt-1">
@@ -227,7 +226,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                         <div>
                           <label className="text-sm text-muted-foreground">Priority</label>
                           <Select 
-                            value={ticket.priority || "medium"} 
+                            value={ticket.priority} 
                             onValueChange={(value) => handlePriorityChange(ticket.id, value)}
                           >
                             <SelectTrigger className="mt-1">
