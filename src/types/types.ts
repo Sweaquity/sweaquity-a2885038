@@ -85,7 +85,9 @@ export interface TicketStatistics {
   totalTickets?: number;
   openTickets?: number;
   closedTickets?: number;
-  highPriorityTickets?: number; // Added missing property
+  highPriorityTickets?: number;
+  byStatus?: Record<string, number>;
+  byPriority?: Record<string, number>;
 }
 
 // Define UserData interface for profile data

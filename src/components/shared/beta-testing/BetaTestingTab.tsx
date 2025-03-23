@@ -37,11 +37,17 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
   const [projectTickets, setProjectTickets] = useState<ExtendedBetaTicket[]>([]);
   const [showKanban, setShowKanban] = useState(true);
   const [showDashboard, setShowDashboard] = useState(true);
-  const [ticketStatistics, setTicketStatistics] = useState({
+  const [ticketStatistics, setTicketStatistics] = useState<TicketStatistics>({
+    total: 0,
+    open: 0,
+    inProgress: 0,
+    completed: 0,
     totalTickets: 0,
     openTickets: 0,
     closedTickets: 0,
-    highPriorityTickets: 0
+    highPriorityTickets: 0,
+    byStatus: {},
+    byPriority: {}
   });
   const [dashboardKey, setDashboardKey] = useState(0);
   const [expandedTickets, setExpandedTickets] = useState<Record<string, boolean>>({});
@@ -129,11 +135,29 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       ticket.priority === 'high'
     ).length;
 
+    const byStatus: Record<string, number> = {};
+    const byPriority: Record<string, number> = {};
+    
+    // Count tickets by status
+    ticketData.forEach(ticket => {
+      const status = ticket.status || 'unknown';
+      byStatus[status] = (byStatus[status] || 0) + 1;
+      
+      const priority = ticket.priority || 'unknown';
+      byPriority[priority] = (byPriority[priority] || 0) + 1;
+    });
+
     setTicketStatistics({
+      total: totalTickets,
+      open: openTickets,
+      inProgress: 0, // Calculate this if needed
+      completed: closedTickets,
       totalTickets,
       openTickets,
       closedTickets,
-      highPriorityTickets
+      highPriorityTickets,
+      byStatus,
+      byPriority
     });
   };
 
@@ -520,10 +544,12 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
               {!showDashboard ? (
                 <>
                   <TicketStats
-                    totalTickets={ticketStatistics.totalTickets}
-                    openTickets={ticketStatistics.openTickets}
-                    closedTickets={ticketStatistics.closedTickets}
-                    highPriorityTickets={ticketStatistics.highPriorityTickets}
+                    totalTickets={ticketStatistics.totalTickets || 0}
+                    openTickets={ticketStatistics.openTickets || 0}
+                    closedTickets={ticketStatistics.closedTickets || 0}
+                    highPriorityTickets={ticketStatistics.highPriorityTickets || 0}
+                    byStatus={ticketStatistics.byStatus || {}}
+                    byPriority={ticketStatistics.byPriority || {}}
                   />
                   
                   {showKanban && (
@@ -531,11 +557,16 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
                       if (!result.destination) return;
                       const { draggableId, destination } = result;
                       
-                      updateTicketStatus(draggableId, destination.droppableId);
+                      // Ensure we never pass an empty string as a status
+                      const newStatus = destination.droppableId || 'new';
+                      updateTicketStatus(draggableId, newStatus);
                     }}>
                       <KanbanBoard 
                         tickets={allTickets} 
-                        onStatusChange={updateTicketStatus}
+                        onStatusChange={(id, status) => {
+                          // Ensure status is never an empty string
+                          updateTicketStatus(id, status || 'new');
+                        }}
                         onTicketClick={() => {}}
                       />
                     </DragDropContext>

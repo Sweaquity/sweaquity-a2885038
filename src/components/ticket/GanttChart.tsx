@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Task, TaskType } from "@/types/types";
+import { Task } from "@/types/types";
 
 // Types
 export interface GanttTask {
@@ -8,7 +8,7 @@ export interface GanttTask {
   name: string;
   start: Date;
   end: Date;
-  type: TaskType;
+  type: GanttTaskType;
   progress: number;
   isDisabled: boolean;
   styles?: {
@@ -21,12 +21,11 @@ export interface GanttChartProps {
   tasks: GanttTask[];
 }
 
-export enum TaskType {
+export enum GanttTaskType {
   Task = 'task',
   Milestone = 'milestone'
   // Add other task types as needed
 }
-
 
 // Note: This is a wrapper component that will use the GanttChartView component
 // from your original code. You'll need to implement or import that component.
@@ -78,11 +77,11 @@ export const convertItemsToGanttTasks = (items: any[]): GanttTask[] => {
       }
     };
     
-    // Fix the type conversion by ensuring we have a valid TaskType
-    const taskType: TaskType = 
-      (item.type === TaskType.Task || item.type === TaskType.Milestone) 
-        ? item.type as TaskType 
-        : TaskType.Task;
+    // Use the renamed GanttTaskType to avoid conflicts
+    const taskType: GanttTaskType = 
+      (item.type === GanttTaskType.Task || item.type === GanttTaskType.Milestone) 
+        ? item.type as GanttTaskType 
+        : GanttTaskType.Task;
     
     return {
       id: item.id,
