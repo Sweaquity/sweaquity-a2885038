@@ -78,12 +78,18 @@ export const convertItemsToGanttTasks = (items: any[]): GanttTask[] => {
       }
     };
     
+    // Fix the type conversion by ensuring we have a valid TaskType
+    const taskType: TaskType = 
+      (item.type === TaskType.Task || item.type === TaskType.Milestone) 
+        ? item.type as TaskType 
+        : TaskType.Task;
+    
     return {
       id: item.id,
       name: item.title,
       start: startDate,
       end: endDate,
-      type: item.type as TaskType || TaskType.Task,
+      type: taskType,
       progress: getProgressFromStatus(item.status),
       isDisabled: false,
       styles: { 

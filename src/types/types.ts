@@ -32,6 +32,16 @@ export interface Ticket {
   completion_percentage?: number;
 }
 
+// Update BetaTicket to explicitly include all required properties
+export interface BetaTicket extends Ticket {
+  task_id?: string;
+  project_id?: string;
+  job_app_id?: string;
+  expanded?: boolean;
+  isTaskTicket?: boolean;
+  completion_percentage?: number;
+}
+
 // Add missing exported types that are referenced in the code
 export interface Task {
   id: string;
@@ -75,9 +85,13 @@ export interface TicketStatistics {
   totalTickets?: number;
   openTickets?: number;
   closedTickets?: number;
+  highPriorityTickets?: number; // Added missing property
 }
 
-export interface BetaTicket extends Ticket {
-  task_id?: string;
-  job_app_id?: string;
+// Define UserData interface for profile data
+export interface UserData {
+  first_name?: string;
+  last_name?: string;
+  company_name?: string;
+  [key: string]: any; // Allow for additional properties
 }
