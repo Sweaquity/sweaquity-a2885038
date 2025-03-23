@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { 
@@ -365,7 +364,7 @@ export const TicketList = ({ projectId }) => {
                       </Button>
                     </TableCell>
                     <TableCell className="font-medium flex items-center gap-2">
-                      {renderHealthIndicator(ticket.health)}
+                      {ticket.health && renderHealthIndicator(ticket.health)}
                       {ticket.title}
                     </TableCell>
                     <TableCell>
@@ -543,10 +542,10 @@ export const TicketList = ({ projectId }) => {
                   <div className="grid gap-2">
                     <Label htmlFor="status">Status</Label>
                     <Select
-                      value={currentTicket.status || ''}
+                      value={currentTicket.status || undefined}
                       onValueChange={(value) => setCurrentTicket({...currentTicket, status: value})}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="status">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -562,10 +561,10 @@ export const TicketList = ({ projectId }) => {
                   <div className="grid gap-2">
                     <Label htmlFor="priority">Priority</Label>
                     <Select
-                      value={currentTicket.priority || ''}
+                      value={currentTicket.priority || undefined}
                       onValueChange={(value) => setCurrentTicket({...currentTicket, priority: value})}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="priority">
                         <SelectValue placeholder="Select priority" />
                       </SelectTrigger>
                       <SelectContent>
@@ -581,13 +580,13 @@ export const TicketList = ({ projectId }) => {
                   <div className="grid gap-2">
                     <Label htmlFor="project">Project</Label>
                     <Select
-                      value={currentTicket.project_id || ''}
+                      value={currentTicket.project_id || undefined}
                       onValueChange={(value) => {
                         setCurrentTicket({...currentTicket, project_id: value});
                         fetchTasks(value);
                       }}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="project">
                         <SelectValue placeholder="Select project" />
                       </SelectTrigger>
                       <SelectContent>
@@ -603,11 +602,11 @@ export const TicketList = ({ projectId }) => {
                   <div className="grid gap-2">
                     <Label htmlFor="task">Task</Label>
                     <Select
-                      value={currentTicket.task_id || ''}
+                      value={currentTicket.task_id || undefined}
                       onValueChange={(value) => setCurrentTicket({...currentTicket, task_id: value})}
                       disabled={!currentTicket.project_id || tasks.length === 0}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="task">
                         <SelectValue placeholder="Select task" />
                       </SelectTrigger>
                       <SelectContent>
@@ -625,14 +624,14 @@ export const TicketList = ({ projectId }) => {
                   <div className="grid gap-2">
                     <Label htmlFor="assignee">Assigned To</Label>
                     <Select
-                      value={currentTicket.assigned_to || ''}
-                      onValueChange={(value) => setCurrentTicket({...currentTicket, assigned_to: value})}
+                      value={currentTicket.assigned_to || undefined}
+                      onValueChange={(value) => setCurrentTicket({...currentTicket, assigned_to: value || null})}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="assignee">
                         <SelectValue placeholder="Select assignee" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Unassigned</SelectItem>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
                         {users.map(user => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.first_name} {user.last_name}
@@ -645,10 +644,10 @@ export const TicketList = ({ projectId }) => {
                   <div className="grid gap-2">
                     <Label htmlFor="health">Health</Label>
                     <Select
-                      value={currentTicket.health || ''}
+                      value={currentTicket.health || undefined}
                       onValueChange={(value) => setCurrentTicket({...currentTicket, health: value})}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="health">
                         <SelectValue placeholder="Select health" />
                       </SelectTrigger>
                       <SelectContent>
