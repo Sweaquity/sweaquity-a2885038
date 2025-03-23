@@ -158,7 +158,7 @@ export function LiveProjectsTab({ projectId }: LiveProjectsTabProps) {
   const getGanttTasks = (): Task[] => {
     return ticketsData.map(ticket => ({
       id: ticket.id,
-      name: ticket.title,
+      title: ticket.title,  // This should be 'title' instead of 'name'
       start: new Date(new Date().setDate(new Date().getDate() - 3)),
       end: ticket.due_date ? new Date(ticket.due_date) : new Date(new Date().setDate(new Date().getDate() + 4)),
       progress: ticket.status === 'done' ? 100 :
