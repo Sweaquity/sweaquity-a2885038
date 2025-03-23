@@ -32,8 +32,8 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
 }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
 
   // Initialize tickets with their expanded state from initialTickets
   useEffect(() => {
@@ -96,17 +96,18 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     }
   }, [onTicketAction]);
 
-  const filteredTickets = tickets.filter(ticket => {
+    const filteredTickets = tickets.filter(ticket => {
     // Apply filters
     const matchesSearch = !searchTerm || 
       ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (ticket.description && ticket.description.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const matchesStatus = !statusFilter || ticket.status === statusFilter;
-    const matchesPriority = !priorityFilter || ticket.priority === priorityFilter;
+    // Updated to handle 'all' value
+    const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
+    const matchesPriority = priorityFilter === 'all' || ticket.priority === priorityFilter;
     
     return matchesSearch && matchesStatus && matchesPriority;
-  });
+    });
 
   return (
     <div className="space-y-4">
@@ -118,12 +119,12 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
           className="sm:max-w-xs"
         />
         <div className="flex gap-2">
-          <Select value={statusFilter || ''} onValueChange={setStatusFilter}>
+          <Select value={statusFilter || 'all'} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All statuses</SelectItem>
+              <SelectItem value="all">All statuses</SelectItem>
               <SelectItem value="open">Open</SelectItem>
               <SelectItem value="in-progress">In Progress</SelectItem>
               <SelectItem value="review">Review</SelectItem>
