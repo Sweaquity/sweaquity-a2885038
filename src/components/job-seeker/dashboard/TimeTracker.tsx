@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Play, Pause, Save, Clock } from "lucide-react";
+import { Save, Clock } from "lucide-react";
 
 interface TimeTrackerProps {
   ticketId: string;
@@ -14,35 +14,28 @@ interface TimeTrackerProps {
 }
 
 export const TimeTracker = ({ ticketId, userId, jobAppId }: TimeTrackerProps) => {
-  const [isTracking, setIsTracking] = useState(false);
-  const [startTime, setStartTime] = useState<Date | null>(null);
-  const [elapsedTime, setElapsedTime] = useState(0);
   const [description, setDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [manualHours, setManualHours] = useState<number>(0);
   const [timeEntries, setTimeEntries] = useState<any[]>([]);
   const [totalHoursLogged, setTotalHoursLogged] = useState(0);
-
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-    
-    if (isTracking && startTime) {
-      intervalId = setInterval(() => {
-        const now = new Date();
-        const elapsed = (now.getTime() - startTime.getTime()) / 1000;
-        setElapsedTime(elapsed);
-      }, 1000);
-    }
-    
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [isTracking, startTime]);
+  const [isTaskTicket, setIsTaskTicket] = useState(false);
 
   useEffect(() => {
     // Load existing time entries for this ticket
     const fetchTimeEntries = async () => {
       try {
+        // Check if this is a task ticket
+        const { data: ticketData, error: ticketError } = await supabase
+          .from('tickets')
+          .select('task_id')
+          .eq('id', ticketId)
+          .single();
+          
+        if (!ticketError && ticketData.task_id) {
+          setIsTaskTicket(true);
+        }
+        
         const { data, error } = await supabase
           .from('time_entries')
           .select('*')
@@ -68,30 +61,9 @@ export const TimeTracker = ({ ticketId, userId, jobAppId }: TimeTrackerProps) =>
     fetchTimeEntries();
   }, [ticketId, userId]);
 
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-    
-    return [
-      hours.toString().padStart(2, '0'),
-      minutes.toString().padStart(2, '0'),
-      secs.toString().padStart(2, '0'),
-    ].join(':');
-  };
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const toggleTracking = () => {
-    if (isTracking) {
-      setIsTracking(false);
-    } else {
-      setStartTime(new Date());
-      setIsTracking(true);
-    }
   };
 
   const saveTimeEntry = async () => {
@@ -103,11 +75,8 @@ export const TimeTracker = ({ ticketId, userId, jobAppId }: TimeTrackerProps) =>
     try {
       setIsSaving(true);
       
-      // Calculate hours from elapsed seconds or use the manual entry
-      const hoursLogged = isTracking ? (elapsedTime / 3600) : manualHours;
-      
-      if (hoursLogged <= 0) {
-        toast.error("Please track some time or enter hours manually");
+      if (manualHours <= 0) {
+        toast.error("Please enter hours greater than 0");
         setIsSaving(false);
         return;
       }
@@ -116,11 +85,11 @@ export const TimeTracker = ({ ticketId, userId, jobAppId }: TimeTrackerProps) =>
       const entry = {
         ticket_id: ticketId,
         user_id: userId,
-        job_app_id: jobAppId, // Use the job_app_id provided from props
+        job_app_id: jobAppId,
         description: description,
-        hours_logged: hoursLogged,
-        start_time: startTime ? startTime.toISOString() : now.toISOString(),
-        end_time: startTime ? now.toISOString() : null,
+        hours_logged: manualHours,
+        start_time: now.toISOString(),
+        end_time: now.toISOString(), // For manual entries, use the same time
       };
 
       console.log("Saving time entry with data:", entry);
@@ -156,12 +125,9 @@ export const TimeTracker = ({ ticketId, userId, jobAppId }: TimeTrackerProps) =>
       
       // Add the new entry to the state
       setTimeEntries([data, ...timeEntries]);
-      setTotalHoursLogged(totalHoursLogged + hoursLogged);
+      setTotalHoursLogged(totalHoursLogged + manualHours);
       
-      // Reset the tracker
-      setIsTracking(false);
-      setStartTime(null);
-      setElapsedTime(0);
+      // Reset the inputs
       setDescription("");
       setManualHours(0);
       
@@ -173,79 +139,49 @@ export const TimeTracker = ({ ticketId, userId, jobAppId }: TimeTrackerProps) =>
     }
   };
 
+  // Only show time tracker for task tickets
+  if (!isTaskTicket) {
+    return (
+      <div className="p-4 bg-muted/30 rounded-md text-center">
+        <p className="text-sm text-muted-foreground">Time tracking is only available for task-related tickets.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">Time Tracking</h3>
-          {isTracking ? (
-            <span className="text-sm font-mono font-medium animate-pulse text-green-600">
-              {formatTime(elapsedTime)}
-            </span>
-          ) : (
-            <span className="text-sm font-mono">00:00:00</span>
-          )}
-        </div>
-        
-        <div className="flex space-x-2">
-          <Button 
-            type="button"
-            size="sm"
-            variant={isTracking ? "destructive" : "outline"}
-            onClick={toggleTracking}
-            className="flex-1"
-          >
-            {isTracking ? (
-              <>
-                <Pause className="h-4 w-4 mr-1" /> Pause
-              </>
-            ) : (
-              <>
-                <Play className="h-4 w-4 mr-1" /> Start Tracking
-              </>
-            )}
-          </Button>
-          
-          <Button 
-            type="button"
-            size="sm"
-            variant="default"
-            onClick={saveTimeEntry}
-            disabled={isSaving}
-            className="flex-1"
-          >
-            <Save className="h-4 w-4 mr-1" /> Log Time
-          </Button>
-        </div>
-      </div>
-      
       <div className="space-y-2">
-        <label className="text-sm font-medium">
-          {isTracking ? "Description of work in progress" : "Manual Time Entry"}
-        </label>
+        <label className="text-sm font-medium">Log Time for Task</label>
         
-        {!isTracking && (
-          <div className="flex items-center space-x-2 mb-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <Input
-              type="number"
-              min="0.1"
-              step="0.1"
-              placeholder="Hours"
-              value={manualHours || ''}
-              onChange={(e) => setManualHours(parseFloat(e.target.value) || 0)}
-              className="w-24"
-            />
-            <span className="text-sm text-muted-foreground">hours</span>
-          </div>
-        )}
+        <div className="flex items-center space-x-2 mb-2">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          <Input
+            type="number"
+            min="0.1"
+            step="0.1"
+            placeholder="Hours"
+            value={manualHours || ''}
+            onChange={(e) => setManualHours(parseFloat(e.target.value) || 0)}
+            className="w-24"
+          />
+          <span className="text-sm text-muted-foreground">hours</span>
+        </div>
         
         <Textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Describe what you're working on..."
-          rows={3}
+          rows={2}
         />
+        
+        <Button 
+          type="button"
+          onClick={saveTimeEntry}
+          disabled={isSaving}
+          className="w-full"
+        >
+          <Save className="h-4 w-4 mr-1" /> Log Time
+        </Button>
       </div>
 
       {/* Display total logged time */}

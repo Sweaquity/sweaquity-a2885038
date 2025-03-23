@@ -655,38 +655,36 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
             </div>
           ) : (
             <>
-              {!showDashboard ? (
-                <>
-                  <TicketStats
-                    totalTickets={ticketStatistics.totalTickets || 0}
-                    openTickets={ticketStatistics.openTickets || 0}
-                    closedTickets={ticketStatistics.closedTickets || 0}
-                    highPriorityTickets={ticketStatistics.highPriorityTickets || 0}
-                    byStatus={ticketStatistics.byStatus || {}}
-                    byPriority={ticketStatistics.byPriority || {}}
-                  />
+              <TicketStats
+                totalTickets={ticketStatistics.totalTickets || 0}
+                openTickets={ticketStatistics.openTickets || 0}
+                closedTickets={ticketStatistics.closedTickets || 0}
+                highPriorityTickets={ticketStatistics.highPriorityTickets || 0}
+                byStatus={ticketStatistics.byStatus || {}}
+                byPriority={ticketStatistics.byPriority || {}}
+              />
+              
+              {showKanban && (
+                <DragDropContext onDragEnd={(result) => {
+                  if (!result.destination) return;
+                  const { draggableId, destination } = result;
                   
-                  {showKanban && (
-                    <DragDropContext onDragEnd={(result) => {
-                      if (!result.destination) return;
-                      const { draggableId, destination } = result;
-                      
-                      // Ensure we never pass an empty string as a status
-                      const newStatus = destination.droppableId || 'new';
-                      updateTicketStatus(draggableId, newStatus);
-                    }}>
-                      <KanbanBoard 
-                        tickets={allTickets} 
-                        onStatusChange={(id, status) => {
-                          // Ensure status is never an empty string
-                          updateTicketStatus(id, status || 'new');
-                        }}
-                        onTicketClick={() => {}}
-                      />
-                    </DragDropContext>
-                  )}
-                </>
-              ) : (
+                  // Ensure we never pass an empty string as a status
+                  const newStatus = destination.droppableId || 'new';
+                  updateTicketStatus(draggableId, newStatus);
+                }}>
+                  <KanbanBoard 
+                    tickets={allTickets} 
+                    onStatusChange={(id, status) => {
+                      // Ensure status is never an empty string
+                      updateTicketStatus(id, status || 'new');
+                    }}
+                    onTicketClick={() => {}}
+                  />
+                </DragDropContext>
+              )}
+              
+              {showDashboard && (
                 <TicketDashboard
                   key={dashboardKey}
                   initialTickets={allTickets}

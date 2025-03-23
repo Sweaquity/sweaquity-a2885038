@@ -59,6 +59,8 @@ export interface Task {
   progress?: number;
   type?: string;
   isDisabled?: boolean;
+  // Add the name property for compatibility with gantt-task-react
+  name?: string;
 }
 
 export interface TaskType {
