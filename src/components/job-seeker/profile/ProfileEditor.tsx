@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -228,8 +227,8 @@ export const ProfileEditor = ({ profile, onProfileUpdate = () => {} }: ProfileEd
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="equity_only">Equity only</SelectItem>
-                    <SelectItem value="both">Both Equity and Salary</SelectItem>
                     <SelectItem value="salary_only">Salary only</SelectItem>
+                    <SelectItem value="both">Both Equity and Salary</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -74,6 +74,7 @@ export interface TicketStatistics {
   review?: number;
   totalTickets?: number;
   openTickets?: number;
+  closedTickets?: number;
 }
 
 export interface BetaTicket extends Ticket {
