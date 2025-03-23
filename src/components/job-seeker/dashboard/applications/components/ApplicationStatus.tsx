@@ -33,18 +33,15 @@ export const ApplicationStatus = ({
   isAcceptingJob,
   compact = false
 }: ApplicationStatusProps) => {
-  // Ensure we have a non-empty default value
-  const safeStatus = status || "pending";
-  
   return (
     <div className="flex items-center space-x-2 mt-2 sm:mt-0">
       {compact ? (
-        <StatusBadge status={safeStatus} />
+        <StatusBadge status={status} />
       ) : (
         <div className="flex flex-col items-end space-y-2">
           <div className="flex flex-wrap gap-2 items-center justify-end">
             <Select 
-              value={safeStatus} 
+              value={String(status) || "pending"} 
               onValueChange={onStatusChange}
               disabled={isUpdatingStatus}
             >

@@ -274,7 +274,7 @@ export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
                   <div>
                     <p className="text-xs text-gray-500">Status</p>
                     <Select
-                      value={ticket.status || "backlog"}
+                      value={ticket.status}
                       onValueChange={handleStatusChange}
                       disabled={isUpdating}
                     >
@@ -294,7 +294,7 @@ export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
                   <div>
                     <p className="text-xs text-gray-500">Priority</p>
                     <Select
-                      value={ticket.priority || "medium"}
+                      value={ticket.priority}
                       onValueChange={handlePriorityChange}
                       disabled={isUpdating}
                     >
@@ -313,7 +313,7 @@ export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
                   <div>
                     <p className="text-xs text-gray-500">Health</p>
                     <Select
-                      value={ticket.health || "green"}
+                      value={ticket.health}
                       onValueChange={handleHealthChange}
                       disabled={isUpdating}
                     >

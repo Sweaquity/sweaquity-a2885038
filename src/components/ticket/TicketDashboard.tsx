@@ -207,7 +207,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                         <div>
                           <label className="text-sm text-muted-foreground">Status</label>
                           <Select 
-                            value={ticket.status || "open"} 
+                            value={ticket.status} 
                             onValueChange={(value) => handleStatusChange(ticket.id, value)}
                           >
                             <SelectTrigger className="mt-1">
@@ -226,7 +226,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                         <div>
                           <label className="text-sm text-muted-foreground">Priority</label>
                           <Select 
-                            value={ticket.priority || "medium"} 
+                            value={ticket.priority} 
                             onValueChange={(value) => handlePriorityChange(ticket.id, value)}
                           >
                             <SelectTrigger className="mt-1">

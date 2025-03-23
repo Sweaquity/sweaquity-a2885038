@@ -6,15 +6,13 @@ interface TicketStatsProps {
   openTickets: number;
   closedTickets: number;
   highPriorityTickets: number;
-  byStatus: Record<string, number>;
-  byPriority: Record<string, number>;
 }
 
 const TicketStats: React.FC<TicketStatsProps> = ({
   totalTickets,
   openTickets,
   closedTickets,
-  highPriorityTickets,
+  highPriorityTickets
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
