@@ -26,7 +26,7 @@ export function StatusChangeDialog({
   onConfirm,
   isLoading,
 }: StatusChangeDialogProps) {
-  // Ensure we never have an empty status
+  // Ensure we never have an empty status - default to "pending" if empty
   const safeStatus = selectedStatus || "pending";
   
   return (
