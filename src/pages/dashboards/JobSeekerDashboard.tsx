@@ -43,7 +43,8 @@ const JobSeekerDashboard = () => {
     refreshApplications,
     hasBusinessProfile,
     userCVs,
-    onCvListUpdated
+    onCvListUpdated,
+    handleTicketAction
   } = useJobSeekerDashboard(forceRefresh);
 
   useEffect(() => {
@@ -69,10 +70,6 @@ const JobSeekerDashboard = () => {
 
   const handleProfileSwitch = () => {
     navigate('/business/dashboard');
-  };
-
-  const handleDocumentAction = (projectId: string, action: 'edit' | 'approve') => {
-    toast.info(`${action} action for document is not implemented yet`);
   };
 
   useEffect(() => {

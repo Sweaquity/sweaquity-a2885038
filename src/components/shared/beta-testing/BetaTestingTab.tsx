@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { Ticket } from "@/types/types";
 import TicketStats from "@/components/ticket/TicketStats";
+import { TimeTracker } from "@/components/job-seeker/dashboard/TimeTracker";
 
 interface BetaTestingTabProps {
   userType: "job_seeker" | "business";
@@ -30,6 +32,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
   });
   const [dashboardKey, setDashboardKey] = useState(0);
   const [expandedTickets, setExpandedTickets] = useState<Record<string, boolean>>({});
+  const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
 
   const createTicket = async () => {
     if (!userId) return;
@@ -126,28 +129,60 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       let projectTicketsData: BetaTicket[] = [];
 
       if (userType === 'job_seeker') {
-        const { data: acceptedProjects, error: projectsError } = await supabase
-          .from('job_applications')
-          .select('project_id')
-          .eq('user_id', userId)
-          .eq('status', 'accepted');
+        // For job seekers, we need to get tickets from accepted projects
+        const { data: acceptedJobsData, error: acceptedJobsError } = await supabase
+          .from('accepted_jobs')
+          .select(`
+            job_app_id,
+            equity_agreed,
+            job_applications!inner (
+              task_id,
+              project_id
+            )
+          `)
+          .eq('job_applications.user_id', userId);
 
-        if (projectsError) throw projectsError;
-
-        if (acceptedProjects && acceptedProjects.length > 0) {
-          const projectIds = acceptedProjects.map(p => p.project_id).filter(Boolean);
+        if (acceptedJobsError) throw acceptedJobsError;
+        
+        if (acceptedJobsData && acceptedJobsData.length > 0) {
+          const projectIds = acceptedJobsData
+            .map(job => job.job_applications?.project_id)
+            .filter(Boolean) as string[];
+          
+          const taskIds = acceptedJobsData
+            .map(job => job.job_applications?.task_id)
+            .filter(Boolean) as string[];
           
           if (projectIds.length > 0) {
+            // Get tickets linked to these projects and tasks
             const { data: projectTickets, error: ticketsError } = await supabase
               .from('tickets')
-              .select('*')
+              .select('*, job_applications(*)')
               .in('project_id', projectIds);
 
             if (ticketsError) throw ticketsError;
             
-            projectTicketsData = (projectTickets || []).map(ticket => ({
+            // Add task-specific tickets if they exist
+            const { data: taskTickets, error: taskTicketsError } = await supabase
+              .from('tickets')
+              .select('*, job_applications(*)')
+              .in('task_id', taskIds);
+            
+            if (taskTicketsError) throw taskTicketsError;
+            
+            // Combine project and task tickets, removing duplicates
+            const allTickets = [...(projectTickets || []), ...(taskTickets || [])];
+            const uniqueTicketIds = new Set();
+            const uniqueTickets = allTickets.filter(ticket => {
+              if (uniqueTicketIds.has(ticket.id)) return false;
+              uniqueTicketIds.add(ticket.id);
+              return true;
+            });
+            
+            projectTicketsData = uniqueTickets.map(ticket => ({
               ...ticket,
-              expanded: expandedTickets[ticket.id] || false
+              expanded: expandedTickets[ticket.id] || false,
+              isTaskTicket: !!ticket.task_id
             }));
           }
         }
@@ -188,12 +223,35 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     try {
       const { error } = await supabase
         .from('tickets')
-        .update({ status: newStatus })
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', ticketId);
 
       if (error) throw error;
       
       toast.success("Ticket status updated");
+      
+      // If a ticket is marked as complete and it has a task_id, trigger business review
+      const ticketToUpdate = [...tickets, ...projectTickets].find(t => t.id === ticketId);
+      if (ticketToUpdate && ticketToUpdate.task_id && newStatus === 'done') {
+        // Update the task status to pending review
+        const { error: taskError } = await supabase
+          .from('project_sub_tasks')
+          .update({ 
+            task_status: 'pending_review',
+            last_activity_at: new Date().toISOString()
+          })
+          .eq('task_id', ticketToUpdate.task_id);
+        
+        if (taskError) {
+          console.error('Error updating task status:', taskError);
+        } else {
+          toast.success("Task marked for review by business");
+        }
+      }
+      
       loadTickets();
     } catch (error) {
       console.error('Error updating ticket status:', error);
@@ -201,7 +259,158 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     }
   };
 
+  const updateTicketDueDate = async (ticketId: string, newDueDate: string) => {
+    try {
+      const { error } = await supabase
+        .from('tickets')
+        .update({ 
+          due_date: newDueDate,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', ticketId);
+
+      if (error) throw error;
+      
+      toast.success("Due date updated");
+      loadTickets();
+    } catch (error) {
+      console.error('Error updating due date:', error);
+      toast.error("Failed to update due date");
+    }
+  };
+
+  const updateTicketPriority = async (ticketId: string, newPriority: string) => {
+    try {
+      const { error } = await supabase
+        .from('tickets')
+        .update({ 
+          priority: newPriority,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', ticketId);
+
+      if (error) throw error;
+      
+      toast.success("Priority updated");
+      loadTickets();
+    } catch (error) {
+      console.error('Error updating priority:', error);
+      toast.error("Failed to update priority");
+    }
+  };
+
+  const addTicketNote = async (ticketId: string, note: string) => {
+    if (!userId || !note.trim()) return;
+    
+    try {
+      // Get the current notes
+      const { data: ticketData, error: getError } = await supabase
+        .from('tickets')
+        .select('notes')
+        .eq('id', ticketId)
+        .single();
+      
+      if (getError) throw getError;
+      
+      const currentNotes = ticketData.notes || [];
+      
+      // Get user info for the note
+      const { data: userData, error: userError } = await supabase
+        .from(userType === 'job_seeker' ? 'profiles' : 'businesses')
+        .select(userType === 'job_seeker' ? 'first_name, last_name' : 'company_name')
+        .eq('id', userId)
+        .single();
+      
+      if (userError) throw userError;
+      
+      const userName = userType === 'job_seeker'
+        ? `${userData.first_name} ${userData.last_name}`
+        : userData.company_name;
+      
+      // Add the new note
+      const newNote = {
+        id: crypto.randomUUID(),
+        user: userName,
+        timestamp: new Date().toISOString(),
+        content: note
+      };
+      
+      const updatedNotes = [...currentNotes, newNote];
+      
+      // Update the ticket
+      const { error } = await supabase
+        .from('tickets')
+        .update({ 
+          notes: updatedNotes,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', ticketId);
+      
+      if (error) throw error;
+      
+      toast.success("Note added successfully");
+      loadTickets();
+    } catch (error) {
+      console.error('Error adding note:', error);
+      toast.error("Failed to add note");
+    }
+  };
+
+  const updateProjectCompletion = async (ticketId: string, completionPercent: number) => {
+    try {
+      const ticket = [...tickets, ...projectTickets].find(t => t.id === ticketId);
+      if (!ticket || !ticket.task_id) {
+        toast.error("This ticket is not associated with a task");
+        return;
+      }
+      
+      // Update the task completion percentage
+      const { error: taskError } = await supabase
+        .from('project_sub_tasks')
+        .update({ 
+          completion_percentage: completionPercent,
+          last_activity_at: new Date().toISOString()
+        })
+        .eq('task_id', ticket.task_id);
+      
+      if (taskError) throw taskError;
+      
+      // Calculate equity points based on completion percentage
+      if (ticket.job_app_id) {
+        const { data: acceptedJob, error: jobError } = await supabase
+          .from('accepted_jobs')
+          .select('equity_agreed')
+          .eq('job_app_id', ticket.job_app_id)
+          .maybeSingle();
+        
+        if (jobError) throw jobError;
+        
+        if (acceptedJob) {
+          const equityPoints = (acceptedJob.equity_agreed * (completionPercent / 100)).toFixed(2);
+          
+          // Update the ticket's equity points
+          const { error: equityError } = await supabase
+            .from('tickets')
+            .update({ 
+              equity_points: equityPoints,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', ticketId);
+          
+          if (equityError) throw equityError;
+        }
+      }
+      
+      toast.success("Project completion updated");
+      loadTickets();
+    } catch (error) {
+      console.error('Error updating project completion:', error);
+      toast.error("Failed to update project completion");
+    }
+  };
+
   const handleRefresh = useCallback(() => {
+    setDashboardKey(prevKey => prevKey + 1);
     loadTickets();
   }, [loadTickets]);
 
@@ -215,6 +424,34 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       ...prev,
       [ticketId]: isExpanded
     }));
+    
+    if (isExpanded) {
+      setSelectedTicket(ticketId);
+    } else if (selectedTicket === ticketId) {
+      setSelectedTicket(null);
+    }
+  }, [selectedTicket]);
+
+  const handleTicketAction = useCallback((ticketId: string, action: string, data: any) => {
+    switch (action) {
+      case 'updateStatus':
+        updateTicketStatus(ticketId, data);
+        break;
+      case 'updateDueDate':
+        updateTicketDueDate(ticketId, data);
+        break;
+      case 'updatePriority':
+        updateTicketPriority(ticketId, data);
+        break;
+      case 'addNote':
+        addTicketNote(ticketId, data);
+        break;
+      case 'updateCompletion':
+        updateProjectCompletion(ticketId, data);
+        break;
+      default:
+        console.warn('Unknown action:', action);
+    }
   }, []);
 
   useEffect(() => {
@@ -301,7 +538,29 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
                   initialTickets={allTickets}
                   onRefresh={handleRefresh}
                   onTicketExpand={handleToggleTicket}
+                  onTicketAction={handleTicketAction}
+                  showTimeTracking={userType === 'job_seeker'}
+                  currentUserId={userId}
                 />
+              )}
+              
+              {userType === 'job_seeker' && selectedTicket && (
+                <div className="mt-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Time Tracking</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {selectedTicket && userId && (
+                        <TimeTracker 
+                          ticketId={selectedTicket} 
+                          userId={userId} 
+                          jobAppId={allTickets.find(t => t.id === selectedTicket)?.job_app_id}
+                        />
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               )}
             </>
           )}

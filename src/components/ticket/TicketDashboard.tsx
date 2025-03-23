@@ -1,396 +1,370 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Clock, CheckCircle, AlertTriangle } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from "sonner";
-
-import { fetchTickets, updateTicketStatus, updateTicketPriority, setTicketDueDate } from "./TicketService";
-import { TicketKanbanBoard } from "./KanbanBoard";
-import { GanttChart } from "./GanttChart";
-import { TicketDetails } from "./TicketDetails";
-import { Ticket, TicketStatistics, TaskType } from "@/types/types";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Ticket } from "@/types/types";
+import { CalendarIcon, CheckCircle, ChevronDown, ChevronRight, Clock } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface TicketDashboardProps {
-  projectFilter?: string;
-  initialTickets?: Ticket[];
-  onRefresh?: () => void;
+  initialTickets: Ticket[];
+  onRefresh: () => void;
   onTicketExpand?: (ticketId: string, isExpanded: boolean) => void;
+  onTicketAction?: (ticketId: string, action: string, data: any) => void;
+  showTimeTracking?: boolean;
+  currentUserId?: string;
 }
 
 export const TicketDashboard: React.FC<TicketDashboardProps> = ({ 
-  projectFilter,
-  initialTickets,
+  initialTickets, 
   onRefresh,
-  onTicketExpand
+  onTicketExpand,
+  onTicketAction,
+  showTimeTracking = false,
+  currentUserId
 }) => {
-  const [isLoading, setIsLoading] = useState(true);
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [showKanban, setShowKanban] = useState(true);
-  const [showGantt, setShowGantt] = useState(true);
-  const [ticketStats, setTicketStats] = useState<TicketStatistics>({
-    totalTickets: 0,
-    openTickets: 0,
-    closedTickets: 0,
-    highPriorityTickets: 0,
-    byStatus: {},
-    byPriority: {}
-  });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
 
+  // Initialize tickets with their expanded state from initialTickets
   useEffect(() => {
-    if (!initialTickets) {
-      loadTickets();
-    } else {
-      // Use initialTickets with their expanded state preserved
-      setTickets(initialTickets);
-      calculateTicketStatistics(initialTickets);
-      setIsLoading(false);
+    setTickets(initialTickets);
+  }, [initialTickets]);
+
+  const toggleTicketExpanded = useCallback((ticketId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
     }
-  }, [initialTickets, projectFilter]);
-
-  const loadTickets = async () => {
-    setIsLoading(true);
-    try {
-      const ticketData = await fetchTickets(projectFilter);
-      setTickets(ticketData.map(ticket => ({
-        ...ticket,
-        expanded: false
-      })));
-      calculateTicketStatistics(ticketData);
-    } catch (error) {
-      console.error("Error loading tickets:", error);
-      toast.error("Failed to load ticket data");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const calculateTicketStatistics = (ticketData: Ticket[]) => {
-    const totalTickets = ticketData.length;
-    const openTickets = ticketData.filter(ticket => 
-      ticket.status !== 'done' && ticket.status !== 'closed'
-    ).length;
-    const closedTickets = totalTickets - openTickets;
-    const highPriorityTickets = ticketData.filter(ticket => 
-      ticket.priority === 'high'
-    ).length;
-
-    const byStatus: { [key: string]: number } = {};
-    const byPriority: { [key: string]: number } = {};
-
-    ticketData.forEach(ticket => {
-      byStatus[ticket.status] = (byStatus[ticket.status] || 0) + 1;
-      byPriority[ticket.priority] = (byPriority[ticket.priority] || 0) + 1;
-    });
-
-    setTicketStats({
-      totalTickets,
-      openTickets,
-      closedTickets,
-      highPriorityTickets,
-      byStatus,
-      byPriority,
-    });
-  };
-
-  const handleRefreshData = async () => {
-    await loadTickets();
-    if (onRefresh) onRefresh();
-  };
-
-  const handleUpdateTicketStatus = async (ticketId: string, newStatus: string) => {
-    try {
-      await updateTicketStatus(ticketId, newStatus);
-      
-      const updatedTickets = tickets.map(ticket =>
-        ticket.id === ticketId ? { ...ticket, status: newStatus } : ticket
-      );
-      
-      setTickets(updatedTickets);
-      calculateTicketStatistics(updatedTickets);
-      toast.success("Ticket status updated successfully");
-    } catch (error) {
-      console.error("Error updating ticket status:", error);
-      toast.error("Failed to update ticket status");
-    }
-  };
-
-  const handleUpdateTicketPriority = async (ticketId: string, newPriority: string) => {
-    try {
-      await updateTicketPriority(ticketId, newPriority);
-      
-      const updatedTickets = tickets.map(ticket =>
-        ticket.id === ticketId ? { ...ticket, priority: newPriority } : ticket
-      );
-      
-      setTickets(updatedTickets);
-      calculateTicketStatistics(updatedTickets);
-      toast.success("Ticket priority updated successfully");
-    } catch (error) {
-      console.error("Error updating ticket priority:", error);
-      toast.error("Failed to update ticket priority");
-    }
-  };
-
-  const handleSetDueDate = async (ticketId: string, newDueDate: string) => {
-    try {
-      await setTicketDueDate(ticketId, newDueDate);
-      
-      const updatedTickets = tickets.map(ticket =>
-        ticket.id === ticketId ? { ...ticket, due_date: newDueDate } : ticket
-      );
-      
-      setTickets(updatedTickets);
-      toast.success("Due date updated successfully");
-    } catch (error) {
-      console.error("Error setting due date:", error);
-      toast.error("Failed to set due date");
-    }
-  };
-
-  const toggleTicketExpanded = useCallback((ticketId: string) => {
-    setTickets(prev => {
-      const updatedTickets = prev.map(ticket => 
-        ticket.id === ticketId 
-          ? { ...ticket, expanded: !ticket.expanded } 
-          : ticket
-      );
-      
-      // Call the parent callback if provided
-      if (onTicketExpand) {
-        const expandedTicket = updatedTickets.find(t => t.id === ticketId);
-        if (expandedTicket) {
-          onTicketExpand(ticketId, expandedTicket.expanded);
+    
+    setTickets(prevTickets => {
+      const newTickets = prevTickets.map(ticket => {
+        if (ticket.id === ticketId) {
+          const newExpandedState = !ticket.expanded;
+          
+          // Call the callback if provided
+          if (onTicketExpand) {
+            onTicketExpand(ticketId, newExpandedState);
+          }
+          
+          return {
+            ...ticket,
+            expanded: newExpandedState
+          };
         }
-      }
-      
-      return updatedTickets;
+        return ticket;
+      });
+      return newTickets;
     });
   }, [onTicketExpand]);
 
-  const getGanttTasks = () => {
-    return tickets.map((ticket) => {
-      const startDate = new Date(ticket.created_at);
-      let endDate = ticket.due_date ? new Date(ticket.due_date) : new Date();
-      
-      if (!ticket.due_date || endDate < new Date()) {
-        endDate = new Date();
-        endDate.setDate(endDate.getDate() + 7);
-      }
-      
-      return {
-        id: ticket.id,
-        name: ticket.title,
-        start: startDate,
-        end: endDate,
-        type: 'task' as TaskType,
-        progress: ticket.status === 'done' || ticket.status === 'closed' ? 100 : 
-                 ticket.status === 'in-progress' ? 50 : 
-                 ticket.status === 'review' ? 75 : 25,
-        isDisabled: false,
-        styles: { 
-          progressColor: 
-            ticket.priority === 'high' ? '#ef4444' : 
-            ticket.priority === 'medium' ? '#f59e0b' : '#3b82f6'
-        }
-      };
-    });
-  };
+  const handleStatusChange = useCallback((ticketId: string, newStatus: string) => {
+    if (onTicketAction) {
+      onTicketAction(ticketId, 'updateStatus', newStatus);
+    }
+  }, [onTicketAction]);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
+  const handlePriorityChange = useCallback((ticketId: string, newPriority: string) => {
+    if (onTicketAction) {
+      onTicketAction(ticketId, 'updatePriority', newPriority);
+    }
+  }, [onTicketAction]);
 
-  const renderTicketRows = () => {
-    const rows: JSX.Element[] = [];
+  const handleDueDateChange = useCallback((ticketId: string, newDate: Date) => {
+    if (onTicketAction) {
+      onTicketAction(ticketId, 'updateDueDate', newDate.toISOString().split('T')[0]);
+    }
+  }, [onTicketAction]);
+
+  const handleAddNote = useCallback((ticketId: string, note: string) => {
+    if (onTicketAction) {
+      onTicketAction(ticketId, 'addNote', note);
+    }
+  }, [onTicketAction]);
+
+  const handleCompletionChange = useCallback((ticketId: string, completion: number) => {
+    if (onTicketAction) {
+      onTicketAction(ticketId, 'updateCompletion', completion);
+    }
+  }, [onTicketAction]);
+
+  const filteredTickets = tickets.filter(ticket => {
+    // Apply filters
+    const matchesSearch = !searchTerm || 
+      ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (ticket.description && ticket.description.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    tickets.forEach(ticket => {
-      rows.push(
-        <TableRow key={`ticket-${ticket.id}`}>
-          <TableCell className="font-medium">{ticket.title}</TableCell>
-          <TableCell>
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              ticket.status === 'new' ? 'bg-blue-100 text-blue-800' :
-              ticket.status === 'in-progress' ? 'bg-purple-100 text-purple-800' :
-              ticket.status === 'blocked' ? 'bg-red-100 text-red-800' :
-              ticket.status === 'review' ? 'bg-yellow-100 text-yellow-800' :
-              ticket.status === 'done' ? 'bg-green-100 text-green-800' :
-              'bg-gray-100 text-gray-800'
-            }`}>
-              {ticket.status}
-            </span>
-          </TableCell>
-          <TableCell>
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              ticket.priority === 'high' ? 'bg-red-100 text-red-800' :
-              ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-              'bg-green-100 text-green-800'
-            }`}>
-              {ticket.priority}
-            </span>
-          </TableCell>
-          <TableCell>{formatDate(ticket.created_at)}</TableCell>
-          <TableCell>{ticket.due_date ? formatDate(ticket.due_date) : '-'}</TableCell>
-          <TableCell className="text-right">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleTicketExpanded(ticket.id);
-              }}
-            >
-              {ticket.expanded ? 'Collapse' : 'Expand'}
-            </Button>
-          </TableCell>
-        </TableRow>
-      );
-      
-      if (ticket.expanded) {
-        rows.push(
-          <TableRow key={`details-${ticket.id}`}>
-            <TableCell colSpan={6} className="p-0 border-t-0">
-              <TicketDetails 
-                ticket={ticket}
-                onStatusChange={handleUpdateTicketStatus}
-                onPriorityChange={handleUpdateTicketPriority}
-                onDueDateChange={handleSetDueDate}
-                formatDate={formatDate}
-              />
-            </TableCell>
-          </TableRow>
-        );
-      }
-    });
+    const matchesStatus = !statusFilter || ticket.status === statusFilter;
+    const matchesPriority = !priorityFilter || ticket.priority === priorityFilter;
     
-    return rows;
-  };
+    return matchesSearch && matchesStatus && matchesPriority;
+  });
 
   return (
-    <Card className="mb-6">
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle>{projectFilter ? `${projectFilter} Tickets` : "All Tickets"}</CardTitle>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowKanban(!showKanban)}
-            >
-              {showKanban ? "Hide" : "Show"} Kanban Board
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowGantt(!showGantt)}
-            >
-              {showGantt ? "Hide" : "Show"} Gantt Chart
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleRefreshData} 
-              disabled={isLoading}
-            >
-              {isLoading ? "Refreshing..." : "Refresh"}
-            </Button>
-          </div>
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row gap-2">
+        <Input 
+          placeholder="Search tickets..." 
+          value={searchTerm} 
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="sm:max-w-xs"
+        />
+        <div className="flex gap-2">
+          <Select value={statusFilter || ''} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All statuses</SelectItem>
+              <SelectItem value="open">Open</SelectItem>
+              <SelectItem value="in-progress">In Progress</SelectItem>
+              <SelectItem value="review">Review</SelectItem>
+              <SelectItem value="done">Done</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select value={priorityFilter || ''} onValueChange={setPriorityFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All priorities</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="low">Low</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Button variant="outline" onClick={onRefresh}>Refresh</Button>
         </div>
-        <CardDescription>Manage tickets and track progress</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-xs font-medium text-blue-600">Total Tickets</p>
-                <p className="text-2xl font-bold">{ticketStats.totalTickets}</p>
-              </div>
-              <div className="p-1.5 bg-blue-100 rounded-full">
-                <FileText className="h-5 w-5 text-blue-500" />
-              </div>
-            </div>
+      </div>
+      
+      <div className="space-y-2">
+        {filteredTickets.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">No tickets found</p>
           </div>
-          
-          <div className="bg-amber-50 p-4 rounded-lg">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-xs font-medium text-amber-600">Open Tickets</p>
-                <p className="text-2xl font-bold">{ticketStats.openTickets}</p>
+        ) : (
+          filteredTickets.map(ticket => (
+            <Card
+              key={ticket.id}
+              className="overflow-hidden"
+            >
+              <div 
+                className={`p-4 cursor-pointer ${
+                  ticket.priority === 'high' ? 'border-l-4 border-l-red-500' :
+                  ticket.priority === 'medium' ? 'border-l-4 border-l-yellow-500' :
+                  'border-l-4 border-l-blue-500'
+                }`}
+                onClick={() => toggleTicketExpanded(ticket.id)}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-1">
+                    {ticket.expanded ? 
+                      <ChevronDown className="h-4 w-4 shrink-0" /> : 
+                      <ChevronRight className="h-4 w-4 shrink-0" />
+                    }
+                    <span className="font-medium">{ticket.title}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={
+                      ticket.status === 'open' ? 'outline' :
+                      ticket.status === 'in-progress' ? 'secondary' :
+                      ticket.status === 'review' ? 'secondary' :
+                      ticket.status === 'done' ? 'success' :
+                      'default'
+                    }>
+                      {ticket.status}
+                    </Badge>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={(e) => toggleTicketExpanded(ticket.id, e)}
+                      className="h-7 px-2"
+                    >
+                      {ticket.expanded ? 'Collapse' : 'Expand'}
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{ticket.description}</p>
               </div>
-              <div className="p-1.5 bg-amber-100 rounded-full">
-                <Clock className="h-5 w-5 text-amber-500" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-xs font-medium text-green-600">Closed Tickets</p>
-                <p className="text-2xl font-bold">{ticketStats.closedTickets}</p>
-              </div>
-              <div className="p-1.5 bg-green-100 rounded-full">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-red-50 p-4 rounded-lg">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-xs font-medium text-red-600">High Priority</p>
-                <p className="text-2xl font-bold">{ticketStats.highPriorityTickets}</p>
-              </div>
-              <div className="p-1.5 bg-red-100 rounded-full">
-                <AlertTriangle className="h-5 w-5 text-red-500" />
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {showKanban && (
-          <div className="mb-8">
-            <h3 className="text-lg font-medium mb-4">Ticket Board</h3>
-            <div className="border rounded-lg overflow-hidden">
-              <TicketKanbanBoard 
-                tickets={tickets} 
-                onStatusChange={handleUpdateTicketStatus} 
-                onViewTicket={toggleTicketExpanded} 
-              />
-            </div>
-          </div>
+              
+              {ticket.expanded && (
+                <div className="p-4 pt-0 border-t">
+                  <div className="grid gap-4 sm:grid-cols-2 mt-4">
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Details</h4>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-sm text-muted-foreground">Status</label>
+                          <Select 
+                            value={ticket.status} 
+                            onValueChange={(value) => handleStatusChange(ticket.id, value)}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="open">Open</SelectItem>
+                              <SelectItem value="in-progress">In Progress</SelectItem>
+                              <SelectItem value="review">Review</SelectItem>
+                              <SelectItem value="done">Done</SelectItem>
+                              <SelectItem value="closed">Closed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div>
+                          <label className="text-sm text-muted-foreground">Priority</label>
+                          <Select 
+                            value={ticket.priority} 
+                            onValueChange={(value) => handlePriorityChange(ticket.id, value)}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="Select priority" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="low">Low</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div>
+                          <label className="text-sm text-muted-foreground">Due Date</label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full justify-start text-left font-normal mt-1",
+                                  !ticket.due_date && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {ticket.due_date ? format(new Date(ticket.due_date), "PPP") : <span>Pick a date</span>}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <Calendar
+                                mode="single"
+                                selected={ticket.due_date ? new Date(ticket.due_date) : undefined}
+                                onSelect={(date) => date && handleDueDateChange(ticket.id, date)}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        
+                        {ticket.isTaskTicket && (
+                          <div>
+                            <label className="text-sm text-muted-foreground">Completion Percentage</label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Input 
+                                type="number" 
+                                min="0" 
+                                max="100" 
+                                value={ticket.completion_percentage || 0}
+                                onChange={(e) => handleCompletionChange(ticket.id, parseInt(e.target.value))}
+                                className="w-24"
+                              />
+                              <span>%</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Description</h4>
+                      <p className="text-sm whitespace-pre-line">
+                        {ticket.description || "No description provided."}
+                      </p>
+                      
+                      {ticket.task_id && (
+                        <div className="mt-4">
+                          <h4 className="text-sm font-medium mb-2">Task Details</h4>
+                          <div className="text-sm">
+                            {ticket.isTaskTicket ? (
+                              <div className="space-y-1">
+                                <p><strong>Task ID:</strong> {ticket.task_id}</p>
+                                {ticket.equity_points !== undefined && (
+                                  <p><strong>Equity Points:</strong> {ticket.equity_points}%</p>
+                                )}
+                              </div>
+                            ) : (
+                              <p>This is a regular ticket (not linked to a task).</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="mt-4">
+                        <div className="flex justify-between items-center">
+                          <h4 className="text-sm font-medium">Add Note</h4>
+                        </div>
+                        <div className="flex space-x-2 mt-1">
+                          <Textarea 
+                            placeholder="Add a note..." 
+                            value={ticket.newNote || ''}
+                            onChange={(e) => {
+                              setTickets(prev => 
+                                prev.map(t => t.id === ticket.id ? { ...t, newNote: e.target.value } : t)
+                              );
+                            }}
+                            className="min-h-[60px]"
+                          />
+                          <Button 
+                            onClick={() => {
+                              handleAddNote(ticket.id, ticket.newNote || '');
+                              setTickets(prev => 
+                                prev.map(t => t.id === ticket.id ? { ...t, newNote: '' } : t)
+                              );
+                            }}
+                            disabled={!ticket.newNote}
+                            className="shrink-0"
+                          >
+                            Add
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {ticket.notes && ticket.notes.length > 0 && (
+                        <div className="mt-4">
+                          <h4 className="text-sm font-medium mb-2">Notes</h4>
+                          <div className="space-y-2 max-h-40 overflow-y-auto">
+                            {ticket.notes.map((note, index) => (
+                              <div key={index} className="text-xs border rounded p-2">
+                                <div className="flex justify-between">
+                                  <span className="font-medium">{note.user}</span>
+                                  <span className="text-muted-foreground">
+                                    {new Date(note.timestamp).toLocaleString()}
+                                  </span>
+                                </div>
+                                <p className="mt-1 whitespace-pre-line">{note.content}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Card>
+          ))
         )}
-        
-        {showGantt && (
-          <div className="mb-8">
-            <h3 className="text-lg font-medium mb-4">Timeline</h3>
-            <div className="border rounded-lg overflow-hidden p-4">
-              <GanttChart tasks={getGanttTasks()} />
-            </div>
-          </div>
-        )}
-        
-        <div>
-          <h3 className="text-lg font-medium mb-4">All Tickets</h3>
-          <Table className="w-full">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[250px]">Title</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {renderTicketRows()}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
