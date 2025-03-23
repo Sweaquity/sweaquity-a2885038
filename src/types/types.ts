@@ -15,6 +15,8 @@ export interface Ticket {
     user: string;
     timestamp: string;
     content: string;
+    action?: string;
+    comment?: string;
   }>;
   expanded?: boolean;
   newNote?: string;
@@ -71,4 +73,10 @@ export interface TicketStatistics {
   backlog?: number;
   review?: number;
   totalTickets?: number;
+  openTickets?: number;
+}
+
+export interface BetaTicket extends Ticket {
+  task_id?: string;
+  job_app_id?: string;
 }

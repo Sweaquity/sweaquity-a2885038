@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ interface ProfileFormData {
   email: string;
   location: string;
   availability: string[];
-  employment_preference: 'Employment only' | 'Equity only' | 'Both Equity and Salary';
+  employment_preference: 'salary_only' | 'equity_only' | 'both';
   terms_accepted: boolean;
   marketing_consent: boolean;
   project_updates_consent: boolean;
@@ -39,7 +40,7 @@ export const ProfileCompletionForm = () => {
     email: '',
     location: '',
     availability: [],
-    employment_preference: 'Both Equity and Salary',
+    employment_preference: 'both',
     terms_accepted: false,
     marketing_consent: false,
     project_updates_consent: false,
@@ -181,7 +182,7 @@ export const ProfileCompletionForm = () => {
             <Label htmlFor="employment_preference">Employment Preference *</Label>
             <Select
               value={formData.employment_preference}
-              onValueChange={(value: 'Employment only' | 'Equity only' | 'Both Equity and Salary') => 
+              onValueChange={(value: 'salary_only' | 'equity_only' | 'both') => 
                 handleFieldChange('employment_preference', value)
               }
             >
