@@ -21,6 +21,13 @@ export interface GanttChartProps {
   tasks: GanttTask[];
 }
 
+export enum TaskType {
+  Task = 'task',
+  Milestone = 'milestone'
+  // Add other task types as needed
+}
+
+
 // Note: This is a wrapper component that will use the GanttChartView component
 // from your original code. You'll need to implement or import that component.
 export const GanttChart: React.FC<GanttChartProps> = ({ tasks }) => {
@@ -76,7 +83,7 @@ export const convertItemsToGanttTasks = (items: any[]): GanttTask[] => {
       name: item.title,
       start: startDate,
       end: endDate,
-      type: 'task' as TaskType,
+      type: item.type as TaskType || TaskType.Task,
       progress: getProgressFromStatus(item.status),
       isDisabled: false,
       styles: { 
