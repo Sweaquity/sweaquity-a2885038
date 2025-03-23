@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -12,6 +11,29 @@ import { Ticket } from "@/types/types";
 import TicketStats from "@/components/ticket/TicketStats";
 import { TimeTracker } from "@/components/job-seeker/dashboard/TimeTracker";
 
+// Define missing interfaces to address type errors
+interface JobApplication {
+  task_id?: string;
+  project_id?: string;
+  user_id: string;
+}
+
+// Update BetaTicket interface if it's not already defined properly in KanbanBoard
+interface ExtendedBetaTicket extends BetaTicket {
+  task_id?: string;
+  job_app_id?: string;
+  expanded?: boolean;
+  isTaskTicket?: boolean;
+  job_applications?: JobApplication;
+}
+
+// Type for user data returned from database
+interface UserData {
+  first_name?: string;
+  last_name?: string;
+  company_name?: string;
+}
+
 interface BetaTestingTabProps {
   userType: "job_seeker" | "business";
   userId?: string;
@@ -19,9 +41,9 @@ interface BetaTestingTabProps {
 }
 
 export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false }: BetaTestingTabProps) => {
-  const [tickets, setTickets] = useState<BetaTicket[]>([]);
+  const [tickets, setTickets] = useState<ExtendedBetaTicket[]>([]);
   const [loading, setLoading] = useState(true);
-  const [projectTickets, setProjectTickets] = useState<BetaTicket[]>([]);
+  const [projectTickets, setProjectTickets] = useState<ExtendedBetaTicket[]>([]);
   const [showKanban, setShowKanban] = useState(true);
   const [showDashboard, setShowDashboard] = useState(true);
   const [ticketStatistics, setTicketStatistics] = useState({
@@ -44,9 +66,12 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
         .eq('id', userId)
         .single();
 
+      // Cast userData to the proper type
+      const typedUserData = userData as UserData;
+      
       const userName = userType === 'job_seeker'
-        ? `${userData.first_name} ${userData.last_name}`
-        : userData.company_name;
+        ? `${typedUserData.first_name || ''} ${typedUserData.last_name || ''}`
+        : typedUserData.company_name || '';
 
       const { data, error } = await supabase
         .from('tickets')
@@ -90,8 +115,8 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
         expanded: expandedTickets[ticket.id] || false
       }));
       
-      setTickets(updatedTickets);
-      calculateTicketStatistics(updatedTickets);
+      setTickets(updatedTickets as ExtendedBetaTicket[]);
+      calculateTicketStatistics(updatedTickets as Ticket[]);
 
       if (includeProjectTickets) {
         await loadProjectTickets();
@@ -126,7 +151,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     try {
       if (!userId) return;
 
-      let projectTicketsData: BetaTicket[] = [];
+      let projectTicketsData: ExtendedBetaTicket[] = [];
 
       if (userType === 'job_seeker') {
         // For job seekers, we need to get tickets from accepted projects
@@ -145,12 +170,19 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
         if (acceptedJobsError) throw acceptedJobsError;
         
         if (acceptedJobsData && acceptedJobsData.length > 0) {
+          // Use explicit type casting to handle nested object properties
           const projectIds = acceptedJobsData
-            .map(job => job.job_applications?.project_id)
+            .map(job => {
+              const jobApp = job.job_applications as unknown as JobApplication;
+              return jobApp?.project_id;
+            })
             .filter(Boolean) as string[];
           
           const taskIds = acceptedJobsData
-            .map(job => job.job_applications?.task_id)
+            .map(job => {
+              const jobApp = job.job_applications as unknown as JobApplication;
+              return jobApp?.task_id;
+            })
             .filter(Boolean) as string[];
           
           if (projectIds.length > 0) {
@@ -183,7 +215,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
               ...ticket,
               expanded: expandedTickets[ticket.id] || false,
               isTaskTicket: !!ticket.task_id
-            }));
+            })) as ExtendedBetaTicket[];
           }
         }
       } else if (userType === 'business') {
@@ -207,7 +239,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
           projectTicketsData = (projectTickets || []).map(ticket => ({
             ...ticket,
             expanded: expandedTickets[ticket.id] || false
-          }));
+          })) as ExtendedBetaTicket[];
         }
       }
 
@@ -234,8 +266,8 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       toast.success("Ticket status updated");
       
       // If a ticket is marked as complete and it has a task_id, trigger business review
-      const ticketToUpdate = [...tickets, ...projectTickets].find(t => t.id === ticketId);
-      if (ticketToUpdate && ticketToUpdate.task_id && newStatus === 'done') {
+      const ticketToUpdate = [...tickets, ...projectTickets].find(t => t.id === ticketId) as ExtendedBetaTicket;
+      if (ticketToUpdate?.task_id && newStatus === 'done') {
         // Update the task status to pending review
         const { error: taskError } = await supabase
           .from('project_sub_tasks')
@@ -323,9 +355,12 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       
       if (userError) throw userError;
       
+      // Cast userData to the proper type
+      const typedUserData = userData as UserData;
+      
       const userName = userType === 'job_seeker'
-        ? `${userData.first_name} ${userData.last_name}`
-        : userData.company_name;
+        ? `${typedUserData.first_name || ''} ${typedUserData.last_name || ''}`
+        : typedUserData.company_name || '';
       
       // Add the new note
       const newNote = {
@@ -358,7 +393,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
 
   const updateProjectCompletion = async (ticketId: string, completionPercent: number) => {
     try {
-      const ticket = [...tickets, ...projectTickets].find(t => t.id === ticketId);
+      const ticket = [...tickets, ...projectTickets].find(t => t.id === ticketId) as ExtendedBetaTicket;
       if (!ticket || !ticket.task_id) {
         toast.error("This ticket is not associated with a task");
         return;
@@ -555,7 +590,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
                         <TimeTracker 
                           ticketId={selectedTicket} 
                           userId={userId} 
-                          jobAppId={allTickets.find(t => t.id === selectedTicket)?.job_app_id}
+                          jobAppId={(allTickets.find(t => t.id === selectedTicket) as ExtendedBetaTicket)?.job_app_id}
                         />
                       )}
                     </CardContent>
