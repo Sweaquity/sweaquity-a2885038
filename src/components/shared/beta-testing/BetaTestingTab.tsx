@@ -434,23 +434,25 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     }
   };
 
-  const addTicketNote = async (ticketId: string, note: string) => {
-    if (!userId || !note.trim()) return;
-    
-    try {
-      const { data: ticketData, error: getError } = await supabase
-        .from('tickets')
-        .select('notes')
-        .eq('id', ticketId)
-        .single();
-      
-      if (getError) throw getError;
-      
-      const currentNotes = ticketData.notes || [];
-      
-      let userName = '';
+    const addTicketNote = async (ticketId: string, note: string) => {
+      if (!userId || !note.trim()) return;
       
       try {
+        // First get the current notes
+        const { data: ticketData, error: fetchError } = await supabase
+          .from('tickets')
+          .select('notes')
+          .eq('id', ticketId)
+          .single();
+        
+        if (fetchError) throw fetchError;
+        
+        // Initialize notes array if it doesn't exist
+        const currentNotes = ticketData.notes || [];
+        
+        // Get user info based on user type
+        let userName = '';
+        
         if (userType === 'job_seeker') {
           const { data: profileData } = await supabase
             .from('profiles')
@@ -472,38 +474,45 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
             userName = businessData.company_name || '';
           }
         }
+        
+        // Use the working format for notes
+        const newNote = {
+          action: 'Note added',
+          user: userName.trim() || 'User',
+          timestamp: new Date().toISOString(),
+          comment: note
+        };
+        
+        const updatedNotes = [...currentNotes, newNote];
+        
+        const { error } = await supabase
+          .from('tickets')
+          .update({ 
+            notes: updatedNotes,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', ticketId);
+        
+        if (error) throw error;
+        
+        // Update the local state to match the working version
+        setTickets(prev => prev.map(t => 
+          t.id === ticketId ? {...t, notes: updatedNotes} : t
+        ));
+        
+        setProjectTickets(prev => prev.map(t => 
+          t.id === ticketId ? {...t, notes: updatedNotes} : t
+        ));
+        
+        toast.success("Note added successfully");
+        
+        // Also load tickets to ensure consistency
+        loadTickets();
       } catch (error) {
-        console.error('Error fetching user data:', error);
-        userName = userType === 'job_seeker' ? 'Job Seeker' : 'Business';
+        console.error('Error adding note:', error);
+        toast.error("Failed to add note");
       }
-      
-      const newNote = {
-        id: crypto.randomUUID(),
-        user: userName.trim() || 'User',
-        timestamp: new Date().toISOString(),
-        content: note
-      };
-      
-      const updatedNotes = [...currentNotes, newNote];
-      
-      const { error } = await supabase
-        .from('tickets')
-        .update({ 
-          notes: updatedNotes,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', ticketId);
-      
-      if (error) throw error;
-      
-      toast.success("Note added successfully");
-      loadTickets();
-    } catch (error) {
-      console.error('Error adding note:', error);
-      toast.error("Failed to add note");
-    }
-  };
-
+    };
   const updateProjectCompletion = async (ticketId: string, completionPercent: number) => {
     try {
       const ticket = [...tickets, ...projectTickets].find(t => t.id === ticketId);
