@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { BetaTestingTab as SharedBetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TaskCompletionReview } from "../../projects/TaskCompletionReview";
+import { TaskCompletionReview } from "../../projects/task-completion/TaskCompletionReview";
 
 export const BetaTestingTab = () => {
   const [userId, setUserId] = useState<string | null>(null);

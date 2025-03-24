@@ -14,7 +14,7 @@ interface TimeTrackerProps {
   jobAppId?: string;
 }
 
-export const TimeTracker = ({ ticketId, userId, jobAppId }: TimeTrackerProps) => {
+export const TimeTracker: React.FC<TimeTrackerProps> = ({ ticketId, userId, jobAppId }: TimeTrackerProps) => {
   const [description, setDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [manualHours, setManualHours] = useState<number>(0);
