@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -434,7 +433,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     }
   };
 
-      const addTicketNote = async (ticketId: string, note: string) => {
+  const addTicketNote = async (ticketId: string, note: string) => {
     if (!userId || !note.trim()) return;
     
     try {
@@ -454,6 +453,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       
       if (getError) throw getError;
       
+      // Initialize notes as an empty array if it's null
       const currentNotes = ticketData.notes || [];
       
       // Get username based on user type
@@ -486,7 +486,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
         userName = userType === 'job_seeker' ? 'Job Seeker' : 'Business';
       }
       
-      // Use the format from your working example
+      // Create the new note
       const newNote = {
         action: 'Note added',
         user: userName.trim() || 'User',
@@ -496,7 +496,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       
       const updatedNotes = [...currentNotes, newNote];
       
-      // Update the ticket
+      // Update the ticket with the new notes array
       const { error } = await supabase
         .from('tickets')
         .update({ 
@@ -508,7 +508,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       if (error) throw error;
       
       // If it's a task ticket and has a task_id, update the task's last activity timestamp
-      if (ticket.isTaskTicket && ticket.task_id) {
+      if (ticket.task_id) {
         const { error: taskError } = await supabase
           .from('project_sub_tasks')
           .update({ 
@@ -605,10 +605,6 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
   }, [selectedTicket]);
 
   const handleTicketAction = useCallback((ticketId: string, action: string, data: any) => {
-    // Find the ticket to check if it's a task ticket
-    const ticket = [...tickets, ...projectTickets].find(t => t.id === ticketId);
-    if (!ticket) return;
-    
     switch (action) {
       case 'updateStatus':
         updateTicketStatus(ticketId, data || 'new');
@@ -620,7 +616,6 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
         updateTicketPriority(ticketId, data || 'medium');
         break;
       case 'addNote':
-        // Make sure addNote works for both regular and task tickets
         addTicketNote(ticketId, data);
         break;
       case 'updateCompletion':
@@ -629,7 +624,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       default:
         console.warn('Unknown action:', action);
     }
-  }, [tickets, projectTickets]);
+  }, []);
 
   useEffect(() => {
     if (userId) {
@@ -735,13 +730,11 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
                       <CardTitle>Time Tracking</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {selectedTicket && userId && (
-                        <TimeTracker 
-                          ticketId={selectedTicket} 
-                          userId={userId} 
-                          jobAppId={(allTickets.find(t => t.id === selectedTicket) as ExtendedBetaTicket)?.job_app_id}
-                        />
-                      )}
+                      <TimeTracker 
+                        ticketId={selectedTicket} 
+                        userId={userId || ''} 
+                        jobAppId={(allTickets.find(t => t.id === selectedTicket) as ExtendedBetaTicket)?.job_app_id}
+                      />
                     </CardContent>
                   </Card>
                 </div>
