@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,6 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { TimeTracker } from "@/components/job-seeker/dashboard/TimeTracker"; // Import TimeTracker component
 
 interface TicketDashboardProps {
   initialTickets: Ticket[];
@@ -284,6 +284,18 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                           </div>
                         )}
                       </div>
+                      
+                      {/* Add Time Tracker component for task tickets if time tracking is enabled */}
+                      {showTimeTracking && currentUserId && ticket.isTaskTicket && (
+                        <div className="mt-4">
+                          <h4 className="text-sm font-medium mb-2">Time Tracking</h4>
+                          <TimeTracker 
+                            ticketId={ticket.id} 
+                            userId={currentUserId}
+                            jobAppId={ticket.job_app_id}
+                          />
+                        </div>
+                      )}
                     </div>
                     
                     <div>
