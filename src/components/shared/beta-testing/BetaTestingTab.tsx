@@ -438,50 +438,49 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     if (!userId || !note.trim()) return;
     
     try {
-      const { data: ticketData, error: getError } = await supabase
+      // First get the current notes
+      const { data: ticketData, error: fetchError } = await supabase
         .from('tickets')
         .select('notes')
         .eq('id', ticketId)
         .single();
       
-      if (getError) throw getError;
+      if (fetchError) throw fetchError;
       
+      // Initialize notes array if it doesn't exist
       const currentNotes = ticketData.notes || [];
       
+      // Get user info based on user type
       let userName = '';
       
-      try {
-        if (userType === 'job_seeker') {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('first_name, last_name')
-            .eq('id', userId)
-            .single();
-            
-          if (profileData) {
-            userName = `${profileData.first_name || ''} ${profileData.last_name || ''}`;
-          }
-        } else {
-          const { data: businessData } = await supabase
-            .from('businesses')
-            .select('company_name')
-            .eq('businesses_id', userId)
-            .single();
-            
-          if (businessData) {
-            userName = businessData.company_name || '';
-          }
+      if (userType === 'job_seeker') {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', userId)
+          .single();
+          
+        if (profileData) {
+          userName = `${profileData.first_name || ''} ${profileData.last_name || ''}`;
         }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        userName = userType === 'job_seeker' ? 'Job Seeker' : 'Business';
+      } else {
+        const { data: businessData } = await supabase
+          .from('businesses')
+          .select('company_name')
+          .eq('businesses_id', userId)
+          .single();
+          
+        if (businessData) {
+          userName = businessData.company_name || '';
+        }
       }
       
+      // Use the working format for notes
       const newNote = {
-        id: crypto.randomUUID(),
+        action: 'Note added',
         user: userName.trim() || 'User',
         timestamp: new Date().toISOString(),
-        content: note
+        comment: note
       };
       
       const updatedNotes = [...currentNotes, newNote];
@@ -496,7 +495,18 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       
       if (error) throw error;
       
+      // Update the local state to match the working version
+      setTickets(prev => prev.map(t => 
+        t.id === ticketId ? {...t, notes: updatedNotes} : t
+      ));
+      
+      setProjectTickets(prev => prev.map(t => 
+        t.id === ticketId ? {...t, notes: updatedNotes} : t
+      ));
+      
       toast.success("Note added successfully");
+      
+      // Also load tickets to ensure consistency
       loadTickets();
     } catch (error) {
       console.error('Error adding note:', error);
