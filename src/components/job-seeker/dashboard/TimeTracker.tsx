@@ -1,12 +1,17 @@
-
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
-import { Save, Clock, History } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { CalendarIcon, ClockIcon, PlayIcon, StopIcon } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface TimeTrackerProps {
   ticketId: string;
@@ -14,7 +19,7 @@ interface TimeTrackerProps {
   jobAppId?: string;
 }
 
-export const TimeTracker: React.FC<TimeTrackerProps> = ({ ticketId, userId, jobAppId }: TimeTrackerProps) => {
+export function TimeTracker({ ticketId, userId, jobAppId }: TimeTrackerProps) {
   const [description, setDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [manualHours, setManualHours] = useState<number>(0);
@@ -24,10 +29,8 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ ticketId, userId, jobA
   const [showTimeEntries, setShowTimeEntries] = useState(false);
 
   useEffect(() => {
-    // Load existing time entries for this ticket
     const fetchTimeEntries = async () => {
       try {
-        // Check if this is a task ticket
         const { data: ticketData, error: ticketError } = await supabase
           .from('tickets')
           .select('task_id')
@@ -49,7 +52,6 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ ticketId, userId, jobA
         
         setTimeEntries(data || []);
         
-        // Calculate total hours
         const total = (data || []).reduce((sum, entry) => {
           return sum + (entry.hours_logged || 0);
         }, 0);
@@ -104,7 +106,6 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ ticketId, userId, jobA
 
       if (error) throw error;
       
-      // Update ticket information
       const { data: ticketData, error: ticketError } = await supabase
         .from('tickets')
         .select('task_id, project_id, job_app_id')
@@ -112,7 +113,6 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ ticketId, userId, jobA
         .single();
         
       if (!ticketError && ticketData.task_id) {
-        // Update the task in project_sub_tasks if available
         const { error: taskError } = await supabase
           .from('project_sub_tasks')
           .update({
@@ -125,11 +125,9 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ ticketId, userId, jobA
       
       toast.success("Time entry saved successfully");
       
-      // Add the new entry to the state
       setTimeEntries([data, ...timeEntries]);
       setTotalHoursLogged(totalHoursLogged + manualHours);
       
-      // Reset the inputs
       setDescription("");
       setManualHours(0);
       
@@ -141,7 +139,6 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ ticketId, userId, jobA
     }
   };
 
-  // Only show time tracker for task tickets
   if (!isTaskTicket) {
     return (
       <div className="p-4 bg-muted/30 rounded-md text-center">
@@ -157,7 +154,7 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ ticketId, userId, jobA
           <Dialog>
             <DialogTrigger asChild>
               <Button size="sm" variant="outline" className="flex items-center">
-                <Clock className="h-4 w-4 mr-2" />
+                <ClockIcon className="h-4 w-4 mr-2" />
                 Log Time
               </Button>
             </DialogTrigger>
@@ -167,7 +164,7 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ ticketId, userId, jobA
               </DialogHeader>
               <div className="space-y-4 py-2">
                 <div className="flex items-center space-x-2 mb-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <ClockIcon className="h-4 w-4 text-muted-foreground" />
                   <Input
                     type="number"
                     min="0.1"
@@ -239,4 +236,4 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ ticketId, userId, jobA
       </div>
     </div>
   );
-};
+}

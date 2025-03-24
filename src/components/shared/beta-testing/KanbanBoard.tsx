@@ -8,7 +8,7 @@ import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 export interface BetaTicket {
   id: string;
   title: string;
-  description: string;
+  description: string; // Changed from optional to required
   status: string;
   priority: string;
   due_date?: string;

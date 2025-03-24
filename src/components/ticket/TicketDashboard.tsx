@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { TimeTracker } from "./TimeTracker"; // Import TimeTracker component
+import { TimeTracker } from "@/components/job-seeker/dashboard/TimeTracker"; // Fixed import path
 
 interface TicketDashboardProps {
   initialTickets: Ticket[];
@@ -35,7 +35,6 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
 
-  // Initialize tickets with their expanded state from initialTickets
   useEffect(() => {
     setTickets(initialTickets);
   }, [initialTickets]);
@@ -50,7 +49,6 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         if (ticket.id === ticketId) {
           const newExpandedState = !ticket.expanded;
           
-          // Call the callback if provided
           if (onTicketExpand) {
             onTicketExpand(ticketId, newExpandedState);
           }
@@ -96,18 +94,16 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     }
   }, [onTicketAction]);
 
-    const filteredTickets = tickets.filter(ticket => {
-    // Apply filters
+  const filteredTickets = tickets.filter(ticket => {
     const matchesSearch = !searchTerm || 
       ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (ticket.description && ticket.description.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    // Updated to handle 'all' value
     const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
     const matchesPriority = priorityFilter === 'all' || ticket.priority === priorityFilter;
     
     return matchesSearch && matchesStatus && matchesPriority;
-    });
+  });
 
   return (
     <div className="space-y-4">
@@ -285,7 +281,6 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                         )}
                       </div>
                       
-                      {/* Add Time Tracker component for task tickets if time tracking is enabled */}
                       {showTimeTracking && currentUserId && ticket.isTaskTicket && (
                         <div className="mt-4">
                           <h4 className="text-sm font-medium mb-2">Time Tracking</h4>

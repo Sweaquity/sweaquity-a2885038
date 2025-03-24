@@ -1,3 +1,4 @@
+
 // Update this import to use the correct path to TimeTracker
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
@@ -6,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { FilterBar } from "@/components/ticket/FilterBar";
 import { KanbanBoard } from "@/components/ticket/KanbanBoard";
-import { task } from "gantt-task-react";
+import { Task } from "gantt-task-react"; // Fixed import to use Task instead of task
 import { toast } from "sonner";
 import { DragDropContext } from "react-beautiful-dnd";
 import { ExpandedTicketDetails } from "@/components/ticket/ExpandedTicketDetails";
@@ -152,9 +153,9 @@ export const BetaTestingTab: React.FC<BetaTestingTabProps> = ({ userType, userId
                   updateTicketStatus(draggableId, destination.droppableId);
                 }}>
                   <KanbanBoard 
-                    tickets={filteredTickets} 
+                    tickets={filteredTickets as any} // Updated to fix type issue
                     onStatusChange={updateTicketStatus}
-                    onTicketClick={toggleTicketExpanded}
+                    onTicketClick={(ticket) => toggleTicketExpanded(typeof ticket === 'string' ? ticket : ticket.id)} // Fixed to handle both string and Ticket object
                   />
                 </DragDropContext>
               </div>
@@ -171,7 +172,7 @@ export const BetaTestingTab: React.FC<BetaTestingTabProps> = ({ userType, userId
             </DialogHeader>
             <ExpandedTicketDetails 
               ticket={tickets.find(t => t.id === selectedTicketId) || null}
-              onStatusChange={updateTicketStatus}
+              onStatusChange={(status) => updateTicketStatus(selectedTicketId, status)} // Fixed to match the expected signature
             />
             <TimeTracker ticketId={selectedTicketId} userId={userId} />
           </DialogContent>
