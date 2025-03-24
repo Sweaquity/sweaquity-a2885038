@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useJobSeekerDashboard } from "@/hooks/useJobSeekerDashboard";
@@ -13,7 +14,7 @@ import { ProfileTab } from "@/components/job-seeker/dashboard/tabs/ProfileTab";
 import { ApplicationsTab } from "@/components/job-seeker/dashboard/tabs/ApplicationsTab";
 import { OpportunitiesTab } from "@/components/job-seeker/dashboard/tabs/OpportunitiesTab";
 import { DashboardSkeleton } from "@/components/job-seeker/dashboard/DashboardSkeleton";
-import { BetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
+import { JobSeekerProjectsTab } from "@/components/job-seeker/dashboard/tabs/JobSeekerProjectsTab";
 import { supabase } from "@/lib/supabase";
 
 const JobSeekerDashboard = () => {
@@ -47,7 +48,7 @@ const JobSeekerDashboard = () => {
   } = useJobSeekerDashboard(forceRefresh);
 
   useEffect(() => {
-    // Get the current user's ID for the BetaTestingTab
+    // Get the current user's ID for the JobSeekerProjectsTab
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -72,8 +73,8 @@ const JobSeekerDashboard = () => {
   };
 
   useEffect(() => {
-    // Updated array to include the "beta-testing" tab for new tab order
-    if (tabFromUrl && ['profile', 'opportunities', 'applications', 'beta-testing'].includes(tabFromUrl)) {
+    // Updated array to include the "live-projects" tab for new tab order
+    if (tabFromUrl && ['profile', 'opportunities', 'applications', 'live-projects'].includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
   }, [tabFromUrl]);
@@ -126,7 +127,7 @@ const JobSeekerDashboard = () => {
               { id: "profile", label: "Profile" },
               { id: "opportunities", label: "Opportunities" },
               { id: "applications", label: "Applications" },
-              { id: "beta-testing", label: "Live Projects" }
+              { id: "live-projects", label: "Live Projects" }
             ]}
           />
 
@@ -156,12 +157,8 @@ const JobSeekerDashboard = () => {
             />
           </TabsContent>
 
-          <TabsContent value="beta-testing">
-            <BetaTestingTab 
-              userType="job_seeker"
-              userId={userId}
-              includeProjectTickets={true}
-            />
+          <TabsContent value="live-projects">
+            <JobSeekerProjectsTab userId={userId} />
           </TabsContent>
         </Tabs>
       </div>

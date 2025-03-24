@@ -196,6 +196,25 @@ const TicketCard: React.FC<TicketCardProps> = ({
                   Add Note
                 </Button>
               </div>
+              
+              {ticket.notes && Array.isArray(ticket.notes) && ticket.notes.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-md font-semibold mb-2">Notes History</h4>
+                  <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
+                    {ticket.notes.map((note: any, index: number) => (
+                      <div key={note.id || index} className="border-b pb-2 last:border-0">
+                        <div className="flex justify-between text-xs">
+                          <span className="font-semibold">{note.user || 'User'}</span>
+                          <span className="text-gray-500">
+                            {new Date(note.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="text-sm mt-1">{note.comment}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -289,7 +308,8 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                 formatDate={formatDate}
               />
               
-              {ticket.expanded && showTimeTracking && currentUserId && ticket.isTaskTicket && ticket.isProjectTicket && (
+              {ticket.expanded && showTimeTracking && currentUserId && 
+               ticket.isTaskTicket && ticket.isProjectTicket && (
                 <div className="mt-2 border rounded-md p-4 bg-gray-50">
                   <h3 className="text-sm font-medium mb-2">Time Tracking</h3>
                   <TimeTracker 
