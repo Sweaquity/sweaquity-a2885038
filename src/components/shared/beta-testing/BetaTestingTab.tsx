@@ -9,7 +9,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { Ticket, TicketStatistics, UserData, BetaTicket } from "@/types/types";
 import TicketStats from "@/components/ticket/TicketStats";
-import { TimeTracker } from "@/components/job-seeker/dashboard/TimeTracker";
+import { TimeTracker } from "@/components/job-seeker/dashboard/tickets/TimeTracker";
 
 interface JobApplication {
   task_id?: string;
