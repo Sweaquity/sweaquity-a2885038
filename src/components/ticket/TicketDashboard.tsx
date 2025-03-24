@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -36,7 +35,6 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
 
-  // Initialize tickets with their expanded state from initialTickets
   useEffect(() => {
     setTickets(initialTickets);
   }, [initialTickets]);
@@ -51,7 +49,6 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         if (ticket.id === ticketId) {
           const newExpandedState = !ticket.expanded;
           
-          // Call the callback if provided
           if (onTicketExpand) {
             onTicketExpand(ticketId, newExpandedState);
           }
@@ -97,18 +94,16 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     }
   }, [onTicketAction]);
 
-    const filteredTickets = tickets.filter(ticket => {
-    // Apply filters
+  const filteredTickets = tickets.filter(ticket => {
     const matchesSearch = !searchTerm || 
       ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (ticket.description && ticket.description.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    // Updated to handle 'all' value
     const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
     const matchesPriority = priorityFilter === 'all' || ticket.priority === priorityFilter;
     
     return matchesSearch && matchesStatus && matchesPriority;
-    });
+  });
 
   return (
     <div className="space-y-4">
@@ -286,8 +281,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                         )}
                       </div>
                       
-                      {/* Only show TimeTracker for project-related task tickets */}
-                      {showTimeTracking && currentUserId && ticket.isTaskTicket && ticket.isProjectTicket && (
+                      {showTimeTracking && currentUserId && ticket.isTaskTicket && (ticket as any).isProjectTicket && (
                         <div className="mt-4">
                           <h4 className="text-sm font-medium mb-2">Time Tracking</h4>
                           <TimeTracker 

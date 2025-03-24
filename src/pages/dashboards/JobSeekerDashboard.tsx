@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useJobSeekerDashboard } from "@/hooks/useJobSeekerDashboard";
@@ -23,7 +22,6 @@ const JobSeekerDashboard = () => {
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
   
-  // Changed the default tab to "profile"
   const [activeTab, setActiveTab] = useState<string>(tabFromUrl || "profile");
   const [localLoading, setLocalLoading] = useState(true);
   const [forceRefresh, setForceRefresh] = useState(0);
@@ -48,7 +46,6 @@ const JobSeekerDashboard = () => {
   } = useJobSeekerDashboard(forceRefresh);
 
   useEffect(() => {
-    // Get the current user's ID for the BetaTestingTab
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -73,7 +70,6 @@ const JobSeekerDashboard = () => {
   };
 
   useEffect(() => {
-    // Updated array to include the "beta-testing" tab for new tab order
     if (tabFromUrl && ['profile', 'opportunities', 'applications', 'beta-testing'].includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
@@ -159,7 +155,7 @@ const JobSeekerDashboard = () => {
 
           <TabsContent value="beta-testing">
             <BetaTestingTab 
-              userType="job-seeker"
+              userType="job_seeker"
               userId={userId}
               includeProjectTickets={true}
             />

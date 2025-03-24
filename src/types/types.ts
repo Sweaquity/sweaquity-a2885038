@@ -1,40 +1,28 @@
-
 export interface Ticket {
   id: string;
   title: string;
-  description: string; // Required field
-  status: string;
-  priority: string;
+  description: string;
   reporter?: string;
   assigned_to?: string;
+  status: string;
+  priority: string;
+  health?: string;
+  labels?: string[];
+  due_date?: string;
   created_at?: string;
   updated_at?: string;
-  due_date?: string;
-  notes?: Array<{
-    id: string;
-    user: string;
-    timestamp: string;
-    content?: string;
-    action?: string;
-    comment?: string;
-  }>;
-  expanded?: boolean;
-  newNote?: string;
-  system_info?: string;
-  reproduction_steps?: string;
-  health?: string;
-  replies?: any[];
   project_id?: string;
   task_id?: string;
   job_app_id?: string;
-  equity_points?: number;
-  isTaskTicket?: boolean;
+  expanded?: boolean;
+  notes?: TicketNote[];
+  newNote?: string;
   completion_percentage?: number;
-  estimated_hours?: number;
-  hours_logged?: number;
+  isTaskTicket?: boolean;
+  isProjectTicket?: boolean;
+  equity_points?: string;
 }
 
-// BetaTicket interface with all required properties
 export interface BetaTicket extends Ticket {
   task_id?: string;
   project_id?: string;
@@ -44,7 +32,6 @@ export interface BetaTicket extends Ticket {
   completion_percentage?: number;
 }
 
-// Task interface for project tasks
 export interface Task {
   id: string;
   title: string;
@@ -61,7 +48,6 @@ export interface Task {
   progress?: number;
   type?: string;
   isDisabled?: boolean;
-  // Add the name property for compatibility with gantt-task-react
   name?: string;
 }
 
@@ -99,10 +85,18 @@ export interface TicketStatistics {
   byPriority?: Record<string, number>;
 }
 
-// Define UserData interface for profile data
 export interface UserData {
   first_name?: string;
   last_name?: string;
   company_name?: string;
-  [key: string]: any; // Allow for additional properties
+  [key: string]: any;
+}
+
+export interface TicketNote {
+  id: string;
+  user: string;
+  timestamp: string;
+  content?: string;
+  action?: string;
+  comment?: string;
 }
