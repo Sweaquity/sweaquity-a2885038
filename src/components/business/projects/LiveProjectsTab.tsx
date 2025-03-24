@@ -9,7 +9,7 @@ import { Task, Ticket } from "@/types/types";
 import { toast } from "sonner";
 import { FilterBar } from "@/components/ticket/FilterBar";
 import { KanbanBoard } from "@/components/ticket/KanbanBoard";
-import { TaskCompletionReview } from "./task-completion/TaskCompletionReview";
+import { TaskCompletionReview } from "../projects/TaskCompletionReview";
 import { GanttChartView } from "../testing/GanttChartView";
 import { DragDropContext } from "react-beautiful-dnd";
 

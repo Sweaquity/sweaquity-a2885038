@@ -1,9 +1,23 @@
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { CheckCircle, Clock, User } from "lucide-react";
 import { toast } from "sonner";
+import { Separator } from "@/components/ui/separator";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
 
-export const useTaskCompletionData = (businessId: string) => {
+export const TaskCompletionReview = ({ businessId }: { businessId: string }) => {
   const [pendingReviewTasks, setPendingReviewTasks] = useState<any[]>([]);
   const [completedTasks, setCompletedTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -239,14 +253,170 @@ export const useTaskCompletionData = (businessId: string) => {
     }
   };
 
-  return {
-    loading,
-    pendingReviewTasks,
-    completedTasks,
-    businessProjects,
-    projectEquity,
-    allocatedEquity,
-    handleApproveTask,
-    loadTasksForReview
+  const getCompletionDate = (task: any) => {
+    if (task.last_activity_at) {
+      return format(new Date(task.last_activity_at), "PPP");
+    }
+    return "Unknown";
   };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Task Completion Review</CardTitle>
+        <CardDescription>
+          Review and approve completed tasks to allocate equity
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="text-center py-8">Loading tasks...</div>
+        ) : (
+          <>
+            <div>
+              <h3 className="text-lg font-medium">Project Equity Allocation</h3>
+              <div className="overflow-x-auto mt-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Total Equity</TableHead>
+                      <TableHead>Allocated</TableHead>
+                      <TableHead>Remaining</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {businessProjects.map(project => {
+                      const total = projectEquity[project.project_id] || 0;
+                      const allocated = allocatedEquity[project.project_id] || 0;
+                      const remaining = total - allocated;
+                      
+                      return (
+                        <TableRow key={project.project_id}>
+                          <TableCell>{project.title}</TableCell>
+                          <TableCell>{total}%</TableCell>
+                          <TableCell>{allocated}%</TableCell>
+                          <TableCell 
+                            className={remaining < 0 ? "text-red-500 font-medium" : ""}
+                          >
+                            {remaining}%
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+            
+            <Separator className="my-6" />
+            
+            <div>
+              <h3 className="text-lg font-medium mb-4">Tasks Pending Review</h3>
+              {pendingReviewTasks.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground">No tasks pending review</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Task</TableHead>
+                        <TableHead>Project</TableHead>
+                        <TableHead>Assigned To</TableHead>
+                        <TableHead>Equity</TableHead>
+                        <TableHead>Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingReviewTasks.map(task => (
+                        <TableRow key={task.task_id}>
+                          <TableCell>
+                            <div className="font-medium">{task.title}</div>
+                            <div className="text-sm text-muted-foreground">{task.description}</div>
+                          </TableCell>
+                          <TableCell>
+                            {task.business_projects?.title || "Unknown Project"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <User className="h-4 w-4 mr-2 text-muted-foreground" />
+                              {task.assignedUser || "Unassigned"}
+                            </div>
+                          </TableCell>
+                          <TableCell>{task.equity_allocation}%</TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleApproveTask(task)}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Approve & Allocate Equity
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+            
+            <Separator className="my-6" />
+            
+            <div>
+              <h3 className="text-lg font-medium mb-4">Completed Tasks</h3>
+              {completedTasks.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground">No completed tasks</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Task</TableHead>
+                        <TableHead>Project</TableHead>
+                        <TableHead>Assigned To</TableHead>
+                        <TableHead>Equity Allocated</TableHead>
+                        <TableHead>Completed On</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {completedTasks.map(task => (
+                        <TableRow key={task.task_id}>
+                          <TableCell>
+                            <div className="font-medium">{task.title}</div>
+                            <div className="text-sm text-muted-foreground">{task.description}</div>
+                          </TableCell>
+                          <TableCell>
+                            {task.business_projects?.title || "Unknown Project"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <User className="h-4 w-4 mr-2 text-muted-foreground" />
+                              {task.assignedUser || "Unassigned"}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-green-50 text-green-700">
+                              {task.equity_allocation}%
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                              {getCompletionDate(task)}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
 };

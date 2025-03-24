@@ -159,7 +159,7 @@ const JobSeekerDashboard = () => {
 
           <TabsContent value="beta-testing">
             <BetaTestingTab 
-              userType="job-seeker" // Fixed: Changed "job_seeker" to "job-seeker"
+              userType="job_seeker"
               userId={userId}
               includeProjectTickets={true}
             />

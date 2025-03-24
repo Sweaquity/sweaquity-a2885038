@@ -32,7 +32,7 @@ import { GanttChartView } from "@/components/business/testing/GanttChartView";
 import { ExpandedTicketDetails } from "@/components/ticket/ExpandedTicketDetails";
 import { AdminTicketManager } from "@/components/admin/tickets/AdminTicketManager";
 import { supabase } from "@/lib/supabase";
-import { TimeTracker } from "../TimeTracker";
+import { TimeTracker } from "@/components/job-seeker/dashboard/TimeTracker";
 
 // Define ticket interface
 interface Ticket {
