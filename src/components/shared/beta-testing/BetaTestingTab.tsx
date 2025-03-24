@@ -434,48 +434,59 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     }
   };
 
-    const addTicketNote = async (ticketId: string, note: string) => {
+      const addTicketNote = async (ticketId: string, note: string) => {
     if (!userId || !note.trim()) return;
     
     try {
-      // First get the current notes
-      const { data: ticketData, error: fetchError } = await supabase
+      // Find the ticket to check if it's a task ticket
+      const ticket = [...tickets, ...projectTickets].find(t => t.id === ticketId);
+      if (!ticket) {
+        toast.error("Ticket not found");
+        return;
+      }
+  
+      // Get current notes for the ticket
+      const { data: ticketData, error: getError } = await supabase
         .from('tickets')
         .select('notes')
         .eq('id', ticketId)
         .single();
       
-      if (fetchError) throw fetchError;
+      if (getError) throw getError;
       
-      // Initialize notes array if it doesn't exist
       const currentNotes = ticketData.notes || [];
       
-      // Get user info based on user type
+      // Get username based on user type
       let userName = '';
       
-      if (userType === 'job_seeker') {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('id', userId)
-          .single();
-          
-        if (profileData) {
-          userName = `${profileData.first_name || ''} ${profileData.last_name || ''}`;
+      try {
+        if (userType === 'job_seeker') {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', userId)
+            .single();
+            
+          if (profileData) {
+            userName = `${profileData.first_name || ''} ${profileData.last_name || ''}`;
+          }
+        } else {
+          const { data: businessData } = await supabase
+            .from('businesses')
+            .select('company_name')
+            .eq('businesses_id', userId)
+            .single();
+            
+          if (businessData) {
+            userName = businessData.company_name || '';
+          }
         }
-      } else {
-        const { data: businessData } = await supabase
-          .from('businesses')
-          .select('company_name')
-          .eq('businesses_id', userId)
-          .single();
-          
-        if (businessData) {
-          userName = businessData.company_name || '';
-        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        userName = userType === 'job_seeker' ? 'Job Seeker' : 'Business';
       }
       
-      // Use the working format for notes
+      // Use the format from your working example
       const newNote = {
         action: 'Note added',
         user: userName.trim() || 'User',
@@ -485,6 +496,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       
       const updatedNotes = [...currentNotes, newNote];
       
+      // Update the ticket
       const { error } = await supabase
         .from('tickets')
         .update({ 
@@ -495,25 +507,30 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       
       if (error) throw error;
       
-      // Update the local state to match the working version
-      setTickets(prev => prev.map(t => 
-        t.id === ticketId ? {...t, notes: updatedNotes} : t
-      ));
-      
-      setProjectTickets(prev => prev.map(t => 
-        t.id === ticketId ? {...t, notes: updatedNotes} : t
-      ));
+      // If it's a task ticket and has a task_id, update the task's last activity timestamp
+      if (ticket.isTaskTicket && ticket.task_id) {
+        const { error: taskError } = await supabase
+          .from('project_sub_tasks')
+          .update({ 
+            last_activity_at: new Date().toISOString()
+          })
+          .eq('task_id', ticket.task_id);
+        
+        if (taskError) {
+          console.error('Error updating task last activity:', taskError);
+        }
+      }
       
       toast.success("Note added successfully");
       
-      // Also load tickets to ensure consistency
+      // Reload tickets to refresh the UI
       loadTickets();
     } catch (error) {
       console.error('Error adding note:', error);
       toast.error("Failed to add note");
     }
   };
-
+  
   const updateProjectCompletion = async (ticketId: string, completionPercent: number) => {
     try {
       const ticket = [...tickets, ...projectTickets].find(t => t.id === ticketId);
@@ -588,6 +605,10 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
   }, [selectedTicket]);
 
   const handleTicketAction = useCallback((ticketId: string, action: string, data: any) => {
+    // Find the ticket to check if it's a task ticket
+    const ticket = [...tickets, ...projectTickets].find(t => t.id === ticketId);
+    if (!ticket) return;
+    
     switch (action) {
       case 'updateStatus':
         updateTicketStatus(ticketId, data || 'new');
@@ -599,6 +620,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
         updateTicketPriority(ticketId, data || 'medium');
         break;
       case 'addNote':
+        // Make sure addNote works for both regular and task tickets
         addTicketNote(ticketId, data);
         break;
       case 'updateCompletion':
@@ -607,7 +629,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       default:
         console.warn('Unknown action:', action);
     }
-  }, []);
+  }, [tickets, projectTickets]);
 
   useEffect(() => {
     if (userId) {
