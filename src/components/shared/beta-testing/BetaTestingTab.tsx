@@ -21,6 +21,7 @@ interface ExtendedBetaTicket extends BetaTicket {
   job_applications?: JobApplication | null;
   isProjectTicket?: boolean;
   isTaskTicket?: boolean;
+  expanded?: boolean; // Add this line
 }
 
 interface BetaTestingTabProps {
@@ -110,13 +111,13 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     setLoading(true);
     try {
       if (!userId) return;
-
+  
       const { data: betaTickets, error: betaError } = await supabase
         .from('tickets')
         .select('*')
         .or(`reporter.eq.${userId},assigned_to.eq.${userId}`)
         .is('project_id', null);
-
+  
       if (betaError) throw betaError;
       
       const updatedTickets = (betaTickets || []).map(ticket => ({
@@ -126,7 +127,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
       
       setTickets(updatedTickets as ExtendedBetaTicket[]);
       calculateTicketStatistics(updatedTickets as Ticket[]);
-
+  
       if (includeProjectTickets) {
         await loadProjectTickets();
       }
@@ -593,8 +594,22 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     } else if (selectedTicket === ticketId) {
       setSelectedTicket(null);
     }
+  
+    // Update tickets state
+    setTickets(prev => prev.map(ticket => 
+      ticket.id === ticketId 
+        ? { ...ticket, expanded: isExpanded } 
+        : ticket
+    ));
+  
+    // Update project tickets state
+    setProjectTickets(prev => prev.map(ticket => 
+      ticket.id === ticketId 
+        ? { ...ticket, expanded: isExpanded } 
+        : ticket
+    ));
   }, [selectedTicket]);
-
+  
   const handleTicketAction = useCallback((ticketId: string, action: string, data: any) => {
     const ticket = [...tickets, ...projectTickets].find(t => t.id === ticketId);
     if (!ticket) return;
@@ -628,7 +643,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
 
   const allTickets = [...tickets, ...projectTickets].map(ticket => ({
     ...ticket,
-    expanded: expandedTickets[ticket.id] || false,
+    expanded: expandedTickets[ticket.id] || ticket.expanded || false,
     status: ticket.status || 'new',
     priority: ticket.priority || 'medium'
   })) as Ticket[];
