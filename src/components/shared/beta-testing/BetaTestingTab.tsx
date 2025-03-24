@@ -434,7 +434,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     }
   };
 
-  const addTicketNote = async (ticketId: string, note: string) => {
+    const addTicketNote = async (ticketId: string, note: string) => {
     if (!userId || !note.trim()) return;
     
     try {
