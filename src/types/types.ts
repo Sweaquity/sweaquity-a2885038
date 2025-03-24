@@ -1,4 +1,3 @@
-
 export interface Ticket {
   id: string;
   title: string;
@@ -29,6 +28,7 @@ export interface Ticket {
   job_app_id?: string;
   equity_points?: number;
   isTaskTicket?: boolean;
+  isProjectTicket?: boolean;
   completion_percentage?: number;
   estimated_hours?: number;
   hours_logged?: number;
@@ -41,6 +41,7 @@ export interface BetaTicket extends Ticket {
   job_app_id?: string;
   expanded?: boolean;
   isTaskTicket?: boolean;
+  isProjectTicket?: boolean;
   completion_percentage?: number;
 }
 

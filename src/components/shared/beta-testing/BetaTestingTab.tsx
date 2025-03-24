@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -220,13 +219,29 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
             } else {
               const projectTicketsWithMeta = (projectTickets || []).map(ticket => ({
                 ...ticket,
-                expanded: expandedTickets[ticket.id] || false
+                expanded: expandedTickets[ticket.id] || false,
+                isProjectTicket: true
               }));
               
               projectTicketsData = [...projectTicketsData, ...projectTicketsWithMeta];
             }
             
             if (taskIds.length > 0) {
+              const { data: taskDetails, error: taskDetailsError } = await supabase
+                .from('project_sub_tasks')
+                .select('task_id, description')
+                .in('task_id', taskIds);
+                
+              if (taskDetailsError) {
+                console.error('Error loading task details:', taskDetailsError);
+              }
+              
+              const taskDescriptions = taskDetails ? 
+                taskDetails.reduce((acc, task) => ({
+                  ...acc, 
+                  [task.task_id]: task.description
+                }), {} as Record<string, string>) : {};
+              
               const { data: taskTickets, error: taskTicketsError } = await supabase
                 .from('tickets')
                 .select('*')
@@ -238,7 +253,9 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
                 const taskTicketsWithMeta = (taskTickets || []).map(ticket => ({
                   ...ticket,
                   expanded: expandedTickets[ticket.id] || false,
-                  isTaskTicket: true
+                  isTaskTicket: true,
+                  isProjectTicket: true,
+                  task_description: taskDescriptions[ticket.task_id || ''] || ticket.description
                 }));
                 
                 projectTicketsData = [...projectTicketsData, ...taskTicketsWithMeta];
@@ -268,7 +285,7 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
               return {
                 ...ticket,
                 time_entries: ticketTimeEntries,
-                total_hours_logged: totalHours
+                hours_logged: totalHours
               };
             });
             
@@ -299,7 +316,8 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
           } else {
             projectTicketsData = (projectTickets || []).map(ticket => ({
               ...ticket,
-              expanded: expandedTickets[ticket.id] || false
+              expanded: expandedTickets[ticket.id] || false,
+              isProjectTicket: true
             }));
           }
           
@@ -325,7 +343,8 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
               const taskTicketsWithMeta = (taskTickets || []).map(ticket => ({
                 ...ticket,
                 expanded: expandedTickets[ticket.id] || false,
-                isTaskTicket: true
+                isTaskTicket: true,
+                isProjectTicket: true
               }));
               
               projectTicketsData = [...projectTicketsData, ...taskTicketsWithMeta];
@@ -443,12 +462,12 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
         .from('tickets')
         .select('notes')
         .eq('id', ticketId)
-        .single();
+        .maybeSingle();
       
       if (fetchError) throw fetchError;
       
       // Initialize notes array if it doesn't exist
-      const currentNotes = ticketData.notes || [];
+      const currentNotes = ticketData?.notes || [];
       
       // Get user info based on user type
       let userName = '';
@@ -475,8 +494,9 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
         }
       }
       
-      // Use the working format for notes
+      // Create the new note with comment field
       const newNote = {
+        id: Date.now().toString(),
         action: 'Note added',
         user: userName.trim() || 'User',
         timestamp: new Date().toISOString(),
@@ -619,7 +639,8 @@ export const BetaTestingTab = ({ userType, userId, includeProjectTickets = false
     ...ticket,
     expanded: expandedTickets[ticket.id] || false,
     status: ticket.status || 'new',
-    priority: ticket.priority || 'medium'
+    priority: ticket.priority || 'medium',
+    description: (ticket as any).task_description || ticket.description || 'No description provided'
   })) as Ticket[];
 
   return (

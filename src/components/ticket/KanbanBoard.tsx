@@ -1,21 +1,16 @@
-
 import React from "react";
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
 import { Ticket } from "@/types/types";
 import { Button } from "@/components/ui/button";
 import { Clock, MoreHorizontal, CheckCircle } from "lucide-react";
 
-export interface TicketKanbanBoardProps {
+export interface KanbanBoardProps {
   tickets: Ticket[];
   onStatusChange: (ticketId: string, newStatus: string) => void;
   onTicketClick?: (ticket: Ticket) => void;  // Made this prop optional
 }
 
-export const KanbanBoard: React.FC<TicketKanbanBoardProps> = ({
-  tickets,
-  onStatusChange,
-  onTicketClick = () => {},  // Default empty function
-}) => {
+export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChange, onTicketClick }) => {
   const columns = [
     { id: 'todo', title: 'To Do' },
     { id: 'in-progress', title: 'In Progress' },
@@ -27,6 +22,56 @@ export const KanbanBoard: React.FC<TicketKanbanBoardProps> = ({
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'No due date';
     return new Date(dateString).toLocaleDateString();
+  };
+
+  // Function to get ticket count for a specific status
+  const getTicketCount = (status: string) => {
+    return tickets.filter(ticket => ticket.status === status).length;
+  };
+
+  // Function to determine priority badge color
+  const getPriorityColor = (priority: string) => {
+    if (priority === 'high') return 'bg-red-100 text-red-800';
+    if (priority === 'medium') return 'bg-yellow-100 text-yellow-800';
+    return 'bg-green-100 text-green-800';
+  };
+
+  // Determine if a ticket is overdue
+  const isOverdue = (ticket: Ticket) => {
+    if (!ticket.due_date) return false;
+    const dueDate = new Date(ticket.due_date);
+    const today = new Date();
+    return dueDate < today;
+  };
+
+  // Sort tickets based on priority and due date
+  const sortTickets = (tickets: Ticket[]) => {
+    return [...tickets].sort((a, b) => {
+      // First sort by priority
+      const priorityOrder = { high: 0, medium: 1, low: 2 };
+      const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] || 999;
+      const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] || 999;
+      
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
+      }
+      
+      // Then sort by due date if available
+      if (a.due_date && b.due_date) {
+        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+      }
+      
+      // If no due date, tickets with due dates come first
+      if (a.due_date && !b.due_date) return -1;
+      if (!a.due_date && b.due_date) return 1;
+      
+      // Finally sort by creation date
+      if (a.created_at && b.created_at) {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+      
+      return 0;
+    });
   };
 
   return (
@@ -42,9 +87,9 @@ export const KanbanBoard: React.FC<TicketKanbanBoardProps> = ({
                 ref={provided.innerRef}
                 className="bg-gray-50 p-3 rounded-lg min-h-[300px]"
               >
-                <h3 className="font-medium text-sm mb-3">{column.title} ({columnTickets.length})</h3>
+                <h3 className="font-medium text-sm mb-3">{column.title} ({getTicketCount(column.id)})</h3>
                 
-                {columnTickets.map((ticket, index) => (
+                {sortTickets(columnTickets).map((ticket, index) => (
                   <Draggable key={ticket.id} draggableId={ticket.id} index={index}>
                     {(provided) => (
                       <div
@@ -57,9 +102,7 @@ export const KanbanBoard: React.FC<TicketKanbanBoardProps> = ({
                         <div className="flex justify-between items-start">
                           <h4 className="font-medium">{ticket.title}</h4>
                           <div className={`text-xs font-medium px-2 py-1 rounded-full ${
-                            ticket.priority === 'high' ? 'bg-red-100 text-red-800' :
-                            ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-green-100 text-green-800'
+                            getPriorityColor(ticket.priority)
                           }`}>
                             {ticket.priority}
                           </div>

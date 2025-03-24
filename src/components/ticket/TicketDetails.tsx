@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Ticket } from "@/types/types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,7 +33,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
   
   const [noteText, setNoteText] = useState('');
   const [isUpdatingNote, setIsUpdatingNote] = useState(false);
-  const [estimatedHours, setEstimatedHours] = useState<number>(ticket.hours_logged || 0);
+  const [estimatedHours, setEstimatedHours] = useState<number>(ticket.estimated_hours || 0);
   const [completionPercentage, setCompletionPercentage] = useState<number>(
     ticket.completion_percentage || 0
   );
@@ -48,13 +47,13 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
     try {
       setIsUpdatingNote(true);
 
-      // Create a new note object
+      // Create a new note object (use 'comment' field for compatibility)
       const newNote = {
-        id: Date.now().toString(), // Simple ID generation
+        id: Date.now().toString(),
         user: "Current User", // Ideally, get the current user's name
         timestamp: new Date().toISOString(),
-        content: noteText,
-        action: "commented"
+        action: "commented",
+        comment: noteText // Use comment field to ensure it shows up
       };
 
       // Get existing notes or initialize empty array
@@ -290,8 +289,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
                       <div key={index} className="bg-gray-50 p-2 rounded text-sm">
                         <div className="font-medium">{note.user} - {note.action || "commented"}</div>
                         <div className="text-gray-500 text-xs">{formatDate(note.timestamp)}</div>
-                        {note.comment && <p className="mt-1">{note.comment}</p>}
-                        {note.content && <p className="mt-1">{note.content}</p>}
+                        <p className="mt-1">{note.comment || note.content || "No content"}</p>
                       </div>
                     ))}
                   </div>
