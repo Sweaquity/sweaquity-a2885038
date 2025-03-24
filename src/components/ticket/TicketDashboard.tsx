@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { TimeTracker } from "@components/job-seeker/dashboard//TimeTracker"; // Import TimeTracker component
+import { TimeTracker } from "@components/job-seeker/dashboard/ticket/TimeTracker"; // Import TimeTracker component
 
 interface TicketDashboardProps {
   initialTickets: Ticket[];
