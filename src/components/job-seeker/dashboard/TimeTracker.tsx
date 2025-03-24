@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from "react";
+
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Save, Clock, History as HistoryIcon } from "lucide-react";
+import { Save, Clock, History } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface TimeTrackerProps {
@@ -13,55 +14,54 @@ interface TimeTrackerProps {
   jobAppId?: string;
 }
 
-export const TimeTracker = React.memo(({ ticketId, userId, jobAppId }: TimeTrackerProps) => {
+export const TimeTracker = ({ ticketId, userId, jobAppId }: TimeTrackerProps) => {
   const [description, setDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [manualHours, setManualHours] = useState<number>(0);
   const [timeEntries, setTimeEntries] = useState<any[]>([]);
   const [totalHoursLogged, setTotalHoursLogged] = useState(0);
   const [isTaskTicket, setIsTaskTicket] = useState(false);
-
-  // Memoize the fetch logic to prevent unnecessary re-fetches
-  const fetchTimeEntries = useMemo(() => async () => {
-    try {
-      // Check if this is a task ticket
-      const { data: ticketData, error: ticketError } = await supabase
-        .from('tickets')
-        .select('task_id')
-        .eq('id', ticketId)
-        .single();
-        
-      if (!ticketError && ticketData.task_id) {
-        setIsTaskTicket(true);
-      }
-      
-      const { data, error } = await supabase
-        .from('time_entries')
-        .select('*')
-        .eq('ticket_id', ticketId)
-        .eq('user_id', userId)
-        .order('start_time', { ascending: false });
-
-      if (error) throw error;
-      
-      setTimeEntries(data || []);
-      
-      // Calculate total hours
-      const total = (data || []).reduce((sum, entry) => {
-        return sum + (entry.hours_logged || 0);
-      }, 0);
-      
-      setTotalHoursLogged(total);
-    } catch (error) {
-      console.error('Error fetching time entries:', error);
-      toast.error("Failed to fetch time entries");
-    }
-  }, [ticketId, userId]);
+  const [showTimeEntries, setShowTimeEntries] = useState(false);
 
   useEffect(() => {
-    // Invoke the memoized fetch function
+    // Load existing time entries for this ticket
+    const fetchTimeEntries = async () => {
+      try {
+        // Check if this is a task ticket
+        const { data: ticketData, error: ticketError } = await supabase
+          .from('tickets')
+          .select('task_id')
+          .eq('id', ticketId)
+          .single();
+          
+        if (!ticketError && ticketData.task_id) {
+          setIsTaskTicket(true);
+        }
+        
+        const { data, error } = await supabase
+          .from('time_entries')
+          .select('*')
+          .eq('ticket_id', ticketId)
+          .eq('user_id', userId)
+          .order('start_time', { ascending: false });
+
+        if (error) throw error;
+        
+        setTimeEntries(data || []);
+        
+        // Calculate total hours
+        const total = (data || []).reduce((sum, entry) => {
+          return sum + (entry.hours_logged || 0);
+        }, 0);
+        
+        setTotalHoursLogged(total);
+      } catch (error) {
+        console.error('Error fetching time entries:', error);
+      }
+    };
+
     fetchTimeEntries();
-  }, [fetchTimeEntries]);
+  }, [ticketId, userId]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -74,14 +74,15 @@ export const TimeTracker = React.memo(({ ticketId, userId, jobAppId }: TimeTrack
       return;
     }
 
-    if (manualHours <= 0) {
-      toast.error("Please enter hours greater than 0");
-      return;
-    }
-
     try {
       setIsSaving(true);
       
+      if (manualHours <= 0) {
+        toast.error("Please enter hours greater than 0");
+        setIsSaving(false);
+        return;
+      }
+
       const now = new Date();
       const entry = {
         ticket_id: ticketId,
@@ -92,6 +93,8 @@ export const TimeTracker = React.memo(({ ticketId, userId, jobAppId }: TimeTrack
         start_time: now.toISOString(),
         end_time: now.toISOString(), // For manual entries, use the same time
       };
+
+      console.log("Saving time entry with data:", entry);
 
       const { data, error } = await supabase
         .from('time_entries')
@@ -123,8 +126,8 @@ export const TimeTracker = React.memo(({ ticketId, userId, jobAppId }: TimeTrack
       toast.success("Time entry saved successfully");
       
       // Add the new entry to the state
-      setTimeEntries(prev => [data, ...prev]);
-      setTotalHoursLogged(prev => prev + manualHours);
+      setTimeEntries([data, ...timeEntries]);
+      setTotalHoursLogged(totalHoursLogged + manualHours);
       
       // Reset the inputs
       setDescription("");
@@ -140,7 +143,11 @@ export const TimeTracker = React.memo(({ ticketId, userId, jobAppId }: TimeTrack
 
   // Only show time tracker for task tickets
   if (!isTaskTicket) {
-    return null;
+    return (
+      <div className="p-4 bg-muted/30 rounded-md text-center">
+        <p className="text-sm text-muted-foreground">Time tracking is only available for task-related tickets.</p>
+      </div>
+    );
   }
 
   return (
@@ -195,7 +202,7 @@ export const TimeTracker = React.memo(({ ticketId, userId, jobAppId }: TimeTrack
           <Dialog>
             <DialogTrigger asChild>
               <Button size="sm" variant="outline" className="flex items-center">
-                <HistoryIcon className="h-4 w-4 mr-2" />
+                <History className="h-4 w-4 mr-2" />
                 View Time Entries
               </Button>
             </DialogTrigger>
@@ -232,7 +239,4 @@ export const TimeTracker = React.memo(({ ticketId, userId, jobAppId }: TimeTrack
       </div>
     </div>
   );
-});
-
-// Add display name for better debugging
-TimeTracker.displayName = 'TimeTracker';
+};
