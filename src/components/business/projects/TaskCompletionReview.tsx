@@ -1,422 +1,274 @@
 
-import React, { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Clock, User } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Separator } from "@/components/ui/separator";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { Slider } from "@/components/ui/slider";
+import { ProgressCircle } from "@/components/ui/progress-circle";
+import { TimeTracker } from "@/components/job-seeker/dashboard/TimeTracker";
 
-export const TaskCompletionReview = ({ businessId }: { businessId: string }) => {
-  const [pendingReviewTasks, setPendingReviewTasks] = useState<any[]>([]);
-  const [completedTasks, setCompletedTasks] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [businessProjects, setBusinessProjects] = useState<any[]>([]);
-  const [projectEquity, setProjectEquity] = useState<Record<string, number>>({});
-  const [allocatedEquity, setAllocatedEquity] = useState<Record<string, number>>({});
+interface TaskCompletionReviewProps {
+  businessId: string;
+  task?: any;
+  open?: boolean;
+  setOpen?: (open: boolean) => void;
+  onClose?: () => void;
+}
+
+export const TaskCompletionReview = ({ 
+  businessId, 
+  task,
+  open = false,
+  setOpen = () => {},
+  onClose = () => {}
+}: TaskCompletionReviewProps) => {
+  const [loading, setLoading] = useState(false);
+  const [completionPercentage, setCompletionPercentage] = useState(0);
+  const [feedback, setFeedback] = useState("");
+  const [timeEntries, setTimeEntries] = useState<any[]>([]);
+  const [jobApplicationData, setJobApplicationData] = useState<any>(null);
+  const [totalHoursLogged, setTotalHoursLogged] = useState(0);
 
   useEffect(() => {
-    loadTasksForReview();
-  }, [businessId]);
+    if (task?.task_id) {
+      setCompletionPercentage(task.completion_percentage || 0);
+      loadTaskDetails(task.task_id);
+    }
+  }, [task]);
 
-  const loadTasksForReview = async () => {
+  const loadTaskDetails = async (taskId: string) => {
     setLoading(true);
     try {
-      // Get all projects for this business
-      const { data: projects, error: projectsError } = await supabase
-        .from('business_projects')
-        .select('project_id, title, equity_allocation, equity_allocated')
-        .eq('business_id', businessId);
+      // Get job application for this task
+      const { data: appData, error: appError } = await supabase
+        .from('job_applications')
+        .select(`
+          *,
+          profiles:user_id (
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .eq('task_id', taskId)
+        .maybeSingle();
         
-      if (projectsError) throw projectsError;
+      if (appError) throw appError;
+      setJobApplicationData(appData);
       
-      setBusinessProjects(projects || []);
+      // Get tickets for this task
+      const { data: ticketData, error: ticketError } = await supabase
+        .from('tickets')
+        .select('id')
+        .eq('task_id', taskId);
+        
+      if (ticketError) throw ticketError;
       
-      // Build a map of project equity allocations
-      const equityMap: Record<string, number> = {};
-      const allocatedMap: Record<string, number> = {};
-      
-      (projects || []).forEach(project => {
-        equityMap[project.project_id] = project.equity_allocation || 0;
-        allocatedMap[project.project_id] = project.equity_allocated || 0;
-      });
-      
-      setProjectEquity(equityMap);
-      setAllocatedEquity(allocatedMap);
-      
-      if (!projects || projects.length === 0) {
-        setLoading(false);
-        return;
+      if (ticketData && ticketData.length > 0 && appData?.user_id) {
+        // Load time entries for these tickets
+        const ticketIds = ticketData.map(t => t.id);
+        
+        const { data: timeData, error: timeError } = await supabase
+          .from('time_entries')
+          .select('*')
+          .in('ticket_id', ticketIds)
+          .eq('user_id', appData.user_id);
+          
+        if (timeError) throw timeError;
+        
+        setTimeEntries(timeData || []);
+        
+        // Calculate total hours
+        const total = (timeData || []).reduce((sum, entry) => sum + (entry.hours_logged || 0), 0);
+        setTotalHoursLogged(total);
       }
       
-      const projectIds = projects.map(p => p.project_id);
-      
-      // Get all tasks pending review
-      const { data: pendingTasks, error: pendingError } = await supabase
-        .from('project_sub_tasks')
-        .select(`
-          *,
-          business_projects!inner (
-            project_id,
-            title,
-            business_id
-          ),
-          tickets!left (
-            id,
-            title,
-            status,
-            job_app_id,
-            reporter,
-            assigned_to,
-            equity_points
-          )
-        `)
-        .in('project_id', projectIds)
-        .eq('task_status', 'pending_review');
-        
-      if (pendingError) throw pendingError;
-      
-      // Get all completed tasks
-      const { data: completedTasksData, error: completedError } = await supabase
-        .from('project_sub_tasks')
-        .select(`
-          *,
-          business_projects!inner (
-            project_id,
-            title,
-            business_id
-          ),
-          tickets!left (
-            id,
-            title,
-            status,
-            job_app_id,
-            reporter,
-            assigned_to,
-            equity_points
-          )
-        `)
-        .in('project_id', projectIds)
-        .eq('task_status', 'completed');
-        
-      if (completedError) throw completedError;
-      
-      // Get the user information for each task's assigned user
-      const pendingTasksWithUser = await Promise.all((pendingTasks || []).map(async (task) => {
-        const ticket = task.tickets && task.tickets.length > 0 ? task.tickets[0] : null;
-        
-        if (ticket && ticket.job_app_id) {
-          const { data: jobApp, error: jobAppError } = await supabase
-            .from('job_applications')
-            .select('user_id')
-            .eq('job_app_id', ticket.job_app_id)
-            .maybeSingle();
-            
-          if (!jobAppError && jobApp) {
-            const { data: userData, error: userError } = await supabase
-              .from('profiles')
-              .select('first_name, last_name')
-              .eq('id', jobApp.user_id)
-              .single();
-              
-            if (!userError && userData) {
-              return {
-                ...task,
-                assignedUser: `${userData.first_name} ${userData.last_name}`,
-                userId: jobApp.user_id
-              };
-            }
-          }
-        }
-        
-        return task;
-      }));
-      
-      // Get the user information for completed tasks
-      const completedTasksWithUser = await Promise.all((completedTasksData || []).map(async (task) => {
-        const ticket = task.tickets && task.tickets.length > 0 ? task.tickets[0] : null;
-        
-        if (ticket && ticket.job_app_id) {
-          const { data: jobApp, error: jobAppError } = await supabase
-            .from('job_applications')
-            .select('user_id')
-            .eq('job_app_id', ticket.job_app_id)
-            .maybeSingle();
-            
-          if (!jobAppError && jobApp) {
-            const { data: userData, error: userError } = await supabase
-              .from('profiles')
-              .select('first_name, last_name')
-              .eq('id', jobApp.user_id)
-              .single();
-              
-            if (!userError && userData) {
-              return {
-                ...task,
-                assignedUser: `${userData.first_name} ${userData.last_name}`,
-                userId: jobApp.user_id
-              };
-            }
-          }
-        }
-        
-        return task;
-      }));
-      
-      setPendingReviewTasks(pendingTasksWithUser);
-      setCompletedTasks(completedTasksWithUser);
     } catch (error) {
-      console.error("Error loading tasks for review:", error);
-      toast.error("Failed to load tasks for review");
+      console.error('Error loading task details:', error);
+      toast.error("Failed to load task details");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApproveTask = async (task: any) => {
+  const handleUpdateTask = async () => {
+    if (!task?.task_id) return;
+    
+    setLoading(true);
     try {
-      // Update the task status to completed
-      const { error: taskError } = await supabase
+      // Update task completion percentage
+      const { error: updateError } = await supabase
         .from('project_sub_tasks')
         .update({ 
-          task_status: 'completed',
-          completion_percentage: 100,
+          completion_percentage: completionPercentage,
           last_activity_at: new Date().toISOString()
         })
         .eq('task_id', task.task_id);
         
-      if (taskError) throw taskError;
+      if (updateError) throw updateError;
       
-      // Get the ticket associated with this task
-      const ticket = task.tickets && task.tickets.length > 0 ? task.tickets[0] : null;
-      
-      if (ticket && ticket.job_app_id) {
-        // Get the accepted job to find the equity allocation
-        const { data: acceptedJob, error: jobError } = await supabase
-          .from('accepted_jobs')
-          .select('equity_agreed')
-          .eq('job_app_id', ticket.job_app_id)
-          .maybeSingle();
-          
-        if (jobError) throw jobError;
+      // Get tickets for this task
+      const { data: ticketData, error: ticketError } = await supabase
+        .from('tickets')
+        .select('id, notes')
+        .eq('task_id', task.task_id);
         
-        if (acceptedJob) {
-          // Update the ticket to show full equity points
-          const { error: ticketError } = await supabase
+      if (ticketError) throw ticketError;
+      
+      // Update notes on tickets
+      if (ticketData && ticketData.length > 0 && feedback) {
+        for (const ticket of ticketData) {
+          const currentNotes = ticket.notes || [];
+          
+          const { data: profileData } = await supabase
+            .from('businesses')
+            .select('company_name')
+            .eq('businesses_id', businessId)
+            .single();
+            
+          const reviewerName = profileData?.company_name || 'Business';
+          
+          const newNote = {
+            id: Date.now().toString(),
+            user: reviewerName,
+            timestamp: new Date().toISOString(),
+            action: 'Review Feedback',
+            comment: feedback
+          };
+          
+          const updatedNotes = [...currentNotes, newNote];
+          
+          await supabase
             .from('tickets')
             .update({ 
-              equity_points: acceptedJob.equity_agreed,
-              status: 'done',
+              notes: updatedNotes,
               updated_at: new Date().toISOString()
             })
             .eq('id', ticket.id);
-            
-          if (ticketError) throw ticketError;
-          
-          // Update the project's allocated equity
-          const projectId = task.project_id;
-          const currentAllocated = allocatedEquity[projectId] || 0;
-          const newAllocated = currentAllocated + acceptedJob.equity_agreed;
-          
-          const { error: projectError } = await supabase
-            .from('business_projects')
-            .update({ 
-              equity_allocated: newAllocated
-            })
-            .eq('project_id', projectId);
-            
-          if (projectError) throw projectError;
-          
-          // Update local state
-          setAllocatedEquity({
-            ...allocatedEquity,
-            [projectId]: newAllocated
-          });
         }
       }
       
-      toast.success("Task approved and equity allocated");
-      loadTasksForReview();
+      toast.success("Task review saved successfully");
+      setOpen(false);
+      onClose();
     } catch (error) {
-      console.error("Error approving task:", error);
-      toast.error("Failed to approve task");
+      console.error('Error updating task:', error);
+      toast.error("Failed to save review");
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const getCompletionDate = (task: any) => {
-    if (task.last_activity_at) {
-      return format(new Date(task.last_activity_at), "PPP");
-    }
-    return "Unknown";
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Task Completion Review</CardTitle>
-        <CardDescription>
-          Review and approve completed tasks to allocate equity
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="text-center py-8">Loading tasks...</div>
-        ) : (
-          <>
-            <div>
-              <h3 className="text-lg font-medium">Project Equity Allocation</h3>
-              <div className="overflow-x-auto mt-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project</TableHead>
-                      <TableHead>Total Equity</TableHead>
-                      <TableHead>Allocated</TableHead>
-                      <TableHead>Remaining</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {businessProjects.map(project => {
-                      const total = projectEquity[project.project_id] || 0;
-                      const allocated = allocatedEquity[project.project_id] || 0;
-                      const remaining = total - allocated;
-                      
-                      return (
-                        <TableRow key={project.project_id}>
-                          <TableCell>{project.title}</TableCell>
-                          <TableCell>{total}%</TableCell>
-                          <TableCell>{allocated}%</TableCell>
-                          <TableCell 
-                            className={remaining < 0 ? "text-red-500 font-medium" : ""}
-                          >
-                            {remaining}%
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Task Completion Review</DialogTitle>
+        </DialogHeader>
+        
+        {task && (
+          <div className="grid gap-6">
+            <div className="grid gap-2">
+              <h3 className="font-medium text-lg">{task.title}</h3>
+              <p className="text-muted-foreground">{task.description}</p>
+              
+              <div className="flex items-center justify-between mt-2">
+                <div>
+                  <Label>Equity Allocation:</Label>
+                  <div className="text-lg font-semibold">{task.equity_allocation}%</div>
+                </div>
+                <div>
+                  <Label>Timeframe:</Label>
+                  <div>{task.timeframe}</div>
+                </div>
+                <div>
+                  <Label>Current Status:</Label>
+                  <div className="capitalize">{task.task_status || task.status}</div>
+                </div>
               </div>
             </div>
             
-            <Separator className="my-6" />
-            
-            <div>
-              <h3 className="text-lg font-medium mb-4">Tasks Pending Review</h3>
-              {pendingReviewTasks.length === 0 ? (
-                <div className="text-center py-4 text-muted-foreground">No tasks pending review</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Task</TableHead>
-                        <TableHead>Project</TableHead>
-                        <TableHead>Assigned To</TableHead>
-                        <TableHead>Equity</TableHead>
-                        <TableHead>Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pendingReviewTasks.map(task => (
-                        <TableRow key={task.task_id}>
-                          <TableCell>
-                            <div className="font-medium">{task.title}</div>
-                            <div className="text-sm text-muted-foreground">{task.description}</div>
-                          </TableCell>
-                          <TableCell>
-                            {task.business_projects?.title || "Unknown Project"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              <User className="h-4 w-4 mr-2 text-muted-foreground" />
-                              {task.assignedUser || "Unassigned"}
-                            </div>
-                          </TableCell>
-                          <TableCell>{task.equity_allocation}%</TableCell>
-                          <TableCell>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleApproveTask(task)}
-                            >
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Approve & Allocate Equity
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+            {jobApplicationData && (
+              <div className="grid gap-2 p-4 border rounded-md">
+                <h4 className="font-medium">Assigned To:</h4>
+                <div>
+                  {jobApplicationData.profiles?.first_name} {jobApplicationData.profiles?.last_name}
                 </div>
-              )}
+                <div className="text-sm text-muted-foreground">
+                  {jobApplicationData.profiles?.email}
+                </div>
+              </div>
+            )}
+            
+            <div className="grid gap-4">
+              <div className="flex items-center gap-4">
+                <ProgressCircle 
+                  value={completionPercentage} 
+                  size={80} 
+                  strokeWidth={8}
+                  className="text-primary"
+                />
+                <div className="flex-1">
+                  <Label>Completion Percentage: {completionPercentage}%</Label>
+                  <Slider
+                    value={[completionPercentage]}
+                    min={0}
+                    max={100}
+                    step={5}
+                    onValueChange={(values) => setCompletionPercentage(values[0])}
+                    className="mt-2"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="feedback">Feedback</Label>
+                <Textarea
+                  id="feedback"
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  placeholder="Add your review feedback here..."
+                  className="mt-1"
+                />
+              </div>
             </div>
             
-            <Separator className="my-6" />
-            
-            <div>
-              <h3 className="text-lg font-medium mb-4">Completed Tasks</h3>
-              {completedTasks.length === 0 ? (
-                <div className="text-center py-4 text-muted-foreground">No completed tasks</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Task</TableHead>
-                        <TableHead>Project</TableHead>
-                        <TableHead>Assigned To</TableHead>
-                        <TableHead>Equity Allocated</TableHead>
-                        <TableHead>Completed On</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {completedTasks.map(task => (
-                        <TableRow key={task.task_id}>
-                          <TableCell>
-                            <div className="font-medium">{task.title}</div>
-                            <div className="text-sm text-muted-foreground">{task.description}</div>
-                          </TableCell>
-                          <TableCell>
-                            {task.business_projects?.title || "Unknown Project"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              <User className="h-4 w-4 mr-2 text-muted-foreground" />
-                              {task.assignedUser || "Unassigned"}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="bg-green-50 text-green-700">
-                              {task.equity_allocation}%
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                              {getCompletionDate(task)}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+            <div className="grid gap-2">
+              <h4 className="font-medium">Time Tracking Summary</h4>
+              <div className="text-lg font-semibold">
+                Total Hours Logged: {totalHoursLogged.toFixed(2)}
+              </div>
+              
+              {timeEntries.length > 0 ? (
+                <div className="max-h-40 overflow-y-auto space-y-2 border rounded-md p-2">
+                  {timeEntries.map((entry) => (
+                    <div key={entry.id} className="flex justify-between p-2 text-sm border-b">
+                      <span>{entry.description?.substring(0, 30)}{entry.description?.length > 30 ? '...' : ''}</span>
+                      <span>{entry.hours_logged} hours</span>
+                    </div>
+                  ))}
                 </div>
+              ) : (
+                <div className="text-muted-foreground">No time entries recorded yet</div>
               )}
             </div>
-          </>
+          </div>
         )}
-      </CardContent>
-    </Card>
+        
+        <DialogFooter>
+          <Button onClick={() => {
+            setOpen(false);
+            onClose();
+          }} variant="outline">Cancel</Button>
+          <Button onClick={handleUpdateTask} disabled={loading}>
+            {loading ? "Saving..." : "Save Review"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
