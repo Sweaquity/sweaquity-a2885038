@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -285,8 +286,8 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                         )}
                       </div>
                       
-                      {/* Add Time Tracker component for task tickets if time tracking is enabled */}
-                      {showTimeTracking && currentUserId && ticket.isTaskTicket && (
+                      {/* Only show TimeTracker for project-related task tickets */}
+                      {showTimeTracking && currentUserId && ticket.isTaskTicket && ticket.isProjectTicket && (
                         <div className="mt-4">
                           <h4 className="text-sm font-medium mb-2">Time Tracking</h4>
                           <TimeTracker 

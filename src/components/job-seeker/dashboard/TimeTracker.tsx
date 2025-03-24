@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Save, Clock, History } from "lucide-react";
+import { Save, Clock, History as HistoryIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface TimeTrackerProps {
@@ -202,7 +202,7 @@ export const TimeTracker = ({ ticketId, userId, jobAppId }: TimeTrackerProps) =>
           <Dialog>
             <DialogTrigger asChild>
               <Button size="sm" variant="outline" className="flex items-center">
-                <History className="h-4 w-4 mr-2" />
+                <HistoryIcon className="h-4 w-4 mr-2" />
                 View Time Entries
               </Button>
             </DialogTrigger>
