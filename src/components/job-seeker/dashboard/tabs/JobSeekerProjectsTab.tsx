@@ -83,7 +83,8 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
     description: '',
     priority: 'medium',
     taskId: '',
-    projectId: ''
+    projectId: '',
+    estimated_hours: 0
   });
 
   useEffect(() => {
@@ -318,10 +319,11 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
         status: 'new',
         health: 'healthy',
         reporter: userId,
-        created_by: userId
+        created_by: userId,
+        estimated_hours: newTicket.estimated_hours || 0
       };
       
-      if (newTicket.taskId) {
+      if (newTicket.taskId && newTicket.taskId !== 'none') {
         ticketData.task_id = newTicket.taskId;
       }
       
@@ -345,7 +347,8 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
         description: '',
         priority: 'medium',
         taskId: '',
-        projectId: ''
+        projectId: '',
+        estimated_hours: 0
       });
       
       loadAllTickets();
@@ -979,20 +982,13 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
                   
                   <TicketDashboard
                     key={dashboardKey}
-                    tickets={tickets}
-                    expandedTickets={expandedTickets}
-                    onToggleTicket={handleToggleTicket}
+                    initialTickets={tickets}
+                    onRefresh={handleRefresh}
+                    onTicketExpand={handleToggleTicket}
                     onTicketAction={handleTicketAction}
-                    timeEntries={timeEntries}
-                    logTimeForm={logTimeForm}
-                    onLogTimeChange={(field, value) => 
-                      setLogTimeForm(prev => ({ ...prev, [field]: value }))
-                    }
-                    onLogTime={() => {
-                      if (logTimeForm.ticketId) {
-                        handleLogTime(logTimeForm.ticketId);
-                      }
-                    }}
+                    showTimeTracking={true}
+                    currentUserId={userId}
+                    expandedTickets={expandedTickets}
                     userId={userId}
                   />
                 </TabsContent>
@@ -1109,20 +1105,12 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
                     <h3 className="text-lg font-medium">Project Tickets</h3>
                     <TicketDashboard
                       key={`project-${dashboardKey}`}
-                      tickets={tickets.filter(t => t.isProjectTicket && !t.isTaskTicket)}
-                      expandedTickets={expandedTickets}
-                      onToggleTicket={handleToggleTicket}
+                      initialTickets={tickets.filter(t => t.isProjectTicket && !t.isTaskTicket)}
+                      onRefresh={handleRefresh}
+                      onTicketExpand={handleToggleTicket}
                       onTicketAction={handleTicketAction}
-                      timeEntries={timeEntries}
-                      logTimeForm={logTimeForm}
-                      onLogTimeChange={(field, value) => 
-                        setLogTimeForm(prev => ({ ...prev, [field]: value }))
-                      }
-                      onLogTime={() => {
-                        if (logTimeForm.ticketId) {
-                          handleLogTime(logTimeForm.ticketId);
-                        }
-                      }}
+                      showTimeTracking={true}
+                      currentUserId={userId}
                       userId={userId}
                     />
                   </div>
@@ -1133,20 +1121,12 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
                     <h3 className="text-lg font-medium">Beta Testing Tickets</h3>
                     <TicketDashboard
                       key={`beta-${dashboardKey}`}
-                      tickets={tickets.filter(t => !t.isProjectTicket)}
-                      expandedTickets={expandedTickets}
-                      onToggleTicket={handleToggleTicket}
+                      initialTickets={tickets.filter(t => !t.isProjectTicket)}
+                      onRefresh={handleRefresh}
+                      onTicketExpand={handleToggleTicket}
                       onTicketAction={handleTicketAction}
-                      timeEntries={timeEntries}
-                      logTimeForm={logTimeForm}
-                      onLogTimeChange={(field, value) => 
-                        setLogTimeForm(prev => ({ ...prev, [field]: value }))
-                      }
-                      onLogTime={() => {
-                        if (logTimeForm.ticketId) {
-                          handleLogTime(logTimeForm.ticketId);
-                        }
-                      }}
+                      showTimeTracking={false}
+                      currentUserId={userId}
                       userId={userId}
                     />
                   </div>

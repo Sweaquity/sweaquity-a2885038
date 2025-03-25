@@ -223,22 +223,40 @@ const TicketCard: React.FC<TicketCardProps> = ({
   );
 };
 
-interface TicketDashboardProps {
+export interface TicketDashboardProps {
   initialTickets: Ticket[];
   onRefresh?: () => void;
   onTicketExpand?: (ticketId: string, isExpanded: boolean) => void;
   onTicketAction?: (ticketId: string, action: string, data: any) => void;
   showTimeTracking?: boolean;
   currentUserId?: string;
+  expandedTickets?: Record<string, boolean>;
+  timeEntries?: any[];
+  logTimeForm?: {
+    hours: number;
+    description: string;
+    ticketId: string;
+  };
+  onLogTimeChange?: (field: string, value: any) => void;
+  onLogTime?: () => void;
+  userId?: string;
+  onToggleTicket?: (ticketId: string, isExpanded: boolean) => void;
 }
 
 export const TicketDashboard: React.FC<TicketDashboardProps> = ({
-  initialTickets,
+  initialTickets = [],
   onRefresh,
   onTicketExpand,
   onTicketAction,
   showTimeTracking = false,
-  currentUserId
+  currentUserId,
+  expandedTickets = {},
+  timeEntries = [],
+  logTimeForm = { hours: 0, description: "", ticketId: "" },
+  onLogTimeChange,
+  onLogTime,
+  userId,
+  onToggleTicket
 }) => {
   const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>(initialTickets);
@@ -267,7 +285,9 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   };
 
   const handleToggleTicket = (ticketId: string, isExpanded: boolean) => {
-    if (onTicketExpand) {
+    if (onToggleTicket) {
+      onToggleTicket(ticketId, isExpanded);
+    } else if (onTicketExpand) {
       onTicketExpand(ticketId, isExpanded);
     }
   };
@@ -291,7 +311,11 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
       />
       
       <div className="space-y-4 mt-4">
-        {filteredTickets.length === 0 ? (
+        {!initialTickets || initialTickets.length === 0 ? (
+          <div className="text-center py-12 bg-gray-50 rounded-md">
+            <p className="text-gray-500">No tickets found.</p>
+          </div>
+        ) : filteredTickets.length === 0 ? (
           <div className="text-center py-12 bg-gray-50 rounded-md">
             <p className="text-gray-500">No tickets match your filters.</p>
           </div>
@@ -308,13 +332,13 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                 formatDate={formatDate}
               />
               
-              {ticket.expanded && showTimeTracking && currentUserId && 
+              {ticket.expanded && showTimeTracking && userId && 
                ticket.isTaskTicket && ticket.isProjectTicket && (
                 <div className="mt-2 border rounded-md p-4 bg-gray-50">
                   <h3 className="text-sm font-medium mb-2">Time Tracking</h3>
                   <TimeTracker 
                     ticketId={ticket.id} 
-                    userId={currentUserId} 
+                    userId={userId} 
                     jobAppId={ticket.job_app_id}
                   />
                 </div>
