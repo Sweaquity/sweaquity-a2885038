@@ -29,7 +29,7 @@ interface FeaturedProject {
 }
 
 const Index = () => {
-  console.log("Rendering Index component");
+  console.log("Rendering Index component - this should be visible on the home page");
   const navigate = useNavigate();
   const [featuredProjects, setFeaturedProjects] = useState<FeaturedProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
