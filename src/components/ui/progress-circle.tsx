@@ -42,7 +42,7 @@ export const ProgressCircle = React.forwardRef<
       value,
       strokeWidth = 4,
       showLabel = true,
-      showRing = false,
+      showRing = false, // Default to false to hide the ring
       labelClassName,
       ...props
     },

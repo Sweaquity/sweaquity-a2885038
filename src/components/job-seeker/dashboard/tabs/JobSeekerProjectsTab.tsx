@@ -7,11 +7,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Clock, CheckCircle2, AlertTriangle, FileText, ArrowUpToLine, Plus, RefreshCw, KanbanSquare, BarChart2, Save } from "lucide-react";
+import { Clock, CheckCircle2, AlertTriangle, FileText, ArrowUpToLine, Plus, RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ProgressCircle } from "@/components/ui/progress-circle";
 import { ExpandedTicketDetails } from "@/components/ticket/ExpandedTicketDetails";
 
 interface JobSeekerProjectsTabProps {
@@ -47,10 +46,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const [logHours, setLogHours] = useState<number>(0);
   const [logDescription, setLogDescription] = useState<string>('');
   const [currentLogTicket, setCurrentLogTicket] = useState<any>(null);
-  const [editingTicket, setEditingTicket] = useState<string | null>(null);
-  const [editedEstimatedHours, setEditedEstimatedHours] = useState<number>(0);
-  const [editedCompletionPercentage, setEditedCompletionPercentage] = useState<number>(0);
-  const [isEditingSaving, setIsEditingSaving] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -395,50 +390,61 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     }
   };
 
-  const handleEditTicket = (ticket: any) => {
-    setEditingTicket(ticket.id);
-    setEditedEstimatedHours(ticket.estimated_hours || 0);
-    setEditedCompletionPercentage(ticket.completion_percentage || 0);
-  };
-
-  const handleSaveTicketChanges = async () => {
-    if (!editingTicket) return;
-    
+  const handleUpdateEstimatedHours = async (ticketId: string, hours: number) => {
     try {
-      setIsEditingSaving(true);
-      
-      const { error } = await supabase
+      const { error: ticketError } = await supabase
         .from('tickets')
-        .update({
-          estimated_hours: editedEstimatedHours,
-          completion_percentage: editedCompletionPercentage
-        })
-        .eq('id', editingTicket);
+        .update({ estimated_hours: hours })
+        .eq('id', ticketId);
+        
+      if (ticketError) throw ticketError;
       
-      if (error) throw error;
-      
-      setTickets(prev => prev.map(ticket => 
-        ticket.id === editingTicket 
-          ? { 
-              ...ticket, 
-              estimated_hours: editedEstimatedHours,
-              completion_percentage: editedCompletionPercentage 
-            } 
-          : ticket
-      ));
-      
-      setEditingTicket(null);
-      toast.success("Ticket updated successfully");
-      
-      if (selectedProject) {
-        loadTickets(selectedProject);
+      // Also update jobseeker_active_projects if this is a task
+      const ticket = tickets.find(t => t.id === ticketId);
+      if (ticket?.task_id) {
+        await supabase
+          .from('jobseeker_active_projects')
+          .update({ estimated_hours: hours })
+          .eq('task_id', ticket.task_id);
       }
       
+      setTickets(prev => prev.map(t => 
+        t.id === ticketId ? { ...t, estimated_hours: hours } : t
+      ));
+      
+      toast.success("Estimated hours updated successfully");
     } catch (error) {
-      console.error("Error updating ticket:", error);
-      toast.error("Failed to update ticket");
-    } finally {
-      setIsEditingSaving(false);
+      console.error("Error updating estimated hours:", error);
+      toast.error("Failed to update estimated hours");
+    }
+  };
+
+  const handleUpdateCompletionPercentage = async (ticketId: string, percentage: number) => {
+    try {
+      const { error: ticketError } = await supabase
+        .from('tickets')
+        .update({ completion_percentage: percentage })
+        .eq('id', ticketId);
+        
+      if (ticketError) throw ticketError;
+      
+      // Also update jobseeker_active_projects if this is a task
+      const ticket = tickets.find(t => t.id === ticketId);
+      if (ticket?.task_id) {
+        await supabase
+          .from('jobseeker_active_projects')
+          .update({ completion_percentage: percentage })
+          .eq('task_id', ticket.task_id);
+      }
+      
+      setTickets(prev => prev.map(t => 
+        t.id === ticketId ? { ...t, completion_percentage: percentage } : t
+      ));
+      
+      toast.success("Completion percentage updated successfully");
+    } catch (error) {
+      console.error("Error updating completion percentage:", error);
+      toast.error("Failed to update completion percentage");
     }
   };
 
@@ -567,7 +573,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
                   <span>{ticket.completion_percentage || 0}%</span>
                 </div>
                 <div className="text-sm flex items-center space-x-1 text-muted-foreground">
-                  <span>{((ticket.equity_points || 0) * (ticket.completion_percentage || 0) / 100).toFixed(2)}% earned</span>
+                  <span>{((ticket.equity_points || 0) * (ticket.completion_percentage || 0) / 100).toFixed(1)}% earned</span>
                 </div>
                 <div className="flex gap-1">
                   <Badge className={getStatusColor(ticket.status)}>
@@ -593,72 +599,12 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
           </div>
           
           {expandedTicket === ticket.id && (
-            <div className="p-4 border-t bg-slate-50">
-              {editingTicket === ticket.id ? (
-                <div className="mb-4 space-y-4 p-4 bg-white rounded-md shadow-sm">
-                  <h3 className="font-medium">Edit Ticket Details</h3>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="estimatedHours">Estimated Hours</Label>
-                        <Input 
-                          id="estimatedHours" 
-                          type="number" 
-                          min="0"
-                          step="0.5"
-                          value={editedEstimatedHours || ''}
-                          onChange={(e) => setEditedEstimatedHours(parseFloat(e.target.value) || 0)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="completionPercentage">Completion Percentage</Label>
-                        <Input 
-                          id="completionPercentage" 
-                          type="number" 
-                          min="0"
-                          max="100"
-                          value={editedCompletionPercentage || ''}
-                          onChange={(e) => setEditedCompletionPercentage(parseFloat(e.target.value) || 0)}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setEditingTicket(null)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button 
-                        onClick={handleSaveTicketChanges}
-                        disabled={isEditingSaving}
-                      >
-                        {isEditingSaving ? 'Saving...' : 'Save Changes'}
-                        <Save className="ml-2 h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="mb-4 flex justify-end">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEditTicket(ticket);
-                    }}
-                  >
-                    Edit Details
-                  </Button>
-                </div>
-              )}
-              
+            <div className="p-4 border-t bg-slate-50">              
               <ExpandedTicketDetails 
                 ticket={{
                   ...ticket,
                   hours_logged_total: ticket.hours_logged,
-                  equity_earned: (ticket.equity_points || 0) * (ticket.completion_percentage || 0) / 100
+                  equity_earned: parseFloat(((ticket.equity_points || 0) * (ticket.completion_percentage || 0) / 100).toFixed(1))
                 }}
                 messages={ticket.replies?.map((reply: any) => ({
                   id: reply.id,
@@ -669,6 +615,8 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
                 onReply={(message) => handleTicketReply(ticket.id, message)}
                 onStatusChange={(status) => handleStatusChange(ticket.id, status)}
                 onPriorityChange={(priority) => handlePriorityChange(ticket.id, priority)}
+                onUpdateEstimatedHours={(hours) => handleUpdateEstimatedHours(ticket.id, hours)}
+                onUpdateCompletionPercentage={(percentage) => handleUpdateCompletionPercentage(ticket.id, percentage)}
               />
             </div>
           )}
@@ -767,7 +715,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
                   
                   {showGantt && (
                     <div className="p-4 text-center border rounded-lg mt-4">
-                      <p className="text-muted-foreground">Gantt chart view will be implemented soon.</p>
+                      <p className="text-muted-foreground">Gantt chart view will be implemented soon using the created date and due date from jobseeker_active_projects.</p>
                     </div>
                   )}
                   
@@ -822,5 +770,3 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     </div>
   );
 };
-
-

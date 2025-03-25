@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,9 +20,6 @@ export const BetaTestingTab = ({
   userId, 
   includeProjectTickets = false 
 }: BetaTestingTabProps) => {
-  // Rename component display name
-  BetaTestingTab.displayName = "LiveProjectsTab";
-
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("tickets");
@@ -66,7 +62,6 @@ export const BetaTestingTab = ({
           setSelectedProject(data[0].project_id);
         }
       } else {
-        // For job seeker, fetch projects they're involved in
         const { data, error } = await supabase
           .from('jobseeker_active_projects')
           .select('project_id, project_title')
@@ -75,7 +70,6 @@ export const BetaTestingTab = ({
         
         if (error) throw error;
         
-        // Create a unique list of projects
         const uniqueProjects = Array.from(
           new Map(data?.map(item => [item.project_id, { 
             project_id: item.project_id, 
@@ -99,22 +93,18 @@ export const BetaTestingTab = ({
     try {
       setLoading(true);
       
-      // Find the right field to filter based on user type
       const userField = userType === 'business' ? 'reporter' : 'assigned_to';
       
       let query = supabase
         .from('tickets')
         .select('*');
       
-      // Filter by user role
       query = query.or(`${userField}.eq.${userId},${userType === 'business' ? 'assigned_to' : 'reporter'}.eq.${userId}`);
       
-      // Filter by project if one is selected
       if (selectedProject) {
         query = query.eq('project_id', selectedProject);
       }
       
-      // Order by creation date
       query = query.order('created_at', { ascending: false });
       
       const { data, error } = await query;
@@ -124,12 +114,11 @@ export const BetaTestingTab = ({
       const processedTickets = (data || []).map(ticket => ({
         ...ticket,
         expanded: !!expandedTickets[ticket.id],
-        description: ticket.description || "" // Ensure description exists
+        description: ticket.description || ""
       }));
       
       setTickets(processedTickets);
 
-      // Calculate ticket stats
       const stats = {
         total: processedTickets.length,
         open: processedTickets.filter(t => t.status !== 'done' && t.status !== 'closed').length,
@@ -215,7 +204,6 @@ export const BetaTestingTab = ({
           console.warn("Unknown action:", action);
       }
       
-      // Reload tickets to get updated data
       if (userId) {
         await loadTickets(userId);
       }
@@ -238,7 +226,6 @@ export const BetaTestingTab = ({
       [ticketId]: isExpanded
     }));
     
-    // Also update the tickets array
     setTickets(prev => 
       prev.map(ticket => 
         ticket.id === ticketId ? { ...ticket, expanded: isExpanded } : ticket
@@ -247,7 +234,6 @@ export const BetaTestingTab = ({
   };
 
   const handleCreateTicket = () => {
-    // This would open a dialog to create a new ticket
     toast.info("Create ticket functionality will be implemented soon");
   };
 
@@ -383,5 +369,4 @@ export const BetaTestingTab = ({
   );
 };
 
-// Also add this export to maintain backward compatibility
 export const LiveProjectsTab = BetaTestingTab;
