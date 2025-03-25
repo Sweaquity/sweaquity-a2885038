@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -142,6 +143,30 @@ export const TaskCompletionReview = ({
         })
         .eq('id', selectedTask.id);
       
+      // If task_id exists, update related tables
+      if (selectedTask.task_id) {
+        try {
+          // Update project_sub_tasks
+          await supabase
+            .from('project_sub_tasks')
+            .update({ 
+              completion_percentage: completionPercentage,
+              last_activity_at: new Date().toISOString()
+            })
+            .eq('task_id', selectedTask.task_id);
+            
+          // Update jobseeker_active_projects using RPC
+          await supabase.rpc('update_active_project', {
+            p_task_id: selectedTask.task_id,
+            p_completion_percentage: completionPercentage,
+            p_status: 'done'
+          });
+        } catch (e) {
+          console.error("Error updating related tables:", e);
+          // Don't fail if this secondary update fails
+        }
+      }
+      
       toast.success("Task approved successfully");
       
       // Handle dialog closing based on props
@@ -175,6 +200,20 @@ export const TaskCompletionReview = ({
           status: 'in-progress'
         })
         .eq('id', selectedTask.id);
+      
+      // If task_id exists, update related tables
+      if (selectedTask.task_id) {
+        try {
+          // Update jobseeker_active_projects using RPC
+          await supabase.rpc('update_active_project', {
+            p_task_id: selectedTask.task_id,
+            p_status: 'in-progress'
+          });
+        } catch (e) {
+          console.error("Error updating related tables:", e);
+          // Don't fail if this secondary update fails
+        }
+      }
       
       toast.success("Requested changes successfully");
       
