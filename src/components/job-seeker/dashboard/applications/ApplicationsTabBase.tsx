@@ -1,20 +1,13 @@
 
-// File: src/components/job-seeker/dashboard/applications/ApplicationsTabBase.tsx
-
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { JobApplication } from "@/types/jobSeeker";
+import { ApplicationItem } from "./ApplicationItem";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { ApplicationsList } from "./ApplicationsList";
-import { PendingApplicationsList } from "./PendingApplicationsList";
-import { EquityProjectsList } from "./EquityProjectsList";
-import { PastApplicationsList } from "./PastApplicationsList";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
-interface ApplicationsTabBaseProps {
+export interface ApplicationsTabBaseProps {
   applications: JobApplication[];
   onApplicationUpdated: () => void;
-  newMessagesCount?: number;
+  newMessagesCount: number;
 }
 
 export const ApplicationsTabBase = ({ 
@@ -22,123 +15,70 @@ export const ApplicationsTabBase = ({
   onApplicationUpdated,
   newMessagesCount = 0
 }: ApplicationsTabBaseProps) => {
-  const [localMessagesCount, setLocalMessagesCount] = useState(newMessagesCount);
+  const [activeTab, setActiveTab] = useState("active");
   
-  // Update local state when prop changes
-  useEffect(() => {
-    setLocalMessagesCount(newMessagesCount);
-  }, [newMessagesCount]);
-  
-  // Safely normalize status to lowercase for case-insensitive comparison
-  const normalizeStatus = (status: string | null | undefined): string => {
-    return (status || "").toString().toLowerCase().trim();
-  };
-  
-  // Filter applications by status - using the normalized status comparison
-  const pendingApplications = applications.filter(app => {
-    const status = normalizeStatus(app.status);
-    return status === 'pending' || status === 'in review';
-  });
-  
-  const equityProjects = applications.filter(app => {
-    const status = normalizeStatus(app.status);
-    return status === 'negotiation' || status === 'accepted';
-  });
-  
-  // Specifically filter for withdrawn applications
-  const withdrawnApplications = applications.filter(app => {
-    const status = normalizeStatus(app.status);
-    return status === 'withdrawn';
-  });
-  
-  // Filter for rejected applications
-  const rejectedApplications = applications.filter(app => {
-    const status = normalizeStatus(app.status);
-    return status === 'rejected';
-  });
-  
-  // Reset notification counter when viewing the relevant tab
-  const handleTabChange = (value: string) => {
-    if (value === 'equity') {
-      setLocalMessagesCount(0);
-    }
-  };
+  // Filter applications by status
+  const activeApplications = applications.filter(
+    (app) => app.status !== "rejected" && app.status !== "withdrawn"
+  );
+  const archivedApplications = applications.filter(
+    (app) => app.status === "rejected" || app.status === "withdrawn"
+  );
 
   return (
-    <Card className="dashboard-card">
-      <CardHeader>
-        <h2 className="text-lg font-semibold">Projects that you've applied for</h2>
-        <p className="text-muted-foreground text-sm">View and manage your applications</p>
-      </CardHeader>
-      <CardContent className="overflow-container">
-        <Tabs defaultValue="pending" className="space-y-4" onValueChange={handleTabChange}>
-          <div className="overflow-x-hidden">
-            <TabsList className="responsive-tabs h-auto p-1 w-full grid grid-cols-2 md:grid-cols-4 gap-1">
-              <TabsTrigger value="pending" className="px-3 py-1.5">
-                Pending ({pendingApplications.length})
-              </TabsTrigger>
-              <TabsTrigger value="equity" className="px-3 py-1.5 relative">
-                Current Equity ({equityProjects.length})
-                {localMessagesCount > 0 && (
-                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
-                    {localMessagesCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="withdrawn" className="px-3 py-1.5">
-                Withdrawn ({withdrawnApplications.length})
-              </TabsTrigger>
-              <TabsTrigger value="rejected" className="px-3 py-1.5">
-                Rejected ({rejectedApplications.length})
-              </TabsTrigger>
-            </TabsList>
-          </div>
-          
-          <TabsContent value="pending" className="space-y-4 mt-4">
-            {pendingApplications.length === 0 ? (
-              <p className="text-muted-foreground text-center p-4">No pending applications found.</p>
-            ) : (
-              <PendingApplicationsList 
-                applications={pendingApplications} 
-                onApplicationUpdated={onApplicationUpdated} 
-              />
+    <div className="space-y-4">
+      <h2 className="text-2xl font-semibold">My Applications</h2>
+      
+      <Tabs defaultValue="active" onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="active" className="relative">
+            Active Applications
+            {newMessagesCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-full text-xs">
+                {newMessagesCount}
+              </span>
             )}
-          </TabsContent>
-          
-          <TabsContent value="equity" className="space-y-4 mt-4">
-            {equityProjects.length === 0 ? (
-              <p className="text-muted-foreground text-center p-4">No equity projects found.</p>
-            ) : (
-              <EquityProjectsList 
-                applications={equityProjects} 
-                onApplicationUpdated={onApplicationUpdated} 
-              />
-            )}
-          </TabsContent>
-          
-          <TabsContent value="withdrawn" className="space-y-4 mt-4">
-            {withdrawnApplications.length === 0 ? (
-              <p className="text-muted-foreground text-center p-4">No withdrawn applications found.</p>
-            ) : (
-              <PastApplicationsList 
-                applications={withdrawnApplications}
-                onApplicationUpdated={onApplicationUpdated}
-              />
-            )}
-          </TabsContent>
-          
-          <TabsContent value="rejected" className="space-y-4 mt-4">
-            {rejectedApplications.length === 0 ? (
-              <p className="text-muted-foreground text-center p-4">No rejected applications found.</p>
-            ) : (
-              <PastApplicationsList 
-                applications={rejectedApplications}
-                onApplicationUpdated={onApplicationUpdated}
-              />
-            )}
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+          </TabsTrigger>
+          <TabsTrigger value="archived">Archived Applications</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="active">
+          {activeApplications.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              You have no active applications.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {activeApplications.map((application) => (
+                <ApplicationItem
+                  key={application.job_app_id || application.id}
+                  application={application}
+                  onApplicationUpdated={onApplicationUpdated}
+                />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="archived">
+          {archivedApplications.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              You have no archived applications.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {archivedApplications.map((application) => (
+                <ApplicationItem
+                  key={application.job_app_id || application.id}
+                  application={application}
+                  onApplicationUpdated={onApplicationUpdated}
+                  compact={true}
+                />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };

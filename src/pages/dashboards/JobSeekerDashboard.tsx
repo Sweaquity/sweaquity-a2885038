@@ -28,6 +28,8 @@ const JobSeekerDashboard = () => {
   const [localLoading, setLocalLoading] = useState(true);
   const [forceRefresh, setForceRefresh] = useState(0);
   const [userId, setUserId] = useState<string | undefined>(undefined);
+  const [pendingApplications, setPendingApplications] = useState(0);
+  const [newOpportunities, setNewOpportunities] = useState(0);
 
   const {
     isLoading,
@@ -58,6 +60,25 @@ const JobSeekerDashboard = () => {
     
     getCurrentUser();
   }, []);
+
+  // Calculate notifications for tabs
+  useEffect(() => {
+    // Count applications that need attention
+    const pendingAcceptance = applications.filter(app => 
+      app.status === 'accepted' && app.accepted_business && !app.accepted_jobseeker
+    ).length;
+    
+    setPendingApplications(pendingAcceptance);
+    
+    // Count new opportunities based on last login
+    // This is a placeholder. In a real implementation, you'd track which opportunities the user has seen
+    const recentOpportunities = availableOpportunities ? 
+      availableOpportunities.filter(opp => 
+        new Date(opp.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      ).length : 0;
+    
+    setNewOpportunities(recentOpportunities);
+  }, [applications, availableOpportunities]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -125,8 +146,8 @@ const JobSeekerDashboard = () => {
             onTabChange={handleTabChange}
             tabs={[
               { id: "profile", label: "Profile" },
-              { id: "opportunities", label: "Opportunities" },
-              { id: "applications", label: "Applications" },
+              { id: "opportunities", label: "Opportunities", notificationCount: newOpportunities },
+              { id: "applications", label: "Applications", notificationCount: pendingApplications },
               { id: "live-projects", label: "Live Projects" }
             ]}
           />

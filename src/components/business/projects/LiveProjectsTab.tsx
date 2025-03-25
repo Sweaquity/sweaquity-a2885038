@@ -35,6 +35,8 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     closed: 0,
     highPriority: 0
   });
+  const [reviewTicket, setReviewTicket] = useState<any>(null);
+  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
 
   useEffect(() => {
     if (businessId) {
@@ -328,6 +330,31 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     toast.info("Create ticket functionality will be implemented soon");
   };
 
+  const renderTicketActions = (ticket: any) => {
+    // For tickets in "review" status with 100% completion, show review buttons
+    if (ticket.status === 'review' && ticket.completion_percentage === 100) {
+      return (
+        <Button 
+          size="sm" 
+          variant="outline" 
+          onClick={() => {
+            setReviewTicket(ticket);
+            setIsReviewDialogOpen(true);
+          }}
+        >
+          Review Task
+        </Button>
+      );
+    }
+    return null;
+  };
+
+  const handleReviewClose = () => {
+    setIsReviewDialogOpen(false);
+    setReviewTicket(null);
+    handleRefresh();
+  };
+
   if (!businessId) {
     return <div>Loading...</div>;
   }
@@ -446,9 +473,15 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
               onStatusChange={(ticketId, newStatus) => 
                 handleTicketAction(ticketId, 'updateStatus', newStatus)
               }
-              onTicketClick={(ticket) => 
-                console.log("Ticket clicked:", ticket.id)
-              }
+              onTicketClick={(ticket) => {
+                // For "review" status tickets with 100% completion, open the review dialog
+                if (ticket.status === 'review' && ticket.completion_percentage === 100) {
+                  setReviewTicket(ticket);
+                  setIsReviewDialogOpen(true);
+                } else {
+                  console.log("Ticket clicked:", ticket.id);
+                }
+              }}
             />
           ) : (
             <div className="text-center py-8">Please select a project to view the Kanban board</div>
@@ -463,6 +496,17 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Task Completion Review Dialog */}
+      {reviewTicket && (
+        <TaskCompletionReview 
+          businessId={businessId}
+          task={reviewTicket}
+          open={isReviewDialogOpen} 
+          setOpen={setIsReviewDialogOpen}
+          onClose={handleReviewClose}
+        />
+      )}
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +21,7 @@ export interface ExpandedTicketDetailsProps {
   onAssigneeChange?: (userId: string) => void;
   onUpdateEstimatedHours?: (hours: number) => void;
   onUpdateCompletionPercentage?: (percentage: number) => void;
+  onUpdateDueDate?: (date: string) => void;
   users?: Array<{id: string, first_name: string, last_name: string, email: string}>;
   projects?: Array<{project_id: string, title: string}>;
   tasks?: Array<{task_id: string, title: string}>;
@@ -36,6 +36,7 @@ export const ExpandedTicketDetails = ({
   onAssigneeChange,
   onUpdateEstimatedHours,
   onUpdateCompletionPercentage,
+  onUpdateDueDate,
   users = [],
   projects = [],
   tasks = []
@@ -45,8 +46,10 @@ export const ExpandedTicketDetails = ({
   const [activeTab, setActiveTab] = useState('details');
   const [isEditingHours, setIsEditingHours] = useState(false);
   const [isEditingCompletion, setIsEditingCompletion] = useState(false);
+  const [isEditingDueDate, setIsEditingDueDate] = useState(false);
   const [estimatedHours, setEstimatedHours] = useState(ticket.estimated_hours || 0);
   const [completionPercentage, setCompletionPercentage] = useState(ticket.completion_percentage || 0);
+  const [dueDate, setDueDate] = useState(ticket.due_date || '');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +78,13 @@ export const ExpandedTicketDetails = ({
       onUpdateCompletionPercentage(Number(completionPercentage));
     }
     setIsEditingCompletion(false);
+  };
+
+  const handleSaveDueDate = () => {
+    if (onUpdateDueDate) {
+      onUpdateDueDate(dueDate);
+    }
+    setIsEditingDueDate(false);
   };
 
   // Format date helpers
@@ -348,7 +358,6 @@ export const ExpandedTicketDetails = ({
                       </div>
                     ) : (
                       <div className="flex items-center gap-1">
-                        <ProgressCircle value={ticket.completion_percentage || 0} size="sm" strokeWidth={3} />
                         <span className="text-sm">{ticket.completion_percentage || 0}%</span>
                         {onUpdateCompletionPercentage && (
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setIsEditingCompletion(true)}>
@@ -401,12 +410,32 @@ export const ExpandedTicketDetails = ({
                     </div>
                   )}
                   
-                  {ticket.due_date && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Due Date:</span>
-                      <span className="text-sm">{formatDate(ticket.due_date)}</span>
-                    </div>
-                  )}
+                  {/* Due Date - now editable */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Due Date:</span>
+                    {isEditingDueDate ? (
+                      <div className="flex items-center gap-1">
+                        <Input 
+                          type="date" 
+                          value={dueDate} 
+                          onChange={(e) => setDueDate(e.target.value)} 
+                          className="w-32 h-7 text-xs"
+                        />
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveDueDate}>
+                          <Save className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm">{ticket.due_date ? formatDate(ticket.due_date) : 'Not set'}</span>
+                        {onUpdateDueDate && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setIsEditingDueDate(true)}>
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   
                   {ticket.project && (
                     <div className="flex justify-between">

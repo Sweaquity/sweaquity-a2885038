@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ExpandedTicketDetails } from "@/components/ticket/ExpandedTicketDetails";
+import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 
 interface JobSeekerProjectsTabProps {
   userId?: string;
@@ -47,6 +48,16 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const [logHours, setLogHours] = useState<number>(0);
   const [logDescription, setLogDescription] = useState<string>('');
   const [currentLogTicket, setCurrentLogTicket] = useState<any>(null);
+  const [isCreateTicketDialogOpen, setIsCreateTicketDialogOpen] = useState(false);
+  const [newTicket, setNewTicket] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    status: 'new',
+    ticket_type: 'ticket',
+    estimated_hours: 0,
+    completion_percentage: 0
+  });
 
   useEffect(() => {
     if (userId) {
@@ -58,7 +69,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     if (selectedProject) {
       loadTickets(selectedProject);
     }
-  }, [selectedProject, statusFilter, priorityFilter]);
+  }, [selectedProject, statusFilter, priorityFilter, activeTab]);
 
   useEffect(() => {
     if (tickets.length > 0) {
@@ -143,8 +154,12 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
             end_time,
             hours_logged
           )
-        `)
-        .eq('project_id', projectId);
+        `);
+      
+      // If a specific project is selected (not "all"), filter by that project
+      if (projectId && projectId !== "all") {
+        query = query.eq('project_id', projectId);
+      }
       
       if (statusFilter && statusFilter !== 'all') {
         query = query.eq('status', statusFilter);
@@ -224,7 +239,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   };
 
   const toggleTicketExpansion = useCallback((ticketId: string) => {
-    console.info("Toggle ticket:", ticketId, "expanded:", expandedTicket === ticketId ? "false" : "true");
     setExpandedTicket(prev => prev === ticketId ? null : ticketId);
     
     const ticket = tickets.find(t => t.id === ticketId);
@@ -345,14 +359,60 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     }
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     if (selectedProject) {
-      loadTickets(selectedProject);
+      await loadTickets(selectedProject);
     }
   };
 
   const handleCreateTicket = () => {
-    toast.info("Create ticket functionality not implemented yet");
+    setIsCreateTicketDialogOpen(true);
+  };
+
+  const submitNewTicket = async () => {
+    if (!selectedProject || !userId || !newTicket.title) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('tickets')
+        .insert({
+          title: newTicket.title,
+          description: newTicket.description,
+          status: newTicket.status,
+          priority: newTicket.priority,
+          ticket_type: newTicket.ticket_type,
+          estimated_hours: newTicket.estimated_hours,
+          completion_percentage: newTicket.completion_percentage,
+          project_id: selectedProject,
+          reporter: userId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select();
+      
+      if (error) throw error;
+      
+      toast.success("Ticket created successfully");
+      setIsCreateTicketDialogOpen(false);
+      setNewTicket({
+        title: '',
+        description: '',
+        priority: 'medium',
+        status: 'new',
+        ticket_type: 'ticket',
+        estimated_hours: 0,
+        completion_percentage: 0
+      });
+      
+      // Refresh the tickets list
+      handleRefresh();
+    } catch (error) {
+      console.error("Error creating ticket:", error);
+      toast.error("Failed to create ticket");
+    }
   };
 
   const openTimeLogDialog = (ticket: any) => {
@@ -464,6 +524,67 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     }
   };
 
+  const handleUpdateDueDate = async (ticketId: string, date: string) => {
+    try {
+      // Update the ticket
+      const { error: ticketError } = await supabase
+        .from('tickets')
+        .update({ due_date: date })
+        .eq('id', ticketId);
+        
+      if (ticketError) throw ticketError;
+      
+      // Find the ticket to get task_id if available
+      const ticket = tickets.find(t => t.id === ticketId);
+      if (ticket?.task_id) {
+        // Use the RPC function for updating related tables
+        const { error: rpcError } = await supabase.rpc('update_active_project', {
+          p_task_id: ticket.task_id,
+          p_due_date: date
+        });
+        
+        if (rpcError) {
+          console.error("Error in RPC call:", rpcError);
+        }
+      }
+      
+      // Update local state
+      setTickets(prev => prev.map(t => 
+        t.id === ticketId ? { ...t, due_date: date } : t
+      ));
+      
+      toast.success("Due date updated successfully");
+    } catch (error) {
+      console.error("Error updating due date:", error);
+      toast.error("Failed to update due date");
+    }
+  };
+
+  const handleTicketAction = async (ticketId: string, action: string, data: any) => {
+    switch (action) {
+      case 'updateStatus':
+        await handleStatusChange(ticketId, data);
+        break;
+      case 'updatePriority':
+        await handlePriorityChange(ticketId, data);
+        break;
+      case 'updateDueDate':
+        await handleUpdateDueDate(ticketId, data);
+        break;
+      case 'updateEstimatedHours':
+        await handleUpdateEstimatedHours(ticketId, data);
+        break;
+      case 'updateCompletionPercentage':
+        await handleUpdateCompletionPercentage(ticketId, data);
+        break;
+      case 'addReply':
+        await handleTicketReply(ticketId, data);
+        break;
+      default:
+        console.warn("Unknown action:", action);
+    }
+  };
+
   const renderProjectSelector = () => (
     <Select
       value={selectedProject || ''}
@@ -473,6 +594,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         <SelectValue placeholder="Select a project" />
       </SelectTrigger>
       <SelectContent>
+        <SelectItem value="all">All Projects</SelectItem>
         {userProjects.map(project => (
           <SelectItem key={project.project_id} value={project.project_id}>
             {project.title || 'Untitled Project'}
@@ -480,17 +602,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         ))}
       </SelectContent>
     </Select>
-  );
-
-  const renderTicketTabs = () => (
-    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid grid-cols-4 mb-4">
-        <TabsTrigger value="all">All Tickets</TabsTrigger>
-        <TabsTrigger value="project-tasks">Project Tasks</TabsTrigger>
-        <TabsTrigger value="project-tickets">Project Tickets</TabsTrigger>
-        <TabsTrigger value="beta-testing">Beta Testing Tickets</TabsTrigger>
-      </TabsList>
-    </Tabs>
   );
 
   const renderMetricsCards = () => (
@@ -537,248 +648,225 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     </div>
   );
 
-  const renderKanbanBoard = () => (
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 overflow-x-auto pb-6">
-      {['new', 'in-progress', 'review', 'done', 'blocked'].map(status => (
-        <div key={status} className="min-w-[250px]">
-          <h3 className="font-medium mb-2 capitalize">{status.replace('-', ' ')} ({ticketsMap[status]?.length || 0})</h3>
-          <div className="space-y-3 min-h-[200px]">
-            {ticketsMap[status]?.map(ticket => (
-              <Card key={ticket.id} className="p-3 border-l-4" 
-                style={{ borderLeftColor: ticket.priority === 'high' ? '#ef4444' : ticket.priority === 'medium' ? '#f59e0b' : '#22c55e' }}>
-                <div className="text-sm font-medium">{ticket.title}</div>
-                <div className="text-xs text-muted-foreground truncate">{ticket.description}</div>
-                <div className="flex justify-between items-center mt-2">
-                  <div className="text-xs">{ticket.completion_percentage || 0}%</div>
-                  <Badge variant="outline" className="text-xs">
-                    {ticket.ticket_type || 'task'}
-                  </Badge>
-                  <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => toggleTicketExpansion(ticket.id)}>
-                    View
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-
-  const renderTicketList = () => (
-    <div className="space-y-4">
-      {tickets.map(ticket => (
-        <div key={ticket.id} className="border rounded-lg overflow-hidden">
-          <div 
-            className="p-4 cursor-pointer hover:bg-slate-50"
-            onClick={() => toggleTicketExpansion(ticket.id)}
-          >
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-medium">{ticket.title}</h3>
-                <p className="text-sm text-muted-foreground truncate max-w-md">
-                  {ticket.description}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="text-sm flex items-center space-x-1 text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  <span>{ticket.hours_logged || 0}h logged</span>
-                </div>
-                <div className="text-sm flex items-center space-x-1 text-muted-foreground">
-                  <span>{ticket.completion_percentage || 0}%</span>
-                </div>
-                <div className="text-sm flex items-center space-x-1 text-muted-foreground">
-                  <span>{((ticket.equity_points || 0) * (ticket.completion_percentage || 0) / 100).toFixed(1)}% earned</span>
-                </div>
-                <div className="flex gap-1">
-                  <Badge className={getStatusColor(ticket.status)}>
-                    {getStatusIcon(ticket.status)}
-                    <span className="ml-1 capitalize">{ticket.status.replace('-', ' ')}</span>
-                  </Badge>
-                  <Badge variant={ticket.priority === 'high' ? 'destructive' : 'outline'}>
-                    {ticket.priority}
-                  </Badge>
-                  <Button variant="ghost" size="sm" onClick={(e) => {
-                    e.stopPropagation();
-                    openTimeLogDialog(ticket);
-                  }}>
-                    <Clock className="h-4 w-4 mr-1" />
-                    Log Time
-                  </Button>
-                </div>
-                <Button variant="outline" size="sm">
-                  {expandedTicket === ticket.id ? 'Collapse' : 'Expand'}
-                </Button>
-              </div>
-            </div>
-          </div>
-          
-          {expandedTicket === ticket.id && (
-            <div className="p-4 border-t bg-slate-50">              
-              <ExpandedTicketDetails 
-                ticket={{
-                  ...ticket,
-                  hours_logged_total: ticket.hours_logged,
-                  equity_earned: parseFloat(((ticket.equity_points || 0) * (ticket.completion_percentage || 0) / 100).toFixed(1))
-                }}
-                messages={ticket.replies?.map((reply: any) => ({
-                  id: reply.id,
-                  message: reply.content,
-                  sender: reply.sender,
-                  createdAt: reply.createdAt
-                })) || []}
-                onReply={(message) => handleTicketReply(ticket.id, message)}
-                onStatusChange={(status) => handleStatusChange(ticket.id, status)}
-                onPriorityChange={(priority) => handlePriorityChange(ticket.id, priority)}
-                onUpdateEstimatedHours={(hours) => handleUpdateEstimatedHours(ticket.id, hours)}
-                onUpdateCompletionPercentage={(percentage) => handleUpdateCompletionPercentage(ticket.id, percentage)}
-              />
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-
-  const renderFilters = () => (
-    <div className="bg-slate-100 p-4 rounded-lg mb-4 flex items-center justify-between">
-      <div className="flex gap-2 items-center">
-        <div className="flex gap-2 items-center">
-          <Label htmlFor="status-filter">Status:</Label>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger id="status-filter" className="w-[150px]">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="new">New</SelectItem>
-              <SelectItem value="in-progress">In Progress</SelectItem>
-              <SelectItem value="review">Review</SelectItem>
-              <SelectItem value="done">Done</SelectItem>
-              <SelectItem value="blocked">Blocked</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="flex gap-2 items-center">
-          <Label htmlFor="priority-filter">Priority:</Label>
-          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-            <SelectTrigger id="priority-filter" className="w-[150px]">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <Button variant="outline" size="sm" onClick={handleRefresh}>
-        <RefreshCw className="h-4 w-4 mr-1" />
-        Refresh
-      </Button>
-    </div>
-  );
-
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>My Projects</CardTitle>
-              <p className="text-sm text-muted-foreground">View and manage your project tasks</p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setShowKanban(!showKanban)}>
-                {showKanban ? 'Hide Kanban' : 'Show Kanban'}
-                <KanbanSquare className="h-4 w-4 ml-1" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowGantt(!showGantt)}>
-                {showGantt ? 'Hide Gantt' : 'Show Gantt'}
-                <BarChart2 className="h-4 w-4 ml-1" />
-              </Button>
-              <Button size="sm" onClick={handleCreateTicket}>
-                <Plus className="h-4 w-4 mr-1" />
-                Create Ticket
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8">Loading projects and tickets...</div>
-          ) : userProjects.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">You don't have any projects yet.</p>
-            </div>
-          ) : (
-            <div>
-              <div className="mb-4">
-                {renderProjectSelector()}
-              </div>
-              
-              {selectedProject && (
-                <div>
-                  {renderTicketTabs()}
-                  {renderMetricsCards()}
-                  {renderFilters()}
-                  
-                  {showKanban && renderKanbanBoard()}
-                  
-                  {showGantt && (
-                    <div className="p-4 text-center border rounded-lg mt-4">
-                      <p className="text-muted-foreground">Gantt chart view will be implemented soon using the created date and due date from jobseeker_active_projects.</p>
-                    </div>
-                  )}
-                  
-                  {renderTicketList()}
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="flex flex-col space-y-2">
+        <h2 className="text-2xl font-bold">Project Management</h2>
+        <p className="text-muted-foreground">View and manage your project tasks</p>
+      </div>
+
+      <div className="flex items-center justify-between mb-4">
+        {renderProjectSelector()}
+        
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4 mr-1" /> Refresh
+          </Button>
+          
+          <Button size="sm" onClick={handleCreateTicket}>
+            <Plus className="h-4 w-4 mr-1" /> Create Ticket
+          </Button>
+        </div>
+      </div>
+
+      {renderMetricsCards()}
       
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="all">All Tickets</TabsTrigger>
+          <TabsTrigger value="project-tasks">Project Tasks</TabsTrigger>
+          <TabsTrigger value="project-tickets">Project Tickets</TabsTrigger>
+          <TabsTrigger value="beta-testing">Beta Testing</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="all">
+          <TicketDashboard 
+            initialTickets={tickets}
+            onRefresh={handleRefresh}
+            onTicketAction={handleTicketAction}
+            showTimeTracking={true}
+            userId={userId || ''}
+          />
+        </TabsContent>
+        
+        <TabsContent value="project-tasks">
+          <TicketDashboard 
+            initialTickets={tickets.filter(t => t.ticket_type === 'task')}
+            onRefresh={handleRefresh}
+            onTicketAction={handleTicketAction}
+            showTimeTracking={true}
+            userId={userId || ''}
+          />
+        </TabsContent>
+        
+        <TabsContent value="project-tickets">
+          <TicketDashboard 
+            initialTickets={tickets.filter(t => t.ticket_type === 'ticket')}
+            onRefresh={handleRefresh}
+            onTicketAction={handleTicketAction}
+            showTimeTracking={true}
+            userId={userId || ''}
+          />
+        </TabsContent>
+        
+        <TabsContent value="beta-testing">
+          <TicketDashboard 
+            initialTickets={tickets.filter(t => t.ticket_type === 'beta-test')}
+            onRefresh={handleRefresh}
+            onTicketAction={handleTicketAction}
+            showTimeTracking={true}
+            userId={userId || ''}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* Time Log Dialog */}
       <Dialog open={isTimeLogDialogOpen} onOpenChange={setIsTimeLogDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              Log Time for {currentLogTicket?.title}
-            </DialogTitle>
+            <DialogTitle>Log Time for {currentLogTicket?.title}</DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="hours">Hours Worked</Label>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="hours" className="text-right">
+                Hours
+              </Label>
               <Input
                 id="hours"
                 type="number"
-                min="0.5"
                 step="0.5"
-                value={logHours || ''}
+                min="0.5"
+                className="col-span-3"
+                value={logHours}
                 onChange={(e) => setLogHours(parseFloat(e.target.value) || 0)}
               />
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="description">Description of Work</Label>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="description" className="text-right">
+                Description
+              </Label>
               <Textarea
                 id="description"
+                className="col-span-3"
                 value={logDescription}
                 onChange={(e) => setLogDescription(e.target.value)}
-                placeholder="Describe what you accomplished during this time"
               />
             </div>
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsTimeLogDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleLogTime} disabled={logHours <= 0 || !logDescription.trim()}>
+            <Button 
+              type="submit" 
+              onClick={handleLogTime}
+              disabled={logHours <= 0 || !logDescription.trim()}
+            >
               Log Time
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Create Ticket Dialog */}
+      <Dialog open={isCreateTicketDialogOpen} onOpenChange={setIsCreateTicketDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Create New Ticket</DialogTitle>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="title" className="text-right">
+                Title*
+              </Label>
+              <Input
+                id="title"
+                className="col-span-3"
+                value={newTicket.title}
+                onChange={(e) => setNewTicket({...newTicket, title: e.target.value})}
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="description" className="text-right">
+                Description
+              </Label>
+              <Textarea
+                id="description"
+                className="col-span-3"
+                rows={4}
+                value={newTicket.description}
+                onChange={(e) => setNewTicket({...newTicket, description: e.target.value})}
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="priority" className="text-right">
+                Priority
+              </Label>
+              <Select
+                value={newTicket.priority}
+                onValueChange={(value) => setNewTicket({...newTicket, priority: value})}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="type" className="text-right">
+                Type
+              </Label>
+              <Select
+                value={newTicket.ticket_type}
+                onValueChange={(value) => setNewTicket({...newTicket, ticket_type: value})}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ticket">Ticket</SelectItem>
+                  <SelectItem value="task">Task</SelectItem>
+                  <SelectItem value="beta-test">Beta Test</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="estimated_hours" className="text-right">
+                Estimated Hours
+              </Label>
+              <Input
+                id="estimated_hours"
+                type="number"
+                min="0"
+                step="0.5"
+                className="col-span-3"
+                value={newTicket.estimated_hours}
+                onChange={(e) => setNewTicket({...newTicket, estimated_hours: parseFloat(e.target.value) || 0})}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsCreateTicketDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              onClick={submitNewTicket}
+              disabled={!newTicket.title.trim()}
+            >
+              Create Ticket
             </Button>
           </DialogFooter>
         </DialogContent>
