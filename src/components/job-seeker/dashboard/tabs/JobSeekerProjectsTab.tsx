@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -115,7 +116,7 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
       if (jobsData && jobsData.length > 0) {
         const projectIds = jobsData
           .map(job => {
-            if (job.job_applications && 'project_id' in job.job_applications) {
+            if (job.job_applications && typeof job.job_applications === 'object' && 'project_id' in job.job_applications) {
               return job.job_applications.project_id;
             }
             return null;
@@ -906,7 +907,7 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
                             <SelectValue placeholder="Select a task (optional)" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="no-task">None</SelectItem>
+                            <SelectItem value="none">None</SelectItem>
                             {projectTasks.map(task => (
                               <SelectItem key={task.task_id} value={task.task_id}>
                                 {task.title}
@@ -968,4 +969,193 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
                   )}
                   
                   {showGantt && (
-                    <div className="mb-
+                    <div className="mb-6">
+                      <h3 className="text-lg font-medium mb-3">Gantt Chart</h3>
+                      <GanttChart 
+                        tasks={convertItemsToGanttTasks(tickets)}
+                      />
+                    </div>
+                  )}
+                  
+                  <TicketDashboard
+                    key={dashboardKey}
+                    tickets={tickets}
+                    expandedTickets={expandedTickets}
+                    onToggleTicket={handleToggleTicket}
+                    onTicketAction={handleTicketAction}
+                    timeEntries={timeEntries}
+                    logTimeForm={logTimeForm}
+                    onLogTimeChange={(field, value) => 
+                      setLogTimeForm(prev => ({ ...prev, [field]: value }))
+                    }
+                    onLogTime={() => {
+                      if (logTimeForm.ticketId) {
+                        handleLogTime(logTimeForm.ticketId);
+                      }
+                    }}
+                    userId={userId}
+                  />
+                </TabsContent>
+                
+                <TabsContent value="project-tasks">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Active Project Tasks</h3>
+                    {projectTasks.length === 0 ? (
+                      <p>No active tasks found for this project.</p>
+                    ) : (
+                      <div className="grid gap-4">
+                        {projectTasks.map(task => (
+                          <Card key={task.task_id} className="overflow-hidden">
+                            <CardHeader className="bg-muted/50 pb-2">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <CardTitle className="text-lg">{task.title}</CardTitle>
+                                  <CardDescription>
+                                    Equity: {task.equity_allocation || 0}% | 
+                                    Completion: {task.completion_percentage || 0}%
+                                  </CardDescription>
+                                </div>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setNewTicket(prev => ({
+                                      ...prev,
+                                      taskId: task.task_id,
+                                      projectId: task.project_id,
+                                      title: `Task: ${task.title}`,
+                                      description: task.description || ''
+                                    }));
+                                    setCreateTicketDialogOpen(true);
+                                  }}
+                                >
+                                  <Plus className="h-4 w-4 mr-1" /> Add Ticket
+                                </Button>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="pt-4">
+                              <div className="space-y-2">
+                                <div>
+                                  <strong>Description:</strong> 
+                                  <p className="text-muted-foreground">{task.description || 'No description provided'}</p>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <div className="w-full max-w-xs">
+                                    <Label htmlFor={`completion-${task.task_id}`}>Completion</Label>
+                                    <div className="flex items-center gap-2">
+                                      <Input
+                                        id={`completion-${task.task_id}`}
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        value={task.completion_percentage || 0}
+                                        onChange={(e) => {
+                                          // Find a ticket associated with this task and update its completion
+                                          const taskTicket = tickets.find(t => t.task_id === task.task_id);
+                                          if (taskTicket) {
+                                            handleTicketAction(taskTicket.id, 'updateCompletion', e.target.value);
+                                          }
+                                        }}
+                                        className="w-20"
+                                      />
+                                      <span>%</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Related tickets section */}
+                                <div className="mt-4">
+                                  <h4 className="text-md font-medium mb-2">Related Tickets</h4>
+                                  {tickets.filter(t => t.task_id === task.task_id).length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">No tickets associated with this task</p>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      {tickets
+                                        .filter(t => t.task_id === task.task_id)
+                                        .map(ticket => (
+                                          <div 
+                                            key={ticket.id} 
+                                            className="p-3 border rounded-md cursor-pointer hover:bg-muted/50"
+                                            onClick={() => handleToggleTicket(ticket.id, true)}
+                                          >
+                                            <div className="flex justify-between items-center">
+                                              <div>
+                                                <p className="font-medium">{ticket.title}</p>
+                                                <p className="text-sm text-muted-foreground">
+                                                  Status: {ticket.status?.charAt(0).toUpperCase() + ticket.status?.slice(1)} | 
+                                                  Priority: {ticket.priority?.charAt(0).toUpperCase() + ticket.priority?.slice(1)}
+                                                </p>
+                                              </div>
+                                              <Button size="sm" variant="ghost">
+                                                <Eye className="h-4 w-4" />
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="project-tickets">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Project Tickets</h3>
+                    <TicketDashboard
+                      key={`project-${dashboardKey}`}
+                      tickets={tickets.filter(t => t.isProjectTicket && !t.isTaskTicket)}
+                      expandedTickets={expandedTickets}
+                      onToggleTicket={handleToggleTicket}
+                      onTicketAction={handleTicketAction}
+                      timeEntries={timeEntries}
+                      logTimeForm={logTimeForm}
+                      onLogTimeChange={(field, value) => 
+                        setLogTimeForm(prev => ({ ...prev, [field]: value }))
+                      }
+                      onLogTime={() => {
+                        if (logTimeForm.ticketId) {
+                          handleLogTime(logTimeForm.ticketId);
+                        }
+                      }}
+                      userId={userId}
+                    />
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="beta-tickets">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Beta Testing Tickets</h3>
+                    <TicketDashboard
+                      key={`beta-${dashboardKey}`}
+                      tickets={tickets.filter(t => !t.isProjectTicket)}
+                      expandedTickets={expandedTickets}
+                      onToggleTicket={handleToggleTicket}
+                      onTicketAction={handleTicketAction}
+                      timeEntries={timeEntries}
+                      logTimeForm={logTimeForm}
+                      onLogTimeChange={(field, value) => 
+                        setLogTimeForm(prev => ({ ...prev, [field]: value }))
+                      }
+                      onLogTime={() => {
+                        if (logTimeForm.ticketId) {
+                          handleLogTime(logTimeForm.ticketId);
+                        }
+                      }}
+                      userId={userId}
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};

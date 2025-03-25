@@ -3,9 +3,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { JobSeekerProjectsTab } from "@/components/job-seeker/dashboard/tabs/JobSeekerProjectsTab";
 import { TaskCompletionReview } from "../../projects/TaskCompletionReview";
 import { BetaTestingTab as SharedBetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
+import { JobSeekerProjectsTab } from "@/components/job-seeker/dashboard/tabs/JobSeekerProjectsTab";
 
 export const BetaTestingTab = () => {
   const [userId, setUserId] = useState<string | null>(null);
