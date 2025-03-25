@@ -1,5 +1,6 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { BetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
 
 interface LiveProjectsTabProps {
   businessId: string;
@@ -7,15 +8,12 @@ interface LiveProjectsTabProps {
 
 export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   return (
-    <div className="space-y-6 hidden">
-      <Card>
-        <CardHeader>
-          <CardTitle>IGNORE</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">This tab is deprecated and will be removed soon.</p>
-        </CardContent>
-      </Card>
+    <div>
+      <BetaTestingTab 
+        userType="business" 
+        userId={businessId} 
+        includeProjectTickets={true} 
+      />
     </div>
   );
 };

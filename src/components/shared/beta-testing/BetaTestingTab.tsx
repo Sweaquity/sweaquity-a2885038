@@ -21,6 +21,9 @@ export const BetaTestingTab = ({
   userId, 
   includeProjectTickets = false 
 }: BetaTestingTabProps) => {
+  // Rename component display name
+  BetaTestingTab.displayName = "LiveProjectsTab";
+
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("tickets");
@@ -379,3 +382,6 @@ export const BetaTestingTab = ({
     </div>
   );
 };
+
+// Also add this export to maintain backward compatibility
+export const LiveProjectsTab = BetaTestingTab;

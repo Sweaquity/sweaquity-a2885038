@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Calendar, MessageSquare, Clock, PercentIcon, Edit, Save, AlertCircle } from "lucide-react";
+import { Calendar, MessageSquare, Clock, Edit, Save, AlertCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -37,10 +37,11 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
   const [completionPercentage, setCompletionPercentage] = useState<number>(
     ticket.completion_percentage || 0
   );
-  const [isEditingHours, setIsEditingHours] = useState(false);
+  const [isEditingEstimatedHours, setIsEditingEstimatedHours] = useState(false);
   const [isEditingCompletion, setIsEditingCompletion] = useState(false);
-  const [isSavingHours, setIsSavingHours] = useState(false);
-  const [isSavingCompletion, setIsSavingCompletion] = useState(false);
+  const [isEditingDueDate, setIsEditingDueDate] = useState(false);
+  const [dueDate, setDueDate] = useState(ticket.due_date || '');
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleAddNote = async () => {
     if (!noteText.trim()) {
@@ -92,7 +93,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
     }
 
     try {
-      setIsSavingHours(true);
+      setIsSaving(true);
       
       // Update the ticket
       const { error: ticketError } = await supabase
@@ -119,7 +120,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
             .maybeSingle();
             
           if (jobAppData?.job_app_id) {
-            // Update jobseeker_active_projects view
+            // Update project_sub_tasks view
             const { error: projectError } = await supabase
               .from('project_sub_tasks')
               .update({ estimated_hours: estimatedHours })
@@ -127,6 +128,17 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
                 
             if (projectError) {
               console.error("Error updating task:", projectError);
+              // Continue execution even if this fails
+            }
+            
+            // Update jobseeker_active_projects
+            const { error: jsError } = await supabase
+              .from('jobseeker_active_projects')
+              .update({ estimated_hours: estimatedHours })
+              .eq('task_id', ticket.task_id);
+                
+            if (jsError) {
+              console.error("Error updating jobseeker project:", jsError);
               // Continue execution even if this fails
             }
           }
@@ -137,12 +149,12 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
       }
 
       toast.success("Estimated hours updated");
-      setIsEditingHours(false);
+      setIsEditingEstimatedHours(false);
     } catch (error) {
       console.error('Error updating estimated hours:', error);
       toast.error("Failed to update estimated hours");
     } finally {
-      setIsSavingHours(false);
+      setIsSaving(false);
     }
   };
 
@@ -153,7 +165,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
     }
 
     try {
-      setIsSavingCompletion(true);
+      setIsSaving(true);
       
       // Update the ticket
       const { error: ticketError } = await supabase
@@ -185,6 +197,17 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
             console.error("Error updating task completion:", taskError);
             // Continue execution even if this fails
           }
+          
+          // Update jobseeker_active_projects
+          const { error: jsError } = await supabase
+            .from('jobseeker_active_projects')
+            .update({ completion_percentage: completionPercentage })
+            .eq('task_id', ticket.task_id);
+              
+          if (jsError) {
+            console.error("Error updating jobseeker project completion:", jsError);
+            // Continue execution even if this fails
+          }
         } catch (e) {
           console.error("Error updating task completion:", e);
           // Don't fail if this secondary update fails
@@ -197,7 +220,42 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
       console.error('Error updating completion percentage:', error);
       toast.error("Failed to update completion percentage");
     } finally {
-      setIsSavingCompletion(false);
+      setIsSaving(false);
+    }
+  };
+  
+  const updateDueDate = async () => {
+    try {
+      setIsSaving(true);
+      
+      // Call the parent component's onDueDateChange
+      onDueDateChange(ticket.id, dueDate);
+      
+      // If this is a task ticket, also update jobseeker_active_projects
+      if (ticket.task_id) {
+        try {
+          const { error: jsError } = await supabase
+            .from('jobseeker_active_projects')
+            .update({ due_date: dueDate })
+            .eq('task_id', ticket.task_id);
+              
+          if (jsError) {
+            console.error("Error updating jobseeker project due date:", jsError);
+            // Continue execution even if this fails
+          }
+        } catch (e) {
+          console.error("Error updating due date:", e);
+          // Don't fail if this secondary update fails
+        }
+      }
+      
+      setIsEditingDueDate(false);
+      toast.success("Due date updated");
+    } catch (error) {
+      console.error('Error updating due date:', error);
+      toast.error("Failed to update due date");
+    } finally {
+      setIsSaving(false);
     }
   };
   
@@ -253,12 +311,47 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
                 <p className="text-sm font-medium text-gray-500">Due Date</p>
                 <div className="flex items-center mt-1">
                   <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-                  <input 
-                    type="date" 
-                    value={ticket.due_date || ''} 
-                    onChange={(e) => onDueDateChange(ticket.id, e.target.value)}
-                    className="text-sm p-1 border rounded"
-                  />
+                  {isEditingDueDate ? (
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        type="date" 
+                        value={dueDate || ''} 
+                        onChange={(e) => setDueDate(e.target.value)}
+                        className="w-40 h-8 text-sm"
+                      />
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="h-8 px-2" 
+                        onClick={updateDueDate}
+                        disabled={isSaving}
+                      >
+                        {isSaving ? 
+                          <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" /> : 
+                          <Save className="h-3 w-3" />
+                        }
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-8 px-2" 
+                        onClick={() => setIsEditingDueDate(false)}
+                        disabled={isSaving}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Badge 
+                        variant="outline" 
+                        className="cursor-pointer"
+                        onClick={() => setIsEditingDueDate(true)}
+                      >
+                        {ticket.due_date ? formatDate(ticket.due_date) : 'Set date'}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -266,7 +359,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
                 <p className="text-sm font-medium text-gray-500">Estimated Hours</p>
                 <div className="flex items-center mt-1">
                   <Clock className="h-4 w-4 mr-2 text-gray-500" />
-                  {isEditingHours ? (
+                  {isEditingEstimatedHours ? (
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
@@ -281,9 +374,9 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
                         variant="outline" 
                         className="h-8 px-2" 
                         onClick={updateEstimatedHours}
-                        disabled={isSavingHours}
+                        disabled={isSaving}
                       >
-                        {isSavingHours ? 
+                        {isSaving ? 
                           <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" /> : 
                           <Save className="h-3 w-3" />
                         }
@@ -292,24 +385,20 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
                         size="sm" 
                         variant="ghost" 
                         className="h-8 px-2" 
-                        onClick={() => setIsEditingHours(false)}
-                        disabled={isSavingHours}
+                        onClick={() => setIsEditingEstimatedHours(false)}
+                        disabled={isSaving}
                       >
                         Cancel
                       </Button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{estimatedHours || 0}h</Badge>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="h-8 w-8 p-0" 
-                        onClick={() => setIsEditingHours(true)}
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    <Badge 
+                      variant="outline" 
+                      className="cursor-pointer"
+                      onClick={() => setIsEditingEstimatedHours(true)}
+                    >
+                      {estimatedHours || 0}h
+                    </Badge>
                   )}
                 </div>
               </div>
@@ -317,9 +406,8 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
               <div>
                 <p className="text-sm font-medium text-gray-500">Task/Ticket Completion</p>
                 <div className="flex items-center mt-1">
-                  <PercentIcon className="h-4 w-4 mr-2 text-gray-500" />
                   {isEditingCompletion ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 ml-6">
                       <Input
                         type="number"
                         min="0"
@@ -333,9 +421,9 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
                         variant="outline" 
                         className="h-8 px-2" 
                         onClick={updateCompletionPercentage}
-                        disabled={isSavingCompletion}
+                        disabled={isSaving}
                       >
-                        {isSavingCompletion ? 
+                        {isSaving ? 
                           <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" /> : 
                           <Save className="h-3 w-3" />
                         }
@@ -345,23 +433,19 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
                         variant="ghost" 
                         className="h-8 px-2" 
                         onClick={() => setIsEditingCompletion(false)}
-                        disabled={isSavingCompletion}
+                        disabled={isSaving}
                       >
                         Cancel
                       </Button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{completionPercentage || 0}%</Badge>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="h-8 w-8 p-0" 
-                        onClick={() => setIsEditingCompletion(true)}
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    <Badge 
+                      variant="outline" 
+                      className="cursor-pointer ml-6"
+                      onClick={() => setIsEditingCompletion(true)}
+                    >
+                      {completionPercentage || 0}%
+                    </Badge>
                   )}
                 </div>
               </div>

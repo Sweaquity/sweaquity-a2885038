@@ -8,8 +8,8 @@ const progressCircleVariants = cva(
   {
     variants: {
       size: {
-        xs: "h-5 w-5",  // Made xs even smaller
-        sm: "h-8 w-8", // Made sm smaller
+        xs: "h-5 w-5",
+        sm: "h-8 w-8",
         md: "h-16 w-16",
         lg: "h-24 w-24",
         xl: "h-32 w-32",
@@ -42,7 +42,7 @@ export const ProgressCircle = React.forwardRef<
       value,
       strokeWidth = 4,
       showLabel = true,
-      showRing = false,  // Default is false
+      showRing = false,
       labelClassName,
       ...props
     },

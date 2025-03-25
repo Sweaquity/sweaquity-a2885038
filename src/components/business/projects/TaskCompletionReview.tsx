@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ProgressCircle } from "@/components/ui/progress-circle";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -211,6 +210,11 @@ export const TaskCompletionReview = ({
     }
   };
 
+  // Calculate equity to be awarded with 1 decimal place
+  const calculateEquity = (equityPoints: number, completion: number) => {
+    return ((equityPoints || 0) * completion / 100).toFixed(1);
+  };
+
   // If a specific task is provided, just render the dialog
   if (task) {
     return (
@@ -285,18 +289,11 @@ export const TaskCompletionReview = ({
                   <span>%</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <ProgressCircle
-                  value={completionPercentage}
-                  size="lg"
-                  strokeWidth={5}
-                />
-                <div>
-                  <p className="font-medium">Equity to be awarded: {((task.equity_points || 0) * completionPercentage / 100).toFixed(2)}%</p>
-                  <p className="text-sm text-muted-foreground">
-                    Based on {completionPercentage}% completion of {task.equity_points || 0}% task
-                  </p>
-                </div>
+              <div>
+                <p className="font-medium">Equity to be awarded: {calculateEquity(task.equity_points, completionPercentage)}%</p>
+                <p className="text-sm text-muted-foreground">
+                  Based on {completionPercentage}% completion of {task.equity_points || 0}% task
+                </p>
               </div>
             </div>
             
@@ -348,14 +345,9 @@ export const TaskCompletionReview = ({
                           </Badge>
                         )}
                         {task.completion_percentage !== null && (
-                          <div className="flex items-center gap-1">
-                            <ProgressCircle 
-                              value={task.completion_percentage} 
-                              size="sm" 
-                              strokeWidth={3} 
-                            />
-                            <span className="text-xs">{task.completion_percentage}%</span>
-                          </div>
+                          <Badge variant="outline">
+                            {task.completion_percentage}%
+                          </Badge>
                         )}
                       </div>
                     </div>
@@ -440,18 +432,11 @@ export const TaskCompletionReview = ({
                     <span>%</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <ProgressCircle
-                    value={completionPercentage}
-                    size="lg"
-                    strokeWidth={5}
-                  />
-                  <div>
-                    <p className="font-medium">Equity to be awarded: {((selectedTask.equity_points || 0) * completionPercentage / 100).toFixed(2)}%</p>
-                    <p className="text-sm text-muted-foreground">
-                      Based on {completionPercentage}% completion of {selectedTask.equity_points || 0}% task
-                    </p>
-                  </div>
+                <div>
+                  <p className="font-medium">Equity to be awarded: {calculateEquity(selectedTask.equity_points, completionPercentage)}%</p>
+                  <p className="text-sm text-muted-foreground">
+                    Based on {completionPercentage}% completion of {selectedTask.equity_points || 0}% task
+                  </p>
                 </div>
               </div>
               
