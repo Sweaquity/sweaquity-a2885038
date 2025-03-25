@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { JobApplication } from "@/types/jobSeeker";
@@ -184,7 +183,10 @@ export const EquityProjectItem = ({
   const showAcceptButton = application.status === 'accepted' && !application.accepted_jobseeker;
   const showTimeLogButton = application.accepted_jobseeker && application.accepted_business;
 
-  // Helper function to safely access nested properties
+  const openTimeLogDialog = () => {
+    setIsTimeLogDialogOpen(true);
+  };
+
   const getTaskStatus = () => {
     return application.business_roles?.task_status || 'pending';
   };
@@ -276,7 +278,7 @@ export const EquityProjectItem = ({
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => setIsTimeLogDialogOpen(true)}
+                  onClick={openTimeLogDialog}
                 >
                   <Clock className="h-4 w-4 mr-2" />
                   Log Time
@@ -331,7 +333,7 @@ export const EquityProjectItem = ({
       />
       
       <Dialog open={isTimeLogDialogOpen} onOpenChange={setIsTimeLogDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Log Time for {application.business_roles?.title}</DialogTitle>
           </DialogHeader>

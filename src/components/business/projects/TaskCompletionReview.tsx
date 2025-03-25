@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,9 +12,19 @@ import { Label } from "@/components/ui/label";
 
 interface TaskCompletionReviewProps {
   businessId: string;
+  task?: any; // Adding task as an optional prop to fix the type error
+  open?: boolean;
+  setOpen?: (open: boolean) => void;
+  onClose?: () => void;
 }
 
-export const TaskCompletionReview = ({ businessId }: TaskCompletionReviewProps) => {
+export const TaskCompletionReview = ({ 
+  businessId, 
+  task, 
+  open, 
+  setOpen, 
+  onClose 
+}: TaskCompletionReviewProps) => {
   const [completedTasks, setCompletedTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<any>(null);
@@ -24,15 +33,29 @@ export const TaskCompletionReview = ({ businessId }: TaskCompletionReviewProps) 
 
   useEffect(() => {
     if (businessId) {
-      loadCompletedTasks();
+      if (task) {
+        // If task is provided, use it directly
+        setSelectedTask(task);
+        setCompletionPercentage(task.completion_percentage || 0);
+      } else {
+        // Otherwise load tasks from database
+        loadCompletedTasks();
+      }
     }
-  }, [businessId]);
+  }, [businessId, task]);
 
   useEffect(() => {
     if (selectedTask) {
       setCompletionPercentage(selectedTask.completion_percentage || 0);
     }
   }, [selectedTask]);
+
+  // If open prop is provided, use it to control the dialog
+  useEffect(() => {
+    if (open !== undefined) {
+      setIsReviewOpen(open);
+    }
+  }, [open]);
 
   const loadCompletedTasks = async () => {
     try {
@@ -121,7 +144,18 @@ export const TaskCompletionReview = ({ businessId }: TaskCompletionReviewProps) 
         .eq('id', selectedTask.id);
       
       toast.success("Task approved successfully");
-      setIsReviewOpen(false);
+      
+      // Handle dialog closing based on props
+      if (setOpen) {
+        setOpen(false);
+      } else {
+        setIsReviewOpen(false);
+      }
+      
+      // Call onClose if provided
+      if (onClose) {
+        onClose();
+      }
       
       // Refresh the list
       loadCompletedTasks();
@@ -144,7 +178,18 @@ export const TaskCompletionReview = ({ businessId }: TaskCompletionReviewProps) 
         .eq('id', selectedTask.id);
       
       toast.success("Requested changes successfully");
-      setIsReviewOpen(false);
+      
+      // Handle dialog closing based on props
+      if (setOpen) {
+        setOpen(false);
+      } else {
+        setIsReviewOpen(false);
+      }
+      
+      // Call onClose if provided
+      if (onClose) {
+        onClose();
+      }
       
       // Refresh the list
       loadCompletedTasks();
@@ -153,6 +198,126 @@ export const TaskCompletionReview = ({ businessId }: TaskCompletionReviewProps) 
       toast.error("Failed to request changes");
     }
   };
+
+  const handleCloseDialog = () => {
+    if (setOpen) {
+      setOpen(false);
+    } else {
+      setIsReviewOpen(false);
+    }
+    
+    if (onClose) {
+      onClose();
+    }
+  };
+
+  // If a specific task is provided, just render the dialog
+  if (task) {
+    return (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Review Task Completion</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-medium text-lg">{task.title}</h3>
+              <p className="text-muted-foreground">{task.description}</p>
+            </div>
+            
+            <Separator />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-medium">Task Details</h4>
+                <div className="space-y-2 mt-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Status:</span>
+                    <Badge>{task.status}</Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Equity Points:</span>
+                    <span>{task.equity_points || 0}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Estimated Hours:</span>
+                    <span>{task.estimated_hours || 'Not set'}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium">Completed By</h4>
+                {task.user ? (
+                  <div className="space-y-2 mt-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Name:</span>
+                      <span>{task.user.first_name} {task.user.last_name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Email:</span>
+                      <span>{task.user.email}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">User information not available</p>
+                )}
+              </div>
+            </div>
+            
+            <Separator />
+            
+            <div>
+              <h4 className="font-medium mb-2">Completion Assessment</h4>
+              <div className="flex items-center gap-4 mb-4">
+                <Label htmlFor="completion-percentage">Completion Percentage:</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="completion-percentage"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={completionPercentage}
+                    onChange={(e) => setCompletionPercentage(parseInt(e.target.value) || 0)}
+                    className="w-24"
+                  />
+                  <span>%</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <ProgressCircle
+                  value={completionPercentage}
+                  size="lg"
+                  strokeWidth={5}
+                />
+                <div>
+                  <p className="font-medium">Equity to be awarded: {((task.equity_points || 0) * completionPercentage / 100).toFixed(2)}%</p>
+                  <p className="text-sm text-muted-foreground">
+                    Based on {completionPercentage}% completion of {task.equity_points || 0}% task
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <Separator />
+            
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={handleCloseDialog}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleRequestChanges}>
+                Request Changes
+              </Button>
+              <Button onClick={handleApproveTask}>
+                Approve Task
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <div className="space-y-4">

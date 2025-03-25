@@ -10,6 +10,7 @@ import { TicketMessage } from "@/types/dashboard";
 import { formatDistanceToNow } from "date-fns";
 import { AlertTriangle, CheckCircle2, Clock, MessageCircle, User } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProgressCircle } from "@/components/ui/progress-circle";
 
 export interface ExpandedTicketDetailsProps {
   ticket: any;
@@ -233,14 +234,14 @@ export const ExpandedTicketDetails = ({
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Assigned to:</span>
                       <Select
-                        value={ticket.assigned_to || undefined}
+                        value={ticket.assigned_to || ""}
                         onValueChange={onAssigneeChange}
                       >
                         <SelectTrigger className="w-32 h-7 text-xs">
                           <SelectValue placeholder="Assignee" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={null}>Unassigned</SelectItem>
+                          <SelectItem value="">Unassigned</SelectItem>
                           {users.map(user => (
                             <SelectItem key={user.id} value={user.id}>
                               {user.first_name} {user.last_name}
@@ -258,6 +259,40 @@ export const ExpandedTicketDetails = ({
                         {renderHealthIndicator(ticket.health)}
                         <span className="text-sm">{ticket.health}</span>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Completion percentage */}
+                  {ticket.completion_percentage !== undefined && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Completion:</span>
+                      <div className="flex items-center gap-1">
+                        <ProgressCircle value={ticket.completion_percentage} size="xs" strokeWidth={3} />
+                        <span className="text-sm">{ticket.completion_percentage}%</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Hours logged */}
+                  {ticket.hours_logged_total !== undefined && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Hours logged:</span>
+                      <span className="text-sm">{ticket.hours_logged_total}h</span>
+                    </div>
+                  )}
+
+                  {/* Equity points and earned */}
+                  {ticket.equity_points !== undefined && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Equity allocated:</span>
+                      <span className="text-sm">{ticket.equity_points}%</span>
+                    </div>
+                  )}
+
+                  {ticket.equity_earned !== undefined && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Equity earned:</span>
+                      <span className="text-sm">{ticket.equity_earned.toFixed(2)}%</span>
                     </div>
                   )}
                 </div>
@@ -376,7 +411,7 @@ export const ExpandedTicketDetails = ({
                           {note.type === 'status_change' ? 'Status changed' :
                           note.type === 'priority_change' ? 'Priority changed' :
                           note.type === 'assignee_change' ? 'Assignee changed' :
-                          note.type}
+                          note.action || note.type}
                         </span>
                         <span className="text-xs text-muted-foreground">
                           {new Date(note.timestamp).toLocaleString()}
@@ -387,8 +422,11 @@ export const ExpandedTicketDetails = ({
                           From <span className="font-medium">{note.from || 'none'}</span> to <span className="font-medium">{note.to || 'none'}</span>
                         </div>
                       )}
-                      {note.message && (
-                        <p className="mt-1 text-sm">{note.message}</p>
+                      {(note.message || note.comment) && (
+                        <p className="mt-1 text-sm">{note.message || note.comment}</p>
+                      )}
+                      {note.user && (
+                        <p className="text-xs text-muted-foreground mt-1">By {note.user}</p>
                       )}
                     </div>
                   ))}
