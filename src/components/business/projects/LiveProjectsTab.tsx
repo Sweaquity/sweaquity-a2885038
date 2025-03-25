@@ -7,7 +7,7 @@ interface LiveProjectsTabProps {
 
 export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 hidden">
       <Card>
         <CardHeader>
           <CardTitle>IGNORE</CardTitle>

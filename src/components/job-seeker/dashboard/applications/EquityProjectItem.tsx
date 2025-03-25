@@ -1,7 +1,6 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { JobApplication } from "@/types/jobSeeker";
+import { JobApplication, Skill } from "@/types/jobSeeker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ChevronDown, ChevronUp, Check, Clock } from "lucide-react";
@@ -31,10 +30,8 @@ import {
   ProjectHeader, 
   StatusChangeDialog 
 } from "./components";
-import { ProgressCircle } from "@/components/ui/progress-circle";
 
-// Update the JobApplication interface in this file to include the missing properties
-interface ExtendedJobApplication extends JobApplication {
+interface ExtendedJobApplication extends Omit<JobApplication, 'business_roles'> {
   hours_logged?: number;
   business_roles?: {
     title?: string;
@@ -44,7 +41,7 @@ interface ExtendedJobApplication extends JobApplication {
     task_status?: string;
     timeframe?: string;
     equity_allocation?: number;
-    skill_requirements?: Array<{ skill: string; level: string } | string>;
+    skill_requirements?: Array<Skill | string>;
     completion_percentage?: number;
     estimated_hours?: number;
     project_id?: string;
@@ -90,7 +87,7 @@ export const EquityProjectItem = ({
   };
 
   const handleAcceptJob = async () => {
-    await acceptJobAsJobSeeker(application);
+    await acceptJobAsJobSeeker(application as unknown as JobApplication);
     onApplicationUpdated();
   };
 
@@ -126,7 +123,6 @@ export const EquityProjectItem = ({
     try {
       console.log("Logging time for job_app_id:", application.job_app_id);
       
-      // First check if there's a ticket for this job application
       const { data: existingTickets, error: ticketsError } = await supabase
         .from('tickets')
         .select('id, project_id')
@@ -141,10 +137,8 @@ export const EquityProjectItem = ({
       let ticketId;
       
       if (existingTickets && existingTickets.length > 0) {
-        // We found an existing ticket
         ticketId = existingTickets[0].id;
       } else {
-        // Create a new ticket for this job application
         const currentUser = (await supabase.auth.getUser()).data.user?.id;
         const { data: newTicket, error: createError } = await supabase
           .from('tickets')
@@ -171,7 +165,6 @@ export const EquityProjectItem = ({
         ticketId = newTicket.id;
       }
       
-      // Now create the time entry with the valid ticket ID and job_app_id
       const { data, error } = await supabase
         .from('time_entries')
         .insert({
@@ -215,12 +208,10 @@ export const EquityProjectItem = ({
     return application.business_roles?.completion_percentage || 0;
   };
 
-  // Calculate hours logged
   const getHoursLogged = () => {
     return application.hours_logged || 0;
   };
 
-  // Calculate equity earned based on completion percentage or hours logged
   const getEquityEarned = () => {
     const equity = application.business_roles?.equity_allocation || 0;
     const completion = getCompletionPercentage();
@@ -249,17 +240,9 @@ export const EquityProjectItem = ({
           />
           
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <ProgressCircle 
-                value={getCompletionPercentage()} 
-                size="sm" 
-                showRing={false} 
-                className="h-8 w-8" 
-              />
-              <div className="text-xs text-muted-foreground">
-                <div>{getHoursLogged()}h logged</div>
-                <div>{getEquityEarned().toFixed(2)}% earned</div>
-              </div>
+            <div className="text-xs text-muted-foreground">
+              <div>{getHoursLogged()}h logged</div>
+              <div>{getEquityEarned().toFixed(1)}% earned</div>
             </div>
             
             <Select 
@@ -333,7 +316,7 @@ export const EquityProjectItem = ({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Equity Earned:</span>
-                    <span>{getEquityEarned().toFixed(2)}%</span>
+                    <span>{getEquityEarned().toFixed(1)}%</span>
                   </div>
                 </div>
               </div>
@@ -412,7 +395,7 @@ export const EquityProjectItem = ({
       <AcceptJobDialog
         isOpen={isAcceptJobDialogOpen}
         onOpenChange={setIsAcceptJobDialogOpen}
-        application={application}
+        application={application as unknown as JobApplication}
         onAccept={handleAcceptJob}
         isLoading={isAcceptingJob}
       />

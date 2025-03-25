@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -8,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ProjectsSection } from "@/components/business/ProjectsSection";
 import { BusinessProfileCompletion } from "@/components/business/BusinessProfileCompletion";
-import { UserCircle2, Menu, Bell } from "lucide-react";
+import { UserCircle2, Menu } from "lucide-react";
 import { ActiveRolesTable } from "@/components/business/roles/ActiveRolesTable";
 import { ProjectApplicationsSection } from "@/components/business/ProjectApplicationsSection";
 import { RequestAccessButton } from "@/components/business/users/RequestAccessButton";
@@ -272,7 +271,7 @@ const BusinessDashboard = () => {
         </div>
 
         <Tabs value={activeTab} className="space-y-6" onValueChange={handleTabChange}>
-          <TabsList className="w-full grid grid-cols-5 md:flex md:w-auto">
+          <TabsList className="w-full grid grid-cols-6 md:flex md:w-auto">
             <TabsTrigger value="account" className="px-3 py-1.5">Account</TabsTrigger>
             <TabsTrigger value="users" className="px-3 py-1.5">Users</TabsTrigger>
             <TabsTrigger value="projects" className="px-3 py-1.5">Projects</TabsTrigger>

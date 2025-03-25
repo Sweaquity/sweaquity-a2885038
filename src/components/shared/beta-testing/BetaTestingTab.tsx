@@ -254,81 +254,95 @@ export const BetaTestingTab = ({
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Beta Testing Dashboard</CardTitle>
-          <div className="flex items-center gap-2">
-            <Select value={selectedProject || "none"} onValueChange={setSelectedProject}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select project" />
-              </SelectTrigger>
-              <SelectContent>
-                {projects.length === 0 ? (
-                  <SelectItem value="none">No projects available</SelectItem>
-                ) : (
-                  projects.map(project => (
-                    <SelectItem key={project.project_id} value={project.project_id}>
-                      {project.title || project.project_title}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-            
-            <Button size="sm" variant="outline" onClick={handleRefresh}>
-              <RefreshCw className="h-4 w-4 mr-1" /> Refresh
-            </Button>
-            
-            {userType === 'business' && (
-              <Button size="sm" onClick={handleCreateTicket}>
-                <Plus className="h-4 w-4 mr-1" /> Create Ticket
-              </Button>
+      <div className="flex flex-col space-y-2">
+        <h2 className="text-2xl font-bold">My Projects</h2>
+        <p className="text-muted-foreground">View and manage your project tasks</p>
+      </div>
+
+      <div className="flex items-center justify-between mb-4">
+        <Select value={selectedProject || "none"} onValueChange={setSelectedProject}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select project" />
+          </SelectTrigger>
+          <SelectContent>
+            {projects.length === 0 ? (
+              <SelectItem value="none">No projects available</SelectItem>
+            ) : (
+              projects.map(project => (
+                <SelectItem key={project.project_id} value={project.project_id}>
+                  {project.title || project.project_title}
+                </SelectItem>
+              ))
             )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Stats Cards */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-sm font-medium text-muted-foreground">Total Tasks</div>
-                <div className="text-2xl font-bold mt-1">{taskStats.total}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-sm font-medium text-muted-foreground">Open Tasks</div>
-                <div className="text-2xl font-bold mt-1">{taskStats.open}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-sm font-medium text-muted-foreground">Closed Tasks</div>
-                <div className="text-2xl font-bold mt-1">{taskStats.closed}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-sm font-medium text-muted-foreground">High Priority</div>
-                <div className="text-2xl font-bold mt-1">{taskStats.highPriority}</div>
-              </CardContent>
-            </Card>
-          </div>
+          </SelectContent>
+        </Select>
+        
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4 mr-1" /> Refresh
+          </Button>
           
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="tickets">All Tickets</TabsTrigger>
-              {includeProjectTickets && (
-                <>
-                  <TabsTrigger value="project-tasks">Project Tasks</TabsTrigger>
-                  <TabsTrigger value="project-tickets">Project Tickets</TabsTrigger>
-                </>
-              )}
-            </TabsList>
-            
-            <TabsContent value="tickets">
+          <Button size="sm" onClick={handleCreateTicket}>
+            <Plus className="h-4 w-4 mr-1" /> Create Ticket
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-sm font-medium text-muted-foreground">All Tickets</div>
+            <div className="text-2xl font-bold mt-1">{taskStats.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-sm font-medium text-muted-foreground">Open Tasks</div>
+            <div className="text-2xl font-bold mt-1">{taskStats.open}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-sm font-medium text-muted-foreground">Closed Tasks</div>
+            <div className="text-2xl font-bold mt-1">{taskStats.closed}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-sm font-medium text-muted-foreground">High Priority</div>
+            <div className="text-2xl font-bold mt-1">{taskStats.highPriority}</div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="tickets">All Tickets</TabsTrigger>
+          {includeProjectTickets && (
+            <>
+              <TabsTrigger value="project-tasks">Project Tasks</TabsTrigger>
+              <TabsTrigger value="project-tickets">Project Tickets</TabsTrigger>
+            </>
+          )}
+          <TabsTrigger value="beta-tickets">Beta Testing Tickets</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="tickets">
+          <TicketDashboard 
+            initialTickets={tickets}
+            onRefresh={handleRefresh}
+            onTicketAction={handleTicketAction}
+            onToggleTicket={handleToggleTicket}
+            showTimeTracking={userType === 'job_seeker'}
+            userId={userId}
+          />
+        </TabsContent>
+        
+        {includeProjectTickets && (
+          <>
+            <TabsContent value="project-tasks">
               <TicketDashboard 
-                initialTickets={tickets}
+                initialTickets={tickets.filter(t => t.task_id)}
                 onRefresh={handleRefresh}
                 onTicketAction={handleTicketAction}
                 onToggleTicket={handleToggleTicket}
@@ -337,34 +351,31 @@ export const BetaTestingTab = ({
               />
             </TabsContent>
             
-            {includeProjectTickets && (
-              <>
-                <TabsContent value="project-tasks">
-                  <TicketDashboard 
-                    initialTickets={tickets.filter(t => t.task_id)}
-                    onRefresh={handleRefresh}
-                    onTicketAction={handleTicketAction}
-                    onToggleTicket={handleToggleTicket}
-                    showTimeTracking={userType === 'job_seeker'}
-                    userId={userId}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="project-tickets">
-                  <TicketDashboard 
-                    initialTickets={tickets.filter(t => t.project_id && !t.task_id)}
-                    onRefresh={handleRefresh}
-                    onTicketAction={handleTicketAction}
-                    onToggleTicket={handleToggleTicket}
-                    showTimeTracking={userType === 'job_seeker'}
-                    userId={userId}
-                  />
-                </TabsContent>
-              </>
-            )}
-          </Tabs>
-        </CardContent>
-      </Card>
+            <TabsContent value="project-tickets">
+              <TicketDashboard 
+                initialTickets={tickets.filter(t => t.project_id && !t.task_id)}
+                onRefresh={handleRefresh}
+                onTicketAction={handleTicketAction}
+                onToggleTicket={handleToggleTicket}
+                showTimeTracking={userType === 'job_seeker'}
+                userId={userId}
+              />
+            </TabsContent>
+          </>
+        )}
+        
+        <TabsContent value="beta-tickets">
+          <Card>
+            <CardContent className="p-6 text-center">
+              <h3 className="text-lg font-medium mb-2">Beta Testing Features</h3>
+              <p className="text-muted-foreground mb-4">
+                This section will allow you to test new features before they are released.
+              </p>
+              <Button variant="outline">Join Beta Program</Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
