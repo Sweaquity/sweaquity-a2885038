@@ -775,6 +775,7 @@ export type Database = {
           dependencies: string[] | null
           description: string | null
           equity_allocation: number
+          estimated_hours: number | null
           last_activity_at: string | null
           project_id: string | null
           skill_requirements: Json | null
@@ -793,6 +794,7 @@ export type Database = {
           dependencies?: string[] | null
           description?: string | null
           equity_allocation: number
+          estimated_hours?: number | null
           last_activity_at?: string | null
           project_id?: string | null
           skill_requirements?: Json | null
@@ -811,6 +813,7 @@ export type Database = {
           dependencies?: string[] | null
           description?: string | null
           equity_allocation?: number
+          estimated_hours?: number | null
           last_activity_at?: string | null
           project_id?: string | null
           skill_requirements?: Json | null
@@ -1143,6 +1146,7 @@ export type Database = {
       tickets: {
         Row: {
           assigned_to: string | null
+          completion_percentage: number | null
           created_at: string | null
           created_by: string | null
           description: string | null
@@ -1167,6 +1171,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          completion_percentage?: number | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -1191,6 +1196,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          completion_percentage?: number | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -1415,6 +1421,16 @@ export type Database = {
         Args: {
           user_type: string
           user_id: string
+        }
+        Returns: undefined
+      }
+      update_active_project: {
+        Args: {
+          p_task_id: string
+          p_completion_percentage?: number
+          p_estimated_hours?: number
+          p_due_date?: string
+          p_status?: string
         }
         Returns: undefined
       }

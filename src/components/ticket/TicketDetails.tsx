@@ -95,7 +95,7 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
     try {
       setIsSaving(true);
       
-      // Update the ticket
+      // Direct update to the tickets table
       const { error: ticketError } = await supabase
         .from('tickets')
         .update({ 
@@ -109,38 +109,17 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
         throw ticketError;
       }
       
-      // If this is a task ticket, also update the task's estimated hours
+      // If this is a task ticket, also update using the RPC function
       if (ticket.task_id) {
         try {
-          // Find the job app ID associated with this task/ticket
-          const { data: jobAppData } = await supabase
-            .from('job_applications')
-            .select('job_app_id')
-            .eq('task_id', ticket.task_id)
-            .maybeSingle();
-            
-          if (jobAppData?.job_app_id) {
-            // Update project_sub_tasks table
-            const { error: projectError } = await supabase
-              .from('project_sub_tasks')
-              .update({ estimated_hours: estimatedHours })
-              .eq('task_id', ticket.task_id);
-                
-            if (projectError) {
-              console.error("Error updating task:", projectError);
-              // Continue execution even if this fails
-            }
-            
-            // Update jobseeker_active_projects view
-            const { data, error: jsError } = await supabase.rpc('update_active_project', {
-              p_task_id: ticket.task_id,
-              p_estimated_hours: estimatedHours
-            });
-                
-            if (jsError) {
-              console.error("Error updating jobseeker project:", jsError);
-              // Continue execution even if this fails
-            }
+          const { error: rpcError } = await supabase.rpc('update_active_project', {
+            p_task_id: ticket.task_id,
+            p_estimated_hours: estimatedHours
+          });
+              
+          if (rpcError) {
+            console.error("Error updating active project:", rpcError);
+            // Continue execution even if this fails
           }
         } catch (e) {
           console.error("Error updating associated tables:", e);
@@ -167,44 +146,41 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
     try {
       setIsSaving(true);
       
+      // Direct update to the tickets table
+      const { error: ticketError } = await supabase
+        .from('tickets')
+        .update({ 
+          completion_percentage: completionPercentage,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', ticket.id);
+
+      if (ticketError) {
+        console.error("Error updating ticket completion:", ticketError);
+        toast.error("Failed to update ticket completion");
+        return;
+      }
+      
+      // If this is a task ticket, also update using the RPC function
       if (ticket.task_id) {
         try {
-          // Update project_sub_tasks table
-          const { error: taskError } = await supabase
-            .from('project_sub_tasks')
-            .update({ 
-              completion_percentage: completionPercentage,
-              last_activity_at: new Date().toISOString()
-            })
-            .eq('task_id', ticket.task_id);
-
-          if (taskError) {
-            console.error("Error updating task completion:", taskError);
-            toast.error("Failed to update task completion");
-            return;
-          }
-          
-          // Update jobseeker_active_projects view using RPC
-          const { data, error: jsError } = await supabase.rpc('update_active_project', {
+          const { error: rpcError } = await supabase.rpc('update_active_project', {
             p_task_id: ticket.task_id,
             p_completion_percentage: completionPercentage
           });
               
-          if (jsError) {
-            console.error("Error updating jobseeker project completion:", jsError);
-            toast.error("Failed to update completion percentage in active projects");
-            return;
+          if (rpcError) {
+            console.error("Error updating active project completion:", rpcError);
+            // Continue execution even if this fails
           }
-          
-          toast.success("Task/Ticket Completion updated");
-          setIsEditingCompletion(false);
         } catch (e) {
           console.error("Error updating task completion:", e);
-          toast.error("Failed to update completion percentage");
+          // Don't fail if this secondary update fails
         }
-      } else {
-        toast.error("Cannot update completion for tickets without a task ID");
       }
+      
+      toast.success("Completion percentage updated");
+      setIsEditingCompletion(false);
     } catch (error) {
       console.error('Error updating completion percentage:', error);
       toast.error("Failed to update completion percentage");
@@ -217,21 +193,35 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
     try {
       setIsSaving(true);
       
+      // Direct update to the tickets table
+      const { error: ticketError } = await supabase
+        .from('tickets')
+        .update({ 
+          due_date: dueDate,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', ticket.id);
+
+      if (ticketError) {
+        console.error("Error updating due date:", ticketError);
+        toast.error("Failed to update due date");
+        return;
+      }
+      
       // Call the parent component's onDueDateChange
       onDueDateChange(ticket.id, dueDate);
       
-      // If this is a task ticket, also update jobseeker_active_projects
+      // If this is a task ticket, also update using the RPC function
       if (ticket.task_id) {
         try {
-          const { data, error: jsError } = await supabase.rpc('update_active_project', {
+          const { error: rpcError } = await supabase.rpc('update_active_project', {
             p_task_id: ticket.task_id,
             p_due_date: dueDate
           });
               
-          if (jsError) {
-            console.error("Error updating jobseeker project due date:", jsError);
-            toast.error("Failed to update due date in active projects");
-            return;
+          if (rpcError) {
+            console.error("Error updating active project due date:", rpcError);
+            // Continue execution even if this fails
           }
         } catch (e) {
           console.error("Error updating due date:", e);
@@ -239,8 +229,8 @@ export const TicketDetails: React.FC<TicketDetailsProps> = ({
         }
       }
       
-      setIsEditingDueDate(false);
       toast.success("Due date updated");
+      setIsEditingDueDate(false);
     } catch (error) {
       console.error('Error updating due date:', error);
       toast.error("Failed to update due date");

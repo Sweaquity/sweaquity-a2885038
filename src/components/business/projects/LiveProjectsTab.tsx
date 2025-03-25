@@ -115,32 +115,155 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   const handleTicketAction = async (ticketId: string, action: string, data: any) => {
     try {
       switch (action) {
-        case 'updateStatus':
-          await supabase
+        case 'updateStatus': {
+          // Update ticket status
+          const { error } = await supabase
             .from('tickets')
             .update({ status: data })
             .eq('id', ticketId);
           
+          if (error) throw error;
+          
+          // Update local state
+          setTickets(prevTickets => 
+            prevTickets.map(t => t.id === ticketId ? { ...t, status: data } : t)
+          );
+          
+          // Check if ticket has a task_id, if so update related tables
+          const ticket = tickets.find(t => t.id === ticketId);
+          if (ticket?.task_id) {
+            try {
+              const { error: rpcError } = await supabase.rpc('update_active_project', {
+                p_task_id: ticket.task_id,
+                p_status: data
+              });
+              
+              if (rpcError) {
+                console.error("Error in RPC call:", rpcError);
+              }
+            } catch (e) {
+              console.error("Error updating related tables:", e);
+            }
+          }
+          
           toast.success("Status updated");
           break;
+        }
         
-        case 'updatePriority':
-          await supabase
+        case 'updatePriority': {
+          const { error } = await supabase
             .from('tickets')
             .update({ priority: data })
             .eq('id', ticketId);
           
+          if (error) throw error;
+          
+          setTickets(prevTickets => 
+            prevTickets.map(t => t.id === ticketId ? { ...t, priority: data } : t)
+          );
+          
           toast.success("Priority updated");
           break;
+        }
         
-        case 'updateDueDate':
-          await supabase
+        case 'updateDueDate': {
+          const { error } = await supabase
             .from('tickets')
             .update({ due_date: data })
             .eq('id', ticketId);
           
+          if (error) throw error;
+          
+          setTickets(prevTickets => 
+            prevTickets.map(t => t.id === ticketId ? { ...t, due_date: data } : t)
+          );
+          
+          // Update active project if this is a task
+          const ticket = tickets.find(t => t.id === ticketId);
+          if (ticket?.task_id) {
+            try {
+              const { error: rpcError } = await supabase.rpc('update_active_project', {
+                p_task_id: ticket.task_id,
+                p_due_date: data
+              });
+              
+              if (rpcError) {
+                console.error("Error in RPC call:", rpcError);
+              }
+            } catch (e) {
+              console.error("Error updating related tables:", e);
+            }
+          }
+          
           toast.success("Due date updated");
           break;
+        }
+        
+        case 'updateEstimatedHours': {
+          const { error } = await supabase
+            .from('tickets')
+            .update({ estimated_hours: data })
+            .eq('id', ticketId);
+          
+          if (error) throw error;
+          
+          setTickets(prevTickets => 
+            prevTickets.map(t => t.id === ticketId ? { ...t, estimated_hours: data } : t)
+          );
+          
+          // Update active project if this is a task
+          const ticket = tickets.find(t => t.id === ticketId);
+          if (ticket?.task_id) {
+            try {
+              const { error: rpcError } = await supabase.rpc('update_active_project', {
+                p_task_id: ticket.task_id,
+                p_estimated_hours: data
+              });
+              
+              if (rpcError) {
+                console.error("Error in RPC call:", rpcError);
+              }
+            } catch (e) {
+              console.error("Error updating related tables:", e);
+            }
+          }
+          
+          toast.success("Estimated hours updated");
+          break;
+        }
+        
+        case 'updateCompletionPercentage': {
+          const { error } = await supabase
+            .from('tickets')
+            .update({ completion_percentage: data })
+            .eq('id', ticketId);
+          
+          if (error) throw error;
+          
+          setTickets(prevTickets => 
+            prevTickets.map(t => t.id === ticketId ? { ...t, completion_percentage: data } : t)
+          );
+          
+          // Update active project if this is a task
+          const ticket = tickets.find(t => t.id === ticketId);
+          if (ticket?.task_id) {
+            try {
+              const { error: rpcError } = await supabase.rpc('update_active_project', {
+                p_task_id: ticket.task_id,
+                p_completion_percentage: data
+              });
+              
+              if (rpcError) {
+                console.error("Error in RPC call:", rpcError);
+              }
+            } catch (e) {
+              console.error("Error updating related tables:", e);
+            }
+          }
+          
+          toast.success("Completion percentage updated");
+          break;
+        }
         
         case 'addNote':
           const { data: ticketData } = await supabase
@@ -174,16 +297,15 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
             .update({ notes: updatedNotes })
             .eq('id', ticketId);
           
+          setTickets(prevTickets => 
+            prevTickets.map(t => t.id === ticketId ? { ...t, notes: updatedNotes } : t)
+          );
+          
           toast.success("Note added");
           break;
         
         default:
           console.warn("Unknown action:", action);
-      }
-      
-      // Reload tickets to get updated data
-      if (businessId) {
-        await loadTickets(businessId);
       }
     } catch (error) {
       console.error("Error handling ticket action:", error);

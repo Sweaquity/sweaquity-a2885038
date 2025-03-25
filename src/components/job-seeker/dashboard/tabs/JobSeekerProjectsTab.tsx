@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -402,10 +403,14 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       // Also update jobseeker_active_projects if this is a task
       const ticket = tickets.find(t => t.id === ticketId);
       if (ticket?.task_id) {
-        await supabase
-          .from('jobseeker_active_projects')
-          .update({ estimated_hours: hours })
-          .eq('task_id', ticket.task_id);
+        const { error: rpcError } = await supabase.rpc('update_active_project', {
+          p_task_id: ticket.task_id,
+          p_estimated_hours: hours
+        });
+        
+        if (rpcError) {
+          console.error("Error in RPC call:", rpcError);
+        }
       }
       
       setTickets(prev => prev.map(t => 
@@ -421,22 +426,33 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
 
   const handleUpdateCompletionPercentage = async (ticketId: string, percentage: number) => {
     try {
+      // First update the ticket directly
       const { error: ticketError } = await supabase
         .from('tickets')
         .update({ completion_percentage: percentage })
         .eq('id', ticketId);
         
-      if (ticketError) throw ticketError;
-      
-      // Also update jobseeker_active_projects if this is a task
-      const ticket = tickets.find(t => t.id === ticketId);
-      if (ticket?.task_id) {
-        await supabase
-          .from('jobseeker_active_projects')
-          .update({ completion_percentage: percentage })
-          .eq('task_id', ticket.task_id);
+      if (ticketError) {
+        console.error("Direct ticket update error:", ticketError);
+        throw ticketError;
       }
       
+      // Find the ticket to get task_id if available
+      const ticket = tickets.find(t => t.id === ticketId);
+      if (ticket?.task_id) {
+        // Use the RPC function for updating related tables
+        const { error: rpcError } = await supabase.rpc('update_active_project', {
+          p_task_id: ticket.task_id,
+          p_completion_percentage: percentage
+        });
+        
+        if (rpcError) {
+          console.error("Error in RPC call:", rpcError);
+          // Don't throw here, we'll continue as the main ticket update succeeded
+        }
+      }
+      
+      // Update local state
       setTickets(prev => prev.map(t => 
         t.id === ticketId ? { ...t, completion_percentage: percentage } : t
       ));
