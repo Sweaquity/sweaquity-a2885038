@@ -4,41 +4,110 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskCompletionReview } from "../../projects/TaskCompletionReview";
-import { BetaTestingTab as SharedBetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
+import { SharedBetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { toast } from "sonner";
 import { Ticket } from "@/types/types";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Plus, RefreshCw } from "lucide-react";
+import { GanttChartView } from "../../testing/GanttChartView";
+import { KanbanBoard } from "@/components/ticket/KanbanBoard";
 
 export const BetaTestingTab = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("tickets");
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [taskStats, setTaskStats] = useState({
+    total: 0,
+    open: 0,
+    closed: 0,
+    highPriority: 0
+  });
 
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
-        await loadTickets(user.id);
+        await fetchProjects(user.id);
       }
     };
     
     getCurrentUser();
   }, []);
 
-  const loadTickets = async (userId: string) => {
+  useEffect(() => {
+    if (userId && selectedProject) {
+      loadTickets(userId);
+    }
+  }, [userId, selectedProject]);
+
+  const fetchProjects = async (userId: string) => {
     try {
-      setLoading(true);
       const { data, error } = await supabase
-        .from('tickets')
-        .select('*')
-        .or(`reporter.eq.${userId},assigned_to.eq.${userId}`)
-        .order('created_at', { ascending: false });
+        .from('business_projects')
+        .select('project_id, title')
+        .eq('business_id', userId);
       
       if (error) throw error;
       
-      setTickets(data || []);
+      setProjects(data || []);
+      
+      if (data && data.length > 0) {
+        setSelectedProject(data[0].project_id);
+      }
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+      toast.error("Failed to load projects");
+    }
+  };
+
+  const loadTickets = async (userId: string) => {
+    try {
+      setLoading(true);
+      
+      let query = supabase
+        .from('tickets')
+        .select('*')
+        .or(`reporter.eq.${userId},assigned_to.eq.${userId}`);
+      
+      // Filter by project if one is selected
+      if (selectedProject) {
+        query = query.eq('project_id', selectedProject);
+      }
+      
+      query = query.order('created_at', { ascending: false });
+      
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      
+      const processedTickets = (data || []).map(ticket => ({
+        ...ticket,
+        description: ticket.description || ""  // Ensure description exists
+      }));
+      
+      setTickets(processedTickets);
+      
+      // Calculate ticket stats
+      const stats = {
+        total: processedTickets.length,
+        open: processedTickets.filter(t => t.status !== 'done' && t.status !== 'closed').length,
+        closed: processedTickets.filter(t => t.status === 'done' || t.status === 'closed').length,
+        highPriority: processedTickets.filter(t => t.priority === 'high').length
+      };
+      
+      setTaskStats(stats);
     } catch (error) {
       console.error("Error loading tickets:", error);
       toast.error("Failed to load tickets");
@@ -132,6 +201,15 @@ export const BetaTestingTab = () => {
     }
   };
 
+  const handleProjectChange = (projectId: string) => {
+    setSelectedProject(projectId);
+  };
+
+  const handleCreateTicket = () => {
+    // This would open a dialog to create a new ticket
+    toast.info("Create ticket functionality will be implemented soon");
+  };
+
   if (!userId) {
     return <div>Loading...</div>;
   }
@@ -139,10 +217,64 @@ export const BetaTestingTab = () => {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Project Management</CardTitle>
+          <div className="flex items-center gap-2">
+            <Select value={selectedProject || "none"} onValueChange={handleProjectChange}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select project" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.length === 0 ? (
+                  <SelectItem value="none">No projects available</SelectItem>
+                ) : (
+                  projects.map(project => (
+                    <SelectItem key={project.project_id} value={project.project_id}>
+                      {project.title}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+            
+            <Button size="sm" variant="outline" onClick={handleRefresh}>
+              <RefreshCw className="h-4 w-4 mr-1" /> Refresh
+            </Button>
+            
+            <Button size="sm" onClick={handleCreateTicket}>
+              <Plus className="h-4 w-4 mr-1" /> Create Ticket
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-4 gap-4 mb-6">
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm font-medium text-muted-foreground">Total Tasks</div>
+                <div className="text-2xl font-bold mt-1">{taskStats.total}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm font-medium text-muted-foreground">Open Tasks</div>
+                <div className="text-2xl font-bold mt-1">{taskStats.open}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm font-medium text-muted-foreground">Closed Tasks</div>
+                <div className="text-2xl font-bold mt-1">{taskStats.closed}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm font-medium text-muted-foreground">High Priority</div>
+                <div className="text-2xl font-bold mt-1">{taskStats.highPriority}</div>
+              </CardContent>
+            </Card>
+          </div>
+        
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
               <TabsTrigger value="tickets">All Tickets</TabsTrigger>
@@ -150,6 +282,8 @@ export const BetaTestingTab = () => {
               <TabsTrigger value="project-tickets">Project Tickets</TabsTrigger>
               <TabsTrigger value="beta-tickets">Beta Testing Tickets</TabsTrigger>
               <TabsTrigger value="task-review">Task Completion Review</TabsTrigger>
+              <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
+              <TabsTrigger value="gantt">Gantt Chart</TabsTrigger>
             </TabsList>
             
             <TabsContent value="tickets">
@@ -157,6 +291,8 @@ export const BetaTestingTab = () => {
                 initialTickets={tickets}
                 onRefresh={handleRefresh}
                 onTicketAction={handleTicketAction}
+                showTimeTracking={false}
+                userId={userId}
               />
             </TabsContent>
             
@@ -165,6 +301,8 @@ export const BetaTestingTab = () => {
                 initialTickets={tickets.filter(t => t.task_id)}
                 onRefresh={handleRefresh}
                 onTicketAction={handleTicketAction}
+                showTimeTracking={false}
+                userId={userId}
               />
             </TabsContent>
             
@@ -173,6 +311,8 @@ export const BetaTestingTab = () => {
                 initialTickets={tickets.filter(t => t.project_id && !t.task_id)}
                 onRefresh={handleRefresh}
                 onTicketAction={handleTicketAction}
+                showTimeTracking={false}
+                userId={userId}
               />
             </TabsContent>
             
@@ -186,6 +326,30 @@ export const BetaTestingTab = () => {
             
             <TabsContent value="task-review">
               <TaskCompletionReview businessId={userId} />
+            </TabsContent>
+            
+            <TabsContent value="kanban">
+              {selectedProject ? (
+                <KanbanBoard 
+                  tickets={tickets}
+                  onStatusChange={(ticketId, newStatus) => 
+                    handleTicketAction(ticketId, 'updateStatus', newStatus)
+                  }
+                  onTicketClick={(ticket) => 
+                    console.log("Ticket clicked:", ticket.id)
+                  }
+                />
+              ) : (
+                <div className="text-center py-8">Please select a project to view the Kanban board</div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="gantt">
+              {selectedProject ? (
+                <GanttChartView projectId={selectedProject} />
+              ) : (
+                <div className="text-center py-8">Please select a project to view the Gantt chart</div>
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>

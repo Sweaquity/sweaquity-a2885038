@@ -1,465 +1,423 @@
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Check, Clock, ExternalLink, X } from "lucide-react";
-import { 
-  Table, 
-  TableHeader, 
-  TableRow, 
-  TableHead, 
-  TableBody, 
-  TableCell 
-} from "@/components/ui/table";
-import { Input } from "@/components/ui/input"; 
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { ProgressCircle } from "@/components/ui/progress-circle";
+import { AlertCircle, Clock, CalendarDays, ChevronUp, ChevronDown, CheckCircle2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
-// Define interfaces
-export interface TaskCompletionReviewProps {
-  businessId: string | null;
-  task?: any; // Optional task parameter for when used in a dialog
-  onClose?: () => void;
-  open?: boolean;
-  setOpen?: React.Dispatch<React.SetStateAction<boolean>>;
-}
-
-interface TaskReview {
+interface Task {
   task_id: string;
-  task_title: string;
-  task_description: string;
-  project_title: string;
-  project_id: string;
-  user_id: string;
-  user_name: string;
-  user_avatar?: string;
-  completion_percentage: number;
+  title: string;
+  description: string;
   equity_allocation: number;
-  equity_earned: number;
+  completion_percentage: number;
   status: string;
-  job_app_id: string;
-  total_hours_logged?: number;
+  task_status: string;
+  project_id: string;
+  timeframe: string;
+  created_at: string;
+  assignee?: {
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+  };
 }
 
-export const TaskCompletionReview = ({ 
-  businessId,
-  task,
-  onClose,
-  open,
-  setOpen
-}: TaskCompletionReviewProps) => {
-  const [taskReviews, setTaskReviews] = useState<TaskReview[]>([]);
+interface TaskWithApplication extends Task {
+  application?: {
+    job_app_id: string;
+    status: string;
+    user_id: string;
+    user?: {
+      first_name?: string;
+      last_name?: string;
+      email?: string;
+    };
+  };
+}
+
+interface TaskCompletionReviewProps {
+  businessId: string;
+}
+
+export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({ businessId }) => {
+  const [tasks, setTasks] = useState<TaskWithApplication[]>([]);
+  const [selectedTask, setSelectedTask] = useState<TaskWithApplication | null>(null);
+  const [reviewFeedback, setReviewFeedback] = useState("");
+  const [completionPercentage, setCompletionPercentage] = useState<number>(0);
+  const [reviewStatus, setReviewStatus] = useState<string>("pending_review");
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("pending");
-  const [equityValues, setEquityValues] = useState<Record<string, number>>({});
-  
+  const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
     if (businessId) {
-      fetchTaskReviews();
+      fetchTasksForReview();
     }
   }, [businessId]);
-  
-  const fetchTaskReviews = async () => {
-    if (!businessId) return;
-    
+
+  useEffect(() => {
+    if (selectedTask) {
+      setCompletionPercentage(selectedTask.completion_percentage || 0);
+      setReviewStatus(selectedTask.task_status || "pending_review");
+    }
+  }, [selectedTask]);
+
+  const fetchTasksForReview = async () => {
     try {
       setLoading(true);
-      
-      // Get all projects for this business
-      const { data: projects, error: projectsError } = await supabase
+      // Fetch all projects for this business
+      const { data: projectsData, error: projectsError } = await supabase
         .from('business_projects')
-        .select('project_id, title')
+        .select('project_id')
         .eq('business_id', businessId);
-        
+      
       if (projectsError) throw projectsError;
       
-      if (!projects || projects.length === 0) {
+      if (!projectsData || projectsData.length === 0) {
         setLoading(false);
         return;
       }
       
-      const projectIds = projects.map(p => p.project_id);
+      const projectIds = projectsData.map(p => p.project_id);
       
-      // Get all job applications for tasks in these projects
-      const { data: applications, error: appsError } = await supabase
-        .from('job_applications')
+      // Fetch tasks for these projects that need review
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('project_sub_tasks')
         .select(`
-          job_app_id,
-          task_id,
-          user_id,
-          project_id,
-          status,
-          profiles:user_id (
-            first_name,
-            last_name
+          *,
+          application:job_applications(
+            job_app_id,
+            status,
+            user_id,
+            user:profiles(
+              first_name,
+              last_name,
+              email
+            )
           )
         `)
         .in('project_id', projectIds)
-        .eq('status', 'accepted');
-        
-      if (appsError) throw appsError;
+        .in('task_status', ['pending_review', 'in_review'])
+        .order('created_at', { ascending: false });
       
-      if (!applications || applications.length === 0) {
-        setLoading(false);
-        return;
-      }
-      
-      // Get all task details
-      const taskIds = applications.map(app => app.task_id);
-      
-      const { data: tasks, error: tasksError } = await supabase
-        .from('project_sub_tasks')
-        .select('task_id, title, description, completion_percentage, equity_allocation, project_id')
-        .in('task_id', taskIds);
-        
       if (tasksError) throw tasksError;
       
-      if (!tasks) {
-        setLoading(false);
-        return;
-      }
-      
-      // Get all accepted jobs
-      const appIds = applications.map(app => app.job_app_id);
-      
-      const { data: acceptedJobs, error: jobsError } = await supabase
-        .from('accepted_jobs')
-        .select('job_app_id, equity_agreed')
-        .in('job_app_id', appIds);
+      const processedTasks = tasksData.map((task: any) => {
+        // Fix for the TypeScript error - ensure assignee is an object
+        const assignee = task.application?.user || {};
         
-      if (jobsError) throw jobsError;
-      
-      // Get total hours logged
-      const { data: timeEntries, error: timeError } = await supabase
-        .from('time_entries')
-        .select('ticket_id, job_app_id, hours_logged')
-        .in('job_app_id', appIds);
-        
-      if (timeError) throw timeError;
-      
-      // Map everything together
-      const reviews: TaskReview[] = [];
-      
-      for (const app of applications) {
-        const task = tasks.find(t => t.task_id === app.task_id);
-        if (!task) continue;
-        
-        const project = projects.find(p => p.project_id === task.project_id);
-        if (!project) continue;
-        
-        const acceptedJob = acceptedJobs?.find(job => job.job_app_id === app.job_app_id);
-        
-        // Calculate total hours logged
-        const taskHours = timeEntries
-          ?.filter(entry => entry.job_app_id === app.job_app_id)
-          .reduce((total, entry) => total + (entry.hours_logged || 0), 0) || 0;
-        
-        // Fix for profiles access - ensuring it's an object with first_name and last_name
-        const profileData = app.profiles || {};
-        const firstName = profileData.first_name || '';
-        const lastName = profileData.last_name || '';
-        const userName = `${firstName} ${lastName}`.trim() || 'Unknown user';
-        
-        reviews.push({
-          task_id: task.task_id,
-          task_title: task.title,
-          task_description: task.description || '',
-          project_title: project.title,
-          project_id: project.project_id,
-          user_id: app.user_id,
-          user_name: userName,
-          completion_percentage: task.completion_percentage || 0,
-          equity_allocation: task.equity_allocation || 0,
-          equity_earned: acceptedJob?.equity_agreed || 0,
-          status: app.status,
-          job_app_id: app.job_app_id,
-          total_hours_logged: taskHours
-        });
-      }
-      
-      // Initialize equity values state
-      const initialEquityValues: Record<string, number> = {};
-      
-      reviews.forEach(review => {
-        initialEquityValues[review.job_app_id] = review.equity_earned;
+        return {
+          ...task,
+          assignee
+        };
       });
       
-      setEquityValues(initialEquityValues);
-      setTaskReviews(reviews);
+      setTasks(processedTasks || []);
     } catch (error) {
-      console.error('Error fetching task reviews:', error);
-      toast.error("Failed to load task reviews");
+      console.error("Error fetching tasks for review:", error);
+      toast.error("Failed to load tasks for review");
     } finally {
       setLoading(false);
     }
   };
-  
-  const handleEquityChange = (jobAppId: string, value: string) => {
-    const numValue = parseFloat(value) || 0;
-    setEquityValues(prev => ({
-      ...prev,
-      [jobAppId]: numValue
-    }));
+
+  const handleTaskClick = (task: TaskWithApplication) => {
+    setSelectedTask(task);
+    setShowReviewDialog(true);
   };
-  
-  const handleUpdateEquity = async (jobAppId: string) => {
+
+  const handleSubmitReview = async () => {
+    if (!selectedTask) return;
+    
     try {
+      // Update task status and completion percentage
       const { error } = await supabase
-        .from('accepted_jobs')
-        .update({ equity_agreed: equityValues[jobAppId] || 0 })
-        .eq('job_app_id', jobAppId);
-        
+        .from('project_sub_tasks')
+        .update({
+          task_status: reviewStatus,
+          completion_percentage: completionPercentage,
+          review_feedback: reviewFeedback,
+          last_activity_at: new Date().toISOString()
+        })
+        .eq('task_id', selectedTask.task_id);
+      
       if (error) throw error;
       
-      toast.success("Equity update successful");
+      // If approved as completed, also update the project completion
+      if (reviewStatus === 'completed') {
+        // Get current project data
+        const { data: projectData, error: projectError } = await supabase
+          .from('business_projects')
+          .select('completion_percentage, total_tasks')
+          .eq('project_id', selectedTask.project_id)
+          .single();
+        
+        if (projectError) throw projectError;
+        
+        // Calculate new completion percentage for the project
+        const currentCompletion = projectData.completion_percentage || 0;
+        const taskWeight = 100 / (projectData.total_tasks || 1);
+        const newCompletion = Math.min(currentCompletion + taskWeight, 100);
+        
+        // Update project
+        const { error: updateError } = await supabase
+          .from('business_projects')
+          .update({
+            completion_percentage: newCompletion
+          })
+          .eq('project_id', selectedTask.project_id);
+        
+        if (updateError) throw updateError;
+      }
       
-      // Refresh the data
-      fetchTaskReviews();
+      toast.success("Task review submitted successfully");
+      setShowReviewDialog(false);
+      fetchTasksForReview();
     } catch (error) {
-      console.error('Error updating equity:', error);
-      toast.error("Failed to update equity");
+      console.error("Error submitting review:", error);
+      toast.error("Failed to submit review");
     }
   };
-  
-  const getPendingReviews = () => {
-    return taskReviews.filter(review => review.completion_percentage >= 50 && review.completion_percentage < 100);
+
+  const toggleTaskExpand = (taskId: string) => {
+    setExpandedTasks(prev => ({
+      ...prev,
+      [taskId]: !prev[taskId]
+    }));
   };
-  
-  const getCompletedReviews = () => {
-    return taskReviews.filter(review => review.completion_percentage >= 100);
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
-  
-  const getInProgressReviews = () => {
-    return taskReviews.filter(review => review.completion_percentage < 50);
+
+  const getUserName = (user: any) => {
+    if (!user) return 'Unassigned';
+    const firstName = user.first_name || '';
+    const lastName = user.last_name || '';
+    return firstName || lastName ? `${firstName} ${lastName}`.trim() : user.email || 'Unnamed User';
   };
-  
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Task Completion Reviews</CardTitle>
+          <CardTitle>Task Completion Review</CardTitle>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="pending">Pending Review ({getPendingReviews().length})</TabsTrigger>
-              <TabsTrigger value="completed">Completed ({getCompletedReviews().length})</TabsTrigger>
-              <TabsTrigger value="in-progress">In Progress ({getInProgressReviews().length})</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="pending">
-              {loading ? (
-                <div className="py-8 text-center">Loading task reviews...</div>
-              ) : getPendingReviews().length === 0 ? (
-                <div className="py-8 text-center">No tasks pending review.</div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project / Task</TableHead>
-                      <TableHead>Assigned To</TableHead>
-                      <TableHead>Completion</TableHead>
-                      <TableHead>Allocated Equity</TableHead>
-                      <TableHead>Approve Equity</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {getPendingReviews().map(review => (
-                      <TableRow key={review.task_id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{review.project_title}</div>
-                            <div className="text-sm text-muted-foreground">{review.task_title}</div>
+          {loading ? (
+            <div className="text-center py-8">Loading tasks...</div>
+          ) : tasks.length === 0 ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                No tasks pending review at this time.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div className="space-y-4">
+              {tasks.map(task => (
+                <Card key={task.task_id} className="overflow-hidden">
+                  <div className="p-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="text-lg font-medium">{task.title}</h3>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                          <Clock className="h-3 w-3" />
+                          <span>Created: {formatDate(task.created_at)}</span>
+                          
+                          <span className="mx-1">•</span>
+                          
+                          <span>Status: 
+                            <Badge variant={task.task_status === 'pending_review' ? 'outline' : 'secondary'} 
+                                  className="ml-2">
+                              {task.task_status === 'pending_review' ? 'Pending Review' : 'In Review'}
+                            </Badge>
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center">
+                        <div className="text-right mr-4">
+                          <div className="font-medium">Equity: {task.equity_allocation}%</div>
+                          <div className="text-sm">
+                            Completion: {task.completion_percentage || 0}%
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={review.user_avatar} />
-                              <AvatarFallback>{review.user_name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <span>{review.user_name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <ProgressCircle 
-                              value={review.completion_percentage}
-                              size="sm"
-                              strokeWidth={4}
-                            />
-                            <span>{review.completion_percentage}%</span>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            <Clock className="inline-block h-3 w-3 mr-1" />
-                            {review.total_hours_logged || 0} hours logged
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge>{review.equity_allocation}%</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Input 
-                              type="number"
-                              min="0"
-                              max={review.equity_allocation}
-                              step="0.01"
-                              value={equityValues[review.job_app_id] || 0}
-                              onChange={(e) => handleEquityChange(review.job_app_id, e.target.value)}
-                              className="w-20"
-                            />
-                            <span>%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleUpdateEquity(review.job_app_id)}
-                            >
-                              <Check className="h-4 w-4 mr-1" />
-                              Update
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="completed">
-              {loading ? (
-                <div className="py-8 text-center">Loading completed tasks...</div>
-              ) : getCompletedReviews().length === 0 ? (
-                <div className="py-8 text-center">No tasks have been completed yet.</div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project / Task</TableHead>
-                      <TableHead>Assigned To</TableHead>
-                      <TableHead>Completion</TableHead>
-                      <TableHead>Allocated Equity</TableHead>
-                      <TableHead>Earned Equity</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {getCompletedReviews().map(review => (
-                      <TableRow key={review.task_id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{review.project_title}</div>
-                            <div className="text-sm text-muted-foreground">{review.task_title}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={review.user_avatar} />
-                              <AvatarFallback>{review.user_name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <span>{review.user_name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <ProgressCircle
-                              value={review.completion_percentage}
-                              size="sm" 
-                              strokeWidth={4}
-                            />
-                            <span>{review.completion_percentage}%</span>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            <Clock className="inline-block h-3 w-3 mr-1" />
-                            {review.total_hours_logged || 0} hours logged
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge>{review.equity_allocation}%</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{review.equity_earned}%</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="in-progress">
-              {loading ? (
-                <div className="py-8 text-center">Loading in-progress tasks...</div>
-              ) : getInProgressReviews().length === 0 ? (
-                <div className="py-8 text-center">No tasks in progress.</div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project / Task</TableHead>
-                      <TableHead>Assigned To</TableHead>
-                      <TableHead>Completion</TableHead>
-                      <TableHead>Allocated Equity</TableHead>
-                      <TableHead>Hours Logged</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {getInProgressReviews().map(review => (
-                      <TableRow key={review.task_id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{review.project_title}</div>
-                            <div className="text-sm text-muted-foreground">{review.task_title}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={review.user_avatar} />
-                              <AvatarFallback>{review.user_name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <span>{review.user_name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <ProgressCircle 
-                              value={review.completion_percentage}
-                              size="sm"
-                              strokeWidth={4}
-                            />
-                            <span>{review.completion_percentage}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge>{review.equity_allocation}%</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            <span>{review.total_hours_logged || 0} hours</span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </TabsContent>
-          </Tabs>
+                        </div>
+                        
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleTaskClick(task)}
+                        >
+                          Review
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-3">
+                      <Progress value={task.completion_percentage || 0} className="h-2" />
+                    </div>
+                    
+                    <div className="mt-3 flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm">
+                          <span className="font-medium">Assignee:</span> {getUserName(task.application?.user)}
+                        </div>
+                      </div>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleTaskExpand(task.task_id)}
+                      >
+                        {expandedTasks[task.task_id] ? (
+                          <>
+                            Hide Details <ChevronUp className="ml-1 h-4 w-4" />
+                          </>
+                        ) : (
+                          <>
+                            Show Details <ChevronDown className="ml-1 h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    
+                    {expandedTasks[task.task_id] && (
+                      <div className="mt-4 border-t pt-4">
+                        <div className="text-sm">
+                          <p className="font-medium">Description:</p>
+                          <p className="mt-1">{task.description}</p>
+                        </div>
+                        
+                        <div className="mt-4 text-sm">
+                          <p className="font-medium">Timeframe:</p>
+                          <p>{task.timeframe || 'Not specified'}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
+      
+      {/* Review Dialog */}
+      {selectedTask && (
+        <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Review Task Completion</DialogTitle>
+            </DialogHeader>
+            
+            <div className="grid gap-4 py-4">
+              <div className="flex justify-between">
+                <h3 className="text-lg font-medium">{selectedTask.title}</h3>
+                <Badge variant="outline">
+                  {selectedTask.task_status === 'pending_review' ? 'Pending Review' : 'In Review'}
+                </Badge>
+              </div>
+              
+              <div className="text-sm">
+                <span className="font-medium">Assignee:</span> {getUserName(selectedTask.application?.user)}
+              </div>
+              
+              <div className="text-sm">
+                <span className="font-medium">Description:</span>
+                <p className="mt-1">{selectedTask.description}</p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Equity Allocation</Label>
+                  <div className="mt-1 font-medium">{selectedTask.equity_allocation}%</div>
+                </div>
+                
+                <div>
+                  <Label>Timeframe</Label>
+                  <div className="mt-1">{selectedTask.timeframe || 'Not specified'}</div>
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="completion">Completion Percentage</Label>
+                <div className="flex items-center gap-4 mt-1">
+                  <Progress value={completionPercentage} className="flex-1 h-2" />
+                  <Input
+                    id="completion"
+                    type="number"
+                    value={completionPercentage}
+                    onChange={(e) => setCompletionPercentage(Number(e.target.value))}
+                    min={0}
+                    max={100}
+                    className="w-24"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="status">Review Status</Label>
+                <Select value={reviewStatus} onValueChange={setReviewStatus}>
+                  <SelectTrigger id="status">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending_review">Pending Review</SelectItem>
+                    <SelectItem value="in_review">In Review</SelectItem>
+                    <SelectItem value="completed">Approve as Completed</SelectItem>
+                    <SelectItem value="rejected">Reject</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="feedback">Review Feedback</Label>
+                <Textarea
+                  id="feedback"
+                  placeholder="Provide feedback on the task completion..."
+                  value={reviewFeedback}
+                  onChange={(e) => setReviewFeedback(e.target.value)}
+                  rows={4}
+                />
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowReviewDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSubmitReview}>
+                Submit Review
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

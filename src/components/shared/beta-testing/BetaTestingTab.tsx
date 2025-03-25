@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Ticket } from "@/types/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RefreshCw, Plus } from "lucide-react";
 
 interface BetaTestingTabProps {
   userType: 'business' | 'job_seeker';
@@ -23,12 +25,66 @@ export const BetaTestingTab = ({
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("tickets");
   const [expandedTickets, setExpandedTickets] = useState<Record<string, boolean>>({});
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
 
   useEffect(() => {
     if (userId) {
-      loadTickets(userId);
+      fetchProjects(userId);
     }
   }, [userId, userType]);
+
+  useEffect(() => {
+    if (userId && selectedProject) {
+      loadTickets(userId);
+    } else if (userId) {
+      loadTickets(userId);
+    }
+  }, [userId, selectedProject]);
+
+  const fetchProjects = async (userId: string) => {
+    try {
+      if (userType === 'business') {
+        const { data, error } = await supabase
+          .from('business_projects')
+          .select('project_id, title')
+          .eq('business_id', userId);
+        
+        if (error) throw error;
+        setProjects(data || []);
+        
+        if (data && data.length > 0) {
+          setSelectedProject(data[0].project_id);
+        }
+      } else {
+        // For job seeker, fetch projects they're involved in
+        const { data, error } = await supabase
+          .from('jobseeker_active_projects')
+          .select('project_id, project_title')
+          .eq('user_id', userId)
+          .eq('application_status', 'accepted');
+        
+        if (error) throw error;
+        
+        // Create a unique list of projects
+        const uniqueProjects = Array.from(
+          new Map(data?.map(item => [item.project_id, { 
+            project_id: item.project_id, 
+            title: item.project_title 
+          }]) || []).values()
+        );
+        
+        setProjects(uniqueProjects);
+        
+        if (uniqueProjects.length > 0) {
+          setSelectedProject(uniqueProjects[0].project_id);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+      toast.error("Failed to load projects");
+    }
+  };
 
   const loadTickets = async (userId: string) => {
     try {
@@ -37,18 +93,29 @@ export const BetaTestingTab = ({
       // Find the right field to filter based on user type
       const userField = userType === 'business' ? 'reporter' : 'assigned_to';
       
-      // Query tickets
-      const { data, error } = await supabase
+      let query = supabase
         .from('tickets')
-        .select('*')
-        .eq(userField, userId)
-        .order('created_at', { ascending: false });
+        .select('*');
+      
+      // Filter by user role
+      query = query.eq(userField, userId);
+      
+      // Filter by project if one is selected
+      if (selectedProject) {
+        query = query.eq('project_id', selectedProject);
+      }
+      
+      // Order by creation date
+      query = query.order('created_at', { ascending: false });
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       
       const processedTickets = (data || []).map(ticket => ({
         ...ticket,
-        expanded: !!expandedTickets[ticket.id]
+        expanded: !!expandedTickets[ticket.id],
+        description: ticket.description || "" // Ensure description exists
       }));
       
       setTickets(processedTickets);
@@ -160,6 +227,11 @@ export const BetaTestingTab = ({
     );
   };
 
+  const handleCreateTicket = () => {
+    // This would open a dialog to create a new ticket
+    toast.info("Create ticket functionality will be implemented soon");
+  };
+
   if (!userId) {
     return <div>Please log in to view tickets.</div>;
   }
@@ -167,8 +239,36 @@ export const BetaTestingTab = ({
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Beta Testing Dashboard</CardTitle>
+          <div className="flex items-center gap-2">
+            <Select value={selectedProject || "none"} onValueChange={setSelectedProject}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select project" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.length === 0 ? (
+                  <SelectItem value="none">No projects available</SelectItem>
+                ) : (
+                  projects.map(project => (
+                    <SelectItem key={project.project_id} value={project.project_id}>
+                      {project.title || project.project_title}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+            
+            <Button size="sm" variant="outline" onClick={handleRefresh}>
+              <RefreshCw className="h-4 w-4 mr-1" /> Refresh
+            </Button>
+            
+            {userType === 'business' && (
+              <Button size="sm" onClick={handleCreateTicket}>
+                <Plus className="h-4 w-4 mr-1" /> Create Ticket
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>

@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from "react";
 import { Ticket } from "@/types/types";
 import { Card } from "@/components/ui/card";
@@ -145,7 +144,7 @@ const TicketCard: React.FC<TicketCardProps> = ({
             )}
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => onExpand(!ticket.expanded)}>
+        <Button variant="ghost" size="sm" onClick={() => onExpand(!ticket.expanded)}>
           {ticket.expanded ? "Collapse" : "Expand"}
         </Button>
       </div>
@@ -338,13 +337,11 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
 
-  // Initialize local state from props, ensuring we have arrays to work with
   useEffect(() => {
     if (initialTickets && Array.isArray(initialTickets)) {
       setTickets(initialTickets);
       setFilteredTickets(initialTickets);
     } else {
-      // If initialTickets is undefined or not an array, initialize with empty arrays
       setTickets([]);
       setFilteredTickets([]);
     }
@@ -379,7 +376,6 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     } else if (onTicketExpand) {
       onTicketExpand(ticketId, isExpanded);
     } else {
-      // Local toggle if no props handler is provided
       setTickets(prevTickets => 
         prevTickets.map(ticket => 
           ticket.id === ticketId ? { ...ticket, expanded: isExpanded } : ticket

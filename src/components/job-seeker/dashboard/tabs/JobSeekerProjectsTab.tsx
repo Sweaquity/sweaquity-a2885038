@@ -54,7 +54,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       if (activeTab === "project-tasks") {
         filtered = filtered.filter(ticket => ticket.task_id);
       } else if (activeTab === "project-tickets") {
-        filtered = filtered.filter(ticket => ticket.project_id && !ticket.task_id);
+        filtered = filtered.filter(ticket => ticket.project_id && !task_id);
       }
       
       setFilteredTickets(filtered);
@@ -100,7 +100,8 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
           task_id: application?.task_id || ticket.task_id,
           isTaskTicket,
           isProjectTicket,
-          expanded: !!expandedTickets[ticket.id]
+          expanded: !!expandedTickets[ticket.id],
+          description: ticket.description || "" // Ensure description exists
         };
       });
       
@@ -260,12 +261,12 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>My Project Tickets</CardTitle>
           <div className="flex items-center gap-4">
-            <Select value={selectedProject || ""} onValueChange={setSelectedProject}>
+            <Select value={selectedProject || "all"} onValueChange={setSelectedProject}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="All Projects" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Projects</SelectItem>
+                <SelectItem value="all">All Projects</SelectItem>
                 {projects.map(project => (
                   <SelectItem key={project.project_id} value={project.project_id}>
                     {project.project_title}
