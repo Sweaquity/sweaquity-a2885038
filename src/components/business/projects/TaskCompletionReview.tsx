@@ -1,90 +1,44 @@
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { AlertCircle, Clock, CalendarDays, ChevronUp, ChevronDown, CheckCircle2 } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-
-interface Task {
-  task_id: string;
-  title: string;
-  description: string;
-  equity_allocation: number;
-  completion_percentage: number;
-  status: string;
-  task_status: string;
-  project_id: string;
-  timeframe: string;
-  created_at: string;
-  assignee?: {
-    first_name?: string;
-    last_name?: string;
-    email?: string;
-  };
-}
-
-interface TaskWithApplication extends Task {
-  application?: {
-    job_app_id: string;
-    status: string;
-    user_id: string;
-    user?: {
-      first_name?: string;
-      last_name?: string;
-      email?: string;
-    };
-  };
-}
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { ProgressCircle } from "@/components/ui/progress-circle";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface TaskCompletionReviewProps {
   businessId: string;
 }
 
-export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({ businessId }) => {
-  const [tasks, setTasks] = useState<TaskWithApplication[]>([]);
-  const [selectedTask, setSelectedTask] = useState<TaskWithApplication | null>(null);
-  const [reviewFeedback, setReviewFeedback] = useState("");
-  const [completionPercentage, setCompletionPercentage] = useState<number>(0);
-  const [reviewStatus, setReviewStatus] = useState<string>("pending_review");
-  const [showReviewDialog, setShowReviewDialog] = useState(false);
+export const TaskCompletionReview = ({ businessId }: TaskCompletionReviewProps) => {
+  const [completedTasks, setCompletedTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [completionPercentage, setCompletionPercentage] = useState(0);
 
   useEffect(() => {
     if (businessId) {
-      fetchTasksForReview();
+      loadCompletedTasks();
     }
   }, [businessId]);
 
   useEffect(() => {
     if (selectedTask) {
       setCompletionPercentage(selectedTask.completion_percentage || 0);
-      setReviewStatus(selectedTask.task_status || "pending_review");
     }
   }, [selectedTask]);
 
-  const fetchTasksForReview = async () => {
+  const loadCompletedTasks = async () => {
     try {
       setLoading(true);
-      // Fetch all projects for this business
+      
+      // Get all project IDs for this business
       const { data: projectsData, error: projectsError } = await supabase
         .from('business_projects')
         .select('project_id')
@@ -93,232 +47,154 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({ busi
       if (projectsError) throw projectsError;
       
       if (!projectsData || projectsData.length === 0) {
+        setCompletedTasks([]);
         setLoading(false);
         return;
       }
       
-      const projectIds = projectsData.map(p => p.project_id);
+      const projectIds = projectsData.map(project => project.project_id);
       
-      // Fetch tasks for these projects that need review
+      // Get all tasks that are in these projects and are marked as "review" status
       const { data: tasksData, error: tasksError } = await supabase
-        .from('project_sub_tasks')
+        .from('tickets')
         .select(`
           *,
-          application:job_applications(
-            job_app_id,
-            status,
-            user_id,
-            user:profiles(
-              first_name,
-              last_name,
-              email
-            )
-          )
+          job_applications(user_id, job_app_id, status)
         `)
         .in('project_id', projectIds)
-        .in('task_status', ['pending_review', 'in_review'])
-        .order('created_at', { ascending: false });
+        .eq('status', 'review');
       
       if (tasksError) throw tasksError;
       
-      const processedTasks = tasksData.map((task: any) => {
-        // Fix for the TypeScript error - ensure assignee is an object
-        const assignee = task.application?.user || {};
+      // Enhance the tasks with user information
+      if (tasksData && tasksData.length > 0) {
+        const enhancedTasks = await Promise.all(tasksData.map(async (task) => {
+          // Get user info if task has job application
+          if (task.job_applications && task.job_applications.length > 0) {
+            const userId = task.job_applications[0].user_id;
+            const { data: userData, error: userError } = await supabase
+              .from('profiles')
+              .select('first_name, last_name, email')
+              .eq('id', userId)
+              .single();
+            
+            if (!userError && userData) {
+              return {
+                ...task,
+                user: userData,
+                job_app_id: task.job_applications[0].job_app_id
+              };
+            }
+          }
+          
+          return task;
+        }));
         
-        return {
-          ...task,
-          assignee
-        };
-      });
-      
-      setTasks(processedTasks || []);
+        setCompletedTasks(enhancedTasks);
+      } else {
+        setCompletedTasks([]);
+      }
     } catch (error) {
-      console.error("Error fetching tasks for review:", error);
+      console.error("Error loading completed tasks:", error);
       toast.error("Failed to load tasks for review");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleTaskClick = (task: TaskWithApplication) => {
+  const handleOpenReview = (task: any) => {
     setSelectedTask(task);
-    setShowReviewDialog(true);
+    setIsReviewOpen(true);
   };
 
-  const handleSubmitReview = async () => {
-    if (!selectedTask) return;
-    
+  const handleApproveTask = async () => {
     try {
-      // Update task status and completion percentage
-      const { error } = await supabase
-        .from('project_sub_tasks')
+      if (!selectedTask) return;
+      
+      // Update the ticket status to done
+      await supabase
+        .from('tickets')
         .update({
-          task_status: reviewStatus,
-          completion_percentage: completionPercentage,
-          review_feedback: reviewFeedback,
-          last_activity_at: new Date().toISOString()
+          status: 'done',
+          completion_percentage: completionPercentage
         })
-        .eq('task_id', selectedTask.task_id);
+        .eq('id', selectedTask.id);
       
-      if (error) throw error;
+      toast.success("Task approved successfully");
+      setIsReviewOpen(false);
       
-      // If approved as completed, also update the project completion
-      if (reviewStatus === 'completed') {
-        // Get current project data
-        const { data: projectData, error: projectError } = await supabase
-          .from('business_projects')
-          .select('completion_percentage, total_tasks')
-          .eq('project_id', selectedTask.project_id)
-          .single();
-        
-        if (projectError) throw projectError;
-        
-        // Calculate new completion percentage for the project
-        const currentCompletion = projectData.completion_percentage || 0;
-        const taskWeight = 100 / (projectData.total_tasks || 1);
-        const newCompletion = Math.min(currentCompletion + taskWeight, 100);
-        
-        // Update project
-        const { error: updateError } = await supabase
-          .from('business_projects')
-          .update({
-            completion_percentage: newCompletion
-          })
-          .eq('project_id', selectedTask.project_id);
-        
-        if (updateError) throw updateError;
-      }
-      
-      toast.success("Task review submitted successfully");
-      setShowReviewDialog(false);
-      fetchTasksForReview();
+      // Refresh the list
+      loadCompletedTasks();
     } catch (error) {
-      console.error("Error submitting review:", error);
-      toast.error("Failed to submit review");
+      console.error("Error approving task:", error);
+      toast.error("Failed to approve task");
     }
   };
 
-  const toggleTaskExpand = (taskId: string) => {
-    setExpandedTasks(prev => ({
-      ...prev,
-      [taskId]: !prev[taskId]
-    }));
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  const getUserName = (user: any) => {
-    if (!user) return 'Unassigned';
-    const firstName = user.first_name || '';
-    const lastName = user.last_name || '';
-    return firstName || lastName ? `${firstName} ${lastName}`.trim() : user.email || 'Unnamed User';
+  const handleRequestChanges = async () => {
+    try {
+      if (!selectedTask) return;
+      
+      // Update the ticket status back to in-progress
+      await supabase
+        .from('tickets')
+        .update({
+          status: 'in-progress'
+        })
+        .eq('id', selectedTask.id);
+      
+      toast.success("Requested changes successfully");
+      setIsReviewOpen(false);
+      
+      // Refresh the list
+      loadCompletedTasks();
+    } catch (error) {
+      console.error("Error requesting changes:", error);
+      toast.error("Failed to request changes");
+    }
   };
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Task Completion Review</CardTitle>
+          <CardTitle>Tasks Pending Review</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="text-center py-8">Loading tasks...</div>
-          ) : tasks.length === 0 ? (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                No tasks pending review at this time.
-              </AlertDescription>
-            </Alert>
+          ) : completedTasks.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No tasks are currently pending review.
+            </div>
           ) : (
             <div className="space-y-4">
-              {tasks.map(task => (
-                <Card key={task.task_id} className="overflow-hidden">
-                  <div className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="text-lg font-medium">{task.title}</h3>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                          <Clock className="h-3 w-3" />
-                          <span>Created: {formatDate(task.created_at)}</span>
-                          
-                          <span className="mx-1">•</span>
-                          
-                          <span>Status: 
-                            <Badge variant={task.task_status === 'pending_review' ? 'outline' : 'secondary'} 
-                                  className="ml-2">
-                              {task.task_status === 'pending_review' ? 'Pending Review' : 'In Review'}
-                            </Badge>
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center">
-                        <div className="text-right mr-4">
-                          <div className="font-medium">Equity: {task.equity_allocation}%</div>
-                          <div className="text-sm">
-                            Completion: {task.completion_percentage || 0}%
-                          </div>
-                        </div>
-                        
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleTaskClick(task)}
-                        >
-                          Review
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-3">
-                      <Progress value={task.completion_percentage || 0} className="h-2" />
-                    </div>
-                    
-                    <div className="mt-3 flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <div className="text-sm">
-                          <span className="font-medium">Assignee:</span> {getUserName(task.application?.user)}
-                        </div>
-                      </div>
-                      
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleTaskExpand(task.task_id)}
-                      >
-                        {expandedTasks[task.task_id] ? (
-                          <>
-                            Hide Details <ChevronUp className="ml-1 h-4 w-4" />
-                          </>
-                        ) : (
-                          <>
-                            Show Details <ChevronDown className="ml-1 h-4 w-4" />
-                          </>
+              {completedTasks.map((task) => (
+                <Card key={task.id} className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-medium text-lg">{task.title}</h3>
+                      <p className="text-sm text-muted-foreground">{task.description}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge>Status: {task.status}</Badge>
+                        {task.user && (
+                          <Badge variant="outline">
+                            Completed by: {task.user.first_name} {task.user.last_name}
+                          </Badge>
                         )}
-                      </Button>
-                    </div>
-                    
-                    {expandedTasks[task.task_id] && (
-                      <div className="mt-4 border-t pt-4">
-                        <div className="text-sm">
-                          <p className="font-medium">Description:</p>
-                          <p className="mt-1">{task.description}</p>
-                        </div>
-                        
-                        <div className="mt-4 text-sm">
-                          <p className="font-medium">Timeframe:</p>
-                          <p>{task.timeframe || 'Not specified'}</p>
-                        </div>
+                        {task.completion_percentage !== null && (
+                          <div className="flex items-center gap-1">
+                            <ProgressCircle 
+                              value={task.completion_percentage} 
+                              size="sm" 
+                              strokeWidth={3} 
+                            />
+                            <span className="text-xs">{task.completion_percentage}%</span>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
+                    <Button onClick={() => handleOpenReview(task)}>Review</Button>
                   </div>
                 </Card>
               ))}
@@ -326,95 +202,108 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({ busi
           )}
         </CardContent>
       </Card>
-      
-      {/* Review Dialog */}
+
       {selectedTask && (
-        <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
-          <DialogContent className="max-w-2xl">
+        <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
+          <DialogContent className="max-w-3xl">
             <DialogHeader>
               <DialogTitle>Review Task Completion</DialogTitle>
             </DialogHeader>
             
-            <div className="grid gap-4 py-4">
-              <div className="flex justify-between">
-                <h3 className="text-lg font-medium">{selectedTask.title}</h3>
-                <Badge variant="outline">
-                  {selectedTask.task_status === 'pending_review' ? 'Pending Review' : 'In Review'}
-                </Badge>
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-medium text-lg">{selectedTask.title}</h3>
+                <p className="text-muted-foreground">{selectedTask.description}</p>
               </div>
               
-              <div className="text-sm">
-                <span className="font-medium">Assignee:</span> {getUserName(selectedTask.application?.user)}
-              </div>
-              
-              <div className="text-sm">
-                <span className="font-medium">Description:</span>
-                <p className="mt-1">{selectedTask.description}</p>
-              </div>
+              <Separator />
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Equity Allocation</Label>
-                  <div className="mt-1 font-medium">{selectedTask.equity_allocation}%</div>
+                  <h4 className="font-medium">Task Details</h4>
+                  <div className="space-y-2 mt-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Status:</span>
+                      <Badge>{selectedTask.status}</Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Equity Points:</span>
+                      <span>{selectedTask.equity_points || 0}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Estimated Hours:</span>
+                      <span>{selectedTask.estimated_hours || 'Not set'}</span>
+                    </div>
+                  </div>
                 </div>
                 
                 <div>
-                  <Label>Timeframe</Label>
-                  <div className="mt-1">{selectedTask.timeframe || 'Not specified'}</div>
+                  <h4 className="font-medium">Completed By</h4>
+                  {selectedTask.user ? (
+                    <div className="space-y-2 mt-2">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Name:</span>
+                        <span>{selectedTask.user.first_name} {selectedTask.user.last_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Email:</span>
+                        <span>{selectedTask.user.email}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">User information not available</p>
+                  )}
                 </div>
               </div>
               
+              <Separator />
+              
               <div>
-                <Label htmlFor="completion">Completion Percentage</Label>
-                <div className="flex items-center gap-4 mt-1">
-                  <Progress value={completionPercentage} className="flex-1 h-2" />
-                  <Input
-                    id="completion"
-                    type="number"
+                <h4 className="font-medium mb-2">Completion Assessment</h4>
+                <div className="flex items-center gap-4 mb-4">
+                  <Label htmlFor="completion-percentage">Completion Percentage:</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="completion-percentage"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={completionPercentage}
+                      onChange={(e) => setCompletionPercentage(parseInt(e.target.value) || 0)}
+                      className="w-24"
+                    />
+                    <span>%</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ProgressCircle
                     value={completionPercentage}
-                    onChange={(e) => setCompletionPercentage(Number(e.target.value))}
-                    min={0}
-                    max={100}
-                    className="w-24"
+                    size="lg"
+                    strokeWidth={5}
                   />
+                  <div>
+                    <p className="font-medium">Equity to be awarded: {((selectedTask.equity_points || 0) * completionPercentage / 100).toFixed(2)}%</p>
+                    <p className="text-sm text-muted-foreground">
+                      Based on {completionPercentage}% completion of {selectedTask.equity_points || 0}% task
+                    </p>
+                  </div>
                 </div>
               </div>
               
-              <div>
-                <Label htmlFor="status">Review Status</Label>
-                <Select value={reviewStatus} onValueChange={setReviewStatus}>
-                  <SelectTrigger id="status">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending_review">Pending Review</SelectItem>
-                    <SelectItem value="in_review">In Review</SelectItem>
-                    <SelectItem value="completed">Approve as Completed</SelectItem>
-                    <SelectItem value="rejected">Reject</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Separator />
               
-              <div>
-                <Label htmlFor="feedback">Review Feedback</Label>
-                <Textarea
-                  id="feedback"
-                  placeholder="Provide feedback on the task completion..."
-                  value={reviewFeedback}
-                  onChange={(e) => setReviewFeedback(e.target.value)}
-                  rows={4}
-                />
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsReviewOpen(false)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleRequestChanges}>
+                  Request Changes
+                </Button>
+                <Button onClick={handleApproveTask}>
+                  Approve Task
+                </Button>
               </div>
             </div>
-            
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowReviewDialog(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmitReview}>
-                Submit Review
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}

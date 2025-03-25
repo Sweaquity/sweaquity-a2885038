@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Ticket } from "@/types/types";
 import { BetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
+import { RefreshCw } from "lucide-react";
 
 interface JobSeekerProjectsTabProps {
   userId?: string;
@@ -31,6 +32,12 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("all-tickets");
+  const [taskStats, setTaskStats] = useState({
+    total: 0,
+    open: 0,
+    closed: 0,
+    highPriority: 0
+  });
 
   // Load tickets and projects when the component mounts or userId changes
   useEffect(() => {
@@ -46,7 +53,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       let filtered = [...tickets];
       
       // Filter by project if one is selected
-      if (selectedProject) {
+      if (selectedProject && selectedProject !== "all") {
         filtered = filtered.filter(ticket => ticket.project_id === selectedProject);
       }
       
@@ -54,10 +61,20 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       if (activeTab === "project-tasks") {
         filtered = filtered.filter(ticket => ticket.task_id);
       } else if (activeTab === "project-tickets") {
-        filtered = filtered.filter(ticket => ticket.project_id && !task_id);
+        filtered = filtered.filter(ticket => ticket.project_id && !ticket.task_id);
       }
       
       setFilteredTickets(filtered);
+
+      // Calculate ticket stats
+      const stats = {
+        total: filtered.length,
+        open: filtered.filter(t => t.status !== 'done' && t.status !== 'closed').length,
+        closed: filtered.filter(t => t.status === 'done' || t.status === 'closed').length,
+        highPriority: filtered.filter(t => t.priority === 'high').length
+      };
+      
+      setTaskStats(stats);
     }
   }, [tickets, selectedProject, activeTab]);
 
@@ -251,6 +268,10 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     setActiveTab(tab);
   };
 
+  const handleProjectChange = (projectId: string) => {
+    setSelectedProject(projectId);
+  };
+
   if (!userId) {
     return <div>Please log in to view your active projects.</div>;
   }
@@ -261,7 +282,10 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>My Project Tickets</CardTitle>
           <div className="flex items-center gap-4">
-            <Select value={selectedProject || "all"} onValueChange={setSelectedProject}>
+            <Select 
+              value={selectedProject || "all"} 
+              onValueChange={handleProjectChange}
+            >
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="All Projects" />
               </SelectTrigger>
@@ -276,12 +300,40 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
             </Select>
             
             <Button variant="outline" size="sm" onClick={handleRefresh}>
-              Refresh
+              <RefreshCw className="h-4 w-4 mr-1" /> Refresh
             </Button>
           </div>
         </CardHeader>
         
         <CardContent>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-4 gap-4 mb-6">
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm font-medium text-muted-foreground">Total Tasks</div>
+                <div className="text-2xl font-bold mt-1">{taskStats.total}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm font-medium text-muted-foreground">Open Tasks</div>
+                <div className="text-2xl font-bold mt-1">{taskStats.open}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm font-medium text-muted-foreground">Closed Tasks</div>
+                <div className="text-2xl font-bold mt-1">{taskStats.closed}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm font-medium text-muted-foreground">High Priority</div>
+                <div className="text-2xl font-bold mt-1">{taskStats.highPriority}</div>
+              </CardContent>
+            </Card>
+          </div>
+          
           <Tabs value={activeTab} onValueChange={handleTabChange}>
             <TabsList className="mb-4">
               <TabsTrigger value="all-tickets">All Tickets</TabsTrigger>

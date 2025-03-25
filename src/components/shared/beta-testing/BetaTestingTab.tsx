@@ -27,6 +27,12 @@ export const BetaTestingTab = ({
   const [expandedTickets, setExpandedTickets] = useState<Record<string, boolean>>({});
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [taskStats, setTaskStats] = useState({
+    total: 0,
+    open: 0,
+    closed: 0,
+    highPriority: 0
+  });
 
   useEffect(() => {
     if (userId) {
@@ -98,7 +104,7 @@ export const BetaTestingTab = ({
         .select('*');
       
       // Filter by user role
-      query = query.eq(userField, userId);
+      query = query.or(`${userField}.eq.${userId},${userType === 'business' ? 'assigned_to' : 'reporter'}.eq.${userId}`);
       
       // Filter by project if one is selected
       if (selectedProject) {
@@ -119,6 +125,16 @@ export const BetaTestingTab = ({
       }));
       
       setTickets(processedTickets);
+
+      // Calculate ticket stats
+      const stats = {
+        total: processedTickets.length,
+        open: processedTickets.filter(t => t.status !== 'done' && t.status !== 'closed').length,
+        closed: processedTickets.filter(t => t.status === 'done' || t.status === 'closed').length,
+        highPriority: processedTickets.filter(t => t.priority === 'high').length
+      };
+      
+      setTaskStats(stats);
     } catch (error) {
       console.error("Error loading tickets:", error);
       toast.error("Failed to load tickets");
@@ -271,6 +287,34 @@ export const BetaTestingTab = ({
           </div>
         </CardHeader>
         <CardContent>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-4 gap-4 mb-6">
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm font-medium text-muted-foreground">Total Tasks</div>
+                <div className="text-2xl font-bold mt-1">{taskStats.total}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm font-medium text-muted-foreground">Open Tasks</div>
+                <div className="text-2xl font-bold mt-1">{taskStats.open}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm font-medium text-muted-foreground">Closed Tasks</div>
+                <div className="text-2xl font-bold mt-1">{taskStats.closed}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-sm font-medium text-muted-foreground">High Priority</div>
+                <div className="text-2xl font-bold mt-1">{taskStats.highPriority}</div>
+              </CardContent>
+            </Card>
+          </div>
+          
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
               <TabsTrigger value="tickets">All Tickets</TabsTrigger>

@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from "react";
 import { Ticket } from "@/types/types";
 import { Card } from "@/components/ui/card";
@@ -105,6 +106,10 @@ const TicketCard: React.FC<TicketCardProps> = ({
   const [noteText, setNoteText] = useState('');
   const equity = ticket.equity_points || 0;
   const completion = ticket.completion_percentage || 0;
+
+  // Calculate earned equity based on completion percentage
+  const earnedEquity = equity * (completion / 100);
+  const formattedEarnedEquity = earnedEquity.toFixed(2);
   
   return (
     <Card className="shadow-md">
@@ -125,7 +130,7 @@ const TicketCard: React.FC<TicketCardProps> = ({
               <div className="flex items-center gap-1">
                 <ProgressCircle 
                   value={ticket.completion_percentage}
-                  size="xs"
+                  size="sm"
                   strokeWidth={3}
                 />
                 <span className="text-xs">{ticket.completion_percentage}%</span>
@@ -140,6 +145,11 @@ const TicketCard: React.FC<TicketCardProps> = ({
             {equity > 0 && (
               <Badge variant="outline" className="bg-green-50 text-green-700">
                 {equity}% equity
+              </Badge>
+            )}
+            {equity > 0 && completion > 0 && (
+              <Badge variant="outline" className="bg-green-100 text-green-800">
+                {formattedEarnedEquity}% earned
               </Badge>
             )}
           </div>
@@ -171,7 +181,7 @@ const TicketCard: React.FC<TicketCardProps> = ({
                       <p className="font-medium">{ticket.completion_percentage}% Complete</p>
                       {ticket.equity_points && (
                         <p className="text-sm text-green-700">
-                          Earning {ticket.equity_points}% equity
+                          Earning {formattedEarnedEquity}% of {ticket.equity_points}% equity
                         </p>
                       )}
                     </div>
@@ -192,6 +202,11 @@ const TicketCard: React.FC<TicketCardProps> = ({
                           style={{ width: `${Math.min(100, (ticket.hours_logged / ticket.estimated_hours) * 100)}%` }}
                         ></div>
                       </div>
+                      {ticket.equity_points && (
+                        <p className="text-sm text-green-700 mt-1">
+                          Earning {((ticket.hours_logged / ticket.estimated_hours) * ticket.equity_points).toFixed(2)}% of {ticket.equity_points}% equity
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -336,14 +351,17 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
 }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
+  const [displayedTickets, setDisplayedTickets] = useState<Ticket[]>([]);
 
   useEffect(() => {
     if (initialTickets && Array.isArray(initialTickets)) {
       setTickets(initialTickets);
       setFilteredTickets(initialTickets);
+      setDisplayedTickets(initialTickets);
     } else {
       setTickets([]);
       setFilteredTickets([]);
+      setDisplayedTickets([]);
     }
   }, [initialTickets]);
 
@@ -360,6 +378,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
       }
 
       setFilteredTickets(filtered);
+      setDisplayedTickets(filtered);
     },
     [tickets]
   );
@@ -382,6 +401,11 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         )
       );
       setFilteredTickets(prevTickets => 
+        prevTickets.map(ticket => 
+          ticket.id === ticketId ? { ...ticket, expanded: isExpanded } : ticket
+        )
+      );
+      setDisplayedTickets(prevTickets => 
         prevTickets.map(ticket => 
           ticket.id === ticketId ? { ...ticket, expanded: isExpanded } : ticket
         )
@@ -412,12 +436,12 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
       />
       
       <div className="space-y-4 mt-4">
-        {!filteredTickets || filteredTickets.length === 0 ? (
+        {!displayedTickets || displayedTickets.length === 0 ? (
           <div className="text-center py-12 bg-gray-50 rounded-md">
             <p className="text-gray-500">No tickets found that match your filter criteria.</p>
           </div>
         ) : (
-          filteredTickets.map((ticket) => (
+          displayedTickets.map((ticket) => (
             <div key={ticket.id} className="mb-4">
               <TicketCard
                 ticket={ticket}
@@ -430,7 +454,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
               />
               
               {ticket.expanded && showTimeTracking && userId && 
-               ticket.isTaskTicket && ticket.isProjectTicket && (
+                ticket.task_id && ticket.project_id && (
                 <div className="mt-2 border rounded-md p-4 bg-gray-50">
                   <h3 className="text-sm font-medium mb-2">Time Tracking</h3>
                   <TimeTracker 

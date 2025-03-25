@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskCompletionReview } from "../../projects/TaskCompletionReview";
-import { SharedBetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
+import { BetaTestingTab as SharedBetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { toast } from "sonner";
 import { Ticket } from "@/types/types";
