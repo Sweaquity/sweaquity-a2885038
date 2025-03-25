@@ -1,11 +1,14 @@
-import React, { useState, useCallback } from "react";
+
+import React, { useState, useCallback, useEffect } from "react";
 import { Ticket } from "@/types/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, MessageSquare, Clock } from "lucide-react";
+import { Calendar, MessageSquare, Clock, AlertTriangle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { TimeTracker } from "@/components/job-seeker/dashboard/TimeTracker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ProgressCircle } from "@/components/ui/progress-circle";
 
 interface FilterBarProps {
   onFilterChange: (status: string | null, priority: string | null) => void;
@@ -101,14 +104,16 @@ const TicketCard: React.FC<TicketCardProps> = ({
   const safeStatus = ticket.status || "new";
   const safePriority = ticket.priority || "medium";
   const [noteText, setNoteText] = useState('');
-
+  const equity = ticket.equity_points || 0;
+  const completion = ticket.completion_percentage || 0;
+  
   return (
     <Card className="shadow-md">
       <div className="flex items-start justify-between p-4">
         <div className="space-y-2">
           <h3 className="text-lg font-semibold">{ticket.title}</h3>
           <p className="text-sm text-gray-500">{ticket.description}</p>
-          <div className="flex space-x-2">
+          <div className="flex flex-wrap gap-2 items-center">
             <Badge variant="secondary">{safeStatus}</Badge>
             <Badge>{safePriority}</Badge>
             {ticket.due_date && (
@@ -116,6 +121,27 @@ const TicketCard: React.FC<TicketCardProps> = ({
                 <Calendar className="h-4 w-4 mr-1" />
                 <span className="text-xs">{formatDate(ticket.due_date)}</span>
               </div>
+            )}
+            {ticket.completion_percentage !== undefined && (
+              <div className="flex items-center gap-1">
+                <ProgressCircle 
+                  value={ticket.completion_percentage}
+                  size="xs"
+                  strokeWidth={3}
+                />
+                <span className="text-xs">{ticket.completion_percentage}%</span>
+              </div>
+            )}
+            {ticket.hours_logged !== undefined && (
+              <div className="flex items-center text-gray-500">
+                <Clock className="h-4 w-4 mr-1" />
+                <span className="text-xs">{ticket.hours_logged} hrs</span>
+              </div>
+            )}
+            {equity > 0 && (
+              <Badge variant="outline" className="bg-green-50 text-green-700">
+                {equity}% equity
+              </Badge>
             )}
           </div>
         </div>
@@ -128,41 +154,94 @@ const TicketCard: React.FC<TicketCardProps> = ({
         <div className="p-4 border-t">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
+              <h4 className="text-md font-semibold mb-2">Description</h4>
+              <div className="bg-slate-50 rounded p-3 text-sm whitespace-pre-wrap">
+                {ticket.description || "No description provided."}
+              </div>
+              
+              {ticket.completion_percentage !== undefined && (
+                <div className="mt-4">
+                  <h4 className="text-md font-semibold mb-2">Completion</h4>
+                  <div className="flex items-center gap-3">
+                    <ProgressCircle 
+                      value={ticket.completion_percentage}
+                      size="md"
+                      strokeWidth={4}
+                    />
+                    <div>
+                      <p className="font-medium">{ticket.completion_percentage}% Complete</p>
+                      {ticket.equity_points && (
+                        <p className="text-sm text-green-700">
+                          Earning {ticket.equity_points}% equity
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {ticket.hours_logged !== undefined && ticket.estimated_hours && (
+                <div className="mt-4">
+                  <h4 className="text-md font-semibold mb-2">Time Tracking</h4>
+                  <div className="flex items-start gap-3">
+                    <Clock className="h-5 w-5 mt-0.5 text-blue-500" />
+                    <div>
+                      <p className="font-medium">{ticket.hours_logged} of {ticket.estimated_hours} hours logged</p>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                        <div 
+                          className="bg-blue-500 h-2 rounded-full" 
+                          style={{ width: `${Math.min(100, (ticket.hours_logged / ticket.estimated_hours) * 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div>
               <h4 className="text-md font-semibold mb-2">Update Details</h4>
               <div className="space-y-2">
                 <div>
                   <label htmlFor="status-select" className="block text-sm font-medium text-gray-700">
                     Status:
                   </label>
-                  <select
-                    id="status-select"
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                    onChange={(e) => onStatusChange(e.target.value)}
+                  <Select
                     value={safeStatus}
+                    onValueChange={onStatusChange}
                   >
-                    <option value="new">New</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="blocked">Blocked</option>
-                    <option value="review">Review</option>
-                    <option value="done">Done</option>
-                    <option value="closed">Closed</option>
-                  </select>
+                    <SelectTrigger className="w-full h-8 text-xs">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new">New</SelectItem>
+                      <SelectItem value="in-progress">In Progress</SelectItem>
+                      <SelectItem value="blocked">Blocked</SelectItem>
+                      <SelectItem value="review">Review</SelectItem>
+                      <SelectItem value="done">Done</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
                   <label htmlFor="priority-select" className="block text-sm font-medium text-gray-700">
                     Priority:
                   </label>
-                  <select
-                    id="priority-select"
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                    onChange={(e) => onPriorityChange(e.target.value)}
+                  <Select
                     value={safePriority}
+                    onValueChange={onPriorityChange}
                   >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
+                    <SelectTrigger className="w-full h-8 text-xs">
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="critical">Critical</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="low">Low</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
@@ -178,10 +257,8 @@ const TicketCard: React.FC<TicketCardProps> = ({
                   />
                 </div>
               </div>
-            </div>
-
-            <div>
-              <h4 className="text-md font-semibold mb-2">Add Note</h4>
+              
+              <h4 className="text-md font-semibold mb-2 mt-4">Add Note</h4>
               <div className="space-y-2">
                 <Textarea
                   placeholder="Add a note..."
@@ -209,7 +286,7 @@ const TicketCard: React.FC<TicketCardProps> = ({
                             {new Date(note.timestamp).toLocaleString()}
                           </span>
                         </div>
-                        <p className="text-sm mt-1">{note.comment}</p>
+                        <p className="text-sm mt-1">{note.comment || note.content || ''}</p>
                       </div>
                     ))}
                   </div>
@@ -224,7 +301,7 @@ const TicketCard: React.FC<TicketCardProps> = ({
 };
 
 export interface TicketDashboardProps {
-  initialTickets: Ticket[];
+  initialTickets?: Ticket[];
   onRefresh?: () => void;
   onTicketExpand?: (ticketId: string, isExpanded: boolean) => void;
   onTicketAction?: (ticketId: string, action: string, data: any) => void;
@@ -258,12 +335,24 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   userId,
   onToggleTicket
 }) => {
-  const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
-  const [filteredTickets, setFilteredTickets] = useState<Ticket[]>(initialTickets);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
+
+  // Initialize local state from props, ensuring we have arrays to work with
+  useEffect(() => {
+    if (initialTickets && Array.isArray(initialTickets)) {
+      setTickets(initialTickets);
+      setFilteredTickets(initialTickets);
+    } else {
+      // If initialTickets is undefined or not an array, initialize with empty arrays
+      setTickets([]);
+      setFilteredTickets([]);
+    }
+  }, [initialTickets]);
 
   const handleFilterChange = useCallback(
     (status: string | null, priority: string | null) => {
-      let filtered = initialTickets;
+      let filtered = tickets;
 
       if (status) {
         filtered = filtered.filter((ticket) => ticket.status === status);
@@ -275,7 +364,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
 
       setFilteredTickets(filtered);
     },
-    [initialTickets]
+    [tickets]
   );
 
   const handleRefresh = () => {
@@ -289,6 +378,18 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
       onToggleTicket(ticketId, isExpanded);
     } else if (onTicketExpand) {
       onTicketExpand(ticketId, isExpanded);
+    } else {
+      // Local toggle if no props handler is provided
+      setTickets(prevTickets => 
+        prevTickets.map(ticket => 
+          ticket.id === ticketId ? { ...ticket, expanded: isExpanded } : ticket
+        )
+      );
+      setFilteredTickets(prevTickets => 
+        prevTickets.map(ticket => 
+          ticket.id === ticketId ? { ...ticket, expanded: isExpanded } : ticket
+        )
+      );
     }
   };
 
@@ -299,8 +400,12 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return dateString || 'Invalid date';
+    }
   };
 
   return (
@@ -311,13 +416,9 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
       />
       
       <div className="space-y-4 mt-4">
-        {!initialTickets || initialTickets.length === 0 ? (
+        {!filteredTickets || filteredTickets.length === 0 ? (
           <div className="text-center py-12 bg-gray-50 rounded-md">
-            <p className="text-gray-500">No tickets found.</p>
-          </div>
-        ) : filteredTickets.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-md">
-            <p className="text-gray-500">No tickets match your filters.</p>
+            <p className="text-gray-500">No tickets found that match your filter criteria.</p>
           </div>
         ) : (
           filteredTickets.map((ticket) => (

@@ -1,70 +1,142 @@
 
-# Sweaquity
+# Equity Platform - Project Documentation
 
-## Project info
+## Project Overview
 
-**URL**: https://lovable.dev/projects/8afbc21b-765c-4687-ae63-03afce40efd4
+This platform connects three types of users:
 
-## How can I edit this code?
+1. **Job Seekers** - Professionals looking to earn equity in projects based on their skills
+2. **Businesses** - Companies/Startups offering equity for work on their projects
+3. **Recruiters** - Professionals connecting talent with businesses
 
-There are several ways of editing your application.
+## Core Functionality
 
-**Use Lovable**
+### User Types & Workflows
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/8afbc21b-765c-4687-ae63-03afce40efd4) and start prompting.
+#### Job Seekers
+- Create profile with skills (parsed from CV or manually entered)
+- View project opportunities that match their skills
+- Apply for project tasks/subtasks
+- Earn equity based on completed work
+- Track equity earned across all projects
+- Communicate with businesses through messaging system
+- Manage project tasks via ticketing system
 
-Changes made via Lovable will be committed automatically to this repo.
+#### Businesses
+- Create company profile
+- Post projects with equity allocation details
+- Break down projects into subtasks with specific equity allocations
+- Review and accept/reject applications
+- Track task completion and allocate equity
+- Manage team members and project progress
+- Use ticketing system for project management
 
-**Use your preferred IDE**
+#### Recruiters
+- Access job seeker profiles
+- Match talent with business projects
+- Earn commission through successful placements
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Data Flow & Key Components
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+#### Authentication & Profiles
+- User registration with email verification
+- Profile creation with user type selection
+- CV parsing for job seeker skill extraction
+- Profile data stored in respective tables (profiles, businesses, recruiters)
 
-Follow these steps:
+#### Projects & Tasks
+- Projects created by businesses with equity allocation
+- Projects broken down into subtasks with individual equity allocations
+- Application process connects job seekers to specific tasks
+- Acceptance creates job relationship and equity agreement
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+#### Equity Management
+- Equity allocation defined at project and task level
+- Task completion percentage tracked via tickets
+- Equity earned calculated based on completion percentage or hours worked
+- Full equity history viewable in job seeker dashboard
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+#### Task Management
+- Jira-style ticketing system for project tasks
+- Time tracking for each ticket
+- Status updates and completion tracking
+- Integration with equity allocation
 
-# Step 3: Install the necessary dependencies.
-npm i
+## Database Architecture
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+### Core Tables
+- **profiles** - Job seeker profiles with personal details and skills
+- **businesses** - Business profiles with company information
+- **recruiters** - Recruiter profiles
+- **business_projects** - Projects created by businesses
+- **project_sub_tasks** - Individual tasks within projects
+- **job_applications** - Applications from job seekers to tasks
+- **accepted_jobs** - Approved applications with equity agreements
+- **tickets** - Task tracking and management
+- **time_entries** - Time tracking for tasks
 
-**Edit a file directly in GitHub**
+### Key Relationships
+- Job seekers apply to tasks (job_applications)
+- Accepted applications become jobs (accepted_jobs)
+- Tasks generate tickets for tracking (tickets)
+- Time logged against tickets (time_entries)
+- Equity calculated from task completion or time logged
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Technical Components
 
-**Use GitHub Codespaces**
+### Frontend
+- React with TypeScript
+- TailwindCSS for styling
+- ShadCN UI component library
+- React Router for navigation
+- React Query for data fetching
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Backend
+- Supabase for database and authentication
+- PostgreSQL database with RLS policies
+- Edge Functions for specialized processing
+- File storage for documents/CVs
 
-## What technologies are used for this project?
+### Key Features
+- CV parsing for skill extraction
+- Real-time messaging
+- Task/ticket management
+- Time tracking
+- Equity calculation and distribution
+- Document management for contracts
 
-This project is built with .
+## Process Flows
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Job Application Process
+1. Job seeker views available projects
+2. Job seeker applies to specific task
+3. Business reviews application
+4. Business accepts/rejects application
+5. If accepted, job relationship created with equity agreement
+6. Task progress tracked through tickets
+7. Equity earned based on completion
 
-## How can I deploy this project?
+### Task Completion & Equity Allocation
+1. Job seeker updates task progress through tickets
+2. Time tracking logs hours worked
+3. Business reviews task completion
+4. Business approves final equity allocation
+5. Equity credited to job seeker's profile
+6. Documentation generated for equity agreement
 
-Simply open [Lovable](https://lovable.dev/projects/8afbc21b-765c-4687-ae63-03afce40efd4) and click on Share -> Publish.
+### User Registration
+1. User selects account type (Job Seeker, Business, Recruiter)
+2. Email verification
+3. Profile completion
+4. Skills/company information provided
+5. Profile becomes visible to relevant users
 
-## I want to use a custom domain - is that possible?
+## System Integrations
+- Email notifications
+- Document generation
+- CV parsing
+- Skill matching algorithm
+- Time tracking
+- Equity calculation
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+This documentation provides a high-level overview of the platform's architecture, functionality, and workflows. The system is designed to be modular and extensible to accommodate future enhancements.

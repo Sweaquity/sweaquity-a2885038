@@ -21,8 +21,12 @@ import { toast } from "sonner";
 import { ProgressCircle } from "@/components/ui/progress-circle";
 
 // Define interfaces
-interface TaskCompletionReviewProps {
+export interface TaskCompletionReviewProps {
   businessId: string | null;
+  task?: any; // Optional task parameter for when used in a dialog
+  onClose?: () => void;
+  open?: boolean;
+  setOpen?: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 interface TaskReview {
@@ -42,7 +46,13 @@ interface TaskReview {
   total_hours_logged?: number;
 }
 
-export const TaskCompletionReview = ({ businessId }: TaskCompletionReviewProps) => {
+export const TaskCompletionReview = ({ 
+  businessId,
+  task,
+  onClose,
+  open,
+  setOpen
+}: TaskCompletionReviewProps) => {
   const [taskReviews, setTaskReviews] = useState<TaskReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("pending");
@@ -149,9 +159,11 @@ export const TaskCompletionReview = ({ businessId }: TaskCompletionReviewProps) 
           ?.filter(entry => entry.job_app_id === app.job_app_id)
           .reduce((total, entry) => total + (entry.hours_logged || 0), 0) || 0;
         
-        const userName = app.profiles ? 
-          `${app.profiles.first_name || ''} ${app.profiles.last_name || ''}`.trim() : 
-          'Unknown user';
+        // Fix for profiles access - ensuring it's an object with first_name and last_name
+        const profileData = app.profiles || {};
+        const firstName = profileData.first_name || '';
+        const lastName = profileData.last_name || '';
+        const userName = `${firstName} ${lastName}`.trim() || 'Unknown user';
         
         reviews.push({
           task_id: task.task_id,
