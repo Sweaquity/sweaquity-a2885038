@@ -407,6 +407,20 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
 
   const handleTicketAction = useCallback(async (ticketId: string, action: string, data: any) => {
     try {
+      let ticket: Ticket | undefined;
+      
+      // Get the current ticket data before update
+      if (action === 'updateStatus' || action === 'updateCompletion') {
+        const { data: ticketData, error: ticketError } = await supabase
+          .from('tickets')
+          .select('*, task_id, project_id')
+          .eq('id', ticketId)
+          .single();
+          
+        if (ticketError) throw ticketError;
+        ticket = ticketData;
+      }
+      
       switch (action) {
         case 'updateStatus':
           await supabase
@@ -418,6 +432,71 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
             .eq('id', ticketId);
           
           toast.success("Ticket status updated");
+          
+          // Update completion percentage based on status
+          let completionPercentage = 0;
+          if (data === 'in-progress') completionPercentage = 50;
+          else if (data === 'review') completionPercentage = 75;
+          else if (data === 'done') completionPercentage = 100;
+          
+          // If it's a task ticket, update the task completion percentage
+          if (ticket?.task_id) {
+            // Update the project_sub_tasks table
+            await supabase
+              .from('project_sub_tasks')
+              .update({ 
+                completion_percentage: completionPercentage,
+                last_activity_at: new Date().toISOString()
+              })
+              .eq('task_id', ticket.task_id);
+              
+            // Also update the jobseeker_active_projects view/table if it exists
+            try {
+              const { data: jobData } = await supabase
+                .from('job_applications')
+                .select('job_app_id')
+                .eq('task_id', ticket.task_id)
+                .eq('user_id', userId)
+                .single();
+                
+              if (jobData?.job_app_id) {
+                await supabase
+                  .from('accepted_jobs')
+                  .update({
+                    equity_agreed: (completionPercentage / 100) * (ticket.equity_points || 0)
+                  })
+                  .eq('job_app_id', jobData.job_app_id);
+              }
+            } catch (error) {
+              console.error('Error updating job application data:', error);
+            }
+          }
+          break;
+          
+        case 'updateCompletion':
+          // Direct update to completion percentage
+          const completionValue = parseInt(data, 10) || 0;
+          
+          await supabase
+            .from('tickets')
+            .update({ 
+              completion_percentage: completionValue,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', ticketId);
+          
+          // If it's a task ticket, update the task completion percentage
+          if (ticket?.task_id) {
+            await supabase
+              .from('project_sub_tasks')
+              .update({ 
+                completion_percentage: completionValue,
+                last_activity_at: new Date().toISOString()
+              })
+              .eq('task_id', ticket.task_id);
+          }
+          
+          toast.success("Completion percentage updated");
           break;
           
         case 'updatePriority':
@@ -502,7 +581,17 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
     }
     
     try {
-      const { error } = await supabase
+      // First get the ticket details to check if it's associated with a task
+      const { data: ticketData, error: ticketError } = await supabase
+        .from('tickets')
+        .select('task_id, project_id, equity_points, estimated_hours')
+        .eq('id', ticketId)
+        .single();
+        
+      if (ticketError) throw ticketError;
+      
+      // Add the time entry
+      const { data: timeEntry, error } = await supabase
         .from('time_entries')
         .insert({
           ticket_id: ticketId,
@@ -511,11 +600,76 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
           description: logTimeForm.description,
           start_time: new Date().toISOString(),
           end_time: new Date().toISOString()
-        });
+        })
+        .select()
+        .single();
         
       if (error) throw error;
       
       toast.success("Time logged successfully");
+      
+      // Update the task completion percentage based on logged hours
+      if (ticketData?.task_id) {
+        // Get total hours logged for this ticket
+        const { data: totalHoursData, error: totalHoursError } = await supabase
+          .from('time_entries')
+          .select('hours_logged')
+          .eq('ticket_id', ticketId);
+          
+        if (totalHoursError) throw totalHoursError;
+        
+        const totalHours = (totalHoursData || []).reduce((sum, entry) => sum + (entry.hours_logged || 0), 0);
+        
+        // Calculate completion percentage based on estimated hours or just set to 'in progress'
+        let completionPercentage = 50; // Default to 50% if we don't have estimated hours
+        
+        if (ticketData.estimated_hours && ticketData.estimated_hours > 0) {
+          completionPercentage = Math.min(100, Math.round((totalHours / ticketData.estimated_hours) * 100));
+        }
+        
+        // Update both the ticket and the task
+        await supabase
+          .from('tickets')
+          .update({ 
+            completion_percentage: completionPercentage,
+            status: completionPercentage >= 100 ? 'done' : 'in-progress',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', ticketId);
+          
+        await supabase
+          .from('project_sub_tasks')
+          .update({ 
+            completion_percentage: completionPercentage,
+            task_status: completionPercentage >= 100 ? 'completed' : 'in-progress',
+            last_activity_at: new Date().toISOString()
+          })
+          .eq('task_id', ticketData.task_id);
+          
+        // Update the job application if applicable
+        try {
+          const { data: jobData } = await supabase
+            .from('job_applications')
+            .select('job_app_id')
+            .eq('task_id', ticketData.task_id)
+            .eq('user_id', userId)
+            .single();
+            
+          if (jobData?.job_app_id) {
+            // Calculate earned equity based on completion percentage
+            const earnedEquity = (completionPercentage / 100) * (ticketData.equity_points || 0);
+            
+            await supabase
+              .from('accepted_jobs')
+              .update({
+                equity_agreed: earnedEquity
+              })
+              .eq('job_app_id', jobData.job_app_id);
+          }
+        } catch (error) {
+          console.error('Error updating job application data:', error);
+        }
+      }
       
       setLogTimeForm({
         hours: 0,
@@ -524,6 +678,7 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
       });
       
       loadTimeEntries(ticketId);
+      loadAllTickets(); // Refresh tickets to reflect updated status
     } catch (error) {
       console.error('Error logging time:', error);
       toast.error("Failed to log time");
@@ -531,6 +686,7 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
   };
 
   const handleToggleTicket = useCallback((ticketId: string, isExpanded: boolean) => {
+    console.log("Toggle ticket:", ticketId, "expanded:", isExpanded);
     setExpandedTickets(prev => ({
       ...prev,
       [ticketId]: isExpanded
@@ -543,9 +699,19 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
         ...prev,
         ticketId: ticketId
       }));
-    } else if (selectedTicket === ticketId) {
-      setSelectedTicket(null);
+    } else {
+      // Only clear if this is the currently selected ticket
+      if (selectedTicket === ticketId) {
+        setSelectedTicket(null);
+      }
     }
+    
+    // Force a refresh of the tickets state to ensure expanded state is reflected
+    setTickets(prev => prev.map(ticket => 
+      ticket.id === ticketId 
+        ? { ...ticket, expanded: isExpanded } 
+        : ticket
+    ));
   }, [selectedTicket, loadTimeEntries]);
 
   const handleRefresh = useCallback(() => {
@@ -657,11 +823,15 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
                       <SelectValue placeholder="Select a project" />
                     </SelectTrigger>
                     <SelectContent>
-                      {projects.map(project => (
-                        <SelectItem key={project.project_id} value={project.project_id}>
-                          {project.title}
-                        </SelectItem>
-                      ))}
+                      {projects.length === 0 ? (
+                        <SelectItem value="no-projects">No projects available</SelectItem>
+                      ) : (
+                        projects.map(project => (
+                          <SelectItem key={project.project_id} value={project.project_id}>
+                            {project.title}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -711,6 +881,20 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
                             <SelectItem value="high">High</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="hours">Estimated Hours</Label>
+                        <Input
+                          id="hours"
+                          type="number"
+                          min="0.5"
+                          step="0.5"
+                          placeholder="Estimated hours to complete"
+                          onChange={(e) => setNewTicket(prev => ({ 
+                            ...prev, 
+                            estimated_hours: parseFloat(e.target.value) 
+                          }))}
+                        />
                       </div>
                       <div className="grid gap-2">
                         <Label htmlFor="task">Associated Task</Label>
@@ -784,204 +968,4 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
                   )}
                   
                   {showGantt && (
-                    <div className="mb-6 overflow-x-auto">
-                      <h3 className="text-lg font-medium mb-3">Gantt Chart</h3>
-                      <div className="min-h-[400px]">
-                        <GanttChart tasks={convertItemsToGanttTasks(tickets)} />
-                      </div>
-                    </div>
-                  )}
-                  
-                  <TicketDashboard
-                    key={`all-${dashboardKey}`}
-                    initialTickets={tickets}
-                    onRefresh={handleRefresh}
-                    onTicketExpand={handleToggleTicket}
-                    onTicketAction={handleTicketAction}
-                    showTimeTracking={true}
-                    currentUserId={userId}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="project-tasks">
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Project Tasks</h3>
-                    
-                    {projectTasks.length === 0 ? (
-                      <p className="text-muted-foreground">No tasks found for this project.</p>
-                    ) : (
-                      <div className="space-y-4">
-                        {projectTasks.map(task => (
-                          <Card key={task.task_id}>
-                            <CardHeader className="pb-2">
-                              <div className="flex justify-between">
-                                <CardTitle className="text-base">{task.title}</CardTitle>
-                                <div className="text-sm text-muted-foreground">
-                                  {task.completion_percentage}% complete
-                                </div>
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <p className="text-sm mb-2">{task.description}</p>
-                              <div className="flex justify-between text-sm">
-                                <div>Timeframe: {task.timeframe}</div>
-                                <div>Equity: {task.equity_allocation}%</div>
-                              </div>
-                              
-                              <div className="mt-4">
-                                <h4 className="text-sm font-medium mb-2">Related Tickets</h4>
-                                {tickets.filter(t => t.task_id === task.task_id).length > 0 ? (
-                                  <div className="space-y-2">
-                                    {tickets
-                                      .filter(t => t.task_id === task.task_id)
-                                      .map(ticket => (
-                                        <div 
-                                          key={ticket.id}
-                                          className="p-2 border rounded-md cursor-pointer hover:bg-muted"
-                                          onClick={() => {
-                                            setSelectedTicket(ticket.id);
-                                            handleToggleTicket(ticket.id, true);
-                                            setActiveTab('all-tickets');
-                                          }}
-                                        >
-                                          <div className="flex justify-between">
-                                            <div className="font-medium">{ticket.title}</div>
-                                            <div className="text-sm text-muted-foreground">{ticket.status}</div>
-                                          </div>
-                                        </div>
-                                      ))
-                                    }
-                                  </div>
-                                ) : (
-                                  <p className="text-sm text-muted-foreground">No tickets for this task yet.</p>
-                                )}
-                                
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  className="mt-2"
-                                  onClick={() => {
-                                    setNewTicket(prev => ({
-                                      ...prev,
-                                      taskId: task.task_id,
-                                      projectId: task.project_id
-                                    }));
-                                    setCreateTicketDialogOpen(true);
-                                  }}
-                                >
-                                  <Plus className="h-3 w-3 mr-1" /> Add Ticket
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="project-tickets">
-                  <TicketDashboard
-                    key={`project-${dashboardKey}`}
-                    initialTickets={tickets.filter(ticket => ticket.isProjectTicket && !ticket.isTaskTicket)}
-                    onRefresh={handleRefresh}
-                    onTicketExpand={handleToggleTicket}
-                    onTicketAction={handleTicketAction}
-                    showTimeTracking={true}
-                    currentUserId={userId}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="beta-tickets">
-                  <TicketDashboard
-                    key={`beta-${dashboardKey}`}
-                    initialTickets={tickets.filter(ticket => !ticket.isProjectTicket)}
-                    onRefresh={handleRefresh}
-                    onTicketExpand={handleToggleTicket}
-                    onTicketAction={handleTicketAction}
-                    showTimeTracking={false}
-                    currentUserId={userId}
-                  />
-                </TabsContent>
-              </Tabs>
-            </>
-          )}
-          
-          {selectedTicket && userId && tickets.find(t => t.id === selectedTicket)?.isTaskTicket && (
-            <div className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Time Tracking</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    <div className="border rounded-md p-4">
-                      <h3 className="text-lg font-medium mb-4">Log Time</h3>
-                      <div className="grid gap-4">
-                        <div className="grid gap-2">
-                          <Label htmlFor="hours">Hours</Label>
-                          <Input
-                            id="hours"
-                            type="number"
-                            min="0.25"
-                            step="0.25"
-                            value={logTimeForm.hours || ""}
-                            onChange={(e) => setLogTimeForm(prev => ({
-                              ...prev,
-                              hours: parseFloat(e.target.value)
-                            }))}
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="description">Description</Label>
-                          <Textarea
-                            id="description"
-                            placeholder="What did you work on?"
-                            value={logTimeForm.description}
-                            onChange={(e) => setLogTimeForm(prev => ({
-                              ...prev,
-                              description: e.target.value
-                            }))}
-                          />
-                        </div>
-                        <Button 
-                          onClick={() => handleLogTime(selectedTicket)}
-                          disabled={!logTimeForm.hours || !logTimeForm.description}
-                        >
-                          <Clock className="h-4 w-4 mr-2" />
-                          Log Time
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="border rounded-md p-4">
-                      <h3 className="text-lg font-medium mb-4">Time Entries</h3>
-                      {timeEntries.length > 0 ? (
-                        <div className="space-y-4">
-                          {timeEntries.map((entry) => (
-                            <div key={entry.id} className="border p-4 rounded-md">
-                              <div className="flex justify-between items-center">
-                                <div className="font-medium">{entry.hours_logged} hours</div>
-                                <div className="text-sm text-muted-foreground">
-                                  <Calendar className="h-4 w-4 inline mr-1" />
-                                  {formatDate(entry.created_at)}
-                                </div>
-                              </div>
-                              <p className="mt-2 text-sm">{entry.description}</p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-muted-foreground">No time entries yet.</p>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
+                    <div className="mb-
