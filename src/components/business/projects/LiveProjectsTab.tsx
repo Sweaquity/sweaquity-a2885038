@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,7 +18,6 @@ import { Plus, RefreshCw } from "lucide-react";
 import { GanttChartView } from "@/components/business/testing/GanttChartView";
 import { KanbanBoard } from "@/components/ticket/KanbanBoard";
 import { supabase } from "@/lib/supabase";
-import { TaskReviewActions } from "./TaskReviewActions";
 
 interface LiveProjectsTabProps {
   businessId: string;
@@ -77,6 +77,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         .select('*')
         .or(`reporter.eq.${userId},assigned_to.eq.${userId}`);
       
+      // Filter by project if one is selected
       if (selectedProject) {
         query = query.eq('project_id', selectedProject);
       }
@@ -89,11 +90,12 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       
       const processedTickets = (data || []).map(ticket => ({
         ...ticket,
-        description: ticket.description || ""  
+        description: ticket.description || ""  // Ensure description exists
       }));
       
       setTickets(processedTickets);
       
+      // Calculate ticket stats
       const stats = {
         total: processedTickets.length,
         open: processedTickets.filter(t => t.status !== 'done' && t.status !== 'closed').length,
@@ -114,6 +116,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     try {
       switch (action) {
         case 'updateStatus': {
+          // Update ticket status
           const { error } = await supabase
             .from('tickets')
             .update({ status: data })
@@ -121,10 +124,12 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           
           if (error) throw error;
           
+          // Update local state
           setTickets(prevTickets => 
             prevTickets.map(t => t.id === ticketId ? { ...t, status: data } : t)
           );
           
+          // Check if ticket has a task_id, if so update related tables
           const ticket = tickets.find(t => t.id === ticketId);
           if (ticket?.task_id) {
             try {
@@ -173,6 +178,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
             prevTickets.map(t => t.id === ticketId ? { ...t, due_date: data } : t)
           );
           
+          // Update active project if this is a task
           const ticket = tickets.find(t => t.id === ticketId);
           if (ticket?.task_id) {
             try {
@@ -205,6 +211,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
             prevTickets.map(t => t.id === ticketId ? { ...t, estimated_hours: data } : t)
           );
           
+          // Update active project if this is a task
           const ticket = tickets.find(t => t.id === ticketId);
           if (ticket?.task_id) {
             try {
@@ -237,6 +244,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
             prevTickets.map(t => t.id === ticketId ? { ...t, completion_percentage: data } : t)
           );
           
+          // Update active project if this is a task
           const ticket = tickets.find(t => t.id === ticketId);
           if (ticket?.task_id) {
             try {
@@ -296,34 +304,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           toast.success("Note added");
           break;
         
-        case 'approveTask': {
-          await supabase
-            .from('tickets')
-            .update({ 
-              status: 'done',
-              completion_percentage: 100 
-            })
-            .eq('id', ticketId);
-          
-          toast.success("Task approved");
-          loadTickets();
-          break;
-        }
-        
-        case 'requestChanges': {
-          await supabase
-            .from('tickets')
-            .update({ 
-              status: 'in-progress',
-              completion_percentage: 90 
-            })
-            .eq('id', ticketId);
-          
-          toast.success("Changes requested");
-          loadTickets();
-          break;
-        }
-        
         default:
           console.warn("Unknown action:", action);
       }
@@ -344,19 +324,8 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   };
 
   const handleCreateTicket = () => {
+    // This would open a dialog to create a new ticket
     toast.info("Create ticket functionality will be implemented soon");
-  };
-
-  const renderTicketActions = (ticket: any) => {
-    if (ticket.status === 'review' && ticket.completion_percentage === 100) {
-      return (
-        <TaskReviewActions
-          onApprove={() => handleTicketAction(ticket.id, 'approveTask', null)}
-          onRequestChanges={() => handleTicketAction(ticket.id, 'requestChanges', null)}
-        />
-      );
-    }
-    return null;
   };
 
   if (!businessId) {
@@ -443,7 +412,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
             userId={businessId}
-            renderTicketActions={renderTicketActions}
           />
         </TabsContent>
         
@@ -454,7 +422,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
             userId={businessId}
-            renderTicketActions={renderTicketActions}
           />
         </TabsContent>
         
@@ -465,7 +432,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
             userId={businessId}
-            renderTicketActions={renderTicketActions}
           />
         </TabsContent>
         
