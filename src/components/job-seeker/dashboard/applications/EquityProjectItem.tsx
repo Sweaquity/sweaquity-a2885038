@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { JobApplication } from "@/types/jobSeeker";
@@ -30,6 +31,7 @@ import {
   ProjectHeader, 
   StatusChangeDialog 
 } from "./components";
+import { ProgressCircle } from "@/components/ui/progress-circle";
 
 interface EquityProjectItemProps {
   application: JobApplication;
@@ -195,6 +197,27 @@ export const EquityProjectItem = ({
     return application.business_roles?.completion_percentage || 0;
   };
 
+  // Calculate hours logged
+  const getHoursLogged = () => {
+    return application.hours_logged || 0;
+  };
+
+  // Calculate equity earned based on completion percentage or hours logged
+  const getEquityEarned = () => {
+    const equity = application.business_roles?.equity_allocation || 0;
+    const completion = getCompletionPercentage();
+    const hoursLogged = getHoursLogged();
+    const estimatedHours = application.business_roles?.estimated_hours || 0;
+    
+    if (estimatedHours > 0 && hoursLogged > 0) {
+      return (hoursLogged / estimatedHours) * equity;
+    } else if (completion > 0) {
+      return (completion / 100) * equity;
+    }
+    
+    return 0;
+  };
+
   return (
     <Card className="shadow-sm hover:shadow transition-shadow">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -208,6 +231,19 @@ export const EquityProjectItem = ({
           />
           
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <ProgressCircle 
+                value={getCompletionPercentage()} 
+                size="sm" 
+                showRing={false} 
+                className="h-8 w-8" 
+              />
+              <div className="text-xs text-muted-foreground">
+                <div>{getHoursLogged()}h logged</div>
+                <div>{getEquityEarned().toFixed(2)}% earned</div>
+              </div>
+            </div>
+            
             <Select 
               value={application.status} 
               onValueChange={handleStatusChange}
@@ -257,42 +293,73 @@ export const EquityProjectItem = ({
               taskDiscourse={application.task_discourse}
             />
             
-            <div className="flex flex-wrap gap-2 mt-4">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setIsMessageDialogOpen(true)}
-              >
-                Send Message
-              </Button>
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <h3 className="text-sm font-medium mb-2">Task Information</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Estimated Hours:</span>
+                    <span>{application.business_roles?.estimated_hours || 0}h</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Hours Logged:</span>
+                    <span>{getHoursLogged()}h</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Completion:</span>
+                    <span>{getCompletionPercentage()}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Equity Allocated:</span>
+                    <span>{application.business_roles?.equity_allocation || 0}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Equity Earned:</span>
+                    <span>{getEquityEarned().toFixed(2)}%</span>
+                  </div>
+                </div>
+              </div>
               
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleViewProject}
-              >
-                View Project
-              </Button>
-              
-              {showTimeLogButton && (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={openTimeLogDialog}
-                >
-                  <Clock className="h-4 w-4 mr-2" />
-                  Log Time
-                </Button>
-              )}
-              
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-destructive hover:bg-destructive/10"
-                onClick={() => setIsWithdrawDialogOpen(true)}
-              >
-                Withdraw
-              </Button>
+              <div>
+                <h3 className="text-sm font-medium mb-2">Actions</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsMessageDialogOpen(true)}
+                  >
+                    Send Message
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleViewProject}
+                  >
+                    View Project
+                  </Button>
+                  
+                  {showTimeLogButton && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={openTimeLogDialog}
+                    >
+                      <Clock className="h-4 w-4 mr-2" />
+                      Log Time
+                    </Button>
+                  )}
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:bg-destructive/10"
+                    onClick={() => setIsWithdrawDialogOpen(true)}
+                  >
+                    Withdraw
+                  </Button>
+                </div>
+              </div>
             </div>
           </CollapsibleContent>
         </CardContent>

@@ -8,9 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TicketMessage } from "@/types/dashboard";
 import { formatDistanceToNow } from "date-fns";
-import { AlertTriangle, CheckCircle2, Clock, MessageCircle, User } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Edit, MessageCircle, Save, User } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProgressCircle } from "@/components/ui/progress-circle";
+import { Input } from "@/components/ui/input";
 
 export interface ExpandedTicketDetailsProps {
   ticket: any;
@@ -19,6 +20,8 @@ export interface ExpandedTicketDetailsProps {
   onStatusChange: (status: string) => void;
   onPriorityChange?: (priority: string) => void;
   onAssigneeChange?: (userId: string) => void;
+  onUpdateEstimatedHours?: (hours: number) => void;
+  onUpdateCompletionPercentage?: (percentage: number) => void;
   users?: Array<{id: string, first_name: string, last_name: string, email: string}>;
   projects?: Array<{project_id: string, title: string}>;
   tasks?: Array<{task_id: string, title: string}>;
@@ -31,6 +34,8 @@ export const ExpandedTicketDetails = ({
   onStatusChange,
   onPriorityChange,
   onAssigneeChange,
+  onUpdateEstimatedHours,
+  onUpdateCompletionPercentage,
   users = [],
   projects = [],
   tasks = []
@@ -38,6 +43,10 @@ export const ExpandedTicketDetails = ({
   const [newMessage, setNewMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('details');
+  const [isEditingHours, setIsEditingHours] = useState(false);
+  const [isEditingCompletion, setIsEditingCompletion] = useState(false);
+  const [estimatedHours, setEstimatedHours] = useState(ticket.estimated_hours || 0);
+  const [completionPercentage, setCompletionPercentage] = useState(ticket.completion_percentage || 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +61,20 @@ export const ExpandedTicketDetails = ({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSaveHours = () => {
+    if (onUpdateEstimatedHours) {
+      onUpdateEstimatedHours(Number(estimatedHours));
+    }
+    setIsEditingHours(false);
+  };
+
+  const handleSaveCompletion = () => {
+    if (onUpdateCompletionPercentage) {
+      onUpdateCompletionPercentage(Number(completionPercentage));
+    }
+    setIsEditingCompletion(false);
   };
 
   // Format date helpers
@@ -151,6 +174,20 @@ export const ExpandedTicketDetails = ({
     );
   };
 
+  // Calculate equity earned
+  const calculateEquityEarned = () => {
+    if (ticket.equity_points !== undefined) {
+      if (ticket.estimated_hours && ticket.hours_logged_total) {
+        return (ticket.hours_logged_total / ticket.estimated_hours) * ticket.equity_points;
+      } else if (ticket.completion_percentage !== undefined) {
+        return (ticket.completion_percentage / 100) * ticket.equity_points;
+      }
+    }
+    return 0;
+  };
+
+  const equityEarned = calculateEquityEarned();
+
   return (
     <Card className="border shadow-sm">
       <CardHeader className="pb-2">
@@ -234,14 +271,14 @@ export const ExpandedTicketDetails = ({
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Assigned to:</span>
                       <Select
-                        value={ticket.assigned_to || ""}
+                        value={ticket.assigned_to || "none"}
                         onValueChange={onAssigneeChange}
                       >
                         <SelectTrigger className="w-32 h-7 text-xs">
                           <SelectValue placeholder="Assignee" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Unassigned</SelectItem>
+                          <SelectItem value="none">Unassigned</SelectItem>
                           {users.map(user => (
                             <SelectItem key={user.id} value={user.id}>
                               {user.first_name} {user.last_name}
@@ -262,16 +299,65 @@ export const ExpandedTicketDetails = ({
                     </div>
                   )}
 
-                  {/* Completion percentage */}
-                  {ticket.completion_percentage !== undefined && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Completion:</span>
+                  {/* Estimated hours - editable */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Estimated hours:</span>
+                    {isEditingHours ? (
                       <div className="flex items-center gap-1">
-                        <ProgressCircle value={ticket.completion_percentage} size="xs" strokeWidth={3} />
-                        <span className="text-sm">{ticket.completion_percentage}%</span>
+                        <Input 
+                          type="number" 
+                          value={estimatedHours} 
+                          onChange={(e) => setEstimatedHours(parseFloat(e.target.value) || 0)} 
+                          className="w-16 h-7 text-xs"
+                          min="0"
+                          step="0.5"
+                        />
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveHours}>
+                          <Save className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm">{ticket.estimated_hours || 0}h</span>
+                        {onUpdateEstimatedHours && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setIsEditingHours(true)}>
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Completion percentage - editable */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Completion:</span>
+                    {isEditingCompletion ? (
+                      <div className="flex items-center gap-1">
+                        <Input 
+                          type="number" 
+                          value={completionPercentage} 
+                          onChange={(e) => setCompletionPercentage(parseFloat(e.target.value) || 0)} 
+                          className="w-16 h-7 text-xs"
+                          min="0"
+                          max="100"
+                          step="5"
+                        />
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveCompletion}>
+                          <Save className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <ProgressCircle value={ticket.completion_percentage || 0} size="sm" strokeWidth={3} />
+                        <span className="text-sm">{ticket.completion_percentage || 0}%</span>
+                        {onUpdateCompletionPercentage && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setIsEditingCompletion(true)}>
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Hours logged */}
                   {ticket.hours_logged_total !== undefined && (
@@ -289,10 +375,10 @@ export const ExpandedTicketDetails = ({
                     </div>
                   )}
 
-                  {ticket.equity_earned !== undefined && (
+                  {ticket.equity_points !== undefined && (
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Equity earned:</span>
-                      <span className="text-sm">{ticket.equity_earned.toFixed(2)}%</span>
+                      <span className="text-sm">{equityEarned.toFixed(2)}%</span>
                     </div>
                   )}
                 </div>
@@ -319,13 +405,6 @@ export const ExpandedTicketDetails = ({
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Due Date:</span>
                       <span className="text-sm">{formatDate(ticket.due_date)}</span>
-                    </div>
-                  )}
-                  
-                  {ticket.estimated_hours !== undefined && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Est. Hours:</span>
-                      <span className="text-sm">{ticket.estimated_hours}</span>
                     </div>
                   )}
                   

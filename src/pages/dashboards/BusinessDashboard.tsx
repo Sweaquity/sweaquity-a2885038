@@ -272,7 +272,7 @@ const BusinessDashboard = () => {
         </div>
 
         <Tabs value={activeTab} className="space-y-6" onValueChange={handleTabChange}>
-          <TabsList className="w-full grid grid-cols-7 md:flex md:w-auto">
+          <TabsList className="w-full grid grid-cols-6 md:flex md:w-auto">
             <TabsTrigger value="account" className="px-3 py-1.5">Account</TabsTrigger>
             <TabsTrigger value="users" className="px-3 py-1.5">Users</TabsTrigger>
             <TabsTrigger value="projects" className="px-3 py-1.5">Projects</TabsTrigger>
@@ -292,7 +292,6 @@ const BusinessDashboard = () => {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="live-projects" className="px-3 py-1.5">Live Projects</TabsTrigger>
             <TabsTrigger value="beta-testing" className="px-3 py-1.5">Beta Testing</TabsTrigger>
           </TabsList>
 
@@ -364,7 +363,7 @@ const BusinessDashboard = () => {
           </TabsContent>
 
           <TabsContent value="live-projects">
-            <LiveProjectsTab projectId={selectedProject} />
+            <LiveProjectsTab businessId={userId || ''} />
           </TabsContent>
 
           <TabsContent value="beta-testing">

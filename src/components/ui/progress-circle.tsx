@@ -8,6 +8,7 @@ const progressCircleVariants = cva(
   {
     variants: {
       size: {
+        xs: "h-8 w-8",
         sm: "h-12 w-12",
         md: "h-16 w-16",
         lg: "h-24 w-24",
@@ -26,6 +27,7 @@ export interface ProgressCircleProps
   value: number;
   strokeWidth?: number;
   showLabel?: boolean;
+  showRing?: boolean;
   labelClassName?: string;
 }
 
@@ -40,6 +42,7 @@ export const ProgressCircle = React.forwardRef<
       value,
       strokeWidth = 4,
       showLabel = true,
+      showRing = true,
       labelClassName,
       ...props
     },
@@ -60,30 +63,34 @@ export const ProgressCircle = React.forwardRef<
         {...props}
       >
         <svg viewBox="0 0 100 100" className="w-full h-full">
-          {/* Background circle */}
-          <circle
-            className="text-muted-foreground/20"
-            cx="50"
-            cy="50"
-            r={radius}
-            fill="none"
-            strokeWidth={strokeWidth}
-            stroke="currentColor"
-          />
-          {/* Progress circle */}
-          <circle
-            className="text-primary transition-all duration-300 ease-in-out"
-            cx="50"
-            cy="50"
-            r={radius}
-            fill="none"
-            strokeWidth={strokeWidth}
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            transform="rotate(-90 50 50)"
-          />
+          {showRing && (
+            <>
+              {/* Background circle */}
+              <circle
+                className="text-muted-foreground/20"
+                cx="50"
+                cy="50"
+                r={radius}
+                fill="none"
+                strokeWidth={strokeWidth}
+                stroke="currentColor"
+              />
+              {/* Progress circle */}
+              <circle
+                className="text-primary transition-all duration-300 ease-in-out"
+                cx="50"
+                cy="50"
+                r={radius}
+                fill="none"
+                strokeWidth={strokeWidth}
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={offset}
+                transform="rotate(-90 50 50)"
+              />
+            </>
+          )}
           {/* Label */}
           {showLabel && (
             <text
@@ -91,7 +98,11 @@ export const ProgressCircle = React.forwardRef<
               y="50"
               textAnchor="middle"
               dominantBaseline="middle"
-              className={cn("text-foreground fill-current font-medium text-lg", labelClassName)}
+              className={cn(
+                "text-foreground fill-current", 
+                size === "xs" ? "text-sm" : "text-lg font-medium",
+                labelClassName
+              )}
             >
               {normalizedValue}%
             </text>
