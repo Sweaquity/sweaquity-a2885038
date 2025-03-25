@@ -67,7 +67,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
   const [showKanban, setShowKanban] = useState(true);
   const [showGantt, setShowGantt] = useState(false);
   
-  // Time tracking state
   const [timeEntries, setTimeEntries] = useState<any[]>([]);
   const [logTimeForm, setLogTimeForm] = useState({
     hours: 0,
@@ -75,7 +74,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
     ticketId: ""
   });
 
-  // New project and task state
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [createTicketDialogOpen, setCreateTicketDialogOpen] = useState(false);
@@ -98,7 +96,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
     if (!userId) return;
     
     try {
-      // First get all projects where the user has accepted jobs
       const { data: jobsData, error: jobsError } = await supabase
         .from('accepted_jobs')
         .select(`
@@ -117,13 +114,17 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
       
       if (jobsData && jobsData.length > 0) {
         const projectIds = jobsData
-          .map(job => job.job_applications?.project_id)
+          .map(job => {
+            if (job.job_applications && 'project_id' in job.job_applications) {
+              return job.job_applications.project_id;
+            }
+            return null;
+          })
           .filter(Boolean) as string[];
         
         if (projectIds.length > 0) {
           const uniqueProjectIds = [...new Set(projectIds)];
           
-          // Load project details
           const { data: projectsData, error: projectsError } = await supabase
             .from('business_projects')
             .select(`
@@ -141,7 +142,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
           if (projectsData && projectsData.length > 0) {
             setSelectedProject(projectsData[0].project_id);
             
-            // Load tasks for the first project
             await loadProjectTasks(projectsData[0].project_id);
           }
         }
@@ -154,20 +154,18 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
 
   const loadProjectTasks = async (projectId: string) => {
     try {
-      // Load tasks for this project that the user has accepted
       const { data: acceptedApps, error: appsError } = await supabase
         .from('job_applications')
         .select('task_id, project_id')
         .eq('user_id', userId)
         .eq('project_id', projectId)
-        .eq('status', 'accepted') as { data: JobApplication[] | null, error: any };
+        .eq('status', 'accepted');
         
       if (appsError) throw appsError;
       
       if (acceptedApps && acceptedApps.length > 0) {
         const taskIds = acceptedApps.map(app => app.task_id).filter(Boolean);
         
-        // Load task details
         const { data: tasksData, error: tasksError } = await supabase
           .from('project_sub_tasks')
           .select('*')
@@ -185,25 +183,11 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
     }
   };
 
-  // ... rest of the code remains the same as the previous implementation
-
-  // The rest of the component remains unchanged
-  // Only the type definitions and the loadProjectTasks function have been modified
-
-  return (
-    <div className="space-y-6">
-      {/* Existing component code */}
-    </div>
-  );
-};
-
-  // Load all tickets for the job seeker
   const loadAllTickets = useCallback(async () => {
     if (!userId) return;
     
     setLoading(true);
     try {
-      // 1. First load beta testing tickets reported by the user
       const { data: betaTickets, error: betaError } = await supabase
         .from('tickets')
         .select('*')
@@ -219,7 +203,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
         isTaskTicket: false
       }));
       
-      // 2. Load project-related tickets from accepted jobs
       const { data: acceptedJobs, error: acceptedJobsError } = await supabase
         .from('accepted_jobs')
         .select(`
@@ -243,14 +226,12 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
           
         acceptedJobs.forEach(job => {
           if (job.job_applications) {
-            // Fix: Access nested properties correctly with type assertion
             const appData = job.job_applications as { task_id?: string; project_id?: string };
             if (appData.project_id) projectIds.push(appData.project_id);
             if (appData.task_id) taskIds.push(appData.task_id);
           }
         });
         
-        // Load project descriptions
         const taskDescriptions: Record<string, string> = {};
         if (taskIds.length > 0) {
           const { data: taskDetails } = await supabase
@@ -265,7 +246,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
           }
         }
         
-        // Load project tickets
         if (projectIds.length > 0) {
           const { data: pTickets } = await supabase
             .from('tickets')
@@ -285,7 +265,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
           }
         }
         
-        // Load task tickets
         if (taskIds.length > 0) {
           const { data: tTickets } = await supabase
             .from('tickets')
@@ -307,10 +286,8 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
         }
       }
       
-      // Combine all tickets
       const allTickets = [...betaTicketsWithMeta, ...projectTickets];
       
-      // Remove duplicates
       const uniqueTickets = allTickets.filter((ticket, index, self) => 
         index === self.findIndex(t => t.id === ticket.id)
       );
@@ -326,7 +303,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
     }
   }, [userId, expandedTickets]);
 
-  // Create a new ticket
   const handleCreateTicket = async () => {
     if (!userId || !newTicket.title) {
       toast.error("Please fill in the required fields");
@@ -363,7 +339,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
       toast.success("Ticket created successfully");
       setCreateTicketDialogOpen(false);
       
-      // Reset form
       setNewTicket({
         title: '',
         description: '',
@@ -372,7 +347,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
         projectId: ''
       });
       
-      // Refresh tickets
       loadAllTickets();
       
     } catch (error) {
@@ -400,7 +374,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
     }
   }, [userId]);
 
-  // Calculate ticket statistics for the dashboard
   const calculateTicketStats = (ticketData: Ticket[]) => {
     const totalTickets = ticketData.length;
     const openTickets = ticketData.filter(ticket => 
@@ -432,12 +405,10 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
     });
   };
 
-  // Handle ticket actions
   const handleTicketAction = useCallback(async (ticketId: string, action: string, data: any) => {
     try {
       switch (action) {
         case 'updateStatus':
-          // Update ticket status
           await supabase
             .from('tickets')
             .update({ 
@@ -450,7 +421,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
           break;
           
         case 'updatePriority':
-          // Update ticket priority
           await supabase
             .from('tickets')
             .update({ 
@@ -463,7 +433,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
           break;
           
         case 'updateDueDate':
-          // Update due date
           await supabase
             .from('tickets')
             .update({ 
@@ -478,14 +447,12 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
         case 'addNote':
           if (!userId || !data.trim()) return;
           
-          // Get ticket details
           const { data: ticketData } = await supabase
             .from('tickets')
             .select('notes')
             .eq('id', ticketId)
             .maybeSingle();
           
-          // Get user details
           const { data: profileData } = await supabase
             .from('profiles')
             .select('first_name, last_name')
@@ -496,7 +463,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
             `${profileData.first_name || ''} ${profileData.last_name || ''}` : 
             'User';
           
-          // Create new note
           const newNote = {
             id: Date.now().toString(),
             user: userName.trim(),
@@ -504,11 +470,9 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
             comment: data
           };
           
-          // Update notes array
           const currentNotes = ticketData?.notes || [];
           const updatedNotes = [...currentNotes, newNote];
           
-          // Save to database
           await supabase
             .from('tickets')
             .update({ 
@@ -524,7 +488,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
           console.warn('Unknown action:', action);
       }
       
-      // Refresh tickets after any update
       loadAllTickets();
     } catch (error) {
       console.error(`Error handling ticket action ${action}:`, error);
@@ -532,7 +495,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
     }
   }, [userId, loadAllTickets]);
 
-  // Log time for a ticket
   const handleLogTime = async (ticketId: string) => {
     if (!userId || !ticketId || !logTimeForm.hours || !logTimeForm.description) {
       toast.error("Please enter hours and description");
@@ -555,14 +517,12 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
       
       toast.success("Time logged successfully");
       
-      // Reset form
       setLogTimeForm({
         hours: 0,
         description: "",
         ticketId: ""
       });
       
-      // Refresh time entries
       loadTimeEntries(ticketId);
     } catch (error) {
       console.error('Error logging time:', error);
@@ -570,7 +530,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
     }
   };
 
-  // Handle expanding/collapsing ticket details
   const handleToggleTicket = useCallback((ticketId: string, isExpanded: boolean) => {
     setExpandedTickets(prev => ({
       ...prev,
@@ -589,7 +548,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
     }
   }, [selectedTicket, loadTimeEntries]);
 
-  // Handle refresh
   const handleRefresh = useCallback(() => {
     setDashboardKey(prev => prev + 1);
     loadAllTickets();
@@ -601,24 +559,20 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
     }
   }, [loadAllTickets, selectedTicket, loadTimeEntries, selectedProject, loadProjectTasks]);
 
-  // Handle kanban status change
   const handleKanbanStatusChange = useCallback((ticketId: string, newStatus: string) => {
     handleTicketAction(ticketId, 'updateStatus', newStatus);
   }, [handleTicketAction]);
 
-  // Format date for display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Project selection handler
   const handleProjectChange = (projectId: string) => {
     setSelectedProject(projectId);
     loadProjectTasks(projectId);
   };
 
-  // Prepare kanban columns
   const getKanbanColumns = () => {
     const statuses = ['new', 'in-progress', 'review', 'done', 'blocked'];
     const columns: Record<string, { id: string; title: string; ticketIds: string[] }> = {};
@@ -634,7 +588,6 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
     return columns;
   };
   
-  // Prepare kanban tickets
   const getKanbanTickets = () => {
     const ticketMap: Record<string, any> = {};
     
@@ -769,7 +722,7 @@ export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }
                             <SelectValue placeholder="Select a task (optional)" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">None</SelectItem>
+                            <SelectItem value="no-task">None</SelectItem>
                             {projectTasks.map(task => (
                               <SelectItem key={task.task_id} value={task.task_id}>
                                 {task.title}
