@@ -14,8 +14,25 @@ export const ApplicationsTab = ({
   applications,
   onApplicationUpdated,
 }: ApplicationsTabProps) => {
+  const [newApplicationsCount, setNewApplicationsCount] = useState(0);
   const [newMessagesCount, setNewMessagesCount] = useState(0);
   const channelRef = useRef<any>(null);
+
+  // Count new applications and messages
+  useEffect(() => {
+    const pendingApps = applications.filter(app => 
+      app.status === 'pending' || 
+      app.status === 'accepted' || 
+      app.status === 'negotiation'
+    );
+    setNewApplicationsCount(pendingApps.length);
+
+    const hasNewMessages = applications.some(app => 
+      app.task_discourse && 
+      !app.task_discourse.includes('read')
+    );
+    setNewMessagesCount(hasNewMessages ? 1 : 0);
+  }, [applications]);
 
   // Memoize the update function to prevent unnecessary re-renders
   const handleApplicationUpdated = useCallback(() => {
@@ -58,6 +75,7 @@ export const ApplicationsTab = ({
         applications={applications} 
         onApplicationUpdated={handleApplicationUpdated}
         newMessagesCount={newMessagesCount}
+        newApplicationsCount={newApplicationsCount}
       />
     </div>
   );
