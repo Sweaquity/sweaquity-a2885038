@@ -1,4 +1,3 @@
-
 import { Card } from "@/components/ui/card";
 import { Building2, User, Briefcase, BarChart2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -29,17 +28,14 @@ interface FeaturedProject {
 }
 
 const Index = () => {
-  console.log("Rendering Index component - this should be visible on the home page");
   const navigate = useNavigate();
   const [featuredProjects, setFeaturedProjects] = useState<FeaturedProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    console.log("Index component mounted");
     const fetchFeaturedProjects = async () => {
       try {
         setIsLoading(true);
-        console.log("Fetching featured projects...");
         const { data, error } = await supabase
           .from("business_projects")
           .select(`
@@ -60,13 +56,8 @@ const Index = () => {
           .eq("status", "active")
           .limit(4);
 
-        if (error) {
-          console.error("Error fetching projects:", error);
-          throw error;
-        }
+        if (error) throw error;
 
-        console.log("Projects data received:", data);
-        
         const processedData: FeaturedProject[] = data.map((project) => {
           let companyName = "Unknown Company";
           if (project.businesses) {
@@ -94,7 +85,6 @@ const Index = () => {
           };
         });
 
-        console.log("Processed projects:", processedData);
         setFeaturedProjects(processedData);
       } catch (error) {
         console.error("Error fetching featured projects:", error);
@@ -135,7 +125,7 @@ const Index = () => {
              <br /> 
              <br /> Let's start by registering or logging in.
           </p>
-          <div className="grid md:grid-cols-2 gap-6 w-full max-w-4xl mx-auto mb-12">
+                    <div className="grid md:grid-cols-2 gap-6 w-full max-w-4xl mx-auto mb-12">
             {userTypes.map((type) => (
               <Card
                 key={type.type}
