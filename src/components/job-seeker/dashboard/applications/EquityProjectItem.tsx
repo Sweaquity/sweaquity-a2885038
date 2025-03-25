@@ -33,8 +33,26 @@ import {
 } from "./components";
 import { ProgressCircle } from "@/components/ui/progress-circle";
 
+// Update the JobApplication interface in this file to include the missing properties
+interface ExtendedJobApplication extends JobApplication {
+  hours_logged?: number;
+  business_roles?: {
+    title?: string;
+    description?: string;
+    company_name?: string;
+    project_title?: string;
+    task_status?: string;
+    timeframe?: string;
+    equity_allocation?: number;
+    skill_requirements?: Array<{ skill: string; level: string } | string>;
+    completion_percentage?: number;
+    estimated_hours?: number;
+    project_id?: string;
+  };
+}
+
 interface EquityProjectItemProps {
-  application: JobApplication;
+  application: ExtendedJobApplication;
   onMessageSent?: () => void;
   onApplicationUpdated?: () => void;
 }

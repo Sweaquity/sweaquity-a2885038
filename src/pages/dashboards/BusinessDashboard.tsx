@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -20,7 +21,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AccountSettingsCard } from "@/components/shared/AccountSettingsCard";
 import { BusinessProfileEditor } from "@/components/business/profile/BusinessProfileEditor";
-import { LiveProjectsTab } from "@/components/business/projects/LiveProjectsTab";
 import { BetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
 
 interface SubTask {

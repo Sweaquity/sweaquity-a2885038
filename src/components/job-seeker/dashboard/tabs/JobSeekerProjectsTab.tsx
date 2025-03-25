@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Clock, CheckCircle2, AlertTriangle, FileText, ArrowUpToLine, Plus, RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
+import { Clock, CheckCircle2, AlertTriangle, FileText, ArrowUpToLine, Plus, RefreshCw, KanbanSquare, BarChart2, Save } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,6 +47,10 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const [logHours, setLogHours] = useState<number>(0);
   const [logDescription, setLogDescription] = useState<string>('');
   const [currentLogTicket, setCurrentLogTicket] = useState<any>(null);
+  const [editingTicket, setEditingTicket] = useState<string | null>(null);
+  const [editedEstimatedHours, setEditedEstimatedHours] = useState<number>(0);
+  const [editedCompletionPercentage, setEditedCompletionPercentage] = useState<number>(0);
+  const [isEditingSaving, setIsEditingSaving] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -74,7 +77,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     try {
       setLoading(true);
       
-      // First fetch all job applications for this user that are accepted
       const { data: applications, error: appError } = await supabase
         .from('job_applications')
         .select(`
@@ -97,7 +99,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         return;
       }
       
-      // Fetch project details for each application
       const projectIds = applications.map(app => app.project_id).filter(Boolean);
       
       if (projectIds.length === 0) {
@@ -119,7 +120,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       
       setUserProjects(projects || []);
       
-      // Set the first project as selected
       if (projects && projects.length > 0) {
         setSelectedProject(projects[0].project_id);
       }
@@ -150,7 +150,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         `)
         .eq('project_id', projectId);
       
-      // Apply filters
       if (statusFilter && statusFilter !== 'all') {
         query = query.eq('status', statusFilter);
       }
@@ -159,7 +158,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         query = query.eq('priority', priorityFilter);
       }
       
-      // Filter by tab type
       if (activeTab === 'project-tasks') {
         query = query.eq('ticket_type', 'task');
       } else if (activeTab === 'project-tickets') {
@@ -172,7 +170,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       
       if (error) throw error;
       
-      // Process the tickets to include hours logged and equity earned
       const processedTickets = data?.map(ticket => {
         const hoursLogged = ticket.time_entries?.reduce((total: number, entry: any) => {
           return total + (entry.hours_logged || 0);
@@ -234,14 +231,12 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     console.info("Toggle ticket:", ticketId, "expanded:", expandedTicket === ticketId ? "false" : "true");
     setExpandedTicket(prev => prev === ticketId ? null : ticketId);
     
-    // Set the selected ticket for detail view
     const ticket = tickets.find(t => t.id === ticketId);
     setSelectedTicket(ticket || null);
   }, [expandedTicket, tickets]);
 
   const handleStatusChange = async (ticketId: string, newStatus: string) => {
     try {
-      // Update ticket status in Supabase
       const { error } = await supabase
         .from('tickets')
         .update({ status: newStatus })
@@ -249,7 +244,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       
       if (error) throw error;
       
-      // Update local state
       setTickets(prev => prev.map(ticket => 
         ticket.id === ticketId ? { ...ticket, status: newStatus } : ticket
       ));
@@ -263,7 +257,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
 
   const handlePriorityChange = async (ticketId: string, newPriority: string) => {
     try {
-      // Update ticket priority in Supabase
       const { error } = await supabase
         .from('tickets')
         .update({ priority: newPriority })
@@ -271,7 +264,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       
       if (error) throw error;
       
-      // Update local state
       setTickets(prev => prev.map(ticket => 
         ticket.id === ticketId ? { ...ticket, priority: newPriority } : ticket
       ));
@@ -285,7 +277,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
 
   const handleTicketReply = async (ticketId: string, message: string) => {
     try {
-      // Get the current ticket to update its replies
       const ticket = tickets.find(t => t.id === ticketId);
       if (!ticket) return;
       
@@ -296,11 +287,10 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         createdAt: new Date().toISOString(),
         sender: {
           id: userId,
-          name: "You" // Could fetch actual user name here
+          name: "You"
         }
       };
       
-      // Update ticket replies in Supabase
       const { error } = await supabase
         .from('tickets')
         .update({ 
@@ -311,7 +301,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       
       if (error) throw error;
       
-      // Update local state
       setTickets(prev => prev.map(ticket => 
         ticket.id === ticketId 
           ? { ...ticket, replies: [...(ticket.replies || []), newReply] } 
@@ -379,7 +368,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     if (!currentLogTicket || !userId || logHours <= 0 || !logDescription.trim()) return;
     
     try {
-      // Create a time entry
       const { data, error } = await supabase
         .from('time_entries')
         .insert({
@@ -398,13 +386,59 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       setLogHours(0);
       setLogDescription('');
       
-      // Refresh the tickets
       if (selectedProject) {
         loadTickets(selectedProject);
       }
     } catch (error) {
       console.error("Error logging time:", error);
       toast.error("Failed to log time");
+    }
+  };
+
+  const handleEditTicket = (ticket: any) => {
+    setEditingTicket(ticket.id);
+    setEditedEstimatedHours(ticket.estimated_hours || 0);
+    setEditedCompletionPercentage(ticket.completion_percentage || 0);
+  };
+
+  const handleSaveTicketChanges = async () => {
+    if (!editingTicket) return;
+    
+    try {
+      setIsEditingSaving(true);
+      
+      const { error } = await supabase
+        .from('tickets')
+        .update({
+          estimated_hours: editedEstimatedHours,
+          completion_percentage: editedCompletionPercentage
+        })
+        .eq('id', editingTicket);
+      
+      if (error) throw error;
+      
+      setTickets(prev => prev.map(ticket => 
+        ticket.id === editingTicket 
+          ? { 
+              ...ticket, 
+              estimated_hours: editedEstimatedHours,
+              completion_percentage: editedCompletionPercentage 
+            } 
+          : ticket
+      ));
+      
+      setEditingTicket(null);
+      toast.success("Ticket updated successfully");
+      
+      if (selectedProject) {
+        loadTickets(selectedProject);
+      }
+      
+    } catch (error) {
+      console.error("Error updating ticket:", error);
+      toast.error("Failed to update ticket");
+    } finally {
+      setIsEditingSaving(false);
     }
   };
 
@@ -493,6 +527,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
                 <div className="text-sm font-medium">{ticket.title}</div>
                 <div className="text-xs text-muted-foreground truncate">{ticket.description}</div>
                 <div className="flex justify-between items-center mt-2">
+                  <div className="text-xs">{ticket.completion_percentage || 0}%</div>
                   <Badge variant="outline" className="text-xs">
                     {ticket.ticket_type || 'task'}
                   </Badge>
@@ -529,7 +564,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
                   <span>{ticket.hours_logged || 0}h logged</span>
                 </div>
                 <div className="text-sm flex items-center space-x-1 text-muted-foreground">
-                  <ProgressCircle value={ticket.completion_percentage || 0} size="xs" strokeWidth={3} />
                   <span>{ticket.completion_percentage || 0}%</span>
                 </div>
                 <div className="text-sm flex items-center space-x-1 text-muted-foreground">
@@ -560,6 +594,66 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
           
           {expandedTicket === ticket.id && (
             <div className="p-4 border-t bg-slate-50">
+              {editingTicket === ticket.id ? (
+                <div className="mb-4 space-y-4 p-4 bg-white rounded-md shadow-sm">
+                  <h3 className="font-medium">Edit Ticket Details</h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="estimatedHours">Estimated Hours</Label>
+                        <Input 
+                          id="estimatedHours" 
+                          type="number" 
+                          min="0"
+                          step="0.5"
+                          value={editedEstimatedHours || ''}
+                          onChange={(e) => setEditedEstimatedHours(parseFloat(e.target.value) || 0)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="completionPercentage">Completion Percentage</Label>
+                        <Input 
+                          id="completionPercentage" 
+                          type="number" 
+                          min="0"
+                          max="100"
+                          value={editedCompletionPercentage || ''}
+                          onChange={(e) => setEditedCompletionPercentage(parseFloat(e.target.value) || 0)}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setEditingTicket(null)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleSaveTicketChanges}
+                        disabled={isEditingSaving}
+                      >
+                        {isEditingSaving ? 'Saving...' : 'Save Changes'}
+                        <Save className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-4 flex justify-end">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditTicket(ticket);
+                    }}
+                  >
+                    Edit Details
+                  </Button>
+                </div>
+              )}
+              
               <ExpandedTicketDetails 
                 ticket={{
                   ...ticket,
@@ -728,3 +822,5 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     </div>
   );
 };
+
+
