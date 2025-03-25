@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,21 +8,25 @@ import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { Ticket } from "@/types/types";
 import TicketStats from "@/components/ticket/TicketStats";
 import { TimeTracker } from "@/components/job-seeker/dashboard/TimeTracker";
-import { Loader2, Eye, EyeOff, Clock, Calendar, BarChart4, KanbanSquare } from "lucide-react";
+import { Loader2, Eye, EyeOff, Clock, Calendar, BarChart4, KanbanSquare, Plus } from "lucide-react";
 import KanbanBoard from "@/components/ui/kanban-board";
 import { GanttChart, convertItemsToGanttTasks } from "@/components/ticket/GanttChart";
 import { DragDropContext } from "react-beautiful-dnd";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 
 interface JobSeekerProjectsTabProps {
   userId?: string;
+  initialTabValue?: string;
 }
 
-export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
+export const JobSeekerProjectsTab = ({ userId, initialTabValue = "all-tickets" }: JobSeekerProjectsTabProps) => {
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [projectTasks, setProjectTasks] = useState<any[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const [dashboardKey, setDashboardKey] = useState(0);
   const [ticketStats, setTicketStats] = useState({
@@ -34,7 +37,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     byStatus: {},
     byPriority: {}
   });
-  const [activeTab, setActiveTab] = useState("all-tickets");
+  const [activeTab, setActiveTab] = useState(initialTabValue);
   const [expandedTickets, setExpandedTickets] = useState<Record<string, boolean>>({});
   const [showKanban, setShowKanban] = useState(true);
   const [showGantt, setShowGantt] = useState(false);
@@ -46,6 +49,116 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     description: "",
     ticketId: ""
   });
+
+  // New project and task state
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [acceptedJobs, setAcceptedJobs] = useState<any[]>([]);
+  const [createTicketDialogOpen, setCreateTicketDialogOpen] = useState(false);
+  const [newTicket, setNewTicket] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    taskId: '',
+    projectId: ''
+  });
+
+  useEffect(() => {
+    if (userId) {
+      loadAllTickets();
+      loadUserProjects();
+    }
+  }, [userId]);
+
+  const loadUserProjects = async () => {
+    if (!userId) return;
+    
+    try {
+      // First get all projects where the user has accepted jobs
+      const { data: jobsData, error: jobsError } = await supabase
+        .from('accepted_jobs')
+        .select(`
+          job_app_id,
+          job_applications!inner (
+            task_id,
+            project_id,
+            status
+          )
+        `)
+        .eq('job_applications.user_id', userId)
+        .eq('job_applications.status', 'accepted');
+        
+      if (jobsError) throw jobsError;
+      
+      if (jobsData && jobsData.length > 0) {
+        const projectIds = jobsData
+          .map(job => job.job_applications?.project_id)
+          .filter(Boolean) as string[];
+        
+        if (projectIds.length > 0) {
+          const uniqueProjectIds = [...new Set(projectIds)];
+          
+          // Load project details
+          const { data: projectsData, error: projectsError } = await supabase
+            .from('business_projects')
+            .select(`
+              *,
+              businesses (
+                company_name
+              )
+            `)
+            .in('project_id', uniqueProjectIds);
+            
+          if (projectsError) throw projectsError;
+          
+          setProjects(projectsData || []);
+          
+          if (projectsData && projectsData.length > 0) {
+            setSelectedProject(projectsData[0].project_id);
+            
+            // Load tasks for the first project
+            await loadProjectTasks(projectsData[0].project_id);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading user projects:', error);
+      toast.error("Failed to load projects");
+    }
+  };
+
+  const loadProjectTasks = async (projectId: string) => {
+    try {
+      // Load tasks (project_sub_tasks) for this project that the user has accepted
+      const { data: acceptedApps, error: appsError } = await supabase
+        .from('job_applications')
+        .select('task_id')
+        .eq('user_id', userId)
+        .eq('project_id', projectId)
+        .eq('status', 'accepted');
+        
+      if (appsError) throw appsError;
+      
+      if (acceptedApps && acceptedApps.length > 0) {
+        const taskIds = acceptedApps.map(app => app.task_id).filter(Boolean);
+        
+        // Load task details
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('project_sub_tasks')
+          .select('*')
+          .in('task_id', taskIds);
+          
+        if (tasksError) throw tasksError;
+        
+        setProjectTasks(tasksData || []);
+      } else {
+        setProjectTasks([]);
+      }
+    } catch (error) {
+      console.error('Error loading project tasks:', error);
+      toast.error("Failed to load tasks");
+    }
+  };
 
   // Load all tickets for the job seeker
   const loadAllTickets = useCallback(async () => {
@@ -176,7 +289,61 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     }
   }, [userId, expandedTickets]);
 
-  // Load time entries for a specific ticket
+  // Create a new ticket
+  const handleCreateTicket = async () => {
+    if (!userId || !newTicket.title) {
+      toast.error("Please fill in the required fields");
+      return;
+    }
+    
+    try {
+      const ticketData: any = {
+        title: newTicket.title,
+        description: newTicket.description,
+        priority: newTicket.priority || 'medium',
+        status: 'new',
+        health: 'healthy',
+        reporter: userId,
+        created_by: userId
+      };
+      
+      if (newTicket.taskId) {
+        ticketData.task_id = newTicket.taskId;
+      }
+      
+      if (newTicket.projectId) {
+        ticketData.project_id = newTicket.projectId;
+      }
+      
+      const { data, error } = await supabase
+        .from('tickets')
+        .insert(ticketData)
+        .select('*')
+        .single();
+        
+      if (error) throw error;
+      
+      toast.success("Ticket created successfully");
+      setCreateTicketDialogOpen(false);
+      
+      // Reset form
+      setNewTicket({
+        title: '',
+        description: '',
+        priority: 'medium',
+        taskId: '',
+        projectId: ''
+      });
+      
+      // Refresh tickets
+      loadAllTickets();
+      
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      toast.error("Failed to create ticket");
+    }
+  };
+
   const loadTimeEntries = useCallback(async (ticketId: string) => {
     if (!userId || !ticketId) return;
     
@@ -389,22 +556,18 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const handleRefresh = useCallback(() => {
     setDashboardKey(prev => prev + 1);
     loadAllTickets();
+    if (selectedProject) {
+      loadProjectTasks(selectedProject);
+    }
     if (selectedTicket) {
       loadTimeEntries(selectedTicket);
     }
-  }, [loadAllTickets, selectedTicket, loadTimeEntries]);
+  }, [loadAllTickets, selectedTicket, loadTimeEntries, selectedProject, loadProjectTasks]);
 
   // Handle kanban status change
   const handleKanbanStatusChange = useCallback((ticketId: string, newStatus: string) => {
     handleTicketAction(ticketId, 'updateStatus', newStatus);
   }, [handleTicketAction]);
-
-  // Load tickets on mount and when dependencies change
-  useEffect(() => {
-    if (userId) {
-      loadAllTickets();
-    }
-  }, [userId, loadAllTickets]);
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -412,9 +575,11 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  if (!userId) {
-    return <div>User ID is required to show projects</div>;
-  }
+  // Project selection handler
+  const handleProjectChange = (projectId: string) => {
+    setSelectedProject(projectId);
+    loadProjectTasks(projectId);
+  };
 
   // Prepare kanban columns
   const getKanbanColumns = () => {
@@ -449,6 +614,10 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     
     return ticketMap;
   };
+
+  if (!userId) {
+    return <div>User ID is required to show projects</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -486,97 +655,266 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
               <Loader2 className="h-6 w-6 animate-spin" />
               <span className="ml-2">Loading projects...</span>
             </div>
-          ) : tickets.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground mb-4">No projects or tickets found.</p>
-            </div>
           ) : (
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mb-4">
-                <TabsTrigger value="all-tickets">All Tickets</TabsTrigger>
-                <TabsTrigger value="project-tickets">Project Tickets</TabsTrigger>
-                <TabsTrigger value="beta-tickets">Beta Testing Tickets</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="all-tickets">
-                <TicketStats
-                  totalTickets={ticketStats.totalTickets}
-                  openTickets={ticketStats.openTickets}
-                  closedTickets={ticketStats.closedTickets}
-                  highPriorityTickets={ticketStats.highPriorityTickets}
-                  byStatus={ticketStats.byStatus}
-                  byPriority={ticketStats.byPriority}
-                />
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-64">
+                  <Select 
+                    value={selectedProject || ''}
+                    onValueChange={handleProjectChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a project" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map(project => (
+                        <SelectItem key={project.project_id} value={project.project_id}>
+                          {project.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 
-                {showKanban && (
-                  <div className="mb-6">
-                    <h3 className="text-lg font-medium mb-3">Kanban Board</h3>
-                    <DragDropContext onDragEnd={(result) => {
-                      if (!result.destination) return;
-                      const { draggableId, destination } = result;
-                      handleKanbanStatusChange(draggableId, destination.droppableId);
-                    }}>
-                      <KanbanBoard
-                        columns={getKanbanColumns()}
-                        tickets={getKanbanTickets()}
-                        onTicketMove={handleKanbanStatusChange}
-                        onTicketClick={(id) => {
-                          const ticket = tickets.find(t => t.id === id);
-                          if (ticket) {
-                            setSelectedTicket(id);
-                            handleToggleTicket(id, true);
-                          }
-                        }}
-                        formatDate={formatDate}
-                      />
-                    </DragDropContext>
-                  </div>
-                )}
-                
-                {showGantt && (
-                  <div className="mb-6 overflow-x-auto">
-                    <h3 className="text-lg font-medium mb-3">Gantt Chart</h3>
-                    <div className="min-h-[400px]">
-                      <GanttChart tasks={convertItemsToGanttTasks(tickets)} />
+                <Dialog open={createTicketDialogOpen} onOpenChange={setCreateTicketDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Ticket
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Create New Ticket</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="title">Title</Label>
+                        <Input
+                          id="title"
+                          value={newTicket.title}
+                          onChange={(e) => setNewTicket(prev => ({ ...prev, title: e.target.value }))}
+                          placeholder="Ticket title"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="description">Description</Label>
+                        <Textarea
+                          id="description"
+                          value={newTicket.description}
+                          onChange={(e) => setNewTicket(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="Describe the issue or task"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="priority">Priority</Label>
+                        <Select
+                          value={newTicket.priority}
+                          onValueChange={(value) => setNewTicket(prev => ({ ...prev, priority: value }))}
+                        >
+                          <SelectTrigger id="priority">
+                            <SelectValue placeholder="Select priority" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="task">Associated Task</Label>
+                        <Select
+                          value={newTicket.taskId}
+                          onValueChange={(value) => setNewTicket(prev => ({ ...prev, taskId: value }))}
+                        >
+                          <SelectTrigger id="task">
+                            <SelectValue placeholder="Select a task (optional)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">None</SelectItem>
+                            {projectTasks.map(task => (
+                              <SelectItem key={task.task_id} value={task.task_id}>
+                                {task.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                  </div>
-                )}
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setCreateTicketDialogOpen(false)}>Cancel</Button>
+                      <Button onClick={handleCreateTicket}>Create Ticket</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="mb-4">
+                  <TabsTrigger value="all-tickets">All Tickets</TabsTrigger>
+                  <TabsTrigger value="project-tasks">Project Tasks</TabsTrigger>
+                  <TabsTrigger value="project-tickets">Project Tickets</TabsTrigger>
+                  <TabsTrigger value="beta-tickets">Beta Testing Tickets</TabsTrigger>
+                </TabsList>
                 
-                <TicketDashboard
-                  key={`all-${dashboardKey}`}
-                  initialTickets={tickets}
-                  onRefresh={handleRefresh}
-                  onTicketExpand={handleToggleTicket}
-                  onTicketAction={handleTicketAction}
-                  showTimeTracking={true}
-                  currentUserId={userId}
-                />
-              </TabsContent>
-              
-              <TabsContent value="project-tickets">
-                <TicketDashboard
-                  key={`project-${dashboardKey}`}
-                  initialTickets={tickets.filter(ticket => ticket.isProjectTicket)}
-                  onRefresh={handleRefresh}
-                  onTicketExpand={handleToggleTicket}
-                  onTicketAction={handleTicketAction}
-                  showTimeTracking={true}
-                  currentUserId={userId}
-                />
-              </TabsContent>
-              
-              <TabsContent value="beta-tickets">
-                <TicketDashboard
-                  key={`beta-${dashboardKey}`}
-                  initialTickets={tickets.filter(ticket => !ticket.isProjectTicket)}
-                  onRefresh={handleRefresh}
-                  onTicketExpand={handleToggleTicket}
-                  onTicketAction={handleTicketAction}
-                  showTimeTracking={false}
-                  currentUserId={userId}
-                />
-              </TabsContent>
-            </Tabs>
+                <TabsContent value="all-tickets">
+                  <TicketStats
+                    totalTickets={ticketStats.totalTickets}
+                    openTickets={ticketStats.openTickets}
+                    closedTickets={ticketStats.closedTickets}
+                    highPriorityTickets={ticketStats.highPriorityTickets}
+                    byStatus={ticketStats.byStatus}
+                    byPriority={ticketStats.byPriority}
+                  />
+                  
+                  {showKanban && (
+                    <div className="mb-6">
+                      <h3 className="text-lg font-medium mb-3">Kanban Board</h3>
+                      <DragDropContext onDragEnd={(result) => {
+                        if (!result.destination) return;
+                        const { draggableId, destination } = result;
+                        handleKanbanStatusChange(draggableId, destination.droppableId);
+                      }}>
+                        <KanbanBoard
+                          columns={getKanbanColumns()}
+                          tickets={getKanbanTickets()}
+                          onTicketMove={handleKanbanStatusChange}
+                          onTicketClick={(id) => {
+                            const ticket = tickets.find(t => t.id === id);
+                            if (ticket) {
+                              setSelectedTicket(id);
+                              handleToggleTicket(id, true);
+                            }
+                          }}
+                          formatDate={formatDate}
+                        />
+                      </DragDropContext>
+                    </div>
+                  )}
+                  
+                  {showGantt && (
+                    <div className="mb-6 overflow-x-auto">
+                      <h3 className="text-lg font-medium mb-3">Gantt Chart</h3>
+                      <div className="min-h-[400px]">
+                        <GanttChart tasks={convertItemsToGanttTasks(tickets)} />
+                      </div>
+                    </div>
+                  )}
+                  
+                  <TicketDashboard
+                    key={`all-${dashboardKey}`}
+                    initialTickets={tickets}
+                    onRefresh={handleRefresh}
+                    onTicketExpand={handleToggleTicket}
+                    onTicketAction={handleTicketAction}
+                    showTimeTracking={true}
+                    currentUserId={userId}
+                  />
+                </TabsContent>
+                
+                <TabsContent value="project-tasks">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Project Tasks</h3>
+                    
+                    {projectTasks.length === 0 ? (
+                      <p className="text-muted-foreground">No tasks found for this project.</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {projectTasks.map(task => (
+                          <Card key={task.task_id}>
+                            <CardHeader className="pb-2">
+                              <div className="flex justify-between">
+                                <CardTitle className="text-base">{task.title}</CardTitle>
+                                <div className="text-sm text-muted-foreground">
+                                  {task.completion_percentage}% complete
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              <p className="text-sm mb-2">{task.description}</p>
+                              <div className="flex justify-between text-sm">
+                                <div>Timeframe: {task.timeframe}</div>
+                                <div>Equity: {task.equity_allocation}%</div>
+                              </div>
+                              
+                              <div className="mt-4">
+                                <h4 className="text-sm font-medium mb-2">Related Tickets</h4>
+                                {tickets.filter(t => t.task_id === task.task_id).length > 0 ? (
+                                  <div className="space-y-2">
+                                    {tickets
+                                      .filter(t => t.task_id === task.task_id)
+                                      .map(ticket => (
+                                        <div 
+                                          key={ticket.id}
+                                          className="p-2 border rounded-md cursor-pointer hover:bg-muted"
+                                          onClick={() => {
+                                            setSelectedTicket(ticket.id);
+                                            handleToggleTicket(ticket.id, true);
+                                            setActiveTab('all-tickets');
+                                          }}
+                                        >
+                                          <div className="flex justify-between">
+                                            <div className="font-medium">{ticket.title}</div>
+                                            <div className="text-sm text-muted-foreground">{ticket.status}</div>
+                                          </div>
+                                        </div>
+                                      ))
+                                    }
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-muted-foreground">No tickets for this task yet.</p>
+                                )}
+                                
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="mt-2"
+                                  onClick={() => {
+                                    setNewTicket(prev => ({
+                                      ...prev,
+                                      taskId: task.task_id,
+                                      projectId: task.project_id
+                                    }));
+                                    setCreateTicketDialogOpen(true);
+                                  }}
+                                >
+                                  <Plus className="h-3 w-3 mr-1" /> Add Ticket
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="project-tickets">
+                  <TicketDashboard
+                    key={`project-${dashboardKey}`}
+                    initialTickets={tickets.filter(ticket => ticket.isProjectTicket && !ticket.isTaskTicket)}
+                    onRefresh={handleRefresh}
+                    onTicketExpand={handleToggleTicket}
+                    onTicketAction={handleTicketAction}
+                    showTimeTracking={true}
+                    currentUserId={userId}
+                  />
+                </TabsContent>
+                
+                <TabsContent value="beta-tickets">
+                  <TicketDashboard
+                    key={`beta-${dashboardKey}`}
+                    initialTickets={tickets.filter(ticket => !ticket.isProjectTicket)}
+                    onRefresh={handleRefresh}
+                    onTicketExpand={handleToggleTicket}
+                    onTicketAction={handleTicketAction}
+                    showTimeTracking={false}
+                    currentUserId={userId}
+                  />
+                </TabsContent>
+              </Tabs>
+            </>
           )}
           
           {selectedTicket && userId && tickets.find(t => t.id === selectedTicket)?.isTaskTicket && (
