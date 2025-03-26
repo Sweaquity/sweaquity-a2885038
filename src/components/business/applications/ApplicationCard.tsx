@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -100,7 +99,7 @@ export const ApplicationCard = ({
               <div className="flex items-center">
                 <select 
                   className="px-2 py-1 border rounded text-sm bg-white"
-                  value={application.status || "pending"}
+                  value={application.status}
                   onChange={onStatusChange}
                   onClick={(e) => e.stopPropagation()}
                   disabled={isUpdatingStatus === application.job_app_id}

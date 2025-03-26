@@ -57,11 +57,9 @@ export interface EquityProject {
     };
   };
   created_by?: string;
-  created_at?: string;
-  updated_at?: string;
-  skill_match?: number;
-  job_app_id?: string;
-  applied_at?: string;
+  created_at?: string; // Add creation date
+  updated_at?: string; // Add update date
+  skill_match?: number; // Added property for skill match percentage
 }
 
 export interface EffortLog {
@@ -72,14 +70,14 @@ export interface EffortLog {
 
 export interface JobApplication {
   job_app_id: string;
-  role_id?: string;
+  role_id: string;
   status: string;
   applied_at: string;
   task_id: string;
   project_id: string;
-  notes?: string;
-  message?: string; 
-  cv_url?: string | null;
+  notes: string;
+  message: string; 
+  cv_url: string | null;
   task_discourse?: string;
   business_roles?: {
     title: string;
@@ -92,7 +90,7 @@ export interface JobApplication {
     completion_percentage?: number;
     task_status?: string;
   };
-  id?: string; // Adding this for backward compatibility
+  id: string; // Adding this for backward compatibility
   accepted_jobseeker?: boolean;
   accepted_business?: boolean;
   applicant_anonymized?: boolean;
@@ -115,9 +113,4 @@ export interface ExtendedJobApplication extends JobApplication {
 export interface SkillRequirement {
   skill: string;
   level?: string;
-}
-
-export interface EquityProjectItemProps {
-  application: JobApplication;
-  onApplicationUpdated?: () => void;
 }

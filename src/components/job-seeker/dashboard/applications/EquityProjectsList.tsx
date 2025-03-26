@@ -65,7 +65,7 @@ export const EquityProjectsList = ({
       </div>
 
       <div className="space-y-4">
-        {filteredApplications.map(application => (
+        {filteredApplications.map((application) => (
           <EquityProjectItem
             key={application.job_app_id}
             application={application}

@@ -1,142 +1,141 @@
 
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { Ticket } from "@/types/types";
 
 interface CreateTicketDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateTicket: (ticketData: any) => Promise<void>;
-  projects: any[];
+  onCreateTicket: (ticket: Partial<Ticket>) => Promise<Ticket | null>;
+  projects?: any[];
 }
 
-export const CreateTicketDialog = ({
-  open,
-  onOpenChange,
+export const CreateTicketDialog = ({ 
+  open, 
+  onOpenChange, 
   onCreateTicket,
-  projects,
+  projects = [] 
 }: CreateTicketDialogProps) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
-  const [projectId, setProjectId] = useState<string | undefined>(
-    projects.length > 0 ? projects[0].id : undefined
-  );
   const [ticketType, setTicketType] = useState("task");
+  const [projectId, setProjectId] = useState<string | undefined>(
+    projects.length > 0 ? projects[0].project_id : undefined
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
+    if (!title) return;
+    
     setIsSubmitting(true);
-
+    
     try {
-      const ticketData: Partial<Ticket> = {
+      await onCreateTicket({
         title,
         description,
         priority,
         status: "new",
+        health: "good",
         type: ticketType,
-        health: "healthy",
+        ticket_type: ticketType,
         project_id: projectId,
-      };
-
-      await onCreateTicket(ticketData);
-      resetForm();
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Error creating ticket:", error);
+        completion_percentage: 0
+      });
+      
+      // Reset form
+      setTitle("");
+      setDescription("");
+      setPriority("medium");
+      setTicketType("task");
+      if (projects.length > 0) {
+        setProjectId(projects[0].project_id);
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const resetForm = () => {
-    setTitle("");
-    setDescription("");
-    setPriority("medium");
-    setTicketType("task");
-    setProjectId(projects.length > 0 ? projects[0].id : undefined);
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[550px]">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create New Ticket</DialogTitle>
-          <DialogDescription>
-            Fill in the details to create a new ticket.
-          </DialogDescription>
         </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
+        
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
             <Label htmlFor="title">Title</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter ticket title"
-              required
             />
           </div>
-
+          
+          <div className="grid gap-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Enter ticket description"
+              rows={3}
+            />
+          </div>
+          
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
+            <div className="grid gap-2">
               <Label htmlFor="priority">Priority</Label>
               <Select value={priority} onValueChange={setPriority}>
-                <SelectTrigger id="priority">
+                <SelectTrigger>
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
                   <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="ticket-type">Ticket Type</Label>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="type">Type</Label>
               <Select value={ticketType} onValueChange={setTicketType}>
-                <SelectTrigger id="ticket-type">
+                <SelectTrigger>
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="task">Task</SelectItem>
+                  <SelectItem value="project">Project</SelectItem>
+                  <SelectItem value="beta">Beta Testing</SelectItem>
                   <SelectItem value="bug">Bug</SelectItem>
-                  <SelectItem value="feature">Feature</SelectItem>
-                  <SelectItem value="improvement">Improvement</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
-
+          
           {projects.length > 0 && (
-            <div className="space-y-2">
+            <div className="grid gap-2">
               <Label htmlFor="project">Project</Label>
-              <Select
-                value={projectId}
-                onValueChange={setProjectId}
+              <Select 
+                value={projectId} 
+                onValueChange={(value) => setProjectId(value)}
               >
-                <SelectTrigger id="project">
+                <SelectTrigger>
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
@@ -149,32 +148,17 @@ export const CreateTicketDialog = ({
               </Select>
             </div>
           )}
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Enter ticket description"
-              className="min-h-[120px]"
-              required
-            />
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create Ticket"}
-            </Button>
-          </DialogFooter>
-        </form>
+        </div>
+        
+        <DialogFooter>
+          <Button
+            type="submit"
+            onClick={handleSubmit}
+            disabled={!title || isSubmitting}
+          >
+            {isSubmitting ? "Creating..." : "Create Ticket"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

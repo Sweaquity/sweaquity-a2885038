@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -659,6 +660,12 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
                                 hours_logged_total: ticket.hours_logged,
                                 equity_earned: (ticket.equity_points || 0) * (ticket.completion_percentage || 0) / 100
                               }}
+                              messages={ticket.replies?.map((reply: any) => ({
+                                id: reply.id,
+                                message: reply.content,
+                                sender: reply.sender,
+                                createdAt: reply.createdAt
+                              })) || []}
                               onReply={(message) => handleTicketReply(ticket.id, message)}
                               onStatusChange={(status) => handleStatusChange(ticket.id, status)}
                               onPriorityChange={(priority) => handlePriorityChange(ticket.id, priority)}
