@@ -44,13 +44,15 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
   // Calculate new opportunities
   useEffect(() => {
     // Count new opportunities based on recent creation date
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
     const recentOpportunities = projects.filter(opp => {
-      const creationDate = opp.created_by ? null : null; // This field doesn't exist, using created_by as fallback
-      if (!creationDate) return false;
-      return new Date(creationDate) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      if (!opp.created_at) return false;
+      const creationDate = new Date(opp.created_at);
+      return creationDate > oneWeekAgo;
     }).length;
     
-    // Instead of showing 0, let's not show any notification
     setNewOpportunities(recentOpportunities);
   }, [projects]);
 
@@ -108,7 +110,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
         filterSkill={filterSkill}
         onSearchChange={setSearchTerm}
         onFilterSkillChange={setFilterSkill}
-        newOpportunities={newOpportunities > 0 ? newOpportunities : undefined}
+        newOpportunities={newOpportunities}
       />
 
       {filteredProjects.length === 0 ? (

@@ -1,56 +1,43 @@
 
-import React, { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { CalendarIcon } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { Ticket } from "@/types/types";
 
 interface CreateTicketDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onCreateTicket: (ticketData: any) => Promise<void>;
-  projects: any[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreateTicket: (ticket: Partial<Ticket>) => Promise<Ticket | null>;
+  projects?: any[];
 }
 
-export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
-  isOpen,
-  onClose,
+export const CreateTicketDialog = ({ 
+  open, 
+  onOpenChange, 
   onCreateTicket,
-  projects,
-}) => {
+  projects = [] 
+}: CreateTicketDialogProps) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
-  const [projectId, setProjectId] = useState<string>("");
-  const [date, setDate] = useState<Date | undefined>(undefined);
+  const [ticketType, setTicketType] = useState("task");
+  const [projectId, setProjectId] = useState<string | undefined>(
+    projects.length > 0 ? projects[0].project_id : undefined
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!title.trim()) {
-      return;
-    }
+  const handleSubmit = async () => {
+    if (!title) return;
     
     setIsSubmitting(true);
     
@@ -59,124 +46,118 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
         title,
         description,
         priority,
-        project_id: projectId || null,
-        due_date: date ? date.toISOString().split("T")[0] : null,
+        status: "new",
+        health: "good",
+        ticket_type: ticketType,
+        project_id: projectId,
+        completion_percentage: 0
       });
       
       // Reset form
       setTitle("");
       setDescription("");
       setPriority("medium");
-      setProjectId("");
-      setDate(undefined);
-      
-    } catch (error) {
-      console.error("Error in form submission:", error);
+      setTicketType("task");
+      if (projects.length > 0) {
+        setProjectId(projects[0].project_id);
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create New Ticket</DialogTitle>
-          <DialogDescription>
-            Add a new ticket to track your work. Fill out the details below.
-          </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
             <Label htmlFor="title">Title</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter ticket title"
-              required
             />
           </div>
           
-          <div className="space-y-2">
+          <div className="grid gap-2">
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the ticket"
+              placeholder="Enter ticket description"
               rows={3}
             />
           </div>
           
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
+            <div className="grid gap-2">
               <Label htmlFor="priority">Priority</Label>
               <Select value={priority} onValueChange={setPriority}>
-                <SelectTrigger id="priority">
+                <SelectTrigger>
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
                   <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
-            <div className="space-y-2">
+            <div className="grid gap-2">
+              <Label htmlFor="type">Type</Label>
+              <Select value={ticketType} onValueChange={setTicketType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="task">Task</SelectItem>
+                  <SelectItem value="project">Project</SelectItem>
+                  <SelectItem value="beta">Beta Testing</SelectItem>
+                  <SelectItem value="bug">Bug</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          {projects.length > 0 && (
+            <div className="grid gap-2">
               <Label htmlFor="project">Project</Label>
-              <Select value={projectId} onValueChange={setProjectId}>
-                <SelectTrigger id="project">
+              <Select 
+                value={projectId} 
+                onValueChange={(value) => setProjectId(value)}
+              >
+                <SelectTrigger>
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
                   {projects.map((project) => (
                     <SelectItem key={project.project_id} value={project.project_id}>
-                      {project.project_title}
+                      {project.title}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="due-date">Due Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : "Select due date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-          
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting || !title.trim()}>
-              {isSubmitting ? "Creating..." : "Create Ticket"}
-            </Button>
-          </DialogFooter>
-        </form>
+          )}
+        </div>
+        
+        <DialogFooter>
+          <Button
+            type="submit"
+            onClick={handleSubmit}
+            disabled={!title || isSubmitting}
+          >
+            {isSubmitting ? "Creating..." : "Create Ticket"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

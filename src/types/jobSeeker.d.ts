@@ -1,3 +1,4 @@
+
 export interface Profile {
   id: string;
   first_name: string;
@@ -56,8 +57,11 @@ export interface EquityProject {
     };
   };
   created_by?: string;
+  created_at?: string; // Add creation date
+  updated_at?: string; // Add update date
   skill_match?: number; // Added property for skill match percentage
 }
+
 export interface EffortLog {
   date: string;
   hours: number;
@@ -92,4 +96,9 @@ export interface JobApplication {
   applicant_anonymized?: boolean;
   applicant_email?: string;
   user_id?: string; // Adding user_id to match database schema
+  accepted_jobs?: {
+    equity_agreed: number;
+    jobs_equity_allocated?: number;
+  };
+  hours_logged?: number;
 }
