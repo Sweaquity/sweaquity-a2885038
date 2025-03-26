@@ -102,3 +102,15 @@ export interface JobApplication {
   };
   hours_logged?: number;
 }
+
+export interface ExtendedJobApplication extends JobApplication {
+  accepted_jobs?: {
+    equity_agreed: number;
+    jobs_equity_allocated?: number;
+  };
+}
+
+export interface SkillRequirement {
+  skill: string;
+  level?: string;
+}

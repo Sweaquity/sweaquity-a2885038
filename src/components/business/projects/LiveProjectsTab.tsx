@@ -18,7 +18,9 @@ import { Plus, RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
 import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
 import { supabase } from "@/lib/supabase";
 import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
-import { DragDropContext } from "react-beautiful-dnd";
+import { DragDropContext, DropResult } from "react-beautiful-dnd";
+import { Provider } from "react-redux";
+import { store } from "@/components/business/testing/store";
 
 interface LiveProjectsTabProps {
   businessId: string;
@@ -64,10 +66,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       if (error) throw error;
       
       setProjects(data || []);
-      
-      if (data && data.length > 0 && !selectedProject) {
-        setSelectedProject(data[0].project_id);
-      }
     } catch (error) {
       console.error("Error fetching projects:", error);
       toast.error("Failed to load projects");
@@ -325,7 +323,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     loadTickets(businessId);
   };
 
-  const handleCreateTicket = async (ticketData: any) => {
+  const handleCreateTicket = async (ticketData: Partial<Ticket>) => {
     try {
       // Create ticket with the project_id from the form
       const newTicket = {
@@ -359,6 +357,17 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   const handleReviewTicket = (ticket: any) => {
     setReviewTicket(ticket);
     setIsReviewDialogOpen(true);
+  };
+
+  const handleDragEnd = (result: DropResult) => {
+    // Implementation of drag end logic for Kanban
+    if (!result.destination) return;
+    
+    const { draggableId, destination } = result;
+    const newStatus = destination.droppableId;
+    
+    // Update ticket status
+    handleTicketAction(draggableId, 'updateStatus', newStatus);
   };
 
   const renderTicketsSection = () => {
@@ -430,9 +439,11 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           
           <TabsContent value="all-tickets">
             {showKanban ? (
-              <DragDropContext onDragEnd={() => {}}>
-                <KanbanBoard projectId={selectedProject !== "all" ? selectedProject : undefined} />
-              </DragDropContext>
+              <Provider store={store}>
+                <DragDropContext onDragEnd={handleDragEnd}>
+                  <KanbanBoard projectId={selectedProject !== "all" ? selectedProject : undefined} />
+                </DragDropContext>
+              </Provider>
             ) : (
               <TicketDashboard
                 tickets={tickets}
@@ -467,13 +478,16 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
                   { label: 'Closed Tasks', value: taskStats.closed, color: 'green' },
                   { label: 'High Priority', value: taskStats.highPriority, color: 'red' }
                 ]}
+                showTimeLogDialog={true}
+                userId={businessId}
+                onRefresh={handleRefreshTickets}
               />
             )}
           </TabsContent>
           
           <TabsContent value="project-tasks">
             <TicketDashboard
-              tickets={tickets.filter(t => (t.ticket_type || t.type) === 'task')}
+              tickets={tickets.filter(t => (t.ticket_type === 'task' || t.type === 'task'))}
               isLoading={loading}
               handleTicketAction={handleTicketAction}
               renderTicketActions={(ticket) => (
@@ -499,12 +513,15 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
                   render: (ticket) => `${ticket.completion_percentage || 0}%`
                 }
               ]}
+              showTimeLogDialog={true}
+              userId={businessId}
+              onRefresh={handleRefreshTickets}
             />
           </TabsContent>
           
           <TabsContent value="project-tickets">
             <TicketDashboard
-              tickets={tickets.filter(t => (t.ticket_type || t.type) === 'project')}
+              tickets={tickets.filter(t => (t.ticket_type === 'project' || t.type === 'project'))}
               isLoading={loading}
               handleTicketAction={handleTicketAction}
               columns={[
@@ -518,12 +535,15 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
                   render: (ticket) => `${ticket.completion_percentage || 0}%`
                 }
               ]}
+              showTimeLogDialog={true}
+              userId={businessId}
+              onRefresh={handleRefreshTickets}
             />
           </TabsContent>
           
           <TabsContent value="beta-tickets">
             <TicketDashboard
-              tickets={tickets.filter(t => (t.ticket_type || t.type) === 'beta')}
+              tickets={tickets.filter(t => (t.ticket_type === 'beta' || t.type === 'beta'))}
               isLoading={loading}
               handleTicketAction={handleTicketAction}
               columns={[
@@ -537,6 +557,9 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
                   render: (ticket) => `${ticket.completion_percentage || 0}%`
                 }
               ]}
+              showTimeLogDialog={true}
+              userId={businessId}
+              onRefresh={handleRefreshTickets}
             />
           </TabsContent>
         </Tabs>

@@ -48,6 +48,7 @@ export const CreateTicketDialog = ({
         priority,
         status: "new",
         health: "good",
+        type: ticketType,
         ticket_type: ticketType,
         project_id: projectId,
         completion_percentage: 0
