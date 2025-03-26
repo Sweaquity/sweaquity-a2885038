@@ -70,14 +70,17 @@ const JobSeekerDashboard = () => {
     
     setPendingApplications(pendingAcceptance);
     
-    // Count new opportunities based on last login
+    // Count new opportunities based on recent creation date
     // This is a placeholder. In a real implementation, you'd track which opportunities the user has seen
     const recentOpportunities = availableOpportunities ? 
-      availableOpportunities.filter(opp => 
-        new Date(opp.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-      ).length : 0;
+      availableOpportunities.filter(opp => {
+        // Check for created_date or created_at or any date property available
+        const creationDate = opp.date_created || opp.created_date || null;
+        if (!creationDate) return false;
+        return new Date(creationDate) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      }).length : 0;
     
-    setNewOpportunities(recentOpportunities);
+    setNewOpportunities(recentOpportunities > 0 ? recentOpportunities : 0);
   }, [applications, availableOpportunities]);
 
   const handleTabChange = (value: string) => {
@@ -146,8 +149,8 @@ const JobSeekerDashboard = () => {
             onTabChange={handleTabChange}
             tabs={[
               { id: "profile", label: "Profile" },
-              { id: "opportunities", label: "Opportunities", notificationCount: newOpportunities },
-              { id: "applications", label: "Applications", notificationCount: pendingApplications },
+              { id: "opportunities", label: "Opportunities", notificationCount: newOpportunities > 0 ? newOpportunities : undefined },
+              { id: "applications", label: "Applications", notificationCount: pendingApplications > 0 ? pendingApplications : undefined },
               { id: "live-projects", label: "Live Projects" }
             ]}
           />

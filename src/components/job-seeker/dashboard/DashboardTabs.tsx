@@ -28,7 +28,7 @@ export const DashboardTabs = ({
           className="relative"
         >
           {tab.label}
-          {tab.notificationCount && tab.notificationCount > 0 && (
+          {tab.notificationCount !== undefined && tab.notificationCount > 0 && (
             <span className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-full text-xs">
               {tab.notificationCount}
             </span>

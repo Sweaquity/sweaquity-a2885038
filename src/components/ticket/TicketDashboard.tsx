@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Table,
@@ -14,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ExpandedTicketDetails } from "@/components/ticket/ExpandedTicketDetails";
 import { TicketMessage } from "@/types/dashboard";
-import { Clock, CheckCircle2, AlertTriangle, Search, Filter } from "lucide-react";
+import { Clock, CheckCircle2, AlertTriangle, Search, Filter, RefreshCw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Ticket } from "@/types/types";
 
@@ -56,8 +55,6 @@ export const TicketDashboard = ({
   }, [searchTerm, statusFilter, priorityFilter, tickets]);
 
   const loadUsers = async () => {
-    // Here you would load users from your backend
-    // This is a placeholder
     setUsers([
       { id: userId, first_name: 'Current', last_name: 'User', email: 'user@example.com' }
     ]);
@@ -66,7 +63,6 @@ export const TicketDashboard = ({
   const applyFilters = () => {
     let result = [...tickets];
 
-    // Apply search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(ticket => 
@@ -75,12 +71,10 @@ export const TicketDashboard = ({
       );
     }
 
-    // Apply status filter
     if (statusFilter !== 'all') {
       result = result.filter(ticket => ticket.status === statusFilter);
     }
 
-    // Apply priority filter
     if (priorityFilter !== 'all') {
       result = result.filter(ticket => ticket.priority === priorityFilter);
     }
@@ -93,7 +87,6 @@ export const TicketDashboard = ({
     setIsDialogOpen(true);
   };
 
-  // Status icon helper
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'new':
@@ -134,12 +127,10 @@ export const TicketDashboard = ({
     
     await onTicketAction(selectedTicket.id, 'updateStatus', status);
     
-    // Update the local state
     setTickets(prev => 
       prev.map(t => t.id === selectedTicket.id ? { ...t, status } : t)
     );
     
-    // Also update the selectedTicket
     setSelectedTicket(prev => prev ? { ...prev, status } : null);
   };
 
@@ -148,12 +139,10 @@ export const TicketDashboard = ({
     
     await onTicketAction(selectedTicket.id, 'updatePriority', priority);
     
-    // Update the local state
     setTickets(prev => 
       prev.map(t => t.id === selectedTicket.id ? { ...t, priority } : t)
     );
     
-    // Also update the selectedTicket
     setSelectedTicket(prev => prev ? { ...prev, priority } : null);
   };
 
@@ -162,12 +151,10 @@ export const TicketDashboard = ({
     
     await onTicketAction(selectedTicket.id, 'updateDueDate', dueDate);
     
-    // Update the local state
     setTickets(prev => 
       prev.map(t => t.id === selectedTicket.id ? { ...t, due_date: dueDate } : t)
     );
     
-    // Also update the selectedTicket
     setSelectedTicket(prev => prev ? { ...prev, due_date: dueDate } : null);
   };
 
@@ -176,12 +163,10 @@ export const TicketDashboard = ({
     
     await onTicketAction(selectedTicket.id, 'updateEstimatedHours', hours);
     
-    // Update the local state
     setTickets(prev => 
       prev.map(t => t.id === selectedTicket.id ? { ...t, estimated_hours: hours } : t)
     );
     
-    // Also update the selectedTicket
     setSelectedTicket(prev => prev ? { ...prev, estimated_hours: hours } : null);
   };
 
@@ -190,12 +175,10 @@ export const TicketDashboard = ({
     
     await onTicketAction(selectedTicket.id, 'updateCompletionPercentage', percentage);
     
-    // Update the local state
     setTickets(prev => 
       prev.map(t => t.id === selectedTicket.id ? { ...t, completion_percentage: percentage } : t)
     );
     
-    // Also update the selectedTicket
     setSelectedTicket(prev => prev ? { ...prev, completion_percentage: percentage } : null);
   };
 
@@ -204,7 +187,6 @@ export const TicketDashboard = ({
     
     await onTicketAction(selectedTicket.id, 'addReply', message);
     
-    // Update locally after the backend update
     const newReply = {
       id: Date.now().toString(),
       content: message,
@@ -222,7 +204,6 @@ export const TicketDashboard = ({
     
     setSelectedTicket(updatedTicket);
     
-    // Also update in the main tickets list
     setTickets(prev => 
       prev.map(t => t.id === updatedTicket.id ? updatedTicket : t)
     );
@@ -354,7 +335,6 @@ export const TicketDashboard = ({
         </Table>
       </div>
       
-      {/* Ticket Details Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           {selectedTicket && (
@@ -368,6 +348,7 @@ export const TicketDashboard = ({
               onUpdateCompletionPercentage={handleTicketCompletionChange}
               onUpdateDueDate={handleTicketDueDateChange}
               users={users}
+              messages={selectedTicket.replies || []}
             />
           )}
         </DialogContent>

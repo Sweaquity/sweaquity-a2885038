@@ -321,7 +321,6 @@ export const BetaTestingTab = ({
             initialTickets={tickets}
             onRefresh={handleRefresh}
             onTicketAction={handleTicketAction}
-            onToggleTicket={handleToggleTicket}
             showTimeTracking={userType === 'job_seeker'}
             userId={userId}
           />
@@ -334,7 +333,6 @@ export const BetaTestingTab = ({
                 initialTickets={tickets.filter(t => t.task_id)}
                 onRefresh={handleRefresh}
                 onTicketAction={handleTicketAction}
-                onToggleTicket={handleToggleTicket}
                 showTimeTracking={userType === 'job_seeker'}
                 userId={userId}
               />
@@ -345,7 +343,6 @@ export const BetaTestingTab = ({
                 initialTickets={tickets.filter(t => t.project_id && !t.task_id)}
                 onRefresh={handleRefresh}
                 onTicketAction={handleTicketAction}
-                onToggleTicket={handleToggleTicket}
                 showTimeTracking={userType === 'job_seeker'}
                 userId={userId}
               />

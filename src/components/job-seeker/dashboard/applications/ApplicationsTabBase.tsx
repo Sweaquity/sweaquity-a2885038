@@ -1,84 +1,125 @@
 
-import { JobApplication } from "@/types/jobSeeker";
-import { ApplicationItem } from "./ApplicationItem";
+import { useState, useEffect, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { JobApplication } from "@/types/jobSeeker";
+import { ApplicationsList } from "./ApplicationsList";
+import { PendingApplicationsList } from "./PendingApplicationsList";
+import { PastApplicationsList } from "./PastApplicationsList";
+import { EquityProjectsList } from "./EquityProjectsList";
+import { useApplicationActions } from "./hooks/useApplicationActions";
 
-export interface ApplicationsTabBaseProps {
+interface ApplicationsTabBaseProps {
   applications: JobApplication[];
   onApplicationUpdated: () => void;
-  newMessagesCount: number;
+  newMessagesCount?: number;
 }
 
-export const ApplicationsTabBase = ({ 
-  applications, 
+export const ApplicationsTabBase = ({
+  applications,
   onApplicationUpdated,
-  newMessagesCount = 0
+  newMessagesCount
 }: ApplicationsTabBaseProps) => {
-  const [activeTab, setActiveTab] = useState("active");
-  
-  // Filter applications by status
-  const activeApplications = applications.filter(
-    (app) => app.status !== "rejected" && app.status !== "withdrawn"
-  );
-  const archivedApplications = applications.filter(
-    (app) => app.status === "rejected" || app.status === "withdrawn"
+  const [activeTab, setActiveTab] = useState<string>("pending");
+  const { handleWithdrawApplication, handleAcceptJob, withdrawLoading } = useApplicationActions(onApplicationUpdated);
+
+  // Filter applications by status type
+  const pendingApplications = useMemo(() => 
+    applications.filter(app => 
+      app.status === 'pending' || 
+      (app.status === 'accepted' && app.accepted_business && !app.accepted_jobseeker)
+    ), 
+    [applications]
   );
 
+  const currentApplications = useMemo(() => 
+    applications.filter(app => 
+      app.status === 'accepted' && app.accepted_business && app.accepted_jobseeker
+    ), 
+    [applications]
+  );
+
+  const pastApplications = useMemo(() => 
+    applications.filter(app => 
+      app.status === 'rejected' || app.status === 'withdrawn' || app.status === 'completed'
+    ), 
+    [applications]
+  );
+
+  // Count notifications for tabs
+  const pendingCount = pendingApplications.filter(app => 
+    app.status === 'accepted' && app.accepted_business && !app.accepted_jobseeker
+  ).length;
+
+  const messagesCount = newMessagesCount || 0;
+
+  useEffect(() => {
+    if (pendingCount > 0 && activeTab !== "pending") {
+      //setActiveTab("pending");
+    }
+  }, [pendingCount]);
+
+  if (applications.length === 0) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center py-6">
+            <h3 className="text-lg font-medium">No Applications Yet</h3>
+            <p className="text-muted-foreground mt-2">
+              You haven't applied to any projects yet. Check out the Opportunities tab to find projects to apply for.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-semibold">My Applications</h2>
-      
-      <Tabs defaultValue="active" onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="active" className="relative">
-            Active Applications
-            {newMessagesCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-full text-xs">
-                {newMessagesCount}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="archived">Archived Applications</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="active">
-          {activeApplications.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              You have no active applications.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {activeApplications.map((application) => (
-                <ApplicationItem
-                  key={application.job_app_id || application.id}
-                  application={application}
-                  onApplicationUpdated={onApplicationUpdated}
-                />
-              ))}
-            </div>
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <TabsList className="grid grid-cols-4">
+        <TabsTrigger value="pending" className="relative">
+          Pending
+          {pendingCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-full text-xs">
+              {pendingCount}
+            </span>
           )}
-        </TabsContent>
-        
-        <TabsContent value="archived">
-          {archivedApplications.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              You have no archived applications.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {archivedApplications.map((application) => (
-                <ApplicationItem
-                  key={application.job_app_id || application.id}
-                  application={application}
-                  onApplicationUpdated={onApplicationUpdated}
-                  compact={true}
-                />
-              ))}
-            </div>
+        </TabsTrigger>
+        <TabsTrigger value="current" className="relative">
+          Current
+          {messagesCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-full text-xs">
+              {messagesCount}
+            </span>
           )}
-        </TabsContent>
-      </Tabs>
-    </div>
+        </TabsTrigger>
+        <TabsTrigger value="past">Past</TabsTrigger>
+        <TabsTrigger value="equity">Equity</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="pending">
+        <PendingApplicationsList 
+          applications={pendingApplications} 
+          onWithdraw={handleWithdrawApplication}
+          onAccept={handleAcceptJob}
+          isWithdrawing={withdrawLoading}
+        />
+      </TabsContent>
+
+      <TabsContent value="current">
+        <ApplicationsList 
+          applications={currentApplications}
+          onApplicationUpdated={onApplicationUpdated}
+        />
+      </TabsContent>
+
+      <TabsContent value="past">
+        <PastApplicationsList applications={pastApplications} />
+      </TabsContent>
+
+      <TabsContent value="equity">
+        <EquityProjectsList applications={currentApplications} />
+      </TabsContent>
+    </Tabs>
   );
 };
