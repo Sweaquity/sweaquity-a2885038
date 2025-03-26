@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AccountSettingsCard } from "@/components/shared/AccountSettingsCard";
 import { BusinessProfileEditor } from "@/components/business/profile/BusinessProfileEditor";
-import { BetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
+import { LiveProjectsTab } from "@/components/business/projects/LiveProjectsTab";
 
 interface SubTask {
   id: string;
@@ -362,11 +362,7 @@ const BusinessDashboard = () => {
           </TabsContent>
 
           <TabsContent value="live-projects">
-            <BetaTestingTab 
-              userType="business"
-              userId={userId}
-              includeProjectTickets={true}
-            />
+            <LiveProjectsTab businessId={userId || ''} />
           </TabsContent>
         </Tabs>
       </div>

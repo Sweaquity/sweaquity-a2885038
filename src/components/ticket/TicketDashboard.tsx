@@ -83,7 +83,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     }
 
     if (typeFilter !== "all") {
-      filtered = filtered.filter((ticket) => ticket.ticket_type === typeFilter);
+      filtered = filtered.filter((ticket) => ticket.type === typeFilter);
     }
 
     setFilteredTickets(filtered);
@@ -273,6 +273,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                   <TableHead>Type</TableHead>
                   {showTimeTracking && <TableHead>Hours</TableHead>}
                   <TableHead>Due Date</TableHead>
+                  <TableHead>Completion</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -333,7 +334,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {getTicketTypeLabel(ticket.ticket_type || "task")}
+                        {getTicketTypeLabel(ticket.type || "task")}
                       </Badge>
                     </TableCell>
                     {showTimeTracking && (
@@ -342,6 +343,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                       </TableCell>
                     )}
                     <TableCell>{formatDate(ticket.due_date)}</TableCell>
+                    <TableCell>{ticket.completion_percentage || 0}%</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button

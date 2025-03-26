@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useJobSeekerDashboard } from "@/hooks/useJobSeekerDashboard";
@@ -11,7 +12,7 @@ import { DashboardTabs } from "@/components/job-seeker/dashboard/DashboardTabs";
 import { DashboardTab } from "@/components/job-seeker/dashboard/tabs/DashboardTab";
 import { ProfileTab } from "@/components/job-seeker/dashboard/tabs/ProfileTab";
 import { ApplicationsTab } from "@/components/job-seeker/dashboard/tabs/ApplicationsTab";
-import { OpportunitiesTab } from "@/components/job-seeker/dashboard/tabs/OpportunitiesTab";
+import { OpportunitiesTab } from "@/components/job-seeker/dashboard/OpportunitiesTab";
 import { DashboardSkeleton } from "@/components/job-seeker/dashboard/DashboardSkeleton";
 import { JobSeekerProjectsTab } from "@/components/job-seeker/dashboard/tabs/JobSeekerProjectsTab";
 import { supabase } from "@/lib/supabase";
@@ -73,8 +74,8 @@ const JobSeekerDashboard = () => {
     // This is a placeholder. In a real implementation, you'd track which opportunities the user has seen
     const recentOpportunities = availableOpportunities ? 
       availableOpportunities.filter(opp => {
-        // Check for created_at or any date property available
-        const creationDate = opp.created_at || null;
+        // Check for updated_at since created_at might not exist
+        const creationDate = opp.updated_at || null;
         if (!creationDate) return false;
         return new Date(creationDate) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       }).length : 0;

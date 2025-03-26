@@ -1,21 +1,29 @@
 
 import React, { useState, useEffect } from "react";
-import { format } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, MessageSquare, ClipboardList, CalendarIcon, CheckCircle2, AlertTriangle } from "lucide-react";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { CalendarIcon, Clock } from "lucide-react";
+import { format } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Ticket } from "@/types/types";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
-// Accept optional onClose prop to make it reusable for dialogs
 interface ExpandedTicketDetailsProps {
-  ticket: any;
+  ticket: Ticket;
   onClose?: () => void;
-  onTicketAction: (ticketId: string, action: string, data: any) => Promise<void>;
+  onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
   onLogTime?: (ticketId: string) => void;
   userCanEditStatus?: boolean;
   userCanEditDates?: boolean;
@@ -24,399 +32,401 @@ interface ExpandedTicketDetailsProps {
 export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   ticket,
   onClose,
-  onTicketAction,
+  onTicketAction = async () => {},
   onLogTime,
-  userCanEditStatus = true,
-  userCanEditDates = true
+  userCanEditStatus = false,
+  userCanEditDates = false
 }) => {
   const [activeTab, setActiveTab] = useState("details");
-  const [replyText, setReplyText] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState(ticket.status);
-  const [selectedPriority, setSelectedPriority] = useState(ticket.priority);
-  const [estimatedHours, setEstimatedHours] = useState(ticket.estimated_hours || 0);
-  const [completionPercentage, setCompletionPercentage] = useState(ticket.completion_percentage || 0);
-  const [dueDate, setDueDate] = useState<Date | undefined>(
+  const [newNote, setNewNote] = useState("");
+  const [date, setDate] = useState<Date | undefined>(
     ticket.due_date ? new Date(ticket.due_date) : undefined
   );
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [completionPercent, setCompletionPercent] = useState<number>(
+    ticket.completion_percentage || 0
+  );
+  const [timeEntries, setTimeEntries] = useState<any[]>([]);
+  const [isLoadingTimeEntries, setIsLoadingTimeEntries] = useState(false);
+
+  const statusOptions = [
+    { value: "new", label: "New" },
+    { value: "in-progress", label: "In Progress" },
+    { value: "blocked", label: "Blocked" },
+    { value: "review", label: "Review" },
+    { value: "done", label: "Done" },
+    { value: "closed", label: "Closed" }
+  ];
+
+  const priorityOptions = [
+    { value: "low", label: "Low" },
+    { value: "medium", label: "Medium" },
+    { value: "high", label: "High" }
+  ];
 
   useEffect(() => {
-    setSelectedStatus(ticket.status);
-    setSelectedPriority(ticket.priority);
-    setEstimatedHours(ticket.estimated_hours || 0);
-    setCompletionPercentage(ticket.completion_percentage || 0);
-    setDueDate(ticket.due_date ? new Date(ticket.due_date) : undefined);
-  }, [ticket]);
-
-  const handleStatusChange = async () => {
-    if (selectedStatus === ticket.status) return;
-    setIsSubmitting(true);
-    try {
-      await onTicketAction(ticket.id, "updateStatus", selectedStatus);
-    } finally {
-      setIsSubmitting(false);
+    if (ticket.id) {
+      fetchTimeEntries(ticket.id);
     }
-  };
+  }, [ticket.id]);
 
-  const handlePriorityChange = async () => {
-    if (selectedPriority === ticket.priority) return;
-    setIsSubmitting(true);
+  const fetchTimeEntries = async (ticketId: string) => {
+    setIsLoadingTimeEntries(true);
     try {
-      await onTicketAction(ticket.id, "updatePriority", selectedPriority);
+      const { data, error } = await supabase
+        .from('time_entries')
+        .select(`
+          *,
+          profiles:user_id (
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .eq('ticket_id', ticketId)
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      
+      setTimeEntries(data || []);
+    } catch (error) {
+      console.error('Error fetching time entries:', error);
     } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleUpdateEstimatedHours = async () => {
-    if (estimatedHours === ticket.estimated_hours) return;
-    setIsSubmitting(true);
-    try {
-      await onTicketAction(ticket.id, "updateEstimatedHours", estimatedHours);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleUpdateCompletionPercentage = async () => {
-    if (completionPercentage === ticket.completion_percentage) return;
-    setIsSubmitting(true);
-    try {
-      await onTicketAction(ticket.id, "updateCompletionPercentage", completionPercentage);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleUpdateDueDate = async (date: Date | undefined) => {
-    if (!date) return;
-    setDueDate(date);
-    const formattedDate = format(date, "yyyy-MM-dd");
-    setIsSubmitting(true);
-    try {
-      await onTicketAction(ticket.id, "updateDueDate", formattedDate);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSendReply = async () => {
-    if (!replyText.trim()) return;
-    setIsSubmitting(true);
-    try {
-      await onTicketAction(ticket.id, "addReply", replyText);
-      setReplyText("");
-      setActiveTab("conversation"); // Switch to conversation tab after sending
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "new": return "New";
-      case "in-progress": return "In Progress";
-      case "blocked": return "Blocked";
-      case "review": return "In Review";
-      case "done": return "Done";
-      case "closed": return "Closed";
-      default: return status.charAt(0).toUpperCase() + status.slice(1);
+      setIsLoadingTimeEntries(false);
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "new": return "bg-blue-100 text-blue-800";
-      case "in-progress": return "bg-yellow-100 text-yellow-800";
-      case "blocked": return "bg-red-100 text-red-800";
-      case "review": return "bg-purple-100 text-purple-800";
-      case "done": return "bg-green-100 text-green-800";
-      case "closed": return "bg-gray-100 text-gray-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "new":
+        return "bg-blue-100 text-blue-800";
+      case "in-progress":
+        return "bg-yellow-100 text-yellow-800";
+      case "blocked":
+        return "bg-red-100 text-red-800";
+      case "review":
+        return "bg-purple-100 text-purple-800";
+      case "done":
+        return "bg-green-100 text-green-800";
+      case "closed":
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "low": return "bg-blue-100 text-blue-800";
-      case "medium": return "bg-yellow-100 text-yellow-800";
-      case "high": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "low":
+        return "bg-blue-100 text-blue-800";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800";
+      case "high":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (date: string | null) => {
+    if (!date) return "Not set";
     try {
-      return format(new Date(dateString), "PPP");
-    } catch (e) {
+      return format(new Date(date), "PPP");
+    } catch (error) {
       return "Invalid date";
     }
   };
 
+  const formatDateTime = (date: string | null) => {
+    if (!date) return "Not set";
+    try {
+      return format(new Date(date), "PPP p");
+    } catch (error) {
+      return "Invalid date";
+    }
+  };
+
+  const handleStatusChange = async (value: string) => {
+    await onTicketAction(ticket.id, "updateStatus", value);
+  };
+
+  const handlePriorityChange = async (value: string) => {
+    await onTicketAction(ticket.id, "updatePriority", value);
+  };
+
+  const handleDueDateChange = async (selectedDate: Date | undefined) => {
+    setDate(selectedDate);
+    if (selectedDate) {
+      await onTicketAction(ticket.id, "updateDueDate", selectedDate.toISOString().split('T')[0]);
+    }
+  };
+
+  const handleCompletionChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = Number(e.target.value);
+    setCompletionPercent(value);
+    await onTicketAction(ticket.id, "updateCompletionPercentage", value);
+  };
+
+  const handleAddNote = async () => {
+    if (!newNote.trim()) return;
+    
+    await onTicketAction(ticket.id, "addNote", newNote);
+    setNewNote("");
+  };
+
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+    <div className="max-h-[80vh] overflow-y-auto">
+      <div className="flex justify-between items-start mb-4">
+        <h2 className="text-xl font-bold">{ticket.title}</h2>
+        <div>
+          <Button variant="outline" size="sm" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="conversation">Conversation</TabsTrigger>
+          <TabsTrigger value="activity-log">Activity Log</TabsTrigger>
+          <TabsTrigger value="time-log">Time Log</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="details" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <CardTitle>{ticket.title}</CardTitle>
-              <CardDescription>Ticket ID: {ticket.id.split("-")[0]}</CardDescription>
+              <label className="block text-sm font-medium mb-1">Status</label>
+              <Select
+                value={ticket.status}
+                disabled={!userCanEditStatus}
+                onValueChange={handleStatusChange}
+              >
+                <SelectTrigger className={getStatusColor(ticket.status)}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            {onClose && (
-              <Button variant="ghost" onClick={onClose} size="sm">
-                Close
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Priority</label>
+              <Select
+                value={ticket.priority}
+                disabled={!userCanEditStatus}
+                onValueChange={handlePriorityChange}
+              >
+                <SelectTrigger className={getPriorityColor(ticket.priority)}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {priorityOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Due Date</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !date && "text-muted-foreground"
+                    )}
+                    disabled={!userCanEditDates}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "PPP") : "No date selected"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={handleDueDateChange}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Completion</label>
+              <div className="flex items-center space-x-2">
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={completionPercent}
+                  onChange={handleCompletionChange}
+                  disabled={!userCanEditStatus}
+                  className="w-20"
+                />
+                <span>%</span>
+                <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500"
+                    style={{ width: `${completionPercent}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Description</label>
+            <div className="p-3 bg-gray-50 rounded-md border min-h-[100px] whitespace-pre-wrap">
+              {ticket.description || "No description provided."}
+            </div>
+          </div>
+
+          {onLogTime && (
+            <div className="pt-4">
+              <Button onClick={() => onLogTime(ticket.id)}>
+                <Clock className="h-4 w-4 mr-2" /> Log Time
               </Button>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="conversation" className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-md border mb-4">
+            <p className="text-sm text-gray-500 mb-2">
+              Conversation is where you can discuss this ticket with other team members.
+              Chat history is saved and visible to all team members.
+            </p>
+          </div>
+          
+          <div className="min-h-[200px] max-h-[300px] overflow-y-auto border rounded-md p-4 space-y-4">
+            {ticket.notes && ticket.notes.length > 0 ? (
+              ticket.notes.map((note: any, index: number) => (
+                <div key={note.id || index} className="border-b pb-3">
+                  <div className="flex justify-between">
+                    <p className="font-medium">{note.user}</p>
+                    <p className="text-xs text-gray-500">
+                      {formatDateTime(note.timestamp)}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-sm">{note.comment}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-gray-500 py-8">
+                No conversation history yet.
+              </p>
             )}
           </div>
-        </CardHeader>
-        <CardContent className="pb-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="details">
-                <ClipboardList className="h-4 w-4 mr-2" />
-                Details
-              </TabsTrigger>
-              <TabsTrigger value="conversation">
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Conversation
-              </TabsTrigger>
-              <TabsTrigger value="activity">
-                <Clock className="h-4 w-4 mr-2" />
-                Activity Log
-              </TabsTrigger>
-            </TabsList>
 
-            <TabsContent value="details" className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium">Status</h3>
-                  <div className="flex items-center">
-                    {userCanEditStatus ? (
-                      <div className="w-full">
-                        <select
-                          className={`px-3 py-1 rounded text-sm w-full border ${getStatusColor(selectedStatus)}`}
-                          value={selectedStatus}
-                          onChange={(e) => setSelectedStatus(e.target.value)}
-                          onBlur={handleStatusChange}
-                        >
-                          <option value="new">New</option>
-                          <option value="in-progress">In Progress</option>
-                          <option value="blocked">Blocked</option>
-                          <option value="review">In Review</option>
-                          <option value="done">Done</option>
-                          <option value="closed">Closed</option>
-                        </select>
-                      </div>
-                    ) : (
-                      <Badge className={getStatusColor(ticket.status)}>
-                        {getStatusLabel(ticket.status)}
-                      </Badge>
-                    )}
-                  </div>
+          <div className="flex space-x-2">
+            <Textarea
+              placeholder="Add a note or comment..."
+              value={newNote}
+              onChange={(e) => setNewNote(e.target.value)}
+              className="flex-1"
+            />
+            <Button onClick={handleAddNote} disabled={!newNote.trim()}>
+              Add
+            </Button>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="activity-log" className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-md border mb-4">
+            <p className="text-sm text-gray-500 mb-2">
+              Activity Log shows a record of all changes and updates made to this ticket.
+              It's useful for tracking the history and progress.
+            </p>
+          </div>
+          
+          <div className="min-h-[200px] border rounded-md p-4">
+            <p className="text-center text-gray-500 py-8">
+              Activity log is being implemented.
+            </p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="time-log" className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-md border mb-4">
+            <p className="text-sm text-gray-500 mb-2">
+              Time Log shows all time entries recorded for this ticket.
+            </p>
+          </div>
+          
+          {isLoadingTimeEntries ? (
+            <div className="flex justify-center p-8">
+              <p>Loading time entries...</p>
+            </div>
+          ) : (
+            <div>
+              {timeEntries.length === 0 ? (
+                <div className="text-center text-gray-500 py-8 border rounded-md">
+                  <p>No time entries found for this ticket.</p>
                 </div>
-
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium">Priority</h3>
-                  <div className="flex items-center">
-                    {userCanEditStatus ? (
-                      <div className="w-full">
-                        <select
-                          className={`px-3 py-1 rounded text-sm w-full border ${getPriorityColor(selectedPriority)}`}
-                          value={selectedPriority}
-                          onChange={(e) => setSelectedPriority(e.target.value)}
-                          onBlur={handlePriorityChange}
-                        >
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
-                        </select>
-                      </div>
-                    ) : (
-                      <Badge className={getPriorityColor(ticket.priority)}>
-                        {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}
-                      </Badge>
-                    )}
-                  </div>
+              ) : (
+                <div className="border rounded-md overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          User
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Hours
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Description
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {timeEntries.map((entry) => (
+                        <tr key={entry.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {entry.profiles ? 
+                              `${entry.profiles.first_name || ''} ${entry.profiles.last_name || ''}`.trim() : 
+                              'Unknown user'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {entry.hours_logged || 0} hrs
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {formatDate(entry.created_at)}
+                          </td>
+                          <td className="px-6 py-4 text-sm">
+                            {entry.description || 'No description'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium">Due Date</h3>
-                  {userCanEditDates ? (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          className="w-full justify-start text-left font-normal"
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dueDate ? format(dueDate, "PPP") : "No due date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={dueDate}
-                          onSelect={handleUpdateDueDate}
-                          initialFocus
-                          className="p-3 pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  ) : (
-                    <div className="text-sm">
-                      {ticket.due_date ? formatDate(ticket.due_date) : "No due date set"}
-                    </div>
-                  )}
+              )}
+              
+              {onLogTime && (
+                <div className="mt-4">
+                  <Button onClick={() => onLogTime(ticket.id)}>
+                    <Clock className="h-4 w-4 mr-2" /> Log Time
+                  </Button>
                 </div>
-
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium">Estimated Hours</h3>
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      value={estimatedHours}
-                      onChange={(e) => setEstimatedHours(parseFloat(e.target.value) || 0)}
-                      onBlur={handleUpdateEstimatedHours}
-                      className="w-20"
-                    />
-                    <span className="text-sm">hours</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2 col-span-2">
-                  <h3 className="text-sm font-medium">Completion Percentage</h3>
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={completionPercentage}
-                      onChange={(e) => setCompletionPercentage(parseInt(e.target.value) || 0)}
-                      onBlur={handleUpdateCompletionPercentage}
-                      className="w-20"
-                    />
-                    <span className="text-sm">%</span>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div
-                        className="bg-blue-600 h-2.5 rounded-full"
-                        style={{ width: `${completionPercentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-span-2 space-y-2">
-                  <h3 className="text-sm font-medium">Description</h3>
-                  <div className="text-sm p-3 border rounded bg-gray-50">
-                    {ticket.description || "No description provided."}
-                  </div>
-                </div>
-
-                {ticket.reproduction_steps && (
-                  <div className="col-span-2 space-y-2">
-                    <h3 className="text-sm font-medium">Steps to Reproduce</h3>
-                    <div className="text-sm p-3 border rounded bg-gray-50">
-                      {ticket.reproduction_steps}
-                    </div>
-                  </div>
-                )}
-
-                {onLogTime && (
-                  <div className="col-span-2 mt-4">
-                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={() => onLogTime(ticket.id)}
-                    >
-                      <Clock className="mr-2 h-4 w-4" />
-                      Log Time
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="conversation" className="space-y-4">
-              <div className="border rounded-lg p-4 max-h-80 overflow-y-auto space-y-4">
-                {(!ticket.replies || ticket.replies.length === 0) && (
-                  <div className="text-center text-gray-500 py-8">
-                    No conversation yet. Send a message to start.
-                  </div>
-                )}
-
-                {ticket.replies && ticket.replies.map((reply: any, index: number) => (
-                  <div key={index} className="border-b last:border-b-0 pb-4 last:pb-0">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="font-medium">{reply.sender?.name || "User"}</div>
-                      <div className="text-xs text-gray-500">
-                        {reply.createdAt ? formatDate(reply.createdAt) : "Unknown date"}
-                      </div>
-                    </div>
-                    <div className="text-sm">{reply.content}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="space-y-2">
-                <Textarea
-                  placeholder="Add a comment or update..."
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  className="min-h-[100px]"
-                />
-                <Button 
-                  onClick={handleSendReply} 
-                  disabled={isSubmitting || !replyText.trim()}
-                  className="w-full"
-                >
-                  {isSubmitting ? "Sending..." : "Send Reply"}
-                </Button>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="activity" className="space-y-4">
-              <div className="border rounded-lg p-4 max-h-80 overflow-y-auto space-y-4">
-                {(!ticket.notes || ticket.notes.length === 0) && (
-                  <div className="text-center text-gray-500 py-8">
-                    No activity log entries yet.
-                  </div>
-                )}
-
-                {ticket.notes && ticket.notes.map((note: any, index: number) => (
-                  <div key={index} className="border-b last:border-b-0 pb-4 last:pb-0">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="font-medium">{note.user || "System"}</div>
-                      <div className="text-xs text-gray-500">
-                        {note.timestamp ? formatDate(note.timestamp) : "Unknown date"}
-                      </div>
-                    </div>
-                    <div className="text-sm">{note.comment}</div>
-                  </div>
-                ))}
-
-                {ticket.time_entries && ticket.time_entries.length > 0 && (
-                  <div className="mt-4">
-                    <h4 className="font-medium mb-2">Time Entries</h4>
-                    {ticket.time_entries.map((entry: any, index: number) => (
-                      <div key={index} className="border-b last:border-b-0 pb-2 last:pb-0 mb-2 last:mb-0 text-sm">
-                        <div className="flex justify-between">
-                          <span>{entry.hours_logged} hours</span>
-                          <span className="text-gray-500 text-xs">
-                            {entry.start_time ? formatDate(entry.start_time) : "Unknown date"}
-                          </span>
-                        </div>
-                        <div className="text-gray-600">{entry.description || "No description"}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+              )}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

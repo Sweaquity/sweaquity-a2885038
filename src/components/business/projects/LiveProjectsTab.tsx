@@ -15,20 +15,21 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Plus, RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
-import { GanttChartView } from "@/components/business/testing/GanttChartView";
-import { KanbanBoard } from "@/components/ticket/KanbanBoard";
+import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
 import { supabase } from "@/lib/supabase";
+import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
+import { DragDropContext } from "react-beautiful-dnd";
 
 interface LiveProjectsTabProps {
   businessId: string;
 }
 
 export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
-  const [activeTab, setActiveTab] = useState("tickets");
+  const [activeTab, setActiveTab] = useState("all-tickets");
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<any[]>([]);
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [selectedProject, setSelectedProject] = useState<string>("all");
   const [taskStats, setTaskStats] = useState({
     total: 0,
     open: 0,
@@ -37,6 +38,9 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   });
   const [reviewTicket, setReviewTicket] = useState<any>(null);
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
+  const [isCreateTicketDialogOpen, setIsCreateTicketDialogOpen] = useState(false);
+  const [showKanban, setShowKanban] = useState(false);
+  const [showGantt, setShowGantt] = useState(false);
 
   useEffect(() => {
     if (businessId) {
@@ -61,7 +65,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       
       setProjects(data || []);
       
-      if (data && data.length > 0) {
+      if (data && data.length > 0 && !selectedProject) {
         setSelectedProject(data[0].project_id);
       }
     } catch (error) {
@@ -79,8 +83,8 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         .select('*')
         .or(`reporter.eq.${userId},assigned_to.eq.${userId}`);
       
-      // Filter by project if one is selected
-      if (selectedProject) {
+      // Filter by project if one is selected and it's not "all"
+      if (selectedProject && selectedProject !== "all") {
         query = query.eq('project_id', selectedProject);
       }
       
@@ -92,6 +96,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       
       const processedTickets = (data || []).map(ticket => ({
         ...ticket,
+        type: ticket.ticket_type || "task", // Map ticket_type to type for compatibility
         description: ticket.description || ""  // Ensure description exists
       }));
       
@@ -315,6 +320,10 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     }
   };
 
+  const handleLogTime = (ticketId: string) => {
+    toast.info("Time logging functionality coming soon");
+  };
+
   const handleRefresh = () => {
     if (businessId) {
       loadTickets(businessId);
@@ -326,11 +335,69 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   };
 
   const handleCreateTicket = () => {
-    // This would open a dialog to create a new ticket
-    toast.info("Create ticket functionality will be implemented soon");
+    setIsCreateTicketDialogOpen(true);
+  };
+  
+  const handleTicketCreated = async (ticketData: any) => {
+    try {
+      if (!businessId) {
+        toast.error("Business ID not found");
+        return;
+      }
+      
+      const { data, error } = await supabase
+        .from('tickets')
+        .insert({
+          ...ticketData,
+          reporter: businessId,
+          created_at: new Date().toISOString(),
+          ticket_type: "task",
+          status: "new",
+          priority: ticketData.priority || "medium",
+          health: ticketData.health || "good"
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      toast.success("Ticket created successfully");
+      setTickets([data, ...tickets]);
+      setIsCreateTicketDialogOpen(false);
+    } catch (error) {
+      console.error("Error creating ticket:", error);
+      toast.error("Failed to create ticket");
+    }
   };
 
-  const renderTicketActions = (ticket: any) => {
+  const getActiveTickets = () => {
+    switch (activeTab) {
+      case "project-tasks":
+        return tickets.filter(t => t.task_id);
+      case "project-tickets":
+        return tickets.filter(t => t.project_id && !t.task_id);
+      case "beta-testing":
+        return tickets.filter(t => t.ticket_type === "beta-test");
+      default:
+        return tickets;
+    }
+  };
+
+  const toggleKanbanView = () => {
+    setShowKanban(!showKanban);
+    if (showKanban) {
+      setShowGantt(false);
+    }
+  };
+
+  const toggleGanttView = () => {
+    setShowGantt(!showGantt);
+    if (showGantt) {
+      setShowKanban(false);
+    }
+  };
+
+  const renderTicketActions = (ticket: Ticket) => {
     // For tickets in "review" status with 100% completion, show review buttons
     if (ticket.status === 'review' && ticket.completion_percentage === 100) {
       return (
@@ -367,13 +434,14 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       </div>
 
       <div className="flex items-center justify-between mb-4">
-        <Select value={selectedProject || "none"} onValueChange={handleProjectChange}>
+        <Select value={selectedProject || "all"} onValueChange={handleProjectChange}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Select project" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="all">All Projects</SelectItem>
             {projects.length === 0 ? (
-              <SelectItem value="none">No projects available</SelectItem>
+              <SelectItem value="none" disabled>No projects available</SelectItem>
             ) : (
               projects.map(project => (
                 <SelectItem key={project.project_id} value={project.project_id}>
@@ -385,6 +453,24 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         </Select>
         
         <div className="flex gap-2">
+          <Button 
+            size="sm" 
+            variant={showKanban ? "default" : "outline"} 
+            onClick={toggleKanbanView}
+          >
+            <KanbanSquare className="h-4 w-4 mr-1" /> 
+            {showKanban ? "Hide Kanban" : "Show Kanban"}
+          </Button>
+          
+          <Button 
+            size="sm" 
+            variant={showGantt ? "default" : "outline"} 
+            onClick={toggleGanttView}
+          >
+            <BarChart2 className="h-4 w-4 mr-1" /> 
+            {showGantt ? "Hide Gantt" : "Show Gantt"}
+          </Button>
+          
           <Button size="sm" variant="outline" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-1" /> Refresh
           </Button>
@@ -424,77 +510,49 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
-          <TabsTrigger value="tickets">All Tickets</TabsTrigger>
+          <TabsTrigger value="all-tickets">All Tickets</TabsTrigger>
           <TabsTrigger value="project-tasks">Project Tasks</TabsTrigger>
           <TabsTrigger value="project-tickets">Project Tickets</TabsTrigger>
-          <TabsTrigger value="task-review">Task Completion Review</TabsTrigger>
-          <TabsTrigger value="kanban"><KanbanSquare className="h-4 w-4 mr-1" /> Kanban</TabsTrigger>
-          <TabsTrigger value="gantt"><BarChart2 className="h-4 w-4 mr-1" /> Gantt</TabsTrigger>
+          <TabsTrigger value="beta-testing">Beta Testing Tickets</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="tickets">
-          <TicketDashboard 
-            initialTickets={tickets}
-            onRefresh={handleRefresh}
-            onTicketAction={handleTicketAction}
-            showTimeTracking={false}
-            userId={businessId}
-            renderTicketActions={renderTicketActions}
-          />
-        </TabsContent>
-        
-        <TabsContent value="project-tasks">
-          <TicketDashboard 
-            initialTickets={tickets.filter(t => t.task_id)}
-            onRefresh={handleRefresh}
-            onTicketAction={handleTicketAction}
-            showTimeTracking={false}
-            userId={businessId}
-            renderTicketActions={renderTicketActions}
-          />
-        </TabsContent>
-        
-        <TabsContent value="project-tickets">
-          <TicketDashboard 
-            initialTickets={tickets.filter(t => t.project_id && !t.task_id)}
-            onRefresh={handleRefresh}
-            onTicketAction={handleTicketAction}
-            showTimeTracking={false}
-            userId={businessId}
-          />
-        </TabsContent>
-        
-        <TabsContent value="task-review">
-          <TaskCompletionReview businessId={businessId} />
-        </TabsContent>
-        
-        <TabsContent value="kanban">
-          {selectedProject ? (
-            <KanbanBoard 
-              tickets={tickets}
-              onStatusChange={(ticketId, newStatus) => 
-                handleTicketAction(ticketId, 'updateStatus', newStatus)
-              }
-              onTicketClick={(ticket) => {
-                // For "review" status tickets with 100% completion, open the review dialog
-                if (ticket.status === 'review' && ticket.completion_percentage === 100) {
-                  setReviewTicket(ticket);
-                  setIsReviewDialogOpen(true);
-                } else {
-                  console.log("Ticket clicked:", ticket.id);
-                }
-              }}
+        <TabsContent value={activeTab}>
+          {showKanban ? (
+            <div className="mb-6">
+              <DragDropContext onDragEnd={() => {}}>
+                <KanbanBoard 
+                  tickets={getActiveTickets()}
+                  onStatusChange={(ticketId, newStatus) => 
+                    handleTicketAction(ticketId, 'updateStatus', newStatus)
+                  }
+                  onTicketClick={(ticket) => {
+                    // For "review" status tickets with 100% completion, open the review dialog
+                    if (ticket.status === 'review' && ticket.completion_percentage === 100) {
+                      setReviewTicket(ticket);
+                      setIsReviewDialogOpen(true);
+                    } else {
+                      console.log("Ticket clicked:", ticket.id);
+                    }
+                  }}
+                />
+              </DragDropContext>
+            </div>
+          ) : showGantt ? (
+            <div className="mb-6">
+              <div className="text-center py-8">
+                <p>Gantt view is being implemented. Please check back later.</p>
+              </div>
+            </div>
+          ) : (
+            <TicketDashboard 
+              initialTickets={getActiveTickets()}
+              onRefresh={handleRefresh}
+              onTicketAction={handleTicketAction}
+              showTimeTracking={true}
+              userId={businessId}
+              onLogTime={handleLogTime}
+              renderTicketActions={renderTicketActions}
             />
-          ) : (
-            <div className="text-center py-8">Please select a project to view the Kanban board</div>
-          )}
-        </TabsContent>
-        
-        <TabsContent value="gantt">
-          {selectedProject ? (
-            <GanttChartView projectId={selectedProject} />
-          ) : (
-            <div className="text-center py-8">Please select a project to view the Gantt chart</div>
           )}
         </TabsContent>
       </Tabs>
@@ -509,6 +567,13 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           onClose={handleReviewClose}
         />
       )}
+
+      <CreateTicketDialog
+        isOpen={isCreateTicketDialogOpen}
+        onClose={() => setIsCreateTicketDialogOpen(false)}
+        onCreateTicket={handleTicketCreated}
+        projects={projects}
+      />
     </div>
   );
 };
