@@ -48,8 +48,8 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     
     const recentOpportunities = projects.filter(opp => {
-      if (!opp.created_at && !opp.start_date) return false;
-      const creationDate = opp.created_at ? new Date(opp.created_at) : new Date(opp.start_date);
+      if (!opp.created_at) return false;
+      const creationDate = new Date(opp.created_at);
       return creationDate > oneWeekAgo;
     }).length;
     

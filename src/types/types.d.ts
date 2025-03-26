@@ -46,11 +46,3 @@ export interface ExpandedTicketDetailsProps {
   userCanEditDates?: boolean;
   messages?: any[];
 }
-
-export interface TicketDetailsProps {
-  ticket: Ticket;
-  onClose?: () => void;
-  onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
-  userCanEditStatus?: boolean;
-  userCanEditDates?: boolean;
-}

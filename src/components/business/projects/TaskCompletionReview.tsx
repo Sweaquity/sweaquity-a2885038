@@ -1,64 +1,21 @@
 
 import { useState, useEffect } from "react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription,
-
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
-} from "@/components/ui/dialog";
+import { supabase } from "@/lib/supabase";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/lib/supabase";
-import { Slider } from "@/components/ui/slider";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader,
-  CardTitle 
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import { 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
-  AlertCircle,
-  User,
-  CalendarDays,
-  FileCheck,
-  CircleDollarSign
-} from "lucide-react";
-import { Ticket } from "@/types/types";
-import { TicketService } from "@/components/ticket/TicketService";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface TaskCompletionReviewProps {
   businessId: string;
-  task: Ticket;
-  open: boolean;
-  setOpen: (open: boolean) => void;
-  onClose: () => void;
-}
-
-interface TaskReviewData {
-  task_id: string;
-  job_app_id: string;
-  project_id: string;
-  task_title: string;
-  task_status: string;
-  task_equity_allocation: number;
-  user_id: string;
-  user_name: string;
-  completion_percentage: number;
-  equity_agreed: number;
-  equity_awarded: number;
-  hours_logged: number;
-  user_email?: string;
+  task?: any;
+  open?: boolean;
+  setOpen?: (open: boolean) => void;
+  onClose?: () => void;
 }
 
 export const TaskCompletionReview = ({ 
@@ -68,482 +25,574 @@ export const TaskCompletionReview = ({
   setOpen, 
   onClose 
 }: TaskCompletionReviewProps) => {
-  const [activeTab, setActiveTab] = useState("review");
-  const [reviewComments, setReviewComments] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [taskData, setTaskData] = useState<TaskReviewData | null>(null);
-  const [completionPercentage, setCompletionPercentage] = useState(100);
-  const [equityToAward, setEquityToAward] = useState(0);
+  const [completedTasks, setCompletedTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [completionPercentage, setCompletionPercentage] = useState(0);
+  const [equityAgreed, setEquityAgreed] = useState(0);
 
   useEffect(() => {
-    if (open && task) {
-      loadTaskData();
+    if (businessId) {
+      if (task) {
+        setSelectedTask(task);
+        setCompletionPercentage(task.completion_percentage || 0);
+        fetchEquityAgreed(task.job_app_id);
+      } else {
+        loadCompletedTasks();
+      }
     }
-  }, [open, task]);
+  }, [businessId, task]);
 
-  const loadTaskData = async () => {
-    setIsLoading(true);
+  useEffect(() => {
+    if (selectedTask) {
+      setCompletionPercentage(selectedTask.completion_percentage || 0);
+      fetchEquityAgreed(selectedTask.job_app_id);
+    }
+  }, [selectedTask]);
+
+  // If open prop is provided, use it to control the dialog
+  useEffect(() => {
+    if (open !== undefined) {
+      setIsReviewOpen(open);
+    }
+  }, [open]);
+
+  const fetchEquityAgreed = async (jobAppId: string) => {
+    if (!jobAppId) return;
+    
     try {
-      // First, get the task details from the project_sub_tasks table
-      const { data: taskData, error: taskError } = await supabase
-        .from('project_sub_tasks')
-        .select('*')
-        .eq('task_id', task.task_id)
-        .single();
-
-      if (taskError) throw taskError;
-
-      if (!taskData) {
-        toast.error("Task details not found");
-        setOpen(false);
-        return;
-      }
-
-      // Get the job application info
-      const { data: jobAppData, error: jobAppError } = await supabase
-        .from('job_applications')
-        .select('*, accepted_jobs(*)')
-        .eq('task_id', task.task_id)
-        .single();
-
-      if (jobAppError) throw jobAppError;
-
-      if (!jobAppData) {
-        toast.error("Job application details not found");
-        setOpen(false);
-        return;
-      }
-
-      // Get user details
-      const { data: userData, error: userError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email')
-        .eq('id', jobAppData.user_id)
-        .single();
-
-      if (userError) throw userError;
-
-      // Get time logged for this task
-      const { data: timeEntries, error: timeError } = await supabase
-        .from('time_entries')
-        .select('hours_logged')
-        .eq('job_app_id', jobAppData.job_app_id);
-
-      if (timeError) throw timeError;
-
-      const totalHoursLogged = timeEntries?.reduce((total: number, entry: any) => {
-        return total + (entry.hours_logged || 0);
-      }, 0) || 0;
-
-      // Get equity_agreed from accepted_jobs
-      const equityAgreed = jobAppData.accepted_jobs?.equity_agreed || 0;
+      const { data, error } = await supabase
+        .from('accepted_jobs')
+        .select('equity_agreed')
+        .eq('job_app_id', jobAppId)
+        .maybeSingle();
+        
+      if (error) throw error;
       
-      // Calculate equity to award based on completion percentage
-      const equityToAward = (equityAgreed * completionPercentage) / 100;
-
-      setTaskData({
-        task_id: taskData.task_id,
-        job_app_id: jobAppData.job_app_id,
-        project_id: taskData.project_id,
-        task_title: taskData.title,
-        task_status: taskData.task_status,
-        task_equity_allocation: taskData.equity_allocation,
-        user_id: userData.id,
-        user_name: `${userData.first_name} ${userData.last_name}`,
-        user_email: userData.email,
-        completion_percentage: task.completion_percentage || taskData.completion_percentage || 0,
-        equity_agreed: equityAgreed,
-        equity_awarded: equityToAward,
-        hours_logged: totalHoursLogged
-      });
-
-      setEquityToAward(equityToAward);
-      setCompletionPercentage(completionPercentage);
+      if (data) {
+        setEquityAgreed(data.equity_agreed || 0);
+      }
     } catch (error) {
-      console.error("Error loading task review data:", error);
-      toast.error("Failed to load task review data");
-    } finally {
-      setIsLoading(false);
+      console.error("Error fetching equity agreed:", error);
     }
   };
 
-  const handleCompletionChange = (value: number[]) => {
-    const newValue = value[0];
-    setCompletionPercentage(newValue);
-    
-    if (taskData) {
-      // Recalculate equity award based on new completion percentage
-      const newEquityToAward = (taskData.equity_agreed * newValue) / 100;
-      setEquityToAward(newEquityToAward);
+  const loadCompletedTasks = async () => {
+    try {
+      setLoading(true);
+      
+      // Get all project IDs for this business
+      const { data: projectsData, error: projectsError } = await supabase
+        .from('business_projects')
+        .select('project_id')
+        .eq('business_id', businessId);
+      
+      if (projectsError) throw projectsError;
+      
+      if (!projectsData || projectsData.length === 0) {
+        setCompletedTasks([]);
+        setLoading(false);
+        return;
+      }
+      
+      const projectIds = projectsData.map(project => project.project_id);
+      
+      // Get all tasks that are in these projects and are marked as "review" status
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('tickets')
+        .select(`
+          *,
+          job_applications(user_id, job_app_id, status)
+        `)
+        .in('project_id', projectIds)
+        .eq('status', 'review');
+      
+      if (tasksError) throw tasksError;
+      
+      // Enhance the tasks with user information
+      if (tasksData && tasksData.length > 0) {
+        const enhancedTasks = await Promise.all(tasksData.map(async (task) => {
+          // Get user info if task has job application
+          if (task.job_applications && task.job_applications.length > 0) {
+            const userId = task.job_applications[0].user_id;
+            const { data: userData, error: userError } = await supabase
+              .from('profiles')
+              .select('first_name, last_name, email')
+              .eq('id', userId)
+              .single();
+            
+            if (!userError && userData) {
+              return {
+                ...task,
+                user: userData,
+                job_app_id: task.job_applications[0].job_app_id
+              };
+            }
+          }
+          
+          return task;
+        }));
+        
+        setCompletedTasks(enhancedTasks);
+      } else {
+        setCompletedTasks([]);
+      }
+    } catch (error) {
+      console.error("Error loading completed tasks:", error);
+      toast.error("Failed to load tasks for review");
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleOpenReview = async (task: any) => {
+    setSelectedTask(task);
+    await fetchEquityAgreed(task.job_app_id);
+    setIsReviewOpen(true);
   };
 
   const handleApproveTask = async () => {
-    if (!taskData) return;
-    
     try {
-      setIsSubmitting(true);
+      if (!selectedTask) return;
       
-      // 1. Update the accepted_jobs table with the awarded equity
-      const { error: updateEquityError } = await supabase
-        .from('accepted_jobs')
-        .update({
-          jobs_equity_allocated: equityToAward,
-          updated_at: new Date().toISOString()
-        })
-        .eq('job_app_id', taskData.job_app_id);
-      
-      if (updateEquityError) throw updateEquityError;
-      
-      // 2. Add a comment to the ticket
-      const comment = `Task approved with ${completionPercentage}% completion. Equity awarded: ${equityToAward}. ${reviewComments ? `Comments: ${reviewComments}` : ''}`;
-      
-      await TicketService.addComment(task.id, comment, businessId);
-      
-      // 3. Update the ticket status to done and completion percentage
+      // Update the ticket status to done
       await supabase
         .from('tickets')
         .update({
           status: 'done',
-          completion_percentage: completionPercentage,
-          updated_at: new Date().toISOString()
+          completion_percentage: completionPercentage
         })
-        .eq('id', task.id);
+        .eq('id', selectedTask.id);
       
-      // 4. Update task_status in project_sub_tasks
-      await supabase
-        .from('project_sub_tasks')
-        .update({
-          task_status: 'closed',
-          completion_percentage: completionPercentage,
-          last_activity_at: new Date().toISOString()
-        })
-        .eq('task_id', taskData.task_id);
-      
-      // 5. Update the business_projects table with overall completion and equity allocated
-      await TicketService.updateProjectCompletionAndEquity(taskData.project_id);
+      // If task_id exists, update related tables
+      if (selectedTask.task_id) {
+        try {
+          // Update project_sub_tasks
+          await supabase
+            .from('project_sub_tasks')
+            .update({ 
+              completion_percentage: completionPercentage,
+              task_status: completionPercentage >= 100 ? 'closed' : 'active',
+              last_activity_at: new Date().toISOString()
+            })
+            .eq('task_id', selectedTask.task_id);
+          
+          // Update accepted_jobs to track allocated equity
+          if (selectedTask.job_app_id) {
+            const equityAwarded = (equityAgreed * completionPercentage) / 100;
+            
+            await supabase
+              .from('accepted_jobs')
+              .update({
+                jobs_equity_allocated: equityAwarded,
+                updated_at: new Date().toISOString()
+              })
+              .eq('job_app_id', selectedTask.job_app_id);
+          }
+            
+          // Update jobseeker_active_projects using RPC
+          await supabase.rpc('update_active_project', {
+            p_task_id: selectedTask.task_id,
+            p_completion_percentage: completionPercentage,
+            p_status: completionPercentage >= 100 ? 'done' : 'in_progress'
+          });
+          
+          // Update business_projects table with aggregate completion percentage and equity allocated
+          if (selectedTask.project_id) {
+            await updateProjectCompletionAndEquity(selectedTask.project_id);
+          }
+        } catch (e) {
+          console.error("Error updating related tables:", e);
+          // Don't fail if this secondary update fails
+        }
+      }
       
       toast.success("Task approved successfully");
       
-      setOpen(false);
-      if (onClose) onClose();
+      // Handle dialog closing based on props
+      if (setOpen) {
+        setOpen(false);
+      } else {
+        setIsReviewOpen(false);
+      }
+      
+      // Call onClose if provided
+      if (onClose) {
+        onClose();
+      }
+      
+      // Refresh the list
+      loadCompletedTasks();
     } catch (error) {
       console.error("Error approving task:", error);
       toast.error("Failed to approve task");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
-  const handleRejectTask = async () => {
-    if (!taskData || !reviewComments) {
-      toast.error("Please provide feedback before rejecting");
-      return;
-    }
-    
+  const updateProjectCompletionAndEquity = async (projectId: string) => {
     try {
-      setIsSubmitting(true);
+      // Get all tasks for this project
+      const { data: tasks, error: tasksError } = await supabase
+        .from('project_sub_tasks')
+        .select('*')
+        .eq('project_id', projectId);
+        
+      if (tasksError) throw tasksError;
       
-      // 1. Update the ticket status to in-progress
+      if (!tasks || tasks.length === 0) return;
+      
+      // Calculate weighted completion percentage
+      let totalEquity = 0;
+      let totalCompletedEquity = 0;
+      
+      tasks.forEach(task => {
+        const equity = task.equity_allocation || 0;
+        totalEquity += equity;
+        totalCompletedEquity += equity * (task.completion_percentage || 0) / 100;
+      });
+      
+      const completionPercentage = totalEquity > 0 
+        ? (totalCompletedEquity / totalEquity) * 100 
+        : 0;
+      
+      // Get equity allocated from accepted_jobs
+      const { data: acceptedJobs, error: jobsError } = await supabase
+        .from('accepted_jobs')
+        .select('job_app_id, equity_agreed, jobs_equity_allocated')
+        .in('job_app_id', tasks.map(t => t.job_app_id).filter(Boolean));
+        
+      if (jobsError) throw jobsError;
+      
+      let totalEquityAllocated = 0;
+      if (acceptedJobs) {
+        acceptedJobs.forEach(job => {
+          totalEquityAllocated += job.jobs_equity_allocated || 0;
+        });
+      }
+      
+      // Update business_projects
+      await supabase
+        .from('business_projects')
+        .update({
+          completion_percentage: Math.round(completionPercentage),
+          equity_allocated: totalEquityAllocated,
+          updated_at: new Date().toISOString()
+        })
+        .eq('project_id', projectId);
+    } catch (error) {
+      console.error("Error updating project completion and equity:", error);
+    }
+  };
+
+  const handleRequestChanges = async () => {
+    try {
+      if (!selectedTask) return;
+      
+      // Update the ticket status back to in-progress
       await supabase
         .from('tickets')
         .update({
-          status: 'in-progress',
-          completion_percentage: 80, // Set back to a lower value
-          updated_at: new Date().toISOString()
+          status: 'in-progress'
         })
-        .eq('id', task.id);
+        .eq('id', selectedTask.id);
       
-      // 2. Update task_status in project_sub_tasks
-      await supabase
-        .from('project_sub_tasks')
-        .update({
-          task_status: 'in_progress',
-          completion_percentage: 80, // Set back to a lower value
-          last_activity_at: new Date().toISOString()
-        })
-        .eq('task_id', taskData.task_id);
+      // If task_id exists, update related tables
+      if (selectedTask.task_id) {
+        try {
+          // Update jobseeker_active_projects using RPC
+          await supabase.rpc('update_active_project', {
+            p_task_id: selectedTask.task_id,
+            p_status: 'in-progress'
+          });
+        } catch (e) {
+          console.error("Error updating related tables:", e);
+          // Don't fail if this secondary update fails
+        }
+      }
       
-      // 3. Add a comment to the ticket
-      const comment = `Task review rejected. Feedback: ${reviewComments}`;
-      await TicketService.addComment(task.id, comment, businessId);
+      toast.success("Requested changes successfully");
       
-      toast.success("Task sent back for revision");
+      // Handle dialog closing based on props
+      if (setOpen) {
+        setOpen(false);
+      } else {
+        setIsReviewOpen(false);
+      }
       
-      setOpen(false);
-      if (onClose) onClose();
+      // Call onClose if provided
+      if (onClose) {
+        onClose();
+      }
+      
+      // Refresh the list
+      loadCompletedTasks();
     } catch (error) {
-      console.error("Error rejecting task:", error);
-      toast.error("Failed to reject task review");
-    } finally {
-      setIsSubmitting(false);
+      console.error("Error requesting changes:", error);
+      toast.error("Failed to request changes");
     }
   };
 
-  const renderReviewTab = () => {
-    if (isLoading || !taskData) {
-      return (
-        <div className="flex justify-center p-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      );
+  const handleCloseDialog = () => {
+    if (setOpen) {
+      setOpen(false);
+    } else {
+      setIsReviewOpen(false);
     }
+    
+    if (onClose) {
+      onClose();
+    }
+  };
 
+  // Calculate equity to be awarded with 1 decimal place
+  const calculateEquity = () => {
+    const equity = (equityAgreed * completionPercentage / 100).toFixed(1);
+    return equity;
+  };
+
+  // If a specific task is provided, just render the dialog
+  if (task) {
     return (
-      <div className="space-y-6">
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Task Details</CardTitle>
-              <CardDescription>Review the task completion</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Task:</span>
-                <span className="font-medium">{taskData.task_title}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Status:</span>
-                <span className="font-medium">
-                  {taskData.task_status === 'review' ? 'Pending Review' : taskData.task_status}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Current Completion:</span>
-                <span className="font-medium">{taskData.completion_percentage}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Hours Logged:</span>
-                <span className="font-medium">{taskData.hours_logged} hrs</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Assigned To:</span>
-                <span className="font-medium">{taskData.user_name}</span>
-              </div>
-            </CardContent>
-          </Card>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Review Task Completion</DialogTitle>
+          </DialogHeader>
           
-          <Card>
-            <CardHeader>
-              <CardTitle>Equity Review</CardTitle>
-              <CardDescription>Adjust equity based on completion</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Equity Agreed:</span>
-                  <span className="font-medium">{taskData.equity_agreed}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Set Completion:</span>
-                  <span className="font-medium">{completionPercentage}%</span>
-                </div>
-                <div className="flex justify-between text-green-600 font-medium">
-                  <span>Equity to be awarded:</span>
-                  <span>{equityToAward}%</span>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm">Adjust Completion Percentage:</label>
-                <Slider
-                  defaultValue={[completionPercentage]}
-                  max={100}
-                  step={5}
-                  onValueChange={handleCompletionChange}
-                />
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>0%</span>
-                  <span>50%</span>
-                  <span>100%</span>
-                </div>
-              </div>
-              
-              <div className="pt-4">
-                <Progress value={completionPercentage} className="h-2" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Review Feedback</CardTitle>
-            <CardDescription>
-              Provide feedback for the task completion
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              placeholder="Add your review comments here..."
-              className="min-h-[100px]"
-              value={reviewComments}
-              onChange={(e) => setReviewComments(e.target.value)}
-            />
-          </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button 
-              variant="outline" 
-              onClick={handleRejectTask}
-              disabled={isSubmitting || !reviewComments}
-            >
-              <XCircle className="mr-2 h-4 w-4" />
-              Send Back for Revisions
-            </Button>
-            <Button 
-              onClick={handleApproveTask}
-              disabled={isSubmitting}
-            >
-              <CheckCircle className="mr-2 h-4 w-4" />
-              Approve & Award Equity
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    );
-  };
-
-  const renderDetailsTab = () => {
-    if (isLoading || !taskData) {
-      return (
-        <div className="flex justify-center p-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Task Timeline</CardTitle>
-            <CardDescription>History of task progress</CardDescription>
-          </CardHeader>
-          <CardContent className="pl-6 relative">
-            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-gray-100 ml-3"></div>
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-medium text-lg">{task.title}</h3>
+              <p className="text-muted-foreground">{task.description}</p>
+            </div>
             
-            <div className="space-y-6">
-              <div className="relative pl-6">
-                <div className="absolute left-0 w-2 h-2 rounded-full bg-green-500 -ml-[5px]"></div>
-                <p className="font-medium text-sm">Task Created</p>
-                <p className="text-gray-500 text-xs">2 weeks ago</p>
-              </div>
-              
-              <div className="relative pl-6">
-                <div className="absolute left-0 w-2 h-2 rounded-full bg-blue-500 -ml-[5px]"></div>
-                <p className="font-medium text-sm">Work Started</p>
-                <p className="text-gray-500 text-xs">10 days ago</p>
-              </div>
-              
-              <div className="relative pl-6">
-                <div className="absolute left-0 w-2 h-2 rounded-full bg-purple-500 -ml-[5px]"></div>
-                <p className="font-medium text-sm">First Time Log</p>
-                <p className="text-gray-500 text-xs">8 days ago</p>
-                <p className="text-gray-600 text-xs mt-1">2 hours logged</p>
-              </div>
-              
-              <div className="relative pl-6">
-                <div className="absolute left-0 w-2 h-2 rounded-full bg-amber-500 -ml-[5px]"></div>
-                <p className="font-medium text-sm">Submitted for Review</p>
-                <p className="text-gray-500 text-xs">Today</p>
-                <p className="text-gray-600 text-xs mt-1">Total: {taskData.hours_logged} hours logged</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Detailed Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            <Separator />
+            
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center space-x-2">
-                <User className="h-4 w-4 text-gray-500" />
-                <div>
-                  <p className="text-sm text-gray-500">Assigned To</p>
-                  <p className="font-medium">{taskData.user_name}</p>
+              <div>
+                <h4 className="font-medium">Task Details</h4>
+                <div className="space-y-2 mt-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Status:</span>
+                    <Badge>{task.status}</Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Equity Points:</span>
+                    <span>{task.equity_points || 0}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Estimated Hours:</span>
+                    <span>{task.estimated_hours || 'Not set'}</span>
+                  </div>
                 </div>
               </div>
               
-              <div className="flex items-center space-x-2">
-                <CalendarDays className="h-4 w-4 text-gray-500" />
-                <div>
-                  <p className="text-sm text-gray-500">Last Activity</p>
-                  <p className="font-medium">Today</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-gray-500" />
-                <div>
-                  <p className="text-sm text-gray-500">Hours Logged</p>
-                  <p className="font-medium">{taskData.hours_logged} hours</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <FileCheck className="h-4 w-4 text-gray-500" />
-                <div>
-                  <p className="text-sm text-gray-500">Completion</p>
-                  <p className="font-medium">{taskData.completion_percentage}%</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <CircleDollarSign className="h-4 w-4 text-gray-500" />
-                <div>
-                  <p className="text-sm text-gray-500">Equity Allocated</p>
-                  <p className="font-medium">{taskData.equity_agreed}%</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <AlertCircle className="h-4 w-4 text-gray-500" />
-                <div>
-                  <p className="text-sm text-gray-500">Status</p>
-                  <p className="font-medium capitalize">{taskData.task_status.replace('_', ' ')}</p>
-                </div>
+              <div>
+                <h4 className="font-medium">Completed By</h4>
+                {task.user ? (
+                  <div className="space-y-2 mt-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Name:</span>
+                      <span>{task.user.first_name} {task.user.last_name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Email:</span>
+                      <span>{task.user.email}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">User information not available</p>
+                )}
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+            
+            <Separator />
+            
+            <div>
+              <h4 className="font-medium mb-2">Completion Assessment</h4>
+              <div className="flex items-center gap-4 mb-4">
+                <Label htmlFor="completion-percentage">Completion Percentage:</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="completion-percentage"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={completionPercentage}
+                    onChange={(e) => setCompletionPercentage(parseInt(e.target.value) || 0)}
+                    className="w-24"
+                  />
+                  <span>%</span>
+                </div>
+              </div>
+              <div>
+                <p className="font-medium">Equity to be awarded: {calculateEquity()}%</p>
+                <p className="text-sm text-muted-foreground">
+                  Based on {completionPercentage}% completion of {equityAgreed}% agreed equity
+                </p>
+              </div>
+            </div>
+            
+            <Separator />
+            
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={handleCloseDialog}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleRequestChanges}>
+                Request Changes
+              </Button>
+              <Button onClick={handleApproveTask}>
+                Approve Task
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     );
-  };
+  }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Review Task Completion</DialogTitle>
-          <DialogDescription>
-            Review the task completion and award equity points
-          </DialogDescription>
-        </DialogHeader>
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="pt-2">
-          <TabsList className="grid grid-cols-2 mb-4">
-            <TabsTrigger value="review">Review & Approve</TabsTrigger>
-            <TabsTrigger value="details">Task Details</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="review" className="mt-0">
-            {renderReviewTab()}
-          </TabsContent>
-          
-          <TabsContent value="details" className="mt-0">
-            {renderDetailsTab()}
-          </TabsContent>
-        </Tabs>
-        
-        <DialogFooter className="pt-4">
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Tasks Pending Review</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8">Loading tasks...</div>
+          ) : completedTasks.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No tasks are currently pending review.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {completedTasks.map((task) => (
+                <Card key={task.id} className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-medium text-lg">{task.title}</h3>
+                      <p className="text-sm text-muted-foreground">{task.description}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge>Status: {task.status}</Badge>
+                        {task.user && (
+                          <Badge variant="outline">
+                            Completed by: {task.user.first_name} {task.user.last_name}
+                          </Badge>
+                        )}
+                        {task.completion_percentage !== null && (
+                          <Badge variant="outline">
+                            {task.completion_percentage}%
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <Button onClick={() => handleOpenReview(task)}>Review</Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {selectedTask && (
+        <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Review Task Completion</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-medium text-lg">{selectedTask.title}</h3>
+                <p className="text-muted-foreground">{selectedTask.description}</p>
+              </div>
+              
+              <Separator />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium">Task Details</h4>
+                  <div className="space-y-2 mt-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Status:</span>
+                      <Badge>{selectedTask.status}</Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Equity Points:</span>
+                      <span>{selectedTask.equity_points || 0}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Estimated Hours:</span>
+                      <span>{selectedTask.estimated_hours || 'Not set'}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium">Completed By</h4>
+                  {selectedTask.user ? (
+                    <div className="space-y-2 mt-2">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Name:</span>
+                        <span>{selectedTask.user.first_name} {selectedTask.user.last_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Email:</span>
+                        <span>{selectedTask.user.email}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">User information not available</p>
+                  )}
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div>
+                <h4 className="font-medium mb-2">Completion Assessment</h4>
+                <div className="flex items-center gap-4 mb-4">
+                  <Label htmlFor="completion-percentage">Completion Percentage:</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="completion-percentage"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={completionPercentage}
+                      onChange={(e) => setCompletionPercentage(parseInt(e.target.value) || 0)}
+                      className="w-24"
+                    />
+                    <span>%</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="font-medium">Equity to be awarded: {calculateEquity(selectedTask.equity_points, completionPercentage)}%</p>
+                  <p className="text-sm text-muted-foreground">
+                    Based on {completionPercentage}% completion of {selectedTask.equity_points || 0}% task
+                  </p>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsReviewOpen(false)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleRequestChanges}>
+                  Request Changes
+                </Button>
+                <Button onClick={handleApproveTask}>
+                  Approve Task
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
   );
 };
