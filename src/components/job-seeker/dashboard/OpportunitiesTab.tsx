@@ -147,7 +147,7 @@ export const OpportunitiesTab = ({ projects = [], userSkills = [] }: Opportuniti
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Any Duration</SelectItem>
-              <SelectItem value="short">Short Term (< 3 months)</SelectItem>
+              <SelectItem value="short">Short Term (&lt; 3 months)</SelectItem>
               <SelectItem value="medium">Medium Term (3-6 months)</SelectItem>
               <SelectItem value="long">Long Term (6+ months)</SelectItem>
             </SelectContent>
