@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { EquityProject, Skill, SubTask } from "@/types/jobSeeker";
@@ -34,6 +33,14 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
   const allSkills = useMemo(() => {
     return extractUniqueSkills(projects);
   }, [projects]);
+
+  // Sort projects by created_by
+  const sortByDate = (a, b) => {
+    if (!a.created_at && !b.created_at) return 0;
+    if (!a.created_at) return 1;
+    if (!b.created_at) return -1;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  };
 
   // Filter projects based on search term and selected skill
   useEffect(() => {

@@ -21,6 +21,7 @@ export interface Ticket {
   ticket_type?: string;
   type?: string;
   equity_points?: number;
+  replies?: any[];
 }
 
 export interface TicketMessage {
@@ -63,10 +64,24 @@ export interface TicketDetailsProps {
 export interface TicketDashboardProps {
   tickets?: Ticket[];
   initialTickets?: Ticket[];
+  isLoading?: boolean;
   onRefresh?: () => void;
   onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
+  handleTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
   showTimeTracking?: boolean;
   userId?: string;
+  renderTicketActions?: (ticket: Ticket) => React.ReactNode;
+  columns?: Array<{
+    field: string;
+    header: string;
+    render?: (ticket: Ticket) => React.ReactNode;
+  }>;
+  cardStats?: Array<{
+    label: string;
+    value: number;
+    color: string;
+  }>;
+  showTimeLogDialog?: boolean;
 }
 
 export interface TimeLogDialogProps {
@@ -82,4 +97,11 @@ export interface TaskCompletionReviewProps {
   open: boolean;
   setOpen: (open: boolean) => void;
   onClose: () => void;
+}
+
+export interface KanbanBoardProps {
+  tickets: Ticket[];
+  onTicketClick?: (ticket: Ticket) => void;
+  onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
+  projectId?: string;
 }

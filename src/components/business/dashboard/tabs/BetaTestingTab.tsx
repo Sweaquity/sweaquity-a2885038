@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +35,8 @@ export const BetaTestingTab = () => {
     closed: 0,
     highPriority: 0
   });
+  const [selectedTask, setSelectedTask] = useState<Ticket | null>(null);
+  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -357,6 +358,20 @@ export const BetaTestingTab = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {selectedTask && (
+        <TaskCompletionReview 
+          businessId={userId || ""}
+          task={selectedTask}
+          open={isReviewDialogOpen}
+          setOpen={setIsReviewDialogOpen}
+          onClose={() => {
+            setSelectedTask(null);
+            // Refresh tickets
+            if (userId) loadTickets(userId);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -30,7 +30,7 @@ export const CreateTicketDialog = ({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
-  const [ticketType, setTicketType] = useState("task");
+  const [type, setType] = useState("task");
   const [projectId, setProjectId] = useState<string | undefined>(
     projects.length > 0 ? projects[0].project_id : undefined
   );
@@ -48,7 +48,7 @@ export const CreateTicketDialog = ({
         priority,
         status: "new",
         health: "good",
-        ticket_type: ticketType,
+        type, // Use the type property
         project_id: projectId,
         completion_percentage: 0
       });
@@ -57,7 +57,7 @@ export const CreateTicketDialog = ({
       setTitle("");
       setDescription("");
       setPriority("medium");
-      setTicketType("task");
+      setType("task");
       if (projects.length > 0) {
         setProjectId(projects[0].project_id);
       }
@@ -113,7 +113,7 @@ export const CreateTicketDialog = ({
             
             <div className="grid gap-2">
               <Label htmlFor="type">Type</Label>
-              <Select value={ticketType} onValueChange={setTicketType}>
+              <Select value={type} onValueChange={setType}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>

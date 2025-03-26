@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -81,7 +80,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         .select('*')
         .or(`reporter.eq.${userId},assigned_to.eq.${userId}`);
       
-      // Filter by project if one is selected and it's not "all"
       if (selectedProject && selectedProject !== "all") {
         query = query.eq('project_id', selectedProject);
       }
@@ -94,14 +92,13 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       
       const processedTickets = (data || []).map(ticket => ({
         ...ticket,
-        type: ticket.ticket_type || "task", // Map ticket_type to type for compatibility
-        description: ticket.description || "",  // Ensure description exists
-        health: ticket.health || "unknown" // Ensure health exists for BetaTicket compatibility
+        type: ticket.ticket_type || "task",
+        description: ticket.description || "",
+        health: ticket.health || "unknown"
       }));
       
       setTickets(processedTickets);
       
-      // Calculate ticket stats
       const stats = {
         total: processedTickets.length,
         open: processedTickets.filter(t => t.status !== 'done' && t.status !== 'closed').length,
@@ -122,7 +119,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     try {
       switch (action) {
         case 'updateStatus': {
-          // Update ticket status
           const { error } = await supabase
             .from('tickets')
             .update({ status: data })
@@ -130,12 +126,10 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           
           if (error) throw error;
           
-          // Update local state
           setTickets(prevTickets => 
             prevTickets.map(t => t.id === ticketId ? { ...t, status: data } : t)
           );
           
-          // Check if ticket has a task_id, if so update related tables
           const ticket = tickets.find(t => t.id === ticketId);
           if (ticket?.task_id) {
             try {
@@ -200,23 +194,19 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
             prevTickets.map(t => t.id === ticketId ? { ...t, completion_percentage: data } : t)
           );
           
-          // Check if ticket has a task_id, if so update related tables
           const ticket = tickets.find(t => t.id === ticketId);
           if (ticket?.task_id) {
             try {
-              // Update project_sub_tasks directly
               await supabase
                 .from('project_sub_tasks')
                 .update({ 
                   completion_percentage: data,
-                  // If completion is 100%, mark as ready for review
                   status: data >= 100 ? 'review' : 'in_progress',
                   task_status: data >= 100 ? 'review' : 'active',
                   last_activity_at: new Date().toISOString()
                 })
                 .eq('task_id', ticket.task_id);
               
-              // Also update the ticket status to review if 100% complete
               if (data >= 100) {
                 await supabase
                   .from('tickets')
@@ -228,12 +218,8 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
                 );
               }
               
-              // Update the business_projects table with aggregate completion
-              if (ticket.project_id) {
-                await updateProjectCompletion(ticket.project_id);
-              }
+              await updateProjectCompletion(ticket.project_id);
               
-              // Call the RPC function to update jobseeker view
               const { error: rpcError } = await supabase.rpc('update_active_project', {
                 p_task_id: ticket.task_id,
                 p_completion_percentage: data,
@@ -256,7 +242,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           console.warn("Unhandled ticket action:", action);
       }
       
-      // Refresh tickets after any action
       await loadTickets(businessId);
     } catch (error) {
       console.error(`Error performing action ${action}:`, error);
@@ -266,7 +251,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
 
   const updateProjectCompletion = async (projectId: string) => {
     try {
-      // Get all tasks for this project
       const { data: tasks, error: tasksError } = await supabase
         .from('project_sub_tasks')
         .select('*')
@@ -276,7 +260,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       
       if (!tasks || tasks.length === 0) return;
       
-      // Calculate weighted completion percentage
       let totalEquity = 0;
       let totalCompletedEquity = 0;
       
@@ -290,7 +273,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         ? (totalCompletedEquity / totalEquity) * 100 
         : 0;
       
-      // Get equity allocated from accepted_jobs
       const { data: acceptedJobs, error: jobsError } = await supabase
         .from('accepted_jobs')
         .select('job_app_id, equity_agreed, jobs_equity_allocated')
@@ -305,7 +287,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         });
       }
       
-      // Update business_projects
       await supabase
         .from('business_projects')
         .update({
@@ -325,7 +306,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
 
   const handleCreateTicket = async (ticketData: Partial<Ticket>) => {
     try {
-      // Create ticket with the project_id from the form
       const newTicket = {
         ...ticketData,
         reporter: businessId,
@@ -343,7 +323,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       toast.success("Ticket created successfully");
       setIsCreateTicketDialogOpen(false);
       
-      // Refresh tickets
       loadTickets(businessId);
       
       return data;
@@ -360,13 +339,11 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   };
 
   const handleDragEnd = (result: DropResult) => {
-    // Implementation of drag end logic for Kanban
     if (!result.destination) return;
     
     const { draggableId, destination } = result;
     const newStatus = destination.droppableId;
     
-    // Update ticket status
     handleTicketAction(draggableId, 'updateStatus', newStatus);
   };
 
@@ -487,7 +464,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           
           <TabsContent value="project-tasks">
             <TicketDashboard
-              tickets={tickets.filter(t => (t.ticket_type === 'task' || t.type === 'task'))}
+              tickets={tickets.filter(t => (t.type === 'task'))}
               isLoading={loading}
               handleTicketAction={handleTicketAction}
               renderTicketActions={(ticket) => (
@@ -521,7 +498,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           
           <TabsContent value="project-tickets">
             <TicketDashboard
-              tickets={tickets.filter(t => (t.ticket_type === 'project' || t.type === 'project'))}
+              tickets={tickets.filter(t => (t.type === 'project'))}
               isLoading={loading}
               handleTicketAction={handleTicketAction}
               columns={[
@@ -543,7 +520,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           
           <TabsContent value="beta-tickets">
             <TicketDashboard
-              tickets={tickets.filter(t => (t.ticket_type === 'beta' || t.type === 'beta'))}
+              tickets={tickets.filter(t => (t.type === 'beta'))}
               isLoading={loading}
               handleTicketAction={handleTicketAction}
               columns={[

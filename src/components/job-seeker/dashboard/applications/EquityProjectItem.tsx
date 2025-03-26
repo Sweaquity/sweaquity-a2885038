@@ -1,10 +1,9 @@
-
-import React, { useState } from "react";
+import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExtendedJobApplication } from "@/types/jobSeeker";
+import { JobApplication } from "@/types/jobSeeker";
+import { EquityProjectItemProps } from "@/types/jobSeeker";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Clock, Calendar, ArrowUpRight, CircleDollarSign, FileText, BarChart2, Check, AlertCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -22,9 +21,9 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 
 interface EquityProjectItemProps {
-  application: ExtendedJobApplication;
-  onViewApplication?: (application: ExtendedJobApplication) => void;
-  onViewContract?: (application: ExtendedJobApplication) => void;
+  application: JobApplication;
+  onViewApplication?: (application: JobApplication) => void;
+  onViewContract?: (application: JobApplication) => void;
 }
 
 export const EquityProjectItem = ({ 

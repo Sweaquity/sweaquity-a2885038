@@ -247,15 +247,11 @@ export const JobSeekerProjectsTab = ({ userId }: { userId: string }) => {
     setSelectedProject(projectId);
   };
 
-  const handleCreateTicket = () => {
-    setIsCreateTicketDialogOpen(true);
-  };
-
-  const handleTicketCreated = async (ticketData: any) => {
+  const handleCreateTicket = async (ticketData: Partial<Ticket>): Promise<Ticket | null> => {
     try {
       if (!userId) {
         toast.error("User ID not found");
-        return;
+        return null;
       }
       
       const { data, error } = await supabase
@@ -277,9 +273,10 @@ export const JobSeekerProjectsTab = ({ userId }: { userId: string }) => {
       toast.success("Ticket created successfully");
       setTickets([data, ...tickets]);
       setIsCreateTicketDialogOpen(false);
+      return data;
     } catch (error) {
       console.error("Error creating ticket:", error);
-      toast.error("Failed to create ticket");
+      return null;
     }
   };
 
@@ -384,7 +381,7 @@ export const JobSeekerProjectsTab = ({ userId }: { userId: string }) => {
           
           <TabsContent value="project-tasks">
             <TicketDashboard
-              tickets={tickets.filter(t => (t.ticket_type || t.type) === 'task')}
+              tickets={tickets.filter(t => (t.type === 'task'))}
               isLoading={loading}
               handleTicketAction={handleTicketAction}
               columns={[
@@ -399,12 +396,14 @@ export const JobSeekerProjectsTab = ({ userId }: { userId: string }) => {
                 }
               ]}
               showTimeLogDialog={true}
+              userId={userId}
+              onRefresh={handleRefreshTickets}
             />
           </TabsContent>
           
           <TabsContent value="project-tickets">
             <TicketDashboard
-              tickets={tickets.filter(t => (t.ticket_type || t.type) === 'project')}
+              tickets={tickets.filter(t => (t.type === 'project'))}
               isLoading={loading}
               handleTicketAction={handleTicketAction}
               columns={[
@@ -419,12 +418,14 @@ export const JobSeekerProjectsTab = ({ userId }: { userId: string }) => {
                 }
               ]}
               showTimeLogDialog={true}
+              userId={userId}
+              onRefresh={handleRefreshTickets}
             />
           </TabsContent>
           
           <TabsContent value="beta-tickets">
             <TicketDashboard
-              tickets={tickets.filter(t => (t.ticket_type || t.type) === 'beta')}
+              tickets={tickets.filter(t => (t.type === 'beta'))}
               isLoading={loading}
               handleTicketAction={handleTicketAction}
               columns={[
@@ -439,6 +440,8 @@ export const JobSeekerProjectsTab = ({ userId }: { userId: string }) => {
                 }
               ]}
               showTimeLogDialog={true}
+              userId={userId}
+              onRefresh={handleRefreshTickets}
             />
           </TabsContent>
         </Tabs>
@@ -458,7 +461,7 @@ export const JobSeekerProjectsTab = ({ userId }: { userId: string }) => {
       <CreateTicketDialog
         isOpen={isCreateTicketDialogOpen}
         onClose={() => setIsCreateTicketDialogOpen(false)}
-        onCreateTicket={handleTicketCreated}
+        onCreateTicket={handleCreateTicket}
         projects={projects}
       />
     </div>

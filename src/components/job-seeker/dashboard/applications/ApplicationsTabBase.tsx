@@ -1,132 +1,193 @@
-
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 import { JobApplication } from "@/types/jobSeeker";
-import { ApplicationsList } from "./ApplicationsList";
-import { PendingApplicationsList } from "./PendingApplicationsList";
-import { PastApplicationsList } from "./PastApplicationsList";
-import { EquityProjectsList } from "./EquityProjectsList";
-import { useApplicationActions } from "./hooks/useApplicationActions";
-import { useWithdrawApplication } from "./hooks/useWithdrawApplication";
-import { useAcceptedJobs } from "@/hooks/useAcceptedJobs";
+import { PendingApplicationsListProps } from "@/types/types";
 
 interface ApplicationsTabBaseProps {
-  applications: JobApplication[];
-  onApplicationUpdated: () => void;
-  newMessagesCount?: number;
+  userId: string | null;
 }
 
-export const ApplicationsTabBase = ({
-  applications,
-  onApplicationUpdated,
-  newMessagesCount
-}: ApplicationsTabBaseProps) => {
-  const [activeTab, setActiveTab] = useState<string>("pending");
-  const { isUpdatingStatus, updateApplicationStatus } = useApplicationActions(onApplicationUpdated);
-  const { isWithdrawing, handleWithdrawApplication } = useWithdrawApplication(onApplicationUpdated);
-  const { acceptJobAsJobSeeker, isLoading: isAcceptingJob } = useAcceptedJobs(onApplicationUpdated);
-
-  // Filter applications by status type
-  const pendingApplications = useMemo(() => 
-    applications.filter(app => 
-      app.status === 'pending' || 
-      (app.status === 'accepted' && app.accepted_business && !app.accepted_jobseeker)
-    ), 
-    [applications]
-  );
-
-  const currentApplications = useMemo(() => 
-    applications.filter(app => 
-      app.status === 'accepted' && app.accepted_business && app.accepted_jobseeker
-    ), 
-    [applications]
-  );
-
-  const pastApplications = useMemo(() => 
-    applications.filter(app => 
-      app.status === 'rejected' || app.status === 'withdrawn' || app.status === 'completed'
-    ), 
-    [applications]
-  );
-
-  // Count notifications for tabs
-  const pendingCount = pendingApplications.filter(app => 
-    app.status === 'accepted' && app.accepted_business && !app.accepted_jobseeker
-  ).length;
-
-  const messagesCount = newMessagesCount || 0;
+const ApplicationsTabBase: React.FC<ApplicationsTabBaseProps> = ({ userId }) => {
+  const [activeTab, setActiveTab] = useState("pending");
+  const [pendingApplications, setPendingApplications] = useState<JobApplication[]>([]);
+  const [acceptedApplications, setAcceptedApplications] = useState<JobApplication[]>([]);
+  const [rejectedApplications, setRejectedApplications] = useState<JobApplication[]>([]);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   useEffect(() => {
-    if (pendingCount > 0 && activeTab !== "pending") {
-      //setActiveTab("pending");
+    if (userId) {
+      loadApplications(userId);
     }
-  }, [pendingCount]);
+  }, [userId]);
 
-  if (applications.length === 0) {
+  const loadApplications = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('job_applications')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setPendingApplications(data.filter(app => app.status === 'pending'));
+        setAcceptedApplications(data.filter(app => app.status === 'accepted'));
+        setRejectedApplications(data.filter(app => app.status === 'rejected'));
+      }
+    } catch (error) {
+      console.error("Error loading applications:", error);
+      toast.error("Failed to load applications");
+    }
+  };
+
+  const handleWithdrawApplication = async (applicationId: string, reason?: string) => {
+    setIsWithdrawing(true);
+    try {
+      const { error } = await supabase
+        .from('job_applications')
+        .update({ status: 'withdrawn', notes: reason || 'Withdrawn by applicant' })
+        .eq('job_app_id', applicationId);
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success("Application withdrawn successfully");
+      loadApplications(userId!);
+    } catch (error) {
+      console.error("Error withdrawing application:", error);
+      toast.error("Failed to withdraw application");
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+
+  const handleAcceptApplication = async (application: JobApplication) => {
+    try {
+      // Placeholder for accept application logic
+      console.log("Accepting application:", application);
+      toast.success("Application accepted (placeholder)");
+      loadApplications(userId!);
+    } catch (error) {
+      console.error("Error accepting application:", error);
+      toast.error("Failed to accept application");
+    }
+  };
+
+  const PendingApplicationsList: React.FC<PendingApplicationsListProps> = ({
+    applications,
+    onWithdraw,
+    onAccept,
+    isWithdrawing,
+  }) => {
     return (
-      <Card>
-        <CardContent className="pt-6">
-          <div className="text-center py-6">
-            <h3 className="text-lg font-medium">No Applications Yet</h3>
-            <p className="text-muted-foreground mt-2">
-              You haven't applied to any projects yet. Check out the Opportunities tab to find projects to apply for.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        {applications.length === 0 ? (
+          <p className="text-muted-foreground">No pending applications.</p>
+        ) : (
+          applications.map(application => (
+            <Card key={application.job_app_id}>
+              <CardHeader>
+                <CardTitle>Role: {application.role_id}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Applied on: {application.applied_at}</p>
+                <p>Status: {application.status}</p>
+              </CardContent>
+              <CardFooter className="justify-between">
+                <Button
+                  variant="destructive"
+                  onClick={() => onWithdraw ? onWithdraw(application.job_app_id) : null}
+                  disabled={isWithdrawing}
+                >
+                  {isWithdrawing ? "Withdrawing..." : "Withdraw"}
+                </Button>
+                <Button onClick={() => onAccept ? onAccept(application) : null}>
+                  Accept (Placeholder)
+                </Button>
+              </CardFooter>
+            </Card>
+          ))
+        )}
+      </div>
     );
-  }
+  };
+
+  const AcceptedApplicationsList: React.FC<{ applications: JobApplication[] }> = ({ applications }) => {
+    return (
+      <div className="space-y-4">
+        {applications.length === 0 ? (
+          <p className="text-muted-foreground">No accepted applications.</p>
+        ) : (
+          applications.map(application => (
+            <Card key={application.job_app_id}>
+              <CardHeader>
+                <CardTitle>Role: {application.role_id}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Applied on: {application.applied_at}</p>
+                <p>Status: {application.status}</p>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+    );
+  };
+
+  const RejectedApplicationsList: React.FC<{ applications: JobApplication[] }> = ({ applications }) => {
+    return (
+      <div className="space-y-4">
+        {applications.length === 0 ? (
+          <p className="text-muted-foreground">No rejected applications.</p>
+        ) : (
+          applications.map(application => (
+            <Card key={application.job_app_id}>
+              <CardHeader>
+                <CardTitle>Role: {application.role_id}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Applied on: {application.applied_at}</p>
+                <p>Status: {application.status}</p>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+    );
+  };
 
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-      <TabsList className="grid grid-cols-4">
-        <TabsTrigger value="pending" className="relative">
-          Pending
-          {pendingCount > 0 && (
-            <span className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-full text-xs">
-              {pendingCount}
-            </span>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="current" className="relative">
-          Current
-          {messagesCount > 0 && (
-            <span className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-full text-xs">
-              {messagesCount}
-            </span>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="past">Past</TabsTrigger>
-        <TabsTrigger value="equity">Equity</TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="pending">
-        <PendingApplicationsList 
-          applications={pendingApplications}
-          onWithdraw={handleWithdrawApplication}
-          onAccept={acceptJobAsJobSeeker}
-          isWithdrawing={isWithdrawing}
-        />
-      </TabsContent>
-
-      <TabsContent value="current">
-        <ApplicationsList 
-          applications={currentApplications}
-          onApplicationUpdated={onApplicationUpdated}
-        />
-      </TabsContent>
-
-      <TabsContent value="past">
-        <PastApplicationsList 
-          applications={pastApplications}
-          onApplicationUpdated={onApplicationUpdated}
-        />
-      </TabsContent>
-
-      <TabsContent value="equity">
-        <EquityProjectsList applications={currentApplications} />
-      </TabsContent>
-    </Tabs>
+    <div>
+      <Tabs defaultValue="pending" className="w-full">
+        <TabsList>
+          <TabsTrigger value="pending">Pending</TabsTrigger>
+          <TabsTrigger value="accepted">Accepted</TabsTrigger>
+          <TabsTrigger value="rejected">Rejected</TabsTrigger>
+        </TabsList>
+        <TabsContent value="pending" className="mt-4">
+          <PendingApplicationsList
+            applications={pendingApplications}
+            onWithdraw={handleWithdrawApplication}
+            onAccept={handleAcceptApplication}
+            isWithdrawing={isWithdrawing}
+          />
+        </TabsContent>
+        <TabsContent value="accepted" className="mt-4">
+          <AcceptedApplicationsList applications={acceptedApplications} />
+        </TabsContent>
+        <TabsContent value="rejected" className="mt-4">
+          <RejectedApplicationsList applications={rejectedApplications} />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
+
+export default ApplicationsTabBase;
