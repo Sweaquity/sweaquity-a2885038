@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from "react";
-import { useRouter } from 'next/router';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,6 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button";
 import { MoreVertical, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Profile, EquityProject } from "@/types/jobSeeker";
@@ -33,7 +35,7 @@ const JobSeekerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [equityProjects, setEquityProjects] = useState<EquityProject[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
-  const router = useRouter();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -42,12 +44,12 @@ const JobSeekerDashboard = () => {
         await fetchProfile(user.id);
         await fetchEquityProjects(user.id);
       } else {
-        router.push('/login');
+        navigate('/login');
       }
     };
 
     getCurrentUser();
-  }, [router]);
+  }, [navigate]);
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -94,7 +96,23 @@ const JobSeekerDashboard = () => {
         toast.error("Failed to load equity projects");
       }
 
-      setEquityProjects(data || []);
+      // Convert job applications to equity projects for compatibility
+      const projects = (data || []).map(app => ({
+        id: app.job_app_id,
+        project_id: app.project_id,
+        job_app_id: app.job_app_id,
+        equity_amount: app.accepted_jobs?.equity_agreed || 0,
+        time_allocated: '',
+        status: app.status,
+        start_date: app.applied_at,
+        applied_at: app.applied_at,
+        business_roles: app.business_roles,
+        created_by: app.user_id,
+        effort_logs: [],
+        total_hours_logged: 0
+      }));
+
+      setEquityProjects(projects);
     } catch (error) {
       console.error("Error fetching equity projects:", error);
       toast.error("Failed to load equity projects");
@@ -141,9 +159,9 @@ const JobSeekerDashboard = () => {
   }
 
   const sortedProjects = [...equityProjects].sort((a, b) => {
-    // Use created_at or created_by if updated_at isn't available
-    const dateA = a.applied_at ? new Date(a.applied_at) : new Date(0);
-    const dateB = b.applied_at ? new Date(b.applied_at) : new Date(0);
+    // Use applied_at or start_date if updated_at isn't available
+    const dateA = a.applied_at ? new Date(a.applied_at) : a.start_date ? new Date(a.start_date) : new Date(0);
+    const dateB = b.applied_at ? new Date(b.applied_at) : b.start_date ? new Date(b.start_date) : new Date(0);
     return dateB.getTime() - dateA.getTime();
   });
 
@@ -174,7 +192,7 @@ const JobSeekerDashboard = () => {
             <div>
               <h3 className="text-sm font-medium text-gray-500">Skills</h3>
               <ul className="list-disc pl-4">
-                {profile.skills.map((skill, index) => (
+                {profile.skills?.map((skill, index) => (
                   <li key={index} className="text-sm">{skill.skill} ({skill.level})</li>
                 ))}
               </ul>
@@ -191,16 +209,33 @@ const JobSeekerDashboard = () => {
           <TabsTrigger value="opportunities">Opportunities</TabsTrigger>
         </TabsList>
         <TabsContent value="dashboard">
-          <DashboardTab />
+          <DashboardTab 
+            activeTab="dashboard"
+            profile={profile}
+            cvUrl=""
+            parsedCvData={null}
+            onUpdateProfile={() => {}}
+            onUploadCV={() => Promise.resolve()}
+            isUploading={false}
+            skills={[]}
+            onSkillsUpdate={() => {}}
+            equityProjects={equityProjects}
+          />
         </TabsContent>
         <TabsContent value="applications">
-          <ApplicationsTab />
+          <ApplicationsTab 
+            applications={equityProjects}
+            onApplicationUpdated={() => fetchEquityProjects(profile.id || '')}
+          />
         </TabsContent>
         <TabsContent value="projects">
-          <JobSeekerProjectsTab />
+          <JobSeekerProjectsTab userId={profile.id || ''} />
         </TabsContent>
         <TabsContent value="opportunities">
-          <OpportunitiesTab />
+          <OpportunitiesTab 
+            projects={[]}
+            userSkills={[]}
+          />
         </TabsContent>
       </Tabs>
 
@@ -216,7 +251,7 @@ const JobSeekerDashboard = () => {
           ) : (
             <Accordion type="single" collapsible>
               {sortedProjects.map((project) => (
-                <AccordionItem key={project.job_app_id} value={project.job_app_id}>
+                <AccordionItem key={project.id} value={project.id}>
                   <AccordionTrigger>
                     <div className="flex justify-between w-full">
                       <span>{project.business_roles?.project_title || 'Untitled Project'}</span>
@@ -241,7 +276,7 @@ const JobSeekerDashboard = () => {
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-gray-500">Applied At</h4>
-                        <p className="text-sm">{new Date(project.applied_at).toLocaleDateString()}</p>
+                        <p className="text-sm">{new Date(project.applied_at || project.start_date).toLocaleDateString()}</p>
                       </div>
                     </div>
                     <DropdownMenu>
@@ -254,15 +289,15 @@ const JobSeekerDashboard = () => {
                       <DropdownMenuContent align="end" className="w-[200px]">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem onSelect={() => {
-                          navigator.clipboard.writeText(project.job_app_id);
-                          toast.success("Job Application ID copied to clipboard");
+                          navigator.clipboard.writeText(project.id);
+                          toast.success("Project ID copied to clipboard");
                         }}>
-                          Copy Application ID
+                          Copy Project ID
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem>
                           <ExternalLink className="mr-2 h-4 w-4" />
-                          View Application
+                          View Details
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

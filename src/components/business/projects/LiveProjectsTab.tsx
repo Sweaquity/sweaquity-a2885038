@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, React } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskCompletionReview } from "@/components/business/projects/TaskCompletionReview";
@@ -464,7 +464,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           
           <TabsContent value="project-tasks">
             <TicketDashboard
-              tickets={tickets.filter(t => (t.type === 'task'))}
+              tickets={tickets.filter(t => t.type === 'task')}
               isLoading={loading}
               handleTicketAction={handleTicketAction}
               renderTicketActions={(ticket) => (
@@ -498,7 +498,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           
           <TabsContent value="project-tickets">
             <TicketDashboard
-              tickets={tickets.filter(t => (t.type === 'project'))}
+              tickets={tickets.filter(t => t.type === 'bug' || t.type === 'feature')}
               isLoading={loading}
               handleTicketAction={handleTicketAction}
               columns={[
@@ -520,7 +520,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           
           <TabsContent value="beta-tickets">
             <TicketDashboard
-              tickets={tickets.filter(t => (t.type === 'beta'))}
+              tickets={tickets.filter(t => t.type === 'beta')}
               isLoading={loading}
               handleTicketAction={handleTicketAction}
               columns={[

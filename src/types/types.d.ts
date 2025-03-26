@@ -104,4 +104,70 @@ export interface KanbanBoardProps {
   onTicketClick?: (ticket: Ticket) => void;
   onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
   projectId?: string;
+  onStatusChange?: (ticketId: string, newStatus: string) => void;
+}
+
+export interface CreateTicketDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreateTicket: (ticketData: any) => Promise<void>;
+  projects: any[];
+}
+
+export interface DashboardTabProps {
+  activeTab: string;
+  profile: any;
+  cvUrl: string;
+  parsedCvData: any;
+  onUpdateProfile: () => void;
+  onUploadCV: (file: File) => Promise<void>;
+  isUploading: boolean;
+  skills: any[];
+  onSkillsUpdate: (skills: any[]) => void;
+  equityProjects: any[];
+}
+
+export interface ApplicationsTabProps {
+  applications: any[];
+  onApplicationUpdated: () => void;
+}
+
+export interface OpportunitiesTabProps {
+  projects: any[];
+  userSkills: any[];
+}
+
+export interface JobApplication {
+  job_app_id: string;
+  role_id?: string;
+  status: string;
+  applied_at: string;
+  task_id: string;
+  project_id: string;
+  notes?: string;
+  message?: string; 
+  cv_url?: string | null;
+  task_discourse?: string;
+  business_roles?: {
+    title: string;
+    description: string;
+    company_name?: string;
+    project_title?: string;
+    timeframe?: string;
+    skill_requirements?: (string | any)[];
+    equity_allocation?: number;
+    completion_percentage?: number;
+    task_status?: string;
+  };
+  id?: string;
+  accepted_jobseeker?: boolean;
+  accepted_business?: boolean;
+  applicant_anonymized?: boolean;
+  applicant_email?: string;
+  user_id?: string;
+  accepted_jobs?: {
+    equity_agreed: number;
+    jobs_equity_allocated?: number;
+  };
+  hours_logged?: number;
 }

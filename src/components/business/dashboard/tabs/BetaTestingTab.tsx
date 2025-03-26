@@ -20,9 +20,6 @@ import { GanttChartView } from "../../testing/GanttChartView";
 import { KanbanBoard } from "@/components/ticket/KanbanBoard";
 
 export const BetaTestingTab = () => {
-  // Rename this component to LiveProjectsTab to match naming in UI
-  // This will be displayed as "Live Projects" in the UI
-  
   const [userId, setUserId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("tickets");
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -85,7 +82,6 @@ export const BetaTestingTab = () => {
         .select('*')
         .or(`reporter.eq.${userId},assigned_to.eq.${userId}`);
       
-      // Filter by project if one is selected
       if (selectedProject) {
         query = query.eq('project_id', selectedProject);
       }
@@ -98,12 +94,11 @@ export const BetaTestingTab = () => {
       
       const processedTickets = (data || []).map(ticket => ({
         ...ticket,
-        description: ticket.description || ""  // Ensure description exists
+        description: ticket.description || ""  
       }));
       
       setTickets(processedTickets);
       
-      // Calculate ticket stats
       const stats = {
         total: processedTickets.length,
         open: processedTickets.filter(t => t.status !== 'done' && t.status !== 'closed').length,
@@ -189,7 +184,6 @@ export const BetaTestingTab = () => {
           console.warn("Unknown action:", action);
       }
       
-      // Reload tickets to get updated data
       if (userId) {
         await loadTickets(userId);
       }
@@ -210,7 +204,6 @@ export const BetaTestingTab = () => {
   };
 
   const handleCreateTicket = () => {
-    // This would open a dialog to create a new ticket
     toast.info("Create ticket functionality will be implemented soon");
   };
 
@@ -331,7 +324,13 @@ export const BetaTestingTab = () => {
         </TabsContent>
         
         <TabsContent value="task-review">
-          <TaskCompletionReview businessId={userId} />
+          <TaskCompletionReview 
+            businessId={userId} 
+            task={null}
+            open={false}
+            setOpen={() => {}}
+            onClose={() => {}}
+          />
         </TabsContent>
         
         <TabsContent value="kanban">
@@ -367,7 +366,6 @@ export const BetaTestingTab = () => {
           setOpen={setIsReviewDialogOpen}
           onClose={() => {
             setSelectedTask(null);
-            // Refresh tickets
             if (userId) loadTickets(userId);
           }}
         />
@@ -376,5 +374,4 @@ export const BetaTestingTab = () => {
   );
 };
 
-// Adding an alias for BetaTestingTab to be LiveProjectsTab for clarity
 export { BetaTestingTab as LiveProjectsTab };

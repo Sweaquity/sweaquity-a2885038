@@ -20,13 +20,19 @@ import { Ticket } from "@/types/types";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 
-interface ExpandedTicketDetailsProps {
+export interface ExpandedTicketDetailsProps {
   ticket: Ticket;
   onClose?: () => void;
   onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
   onLogTime?: (ticketId: string) => void;
   userCanEditStatus?: boolean;
   userCanEditDates?: boolean;
+  messages?: any[];
+  onReply?: (message: any) => Promise<void>;
+  onStatusChange?: (status: any) => Promise<void>;
+  onPriorityChange?: (priority: any) => Promise<void>;
+  onAssigneeChange?: (userId: any) => Promise<void>;
+  users?: any[];
 }
 
 export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
@@ -35,7 +41,13 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   onTicketAction = async () => {},
   onLogTime,
   userCanEditStatus = false,
-  userCanEditDates = false
+  userCanEditDates = false,
+  messages = [],
+  onReply,
+  onStatusChange,
+  onPriorityChange,
+  onAssigneeChange,
+  users = []
 }) => {
   const [activeTab, setActiveTab] = useState("details");
   const [newNote, setNewNote] = useState("");
@@ -146,11 +158,19 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   };
 
   const handleStatusChange = async (value: string) => {
-    await onTicketAction(ticket.id, "updateStatus", value);
+    if (onStatusChange) {
+      await onStatusChange(value);
+    } else {
+      await onTicketAction(ticket.id, "updateStatus", value);
+    }
   };
 
   const handlePriorityChange = async (value: string) => {
-    await onTicketAction(ticket.id, "updatePriority", value);
+    if (onPriorityChange) {
+      await onPriorityChange(value);
+    } else {
+      await onTicketAction(ticket.id, "updatePriority", value);
+    }
   };
 
   const handleDueDateChange = async (selectedDate: Date | undefined) => {
@@ -169,7 +189,12 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   const handleAddNote = async () => {
     if (!newNote.trim()) return;
     
-    await onTicketAction(ticket.id, "addNote", newNote);
+    if (onReply) {
+      await onReply(newNote);
+    } else {
+      await onTicketAction(ticket.id, "addNote", newNote);
+    }
+    
     setNewNote("");
   };
 
@@ -310,119 +335,118 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
           
           <div className="min-h-[200px] max-h-[300px] overflow-y-auto border rounded-md p-4 space-y-4">
             {ticket.notes && ticket.notes.length > 0 ? (
-              ticket.notes.map((note: any, index: number) => (
-                <div key={note.id || index} className="border-b pb-3">
-                  <div className="flex justify-between">
-                    <p className="font-medium">{note.user}</p>
-                    <p className="text-xs text-gray-500">
+              ticket.notes.map((note) => (
+                <div key={note.id} className="bg-gray-50 p-3 rounded-md">
+                  <div className="flex justify-between mb-1">
+                    <span className="font-medium">{note.user}</span>
+                    <span className="text-xs text-gray-500">
                       {formatDateTime(note.timestamp)}
-                    </p>
+                    </span>
                   </div>
-                  <p className="mt-1 text-sm">{note.comment}</p>
+                  <p className="text-sm">{note.comment || note.content}</p>
                 </div>
               ))
             ) : (
-              <p className="text-center text-gray-500 py-8">
-                No conversation history yet.
-              </p>
+              <p className="text-center text-gray-500">No conversation yet.</p>
             )}
           </div>
-
-          <div className="flex space-x-2">
+          
+          <div className="space-y-2">
             <Textarea
-              placeholder="Add a note or comment..."
+              placeholder="Add a comment..."
               value={newNote}
               onChange={(e) => setNewNote(e.target.value)}
-              className="flex-1"
+              className="min-h-[100px]"
             />
             <Button onClick={handleAddNote} disabled={!newNote.trim()}>
-              Add
+              Add Comment
             </Button>
           </div>
         </TabsContent>
 
         <TabsContent value="activity-log" className="space-y-4">
-          <div className="bg-gray-50 p-4 rounded-md border mb-4">
-            <p className="text-sm text-gray-500 mb-2">
-              Activity Log shows a record of all changes and updates made to this ticket.
-              It's useful for tracking the history and progress.
+          <div className="bg-gray-50 p-4 rounded-md border">
+            <p className="text-sm text-gray-500">
+              Activity log shows all actions taken on this ticket.
             </p>
           </div>
           
-          <div className="min-h-[200px] border rounded-md p-4">
-            <p className="text-center text-gray-500 py-8">
-              Activity log is being implemented.
-            </p>
+          <div className="space-y-4">
+            <div className="border-l-2 border-gray-200 pl-4 ml-2 space-y-6">
+              <div>
+                <div className="flex items-center">
+                  <div className="w-2 h-2 rounded-full bg-blue-500 -ml-[17px] mr-2"></div>
+                  <span className="text-sm font-medium">Ticket Created</span>
+                </div>
+                <span className="text-xs text-gray-500 ml-2">
+                  {formatDateTime(ticket.created_at)}
+                </span>
+              </div>
+              
+              {ticket.notes && ticket.notes.length > 0 &&
+                ticket.notes.map((note) => (
+                  <div key={note.id}>
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 rounded-full bg-green-500 -ml-[17px] mr-2"></div>
+                      <span className="text-sm font-medium">
+                        {note.action || "Comment Added"}
+                      </span>
+                    </div>
+                    <span className="text-xs text-gray-500 ml-2">
+                      {formatDateTime(note.timestamp)}
+                    </span>
+                    <p className="text-sm ml-2 mt-1">
+                      {note.user}: {note.comment || note.content}
+                    </p>
+                  </div>
+                ))}
+            </div>
           </div>
         </TabsContent>
 
         <TabsContent value="time-log" className="space-y-4">
-          <div className="bg-gray-50 p-4 rounded-md border mb-4">
-            <p className="text-sm text-gray-500 mb-2">
-              Time Log shows all time entries recorded for this ticket.
+          <div className="bg-gray-50 p-4 rounded-md border">
+            <p className="text-sm text-gray-500">
+              Time log shows all time entries for this ticket.
             </p>
           </div>
           
           {isLoadingTimeEntries ? (
-            <div className="flex justify-center p-8">
-              <p>Loading time entries...</p>
-            </div>
+            <div className="p-4 text-center">Loading time entries...</div>
+          ) : timeEntries.length === 0 ? (
+            <div className="p-4 text-center text-gray-500">No time entries recorded yet.</div>
           ) : (
-            <div>
-              {timeEntries.length === 0 ? (
-                <div className="text-center text-gray-500 py-8 border rounded-md">
-                  <p>No time entries found for this ticket.</p>
+            <div className="space-y-4">
+              {timeEntries.map((entry) => (
+                <div key={entry.id} className="border rounded-md p-4">
+                  <div className="flex justify-between mb-2">
+                    <span className="font-medium">
+                      {entry.profiles?.first_name} {entry.profiles?.last_name}
+                    </span>
+                    <span className="text-gray-500 text-sm">
+                      {formatDate(entry.created_at)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between mb-2">
+                    <span>Hours: <strong>{entry.hours_logged}</strong></span>
+                    <span className="text-gray-500 text-sm">
+                      {entry.start_time ? formatDateTime(entry.start_time) : "N/A"} - 
+                      {entry.end_time ? formatDateTime(entry.end_time) : "N/A"}
+                    </span>
+                  </div>
+                  {entry.description && (
+                    <p className="text-sm text-gray-700 mt-2">{entry.description}</p>
+                  )}
                 </div>
-              ) : (
-                <div className="border rounded-md overflow-hidden">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          User
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Hours
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Date
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Description
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {timeEntries.map((entry) => (
-                        <tr key={entry.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {entry.profiles ? 
-                              `${entry.profiles.first_name || ''} ${entry.profiles.last_name || ''}`.trim() : 
-                              'Unknown user'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {entry.hours_logged || 0} hrs
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {formatDate(entry.created_at)}
-                          </td>
-                          <td className="px-6 py-4 text-sm">
-                            {entry.description || 'No description'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              
-              {onLogTime && (
-                <div className="mt-4">
-                  <Button onClick={() => onLogTime(ticket.id)}>
-                    <Clock className="h-4 w-4 mr-2" /> Log Time
-                  </Button>
-                </div>
-              )}
+              ))}
+            </div>
+          )}
+          
+          {onLogTime && (
+            <div className="pt-2">
+              <Button onClick={() => onLogTime(ticket.id)}>
+                <Clock className="h-4 w-4 mr-2" /> Log Time
+              </Button>
             </div>
           )}
         </TabsContent>

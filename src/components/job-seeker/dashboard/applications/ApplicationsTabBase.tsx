@@ -1,11 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { JobApplication } from "@/types/jobSeeker";
-import { PendingApplicationsListProps } from "@/types/types";
+
+interface PendingApplicationsListProps {
+  applications: JobApplication[];
+  onWithdraw?: (applicationId: string, reason?: string) => Promise<void>;
+  onAccept?: (application: JobApplication) => Promise<void>;
+  isWithdrawing?: boolean;
+}
 
 interface ApplicationsTabBaseProps {
   userId: string | null;
@@ -94,7 +101,7 @@ const ApplicationsTabBase: React.FC<ApplicationsTabBaseProps> = ({ userId }) => 
           applications.map(application => (
             <Card key={application.job_app_id}>
               <CardHeader>
-                <CardTitle>Role: {application.role_id}</CardTitle>
+                <CardTitle>Role: {application.business_roles?.title || 'Unknown Role'}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p>Applied on: {application.applied_at}</p>
@@ -128,7 +135,7 @@ const ApplicationsTabBase: React.FC<ApplicationsTabBaseProps> = ({ userId }) => 
           applications.map(application => (
             <Card key={application.job_app_id}>
               <CardHeader>
-                <CardTitle>Role: {application.role_id}</CardTitle>
+                <CardTitle>Role: {application.business_roles?.title || 'Unknown Role'}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p>Applied on: {application.applied_at}</p>
@@ -150,7 +157,7 @@ const ApplicationsTabBase: React.FC<ApplicationsTabBaseProps> = ({ userId }) => 
           applications.map(application => (
             <Card key={application.job_app_id}>
               <CardHeader>
-                <CardTitle>Role: {application.role_id}</CardTitle>
+                <CardTitle>Role: {application.business_roles?.title || 'Unknown Role'}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p>Applied on: {application.applied_at}</p>

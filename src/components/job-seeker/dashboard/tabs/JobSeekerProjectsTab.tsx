@@ -459,8 +459,8 @@ export const JobSeekerProjectsTab = ({ userId }: { userId: string }) => {
       {renderTicketsSection()}
 
       <CreateTicketDialog
-        isOpen={isCreateTicketDialogOpen}
-        onClose={() => setIsCreateTicketDialogOpen(false)}
+        open={isCreateTicketDialogOpen}
+        onOpenChange={setIsCreateTicketDialogOpen}
         onCreateTicket={handleCreateTicket}
         projects={projects}
       />
