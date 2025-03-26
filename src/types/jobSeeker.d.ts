@@ -114,3 +114,8 @@ export interface SkillRequirement {
   skill: string;
   level?: string;
 }
+
+export interface EquityProjectItemProps {
+  application: JobApplication;
+  onApplicationUpdated?: () => void;
+}

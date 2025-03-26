@@ -74,7 +74,7 @@ export const PendingApplicationsTable = ({
             <TableCell>
               <div className="w-full flex justify-center">
                 <Select 
-                  value={application.status}
+                  value={application.status || "pending"}
                   onValueChange={(value) => {
                     handleStatusChange(application.job_app_id, value);
                   }}
@@ -91,7 +91,7 @@ export const PendingApplicationsTable = ({
                   </SelectTrigger>
                   <SelectContent onClick={(e) => e.stopPropagation()}>
                     <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="in review">In Review</SelectItem>
+                    <SelectItem value="in_review">In Review</SelectItem>
                     <SelectItem value="negotiation">Negotiation</SelectItem>
                     <SelectItem value="accepted">Accepted</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>

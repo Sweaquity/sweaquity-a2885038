@@ -45,6 +45,11 @@ export interface ExpandedTicketDetailsProps {
   userCanEditStatus?: boolean;
   userCanEditDates?: boolean;
   messages?: any[];
+  onReply?: (message: any) => Promise<void>;
+  onStatusChange?: (status: any) => Promise<void>;
+  onPriorityChange?: (priority: any) => Promise<void>;
+  onAssigneeChange?: (userId: any) => Promise<void>;
+  users?: any[];
 }
 
 export interface TicketDetailsProps {
@@ -53,4 +58,28 @@ export interface TicketDetailsProps {
   onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
   userCanEditStatus?: boolean;
   userCanEditDates?: boolean;
+}
+
+export interface TicketDashboardProps {
+  tickets?: Ticket[];
+  initialTickets?: Ticket[];
+  onRefresh?: () => void;
+  onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
+  showTimeTracking?: boolean;
+  userId?: string;
+}
+
+export interface TimeLogDialogProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  ticket?: Ticket;
+  userId?: string;
+}
+
+export interface TaskCompletionReviewProps {
+  task: any;
+  businessId?: string;
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  onClose: () => void;
 }
