@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ExpandedTicketDetails } from "@/components/ticket/ExpandedTicketDetails";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
+import { KanbanBoard } from "@/components/ticket/KanbanBoard";
+import { GanttChartView } from "@/components/business/testing/GanttChartView";
 
 interface JobSeekerProjectsTabProps {
   userId?: string;
@@ -56,8 +57,12 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     status: 'new',
     ticket_type: 'ticket',
     estimated_hours: 0,
-    completion_percentage: 0
+    completion_percentage: 0,
+    project_id: '',
+    task_id: ''
   });
+  const [showingViewOptions, setShowingViewOptions] = useState(false);
+  const [needsApplyChanges, setNeedsApplyChanges] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -156,7 +161,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
           )
         `);
       
-      // If a specific project is selected (not "all"), filter by that project
       if (projectId && projectId !== "all") {
         query = query.eq('project_id', projectId);
       }
@@ -366,6 +370,11 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   };
 
   const handleCreateTicket = () => {
+    setNewTicket({
+      ...newTicket,
+      project_id: selectedProject || '',
+      task_id: ''
+    });
     setIsCreateTicketDialogOpen(true);
   };
 
@@ -386,7 +395,8 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
           ticket_type: newTicket.ticket_type,
           estimated_hours: newTicket.estimated_hours,
           completion_percentage: newTicket.completion_percentage,
-          project_id: selectedProject,
+          project_id: newTicket.project_id || selectedProject,
+          task_id: newTicket.task_id || null,
           reporter: userId,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -404,7 +414,9 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         status: 'new',
         ticket_type: 'ticket',
         estimated_hours: 0,
-        completion_percentage: 0
+        completion_percentage: 0,
+        project_id: '',
+        task_id: ''
       });
       
       // Refresh the tickets list
@@ -585,6 +597,17 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     }
   };
 
+  const toggleViewOptions = () => {
+    setShowingViewOptions(!showingViewOptions);
+    setNeedsApplyChanges(true);
+  };
+
+  const applyViewChanges = () => {
+    setShowingViewOptions(false);
+    setNeedsApplyChanges(false);
+    toast.success("View preferences saved");
+  };
+
   const renderProjectSelector = () => (
     <Select
       value={selectedProject || ''}
@@ -663,11 +686,59 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
             <RefreshCw className="h-4 w-4 mr-1" /> Refresh
           </Button>
           
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={toggleViewOptions}
+          >
+            {showingViewOptions ? "Hide View Options" : "View Options"}
+          </Button>
+          
           <Button size="sm" onClick={handleCreateTicket}>
             <Plus className="h-4 w-4 mr-1" /> Create Ticket
           </Button>
         </div>
       </div>
+
+      {showingViewOptions && (
+        <Card className="mb-4">
+          <CardContent className="pt-6">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center space-x-2">
+                    <input 
+                      type="checkbox" 
+                      id="show-kanban"
+                      checked={showKanban}
+                      onChange={() => setShowKanban(!showKanban)}
+                      className="h-4 w-4"
+                    />
+                    <label htmlFor="show-kanban" className="text-sm">Show Kanban Board Tab</label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <input 
+                      type="checkbox" 
+                      id="show-gantt"
+                      checked={showGantt}
+                      onChange={() => setShowGantt(!showGantt)}
+                      className="h-4 w-4"
+                    />
+                    <label htmlFor="show-gantt" className="text-sm">Show Gantt Chart Tab</label>
+                  </div>
+                </div>
+                
+                {needsApplyChanges && (
+                  <Button onClick={applyViewChanges}>
+                    Apply Changes
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {renderMetricsCards()}
       
@@ -677,6 +748,8 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
           <TabsTrigger value="project-tasks">Project Tasks</TabsTrigger>
           <TabsTrigger value="project-tickets">Project Tickets</TabsTrigger>
           <TabsTrigger value="beta-testing">Beta Testing</TabsTrigger>
+          {showKanban && <TabsTrigger value="kanban"><KanbanSquare className="h-4 w-4 mr-1" /> Kanban</TabsTrigger>}
+          {showGantt && <TabsTrigger value="gantt"><BarChart2 className="h-4 w-4 mr-1" /> Gantt</TabsTrigger>}
         </TabsList>
         
         <TabsContent value="all">
@@ -686,6 +759,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
             onTicketAction={handleTicketAction}
             showTimeTracking={true}
             userId={userId || ''}
+            onLogTime={openTimeLogDialog}
           />
         </TabsContent>
         
@@ -696,6 +770,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
             onTicketAction={handleTicketAction}
             showTimeTracking={true}
             userId={userId || ''}
+            onLogTime={openTimeLogDialog}
           />
         </TabsContent>
         
@@ -706,6 +781,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
             onTicketAction={handleTicketAction}
             showTimeTracking={true}
             userId={userId || ''}
+            onLogTime={openTimeLogDialog}
           />
         </TabsContent>
         
@@ -716,8 +792,37 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
             onTicketAction={handleTicketAction}
             showTimeTracking={true}
             userId={userId || ''}
+            onLogTime={openTimeLogDialog}
           />
         </TabsContent>
+
+        {showKanban && (
+          <TabsContent value="kanban">
+            {selectedProject ? (
+              <KanbanBoard 
+                tickets={tickets}
+                onStatusChange={(ticketId, newStatus) => 
+                  handleTicketAction(ticketId, 'updateStatus', newStatus)
+                }
+                onTicketClick={(ticket) => {
+                  toggleTicketExpansion(ticket.id);
+                }}
+              />
+            ) : (
+              <div className="text-center py-8">Please select a project to view the Kanban board</div>
+            )}
+          </TabsContent>
+        )}
+        
+        {showGantt && (
+          <TabsContent value="gantt">
+            {selectedProject && selectedProject !== "all" ? (
+              <GanttChartView projectId={selectedProject} />
+            ) : (
+              <div className="text-center py-8">Please select a specific project to view the Gantt chart</div>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Time Log Dialog */}
@@ -801,6 +906,52 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
             </div>
             
             <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="project" className="text-right">
+                Project
+              </Label>
+              <Select
+                value={newTicket.project_id || selectedProject || ''}
+                onValueChange={(value) => setNewTicket({...newTicket, project_id: value})}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {userProjects.map(project => (
+                    <SelectItem key={project.project_id} value={project.project_id}>
+                      {project.title || 'Untitled Project'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="task" className="text-right">
+                Related Task (Optional)
+              </Label>
+              <Select
+                value={newTicket.task_id}
+                onValueChange={(value) => setNewTicket({...newTicket, task_id: value})}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select related task (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No related task</SelectItem>
+                  {tickets
+                    .filter(t => t.ticket_type === 'task')
+                    .map(task => (
+                      <SelectItem key={task.id} value={task.id}>
+                        {task.title}
+                      </SelectItem>
+                    ))
+                  }
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="priority" className="text-right">
                 Priority
               </Label>
@@ -864,13 +1015,30 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
             <Button 
               type="submit" 
               onClick={submitNewTicket}
-              disabled={!newTicket.title.trim()}
+              disabled={!newTicket.title.trim() || !newTicket.project_id}
             >
               Create Ticket
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Expanded Ticket Details */}
+      {selectedTicket && (
+        <Dialog open={!!expandedTicket} onOpenChange={(open) => !open && setExpandedTicket(null)}>
+          <DialogContent className="max-w-4xl">
+            <ExpandedTicketDetails
+              ticket={selectedTicket}
+              onClose={() => setExpandedTicket(null)}
+              onTicketAction={handleTicketAction}
+              onLogTime={openTimeLogDialog}
+              userCanEditStatus={true}
+              userCanEditDates={true}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
+

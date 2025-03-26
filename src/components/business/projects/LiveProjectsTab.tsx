@@ -14,7 +14,7 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
 import { GanttChartView } from "@/components/business/testing/GanttChartView";
 import { KanbanBoard } from "@/components/ticket/KanbanBoard";
 import { supabase } from "@/lib/supabase";
@@ -428,8 +428,8 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           <TabsTrigger value="project-tasks">Project Tasks</TabsTrigger>
           <TabsTrigger value="project-tickets">Project Tickets</TabsTrigger>
           <TabsTrigger value="task-review">Task Completion Review</TabsTrigger>
-          <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
-          <TabsTrigger value="gantt">Gantt Chart</TabsTrigger>
+          <TabsTrigger value="kanban"><KanbanSquare className="h-4 w-4 mr-1" /> Kanban</TabsTrigger>
+          <TabsTrigger value="gantt"><BarChart2 className="h-4 w-4 mr-1" /> Gantt</TabsTrigger>
         </TabsList>
         
         <TabsContent value="tickets">
@@ -439,6 +439,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
             userId={businessId}
+            renderTicketActions={renderTicketActions}
           />
         </TabsContent>
         
@@ -449,6 +450,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
             userId={businessId}
+            renderTicketActions={renderTicketActions}
           />
         </TabsContent>
         

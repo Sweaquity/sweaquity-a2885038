@@ -23,6 +23,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredProjects, setFilteredProjects] = useState<EquityProject[]>([]);
   const [filterSkill, setFilterSkill] = useState<string | null>(null);
+  const [newOpportunities, setNewOpportunities] = useState<number>(0);
 
   // Convert user skills to lowercase strings for comparison
   const userSkillStrings = useMemo(() => {
@@ -39,6 +40,18 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
     const filtered = filterProjects(projects, searchTerm, filterSkill);
     setFilteredProjects(filtered);
   }, [projects, searchTerm, filterSkill]);
+
+  // Calculate new opportunities
+  useEffect(() => {
+    // Count new opportunities based on recent creation date
+    const recentOpportunities = projects.filter(opp => {
+      const creationDate = opp.created_at || null;
+      if (!creationDate) return false;
+      return new Date(creationDate) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    }).length;
+    
+    setNewOpportunities(recentOpportunities);
+  }, [projects]);
 
   const handleApply = async (project: EquityProject, task: SubTask) => {
     try {
@@ -94,6 +107,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
         filterSkill={filterSkill}
         onSearchChange={setSearchTerm}
         onFilterSkillChange={setFilterSkill}
+        newOpportunities={newOpportunities}
       />
 
       {filteredProjects.length === 0 ? (

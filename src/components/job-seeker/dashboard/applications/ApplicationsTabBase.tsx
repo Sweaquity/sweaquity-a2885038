@@ -8,6 +8,8 @@ import { PendingApplicationsList } from "./PendingApplicationsList";
 import { PastApplicationsList } from "./PastApplicationsList";
 import { EquityProjectsList } from "./EquityProjectsList";
 import { useApplicationActions } from "./hooks/useApplicationActions";
+import { useWithdrawApplication } from "./hooks/useWithdrawApplication";
+import { useAcceptedJobs } from "@/hooks/useAcceptedJobs";
 
 interface ApplicationsTabBaseProps {
   applications: JobApplication[];
@@ -21,7 +23,9 @@ export const ApplicationsTabBase = ({
   newMessagesCount
 }: ApplicationsTabBaseProps) => {
   const [activeTab, setActiveTab] = useState<string>("pending");
-  const { handleWithdrawApplication, handleAcceptJob, withdrawLoading } = useApplicationActions(onApplicationUpdated);
+  const { isUpdatingStatus, updateApplicationStatus } = useApplicationActions(onApplicationUpdated);
+  const { isWithdrawing, handleWithdrawApplication } = useWithdrawApplication(onApplicationUpdated);
+  const { acceptJobAsJobSeeker, isLoading: isAcceptingJob } = useAcceptedJobs(onApplicationUpdated);
 
   // Filter applications by status type
   const pendingApplications = useMemo(() => 
@@ -99,10 +103,10 @@ export const ApplicationsTabBase = ({
 
       <TabsContent value="pending">
         <PendingApplicationsList 
-          applications={pendingApplications} 
+          applications={pendingApplications}
           onWithdraw={handleWithdrawApplication}
-          onAccept={handleAcceptJob}
-          isWithdrawing={withdrawLoading}
+          onAccept={acceptJobAsJobSeeker}
+          isWithdrawing={isWithdrawing}
         />
       </TabsContent>
 
@@ -114,7 +118,10 @@ export const ApplicationsTabBase = ({
       </TabsContent>
 
       <TabsContent value="past">
-        <PastApplicationsList applications={pastApplications} />
+        <PastApplicationsList 
+          applications={pastApplications}
+          onApplicationUpdated={onApplicationUpdated}
+        />
       </TabsContent>
 
       <TabsContent value="equity">

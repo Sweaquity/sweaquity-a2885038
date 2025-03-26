@@ -1,551 +1,422 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { TicketMessage } from "@/types/dashboard";
-import { formatDistanceToNow } from "date-fns";
-import { AlertTriangle, CheckCircle2, Clock, Edit, MessageCircle, Save, User } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ProgressCircle } from "@/components/ui/progress-circle";
-import { Input } from "@/components/ui/input";
 
-export interface ExpandedTicketDetailsProps {
+import React, { useState, useEffect } from "react";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Clock, MessageSquare, ClipboardList, CalendarIcon, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
+// Accept optional onClose prop to make it reusable for dialogs
+interface ExpandedTicketDetailsProps {
   ticket: any;
-  messages: TicketMessage[];
-  onReply: (message: string) => void;
-  onStatusChange: (status: string) => void;
-  onPriorityChange?: (priority: string) => void;
-  onAssigneeChange?: (userId: string) => void;
-  onUpdateEstimatedHours?: (hours: number) => void;
-  onUpdateCompletionPercentage?: (percentage: number) => void;
-  onUpdateDueDate?: (date: string) => void;
-  users?: Array<{id: string, first_name: string, last_name: string, email: string}>;
-  projects?: Array<{project_id: string, title: string}>;
-  tasks?: Array<{task_id: string, title: string}>;
+  onClose?: () => void;
+  onTicketAction: (ticketId: string, action: string, data: any) => Promise<void>;
+  onLogTime?: (ticketId: string) => void;
+  userCanEditStatus?: boolean;
+  userCanEditDates?: boolean;
 }
 
-export const ExpandedTicketDetails = ({
+export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   ticket,
-  messages,
-  onReply,
-  onStatusChange,
-  onPriorityChange,
-  onAssigneeChange,
-  onUpdateEstimatedHours,
-  onUpdateCompletionPercentage,
-  onUpdateDueDate,
-  users = [],
-  projects = [],
-  tasks = []
-}: ExpandedTicketDetailsProps) => {
-  const [newMessage, setNewMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState('details');
-  const [isEditingHours, setIsEditingHours] = useState(false);
-  const [isEditingCompletion, setIsEditingCompletion] = useState(false);
-  const [isEditingDueDate, setIsEditingDueDate] = useState(false);
+  onClose,
+  onTicketAction,
+  onLogTime,
+  userCanEditStatus = true,
+  userCanEditDates = true
+}) => {
+  const [activeTab, setActiveTab] = useState("details");
+  const [replyText, setReplyText] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState(ticket.status);
+  const [selectedPriority, setSelectedPriority] = useState(ticket.priority);
   const [estimatedHours, setEstimatedHours] = useState(ticket.estimated_hours || 0);
   const [completionPercentage, setCompletionPercentage] = useState(ticket.completion_percentage || 0);
-  const [dueDate, setDueDate] = useState(ticket.due_date || '');
+  const [dueDate, setDueDate] = useState<Date | undefined>(
+    ticket.due_date ? new Date(ticket.due_date) : undefined
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim()) return;
+  useEffect(() => {
+    setSelectedStatus(ticket.status);
+    setSelectedPriority(ticket.priority);
+    setEstimatedHours(ticket.estimated_hours || 0);
+    setCompletionPercentage(ticket.completion_percentage || 0);
+    setDueDate(ticket.due_date ? new Date(ticket.due_date) : undefined);
+  }, [ticket]);
 
+  const handleStatusChange = async () => {
+    if (selectedStatus === ticket.status) return;
     setIsSubmitting(true);
     try {
-      await onReply(newMessage);
-      setNewMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
+      await onTicketAction(ticket.id, "updateStatus", selectedStatus);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleSaveHours = () => {
-    if (onUpdateEstimatedHours) {
-      onUpdateEstimatedHours(Number(estimatedHours));
-    }
-    setIsEditingHours(false);
-  };
-
-  const handleSaveCompletion = () => {
-    if (onUpdateCompletionPercentage) {
-      onUpdateCompletionPercentage(Number(completionPercentage));
-    }
-    setIsEditingCompletion(false);
-  };
-
-  const handleSaveDueDate = () => {
-    if (onUpdateDueDate) {
-      onUpdateDueDate(dueDate);
-    }
-    setIsEditingDueDate(false);
-  };
-
-  // Format date helpers
-  const formatMessageDate = (dateString: string) => {
+  const handlePriorityChange = async () => {
+    if (selectedPriority === ticket.priority) return;
+    setIsSubmitting(true);
     try {
-      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
-    } catch (error) {
-      return 'Invalid date';
+      await onTicketAction(ticket.id, "updatePriority", selectedPriority);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const handleUpdateEstimatedHours = async () => {
+    if (estimatedHours === ticket.estimated_hours) return;
+    setIsSubmitting(true);
     try {
-      return new Date(dateString).toLocaleDateString();
-    } catch (error) {
-      return 'Invalid date';
+      await onTicketAction(ticket.id, "updateEstimatedHours", estimatedHours);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Status options for ticket
-  const statusOptions = [
-    { value: 'new', label: 'New' },
-    { value: 'in-progress', label: 'In Progress' },
-    { value: 'blocked', label: 'Blocked' },
-    { value: 'review', label: 'Review' },
-    { value: 'done', label: 'Done' }
-  ];
+  const handleUpdateCompletionPercentage = async () => {
+    if (completionPercentage === ticket.completion_percentage) return;
+    setIsSubmitting(true);
+    try {
+      await onTicketAction(ticket.id, "updateCompletionPercentage", completionPercentage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  const priorityOptions = [
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' }
-  ];
+  const handleUpdateDueDate = async (date: Date | undefined) => {
+    if (!date) return;
+    setDueDate(date);
+    const formattedDate = format(date, "yyyy-MM-dd");
+    setIsSubmitting(true);
+    try {
+      await onTicketAction(ticket.id, "updateDueDate", formattedDate);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  // Helper functions for displaying status information (from TicketsList)
-  const getStatusIcon = (status: string) => {
+  const handleSendReply = async () => {
+    if (!replyText.trim()) return;
+    setIsSubmitting(true);
+    try {
+      await onTicketAction(ticket.id, "addReply", replyText);
+      setReplyText("");
+      setActiveTab("conversation"); // Switch to conversation tab after sending
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'new':
-        return <Clock className="h-4 w-4 text-blue-500" />;
-      case 'in-progress':
-        return <Clock className="h-4 w-4 text-yellow-500" />;
-      case 'blocked':
-        return <AlertTriangle className="h-4 w-4 text-red-500" />;
-      case 'done':
-      case 'closed':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      default:
-        return <Clock className="h-4 w-4 text-blue-500" />;
+      case "new": return "New";
+      case "in-progress": return "In Progress";
+      case "blocked": return "Blocked";
+      case "review": return "In Review";
+      case "done": return "Done";
+      case "closed": return "Closed";
+      default: return status.charAt(0).toUpperCase() + status.slice(1);
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'new':
-        return 'bg-blue-100 text-blue-800';
-      case 'in-progress':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'blocked':
-        return 'bg-red-100 text-red-800';
-      case 'review':
-        return 'bg-purple-100 text-purple-800';
-      case 'done':
-        return 'bg-green-100 text-green-800';
-      case 'closed':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-blue-100 text-blue-800';
+      case "new": return "bg-blue-100 text-blue-800";
+      case "in-progress": return "bg-yellow-100 text-yellow-800";
+      case "blocked": return "bg-red-100 text-red-800";
+      case "review": return "bg-purple-100 text-purple-800";
+      case "done": return "bg-green-100 text-green-800";
+      case "closed": return "bg-gray-100 text-gray-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high':
-        return 'bg-red-100 text-red-800';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'low':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case "low": return "bg-blue-100 text-blue-800";
+      case "medium": return "bg-yellow-100 text-yellow-800";
+      case "high": return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
-  // Render health indicator (from TicketList)
-  const renderHealthIndicator = (health: string) => {
-    const colors = {
-      red: 'bg-red-500',
-      amber: 'bg-yellow-500',
-      green: 'bg-green-500'
-    };
-    
-    return (
-      <span 
-        className={`inline-block w-3 h-3 rounded-full ${colors[health as keyof typeof colors] || 'bg-gray-500'}`} 
-        title={`Health: ${health}`}
-      />
-    );
-  };
-
-  // Calculate equity earned
-  const calculateEquityEarned = () => {
-    if (ticket.equity_points !== undefined) {
-      if (ticket.estimated_hours && ticket.hours_logged_total) {
-        return (ticket.hours_logged_total / ticket.estimated_hours) * ticket.equity_points;
-      } else if (ticket.completion_percentage !== undefined) {
-        return (ticket.completion_percentage / 100) * ticket.equity_points;
-      }
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), "PPP");
+    } catch (e) {
+      return "Invalid date";
     }
-    return 0;
   };
-
-  const equityEarned = calculateEquityEarned();
 
   return (
-    <Card className="border shadow-sm">
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-2">
-            {ticket.health && renderHealthIndicator(ticket.health)}
-            <CardTitle>{ticket.title}</CardTitle>
-          </div>
-          <div className="flex gap-2">
-            <Badge className={getStatusColor(ticket.status)}>
-              {getStatusIcon(ticket.status)}
-              <span className="ml-1">{ticket.status}</span>
-            </Badge>
-            <Badge className={getPriorityColor(ticket.priority)}>
-              {ticket.priority}
-            </Badge>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="px-4 py-3">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2">
-          <TabsList className="mb-3">
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="conversation">Conversation</TabsTrigger>
-            <TabsTrigger value="activity">Activity Log</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="details" className="space-y-4">
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-medium mb-2">Description</h3>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {ticket.description || 'No description provided.'}
-              </p>
+              <CardTitle>{ticket.title}</CardTitle>
+              <CardDescription>Ticket ID: {ticket.id.split("-")[0]}</CardDescription>
             </div>
+            {onClose && (
+              <Button variant="ghost" onClick={onClose} size="sm">
+                Close
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="pb-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="details">
+                <ClipboardList className="h-4 w-4 mr-2" />
+                Details
+              </TabsTrigger>
+              <TabsTrigger value="conversation">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Conversation
+              </TabsTrigger>
+              <TabsTrigger value="activity">
+                <Clock className="h-4 w-4 mr-2" />
+                Activity Log
+              </TabsTrigger>
+            </TabsList>
 
-            <div className="grid grid-cols-2 gap-4 pt-2">
-              <div>
-                <h3 className="text-sm font-medium mb-2">Ticket Information</h3>
+            <TabsContent value="details" className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Status:</span>
-                    <Select
-                      value={ticket.status}
-                      onValueChange={onStatusChange}
-                    >
-                      <SelectTrigger className="w-32 h-7 text-xs">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {statusOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Priority:</span>
-                    <Select
-                      value={ticket.priority}
-                      onValueChange={onPriorityChange}
-                      disabled={!onPriorityChange}
-                    >
-                      <SelectTrigger className="w-32 h-7 text-xs">
-                        <SelectValue placeholder="Priority" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {priorityOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {onAssigneeChange && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Assigned to:</span>
-                      <Select
-                        value={ticket.assigned_to || "none"}
-                        onValueChange={onAssigneeChange}
-                      >
-                        <SelectTrigger className="w-32 h-7 text-xs">
-                          <SelectValue placeholder="Assignee" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Unassigned</SelectItem>
-                          {users.map(user => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.first_name} {user.last_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {ticket.health && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Health:</span>
-                      <div className="flex items-center gap-1">
-                        {renderHealthIndicator(ticket.health)}
-                        <span className="text-sm">{ticket.health}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Estimated hours - editable */}
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Estimated hours:</span>
-                    {isEditingHours ? (
-                      <div className="flex items-center gap-1">
-                        <Input 
-                          type="number" 
-                          value={estimatedHours} 
-                          onChange={(e) => setEstimatedHours(parseFloat(e.target.value) || 0)} 
-                          className="w-16 h-7 text-xs"
-                          min="0"
-                          step="0.5"
-                        />
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveHours}>
-                          <Save className="h-3.5 w-3.5" />
-                        </Button>
+                  <h3 className="text-sm font-medium">Status</h3>
+                  <div className="flex items-center">
+                    {userCanEditStatus ? (
+                      <div className="w-full">
+                        <select
+                          className={`px-3 py-1 rounded text-sm w-full border ${getStatusColor(selectedStatus)}`}
+                          value={selectedStatus}
+                          onChange={(e) => setSelectedStatus(e.target.value)}
+                          onBlur={handleStatusChange}
+                        >
+                          <option value="new">New</option>
+                          <option value="in-progress">In Progress</option>
+                          <option value="blocked">Blocked</option>
+                          <option value="review">In Review</option>
+                          <option value="done">Done</option>
+                          <option value="closed">Closed</option>
+                        </select>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm">{ticket.estimated_hours || 0}h</span>
-                        {onUpdateEstimatedHours && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setIsEditingHours(true)}>
-                            <Edit className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
+                      <Badge className={getStatusColor(ticket.status)}>
+                        {getStatusLabel(ticket.status)}
+                      </Badge>
                     )}
                   </div>
+                </div>
 
-                  {/* Completion percentage - editable */}
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Completion:</span>
-                    {isEditingCompletion ? (
-                      <div className="flex items-center gap-1">
-                        <Input 
-                          type="number" 
-                          value={completionPercentage} 
-                          onChange={(e) => setCompletionPercentage(parseFloat(e.target.value) || 0)} 
-                          className="w-16 h-7 text-xs"
-                          min="0"
-                          max="100"
-                          step="5"
-                        />
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveCompletion}>
-                          <Save className="h-3.5 w-3.5" />
-                        </Button>
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Priority</h3>
+                  <div className="flex items-center">
+                    {userCanEditStatus ? (
+                      <div className="w-full">
+                        <select
+                          className={`px-3 py-1 rounded text-sm w-full border ${getPriorityColor(selectedPriority)}`}
+                          value={selectedPriority}
+                          onChange={(e) => setSelectedPriority(e.target.value)}
+                          onBlur={handlePriorityChange}
+                        >
+                          <option value="low">Low</option>
+                          <option value="medium">Medium</option>
+                          <option value="high">High</option>
+                        </select>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm">{ticket.completion_percentage || 0}%</span>
-                        {onUpdateCompletionPercentage && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setIsEditingCompletion(true)}>
-                            <Edit className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
+                      <Badge className={getPriorityColor(ticket.priority)}>
+                        {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}
+                      </Badge>
                     )}
                   </div>
+                </div>
 
-                  {/* Hours logged */}
-                  {ticket.hours_logged_total !== undefined && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Hours logged:</span>
-                      <span className="text-sm">{ticket.hours_logged_total}h</span>
-                    </div>
-                  )}
-
-                  {/* Equity points and earned */}
-                  {ticket.equity_points !== undefined && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Equity allocated:</span>
-                      <span className="text-sm">{ticket.equity_points}%</span>
-                    </div>
-                  )}
-
-                  {ticket.equity_points !== undefined && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Equity earned:</span>
-                      <span className="text-sm">{equityEarned.toFixed(2)}%</span>
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">Due Date</h3>
+                  {userCanEditDates ? (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          className="w-full justify-start text-left font-normal"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dueDate ? format(dueDate, "PPP") : "No due date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={dueDate}
+                          onSelect={handleUpdateDueDate}
+                          initialFocus
+                          className="p-3 pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <div className="text-sm">
+                      {ticket.due_date ? formatDate(ticket.due_date) : "No due date set"}
                     </div>
                   )}
                 </div>
-              </div>
 
-              <div>
-                <h3 className="text-sm font-medium mb-2">Related Information</h3>
                 <div className="space-y-2">
-                  {ticket.created_at && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Created:</span>
-                      <span className="text-sm">{formatDate(ticket.created_at)}</span>
-                    </div>
-                  )}
-                  
-                  {ticket.updated_at && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Updated:</span>
-                      <span className="text-sm">{formatDate(ticket.updated_at)}</span>
-                    </div>
-                  )}
-                  
-                  {/* Due Date - now editable */}
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Due Date:</span>
-                    {isEditingDueDate ? (
-                      <div className="flex items-center gap-1">
-                        <Input 
-                          type="date" 
-                          value={dueDate} 
-                          onChange={(e) => setDueDate(e.target.value)} 
-                          className="w-32 h-7 text-xs"
-                        />
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveDueDate}>
-                          <Save className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm">{ticket.due_date ? formatDate(ticket.due_date) : 'Not set'}</span>
-                        {onUpdateDueDate && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setIsEditingDueDate(true)}>
-                            <Edit className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    )}
+                  <h3 className="text-sm font-medium">Estimated Hours</h3>
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={estimatedHours}
+                      onChange={(e) => setEstimatedHours(parseFloat(e.target.value) || 0)}
+                      onBlur={handleUpdateEstimatedHours}
+                      className="w-20"
+                    />
+                    <span className="text-sm">hours</span>
                   </div>
-                  
-                  {ticket.project && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Project:</span>
-                      <span className="text-sm">{ticket.project.title}</span>
-                    </div>
-                  )}
-                  
-                  {ticket.task && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Task:</span>
-                      <span className="text-sm">{ticket.task.title}</span>
-                    </div>
-                  )}
                 </div>
-              </div>
-            </div>
-          </TabsContent>
 
-          <TabsContent value="conversation">
-            {/* Message thread */}
-            <div className="space-y-4 mb-4">
-              {messages && messages.length > 0 ? (
-                messages.map((message, index) => (
-                  <div key={message.id || index} className="flex gap-3 pb-3 border-b border-gray-100">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback>
-                        {message.sender?.name?.charAt(0) || 'U'}
-                      </AvatarFallback>
-                      {message.sender?.avatar && (
-                        <AvatarImage src={message.sender.avatar} />
-                      )}
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-center">
-                        <p className="text-sm font-medium">
-                          {message.sender?.name || 'User'}
-                        </p>
-                        <span className="text-xs text-muted-foreground">
-                          {formatMessageDate(message.createdAt)}
-                        </span>
-                      </div>
-                      <p className="text-sm mt-1">{message.message || message.content}</p>
+                <div className="space-y-2 col-span-2">
+                  <h3 className="text-sm font-medium">Completion Percentage</h3>
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={completionPercentage}
+                      onChange={(e) => setCompletionPercentage(parseInt(e.target.value) || 0)}
+                      onBlur={handleUpdateCompletionPercentage}
+                      className="w-20"
+                    />
+                    <span className="text-sm">%</span>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-blue-600 h-2.5 rounded-full"
+                        style={{ width: `${completionPercentage}%` }}
+                      ></div>
                     </div>
                   </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">No messages yet.</p>
-              )}
-            </div>
+                </div>
 
-            {/* Reply form */}
-            <form onSubmit={handleSubmit} className="space-y-2 pt-2">
-              <Textarea
-                placeholder="Type your message here..."
-                value={newMessage}
-                onChange={e => setNewMessage(e.target.value)}
-                rows={3}
-                className="resize-none"
-              />
-              <div className="flex justify-end">
+                <div className="col-span-2 space-y-2">
+                  <h3 className="text-sm font-medium">Description</h3>
+                  <div className="text-sm p-3 border rounded bg-gray-50">
+                    {ticket.description || "No description provided."}
+                  </div>
+                </div>
+
+                {ticket.reproduction_steps && (
+                  <div className="col-span-2 space-y-2">
+                    <h3 className="text-sm font-medium">Steps to Reproduce</h3>
+                    <div className="text-sm p-3 border rounded bg-gray-50">
+                      {ticket.reproduction_steps}
+                    </div>
+                  </div>
+                )}
+
+                {onLogTime && (
+                  <div className="col-span-2 mt-4">
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => onLogTime(ticket.id)}
+                    >
+                      <Clock className="mr-2 h-4 w-4" />
+                      Log Time
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="conversation" className="space-y-4">
+              <div className="border rounded-lg p-4 max-h-80 overflow-y-auto space-y-4">
+                {(!ticket.replies || ticket.replies.length === 0) && (
+                  <div className="text-center text-gray-500 py-8">
+                    No conversation yet. Send a message to start.
+                  </div>
+                )}
+
+                {ticket.replies && ticket.replies.map((reply: any, index: number) => (
+                  <div key={index} className="border-b last:border-b-0 pb-4 last:pb-0">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="font-medium">{reply.sender?.name || "User"}</div>
+                      <div className="text-xs text-gray-500">
+                        {reply.createdAt ? formatDate(reply.createdAt) : "Unknown date"}
+                      </div>
+                    </div>
+                    <div className="text-sm">{reply.content}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                <Textarea
+                  placeholder="Add a comment or update..."
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  className="min-h-[100px]"
+                />
                 <Button 
-                  type="submit"
-                  disabled={isSubmitting || !newMessage.trim()}
+                  onClick={handleSendReply} 
+                  disabled={isSubmitting || !replyText.trim()}
+                  className="w-full"
                 >
-                  <MessageCircle className="h-4 w-4 mr-1" />
-                  {isSubmitting ? 'Sending...' : 'Send Reply'}
+                  {isSubmitting ? "Sending..." : "Send Reply"}
                 </Button>
               </div>
-            </form>
-          </TabsContent>
+            </TabsContent>
 
-          <TabsContent value="activity">
-            <div className="max-h-80 overflow-y-auto">
-              {ticket.notes && Array.isArray(ticket.notes) && ticket.notes.length > 0 ? (
-                <div className="space-y-2">
-                  {ticket.notes.map((note: any, index: number) => (
-                    <div key={index} className="py-2 border-b border-gray-100">
-                      <div className="flex justify-between">
-                        <span className="font-medium text-sm">
-                          {note.type === 'status_change' ? 'Status changed' :
-                          note.type === 'priority_change' ? 'Priority changed' :
-                          note.type === 'assignee_change' ? 'Assignee changed' :
-                          note.action || note.type}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(note.timestamp).toLocaleString()}
-                        </span>
+            <TabsContent value="activity" className="space-y-4">
+              <div className="border rounded-lg p-4 max-h-80 overflow-y-auto space-y-4">
+                {(!ticket.notes || ticket.notes.length === 0) && (
+                  <div className="text-center text-gray-500 py-8">
+                    No activity log entries yet.
+                  </div>
+                )}
+
+                {ticket.notes && ticket.notes.map((note: any, index: number) => (
+                  <div key={index} className="border-b last:border-b-0 pb-4 last:pb-0">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="font-medium">{note.user || "System"}</div>
+                      <div className="text-xs text-gray-500">
+                        {note.timestamp ? formatDate(note.timestamp) : "Unknown date"}
                       </div>
-                      {note.from !== undefined && note.to !== undefined && (
-                        <div className="text-xs text-muted-foreground mt-1">
-                          From <span className="font-medium">{note.from || 'none'}</span> to <span className="font-medium">{note.to || 'none'}</span>
-                        </div>
-                      )}
-                      {(note.message || note.comment) && (
-                        <p className="mt-1 text-sm">{note.message || note.comment}</p>
-                      )}
-                      {note.user && (
-                        <p className="text-xs text-muted-foreground mt-1">By {note.user}</p>
-                      )}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No activity recorded.</p>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+                    <div className="text-sm">{note.comment}</div>
+                  </div>
+                ))}
+
+                {ticket.time_entries && ticket.time_entries.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="font-medium mb-2">Time Entries</h4>
+                    {ticket.time_entries.map((entry: any, index: number) => (
+                      <div key={index} className="border-b last:border-b-0 pb-2 last:pb-0 mb-2 last:mb-0 text-sm">
+                        <div className="flex justify-between">
+                          <span>{entry.hours_logged} hours</span>
+                          <span className="text-gray-500 text-xs">
+                            {entry.start_time ? formatDate(entry.start_time) : "Unknown date"}
+                          </span>
+                        </div>
+                        <div className="text-gray-600">{entry.description || "No description"}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
