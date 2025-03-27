@@ -336,16 +336,14 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   };
 
   const getActiveTickets = () => {
-    switch (activeTab) {
-      case "project-tasks":
-        return tickets.filter(t => t.ticket_type === "task");
-      case "project-tickets":
-        return tickets.filter(t => t.ticket_type === "ticket");
-      case "beta-testing":
-        return tickets.filter(t => t.ticket_type === "beta-test" || t.ticket_type === "beta_testing");
-      default:
-        return tickets;
+    if (activeTab === 'project-tasks') {
+      return tickets.filter(t => t.ticket_type === "task");
+    } else if (activeTab === 'project-tickets') {
+      return tickets.filter(t => t.ticket_type === "ticket");
+    } else if (activeTab === 'beta-testing') {
+      return tickets.filter(t => t.ticket_type === "beta-test" || t.ticket_type === "beta_testing");
     }
+    return tickets;
   };
 
   const toggleKanbanView = () => {

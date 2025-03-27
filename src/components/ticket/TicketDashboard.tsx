@@ -1,30 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Ticket } from "@/types/types";
 import { TicketItem } from "./TicketItem";
-import { 
-  Pagination, 
-  PaginationContent, 
-  PaginationItem, 
-  PaginationNext, 
-  PaginationPrevious 
-} from "@/components/ui/pagination";
 import { Input } from "@/components/ui/input";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SearchX, RefreshCw, Filter, Clock } from "lucide-react";
 import { ExpandedTicketDetails } from "./ExpandedTicketDetails";
 import { TimeTracking } from "./TimeTracking";
@@ -203,36 +183,37 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         )}
       </div>
 
-      <Pagination>
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious
-              href="#"
-              onClick={() => paginate(currentPage - 1)}
-              disabled={currentPage === 1}
-            />
-          </PaginationItem>
-          {Array.from({ length: Math.ceil(filteredTickets.length / ticketsPerPage) }, (_, i) => (
-            <PaginationItem key={i + 1}>
-              <Button
-                variant="outline"
-                className="h-8 w-8 p-0"
-                onClick={() => paginate(i + 1)}
-                disabled={currentPage === i + 1}
-              >
-                {i + 1}
-              </Button>
-            </PaginationItem>
-          ))}
-          <PaginationItem>
-            <PaginationNext
-              href="#"
-              onClick={() => paginate(currentPage + 1)}
-              disabled={currentPage === Math.ceil(filteredTickets.length / ticketsPerPage)}
-            />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
+      <div className="flex items-center justify-center gap-2 mt-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => paginate(currentPage - 1)}
+          disabled={currentPage === 1}
+        >
+          Previous
+        </Button>
+        
+        {Array.from({ length: Math.ceil(filteredTickets.length / ticketsPerPage) }, (_, i) => (
+          <Button
+            key={i + 1}
+            variant={currentPage === i + 1 ? "default" : "outline"}
+            size="sm"
+            className="w-8 h-8 p-0"
+            onClick={() => paginate(i + 1)}
+          >
+            {i + 1}
+          </Button>
+        ))}
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => paginate(currentPage + 1)}
+          disabled={currentPage === Math.ceil(filteredTickets.length / ticketsPerPage)}
+        >
+          Next
+        </Button>
+      </div>
 
       {expandedTicket && (
         <ExpandedTicketDetails

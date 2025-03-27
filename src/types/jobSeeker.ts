@@ -134,6 +134,7 @@ export interface EquityProject {
     date_accepted: string;
   };
   created_at?: string; // Added for sorting by creation date
+  updated_at?: string; // Added for comparison and sorting
 }
 
 export interface ProjectEquity {

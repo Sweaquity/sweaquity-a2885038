@@ -1,4 +1,3 @@
-
 import React from "react";
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
 import { Ticket } from "@/types/types";
@@ -25,19 +24,16 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChang
     return new Date(dateString).toLocaleDateString();
   };
 
-  // Function to get ticket count for a specific status
   const getTicketCount = (status: string) => {
     return tickets.filter(ticket => ticket.status === status).length;
   };
 
-  // Function to determine priority badge color
   const getPriorityColor = (priority: string) => {
     if (priority === 'high') return 'bg-red-100 text-red-800';
     if (priority === 'medium') return 'bg-yellow-100 text-yellow-800';
     return 'bg-green-100 text-green-800';
   };
 
-  // Determine if a ticket is overdue
   const isOverdue = (ticket: Ticket) => {
     if (!ticket.due_date) return false;
     const dueDate = new Date(ticket.due_date);
@@ -45,21 +41,17 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChang
     return dueDate < today;
   };
 
-  // Handle drag end event
   const handleDragEnd = (result: any) => {
     if (!result.destination) return;
     
     const { draggableId, destination } = result;
     const newStatus = destination.droppableId;
     
-    // Call the onStatusChange callback to update the ticket status
     onStatusChange(draggableId, newStatus);
   };
 
-  // Sort tickets based on priority and due date
   const sortTickets = (tickets: Ticket[]) => {
     return [...tickets].sort((a, b) => {
-      // First sort by priority
       const priorityOrder = { high: 0, medium: 1, low: 2 };
       const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] || 999;
       const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] || 999;
@@ -68,16 +60,13 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChang
         return aPriority - bPriority;
       }
       
-      // Then sort by due date if available
       if (a.due_date && b.due_date) {
         return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
       }
       
-      // If no due date, tickets with due dates come first
       if (a.due_date && !b.due_date) return -1;
       if (!a.due_date && b.due_date) return 1;
       
-      // Finally sort by creation date
       if (a.created_at && b.created_at) {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
@@ -93,11 +82,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChang
     <DragDropContext onDragEnd={handleDragEnd}>
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         {columns.map(column => {
-          // Map statuses that might be in different formats
           let columnTickets = tickets.filter(ticket => {
             if (ticket.status === column.id) return true;
             
-            // Handle alternative status formats
             if (column.id === 'in-progress' && (ticket.status === 'in_progress' || ticket.status === 'in progress')) return true;
             if (column.id === 'todo' && (ticket.status === 'new' || ticket.status === 'open' || ticket.status === 'backlog')) return true;
             
