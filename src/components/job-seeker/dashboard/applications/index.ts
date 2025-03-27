@@ -1,14 +1,16 @@
 
 import { ApplicationsList } from './ApplicationsList';
-import { PendingApplicationsList } from './PendingApplicationsListProps';
+import { PendingApplicationsList } from './PendingApplicationsList';
 import { PastApplicationsList } from './PastApplicationsList';
 import { EquityProjectsList } from './EquityProjectsList';
 import { ApplicationsTabBase } from './ApplicationsTabBase';
+import { EquityProjectItem } from './EquityProjectItem';
 
 export {
   ApplicationsList,
   PendingApplicationsList,
   PastApplicationsList,
   EquityProjectsList,
-  ApplicationsTabBase
+  ApplicationsTabBase,
+  EquityProjectItem
 };

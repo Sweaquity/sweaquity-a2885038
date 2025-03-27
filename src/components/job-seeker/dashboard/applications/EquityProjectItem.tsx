@@ -1,11 +1,11 @@
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { JobApplication } from '@/types/jobSeeker';
-import { ArrowDown, ArrowUp, Clock, Eye, MessageSquare, X } from 'lucide-react';
+import { Clock, Eye, MessageSquare } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
@@ -23,6 +23,56 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
   const [activeTab, setActiveTab] = useState("details");
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [withdrawReason, setWithdrawReason] = useState("");
+  const [hoursLogged, setHoursLogged] = useState(0);
+  const [estimatedHours, setEstimatedHours] = useState(0);
+  
+  useEffect(() => {
+    // Fetch the total hours logged for this application from time_entries table
+    const fetchHoursLogged = async () => {
+      const { data: tickets, error: ticketsError } = await supabase
+        .from('tickets')
+        .select('id')
+        .eq('job_app_id', application.job_app_id);
+      
+      if (ticketsError) {
+        console.error("Error fetching tickets:", ticketsError);
+        return;
+      }
+      
+      if (tickets && tickets.length > 0) {
+        const ticketIds = tickets.map(ticket => ticket.id);
+        
+        // Get the sum of hours logged across all time entries for these tickets
+        const { data: timeEntries, error: timeError } = await supabase
+          .from('time_entries')
+          .select('hours_logged')
+          .in('ticket_id', ticketIds);
+        
+        if (timeError) {
+          console.error("Error fetching time entries:", timeError);
+          return;
+        }
+        
+        if (timeEntries && timeEntries.length > 0) {
+          const totalHours = timeEntries.reduce((sum, entry) => sum + (entry.hours_logged || 0), 0);
+          setHoursLogged(totalHours);
+        }
+        
+        // Get estimated hours from the ticket(s)
+        const { data: ticketDetails, error: detailsError } = await supabase
+          .from('tickets')
+          .select('estimated_hours')
+          .in('id', ticketIds)
+          .single();
+        
+        if (!detailsError && ticketDetails) {
+          setEstimatedHours(ticketDetails.estimated_hours || 0);
+        }
+      }
+    };
+    
+    fetchHoursLogged();
+  }, [application.job_app_id]);
   
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
@@ -87,10 +137,9 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
     toast.info("Project view feature is coming soon");
   };
   
-  // Get equity information
+  // Get equity information directly from accepted_jobs
   const equityAgreed = application.accepted_jobs?.equity_agreed || 0;
   const equityAllocated = application.accepted_jobs?.jobs_equity_allocated || 0;
-  const hoursLogged = application.hours_logged || 0;
   
   // Calculate percentage of equity earned vs agreed
   const percentageEarned = equityAgreed > 0 
@@ -107,25 +156,18 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
           <div className="flex-1">
             <div className="flex justify-between items-start mb-2">
               <div>
-                <CardTitle className="text-lg flex items-center">
+                <div className="text-lg font-semibold flex items-center">
                   {application.business_roles?.title}
                   <Badge className="ml-2 bg-green-500" variant="secondary">
                     accepted
                   </Badge>
-                </CardTitle>
+                </div>
                 <div className="text-sm text-muted-foreground mt-1">
                   {application.business_roles?.company_name} | Project: {application.business_roles?.project_title}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   Applied: {getTimeAgo(application.applied_at)}
                 </div>
-              </div>
-              <div className="flex items-center">
-                {isExpanded ? (
-                  <ArrowUp className="h-4 w-4 ml-2" />
-                ) : (
-                  <ArrowDown className="h-4 w-4 ml-2" />
-                )}
               </div>
             </div>
             
@@ -227,7 +269,7 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                     <div className="space-y-2">
                       <div className="grid grid-cols-2">
                         <div className="text-sm font-medium">Estimated Hours:</div>
-                        <div className="text-sm">0h</div>
+                        <div className="text-sm">{estimatedHours}h</div>
                       </div>
                       <div className="grid grid-cols-2">
                         <div className="text-sm font-medium">Hours Logged:</div>
