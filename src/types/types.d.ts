@@ -1,10 +1,11 @@
+
 export interface Ticket {
   id: string;
   title: string;
   description: string; // Required field
   status: string;
   priority: string;
-  ticket_type: string; // Add this explicitly
+  ticket_type: string; // Make sure this exists
   reporter?: string;
   assigned_to?: string;
   created_at?: string;

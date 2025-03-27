@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
@@ -412,6 +412,30 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
     loadTickets();
   };
 
+  const handleTicketAction = async (ticketId: string, action: string, data: any) => {
+    try {
+      console.log("Ticket action:", action, "for ticket", ticketId, "with data", data);
+      
+      if (action === 'updateStatus') {
+        const { error } = await supabase
+          .from('tickets')
+          .update({ status: data })
+          .eq('id', ticketId);
+        
+        if (error) throw error;
+        
+        setTickets(prev => 
+          prev.map(t => t.id === ticketId ? { ...t, status: data } : t)
+        );
+      }
+      
+      loadTickets();
+    } catch (error) {
+      console.error(`Error in ticket action ${action}:`, error);
+      toast.error("Failed to process ticket action");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -634,12 +658,9 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
                         
                         {expandedTicket === ticket.id && (
                           <div className="p-4 border-t bg-slate-50">
-                            <ExpandedTicketDetails 
-                              ticket={{
-                                ...ticket,
-                                hours_logged: ticket.hours_logged || 0,
-                                equity_earned: (ticket.equity_points || 0) * (ticket.completion_percentage || 0) / 100
-                              }}
+                            <ExpandedTicketDetails
+                              ticket={tickets.find(t => t.id === expandedTicket) || null}
+                              onClose={() => setExpandedTicket(null)}
                               onTicketAction={handleTicketAction}
                               userCanEditStatus={true}
                               userCanEditDates={true}

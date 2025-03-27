@@ -40,7 +40,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Skill, JobApplication, EquityProject } from "@/types/types";
+import { Skill, JobApplication, EquityProject } from "@/types/jobSeeker";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ApplicationsTab } from "@/components/job-seeker/dashboard/tabs/ApplicationsTab";
@@ -367,12 +367,8 @@ export default function JobSeekerDashboard() {
   };
 
   const sortedProjects = [...equityProjects].sort((a, b) => {
-    const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 
-                 a.created_at ? new Date(a.created_at).getTime() : 
-                 new Date(a.start_date).getTime();
-    const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 
-                 b.created_at ? new Date(b.created_at).getTime() : 
-                 new Date(b.start_date).getTime();
+    const dateA = a.start_date ? new Date(a.start_date).getTime() : 0;
+    const dateB = b.start_date ? new Date(b.start_date).getTime() : 0;
     return dateB - dateA;
   });
 
@@ -403,9 +399,12 @@ export default function JobSeekerDashboard() {
             profile={profile}
             cvUrl={cvUrl}
             parsedCvData={parsedCvData}
-            skills={skills}
+            skills={skills || []}
             onSkillsUpdate={handleSkillsUpdate}
-            equityProjects={sortedProjects}
+            equityProjects={sortedProjects.map(project => ({
+              ...project,
+              effort_logs: project.effort_logs || []
+            }))}
             userCVs={userCVs}
             onCvListUpdated={handleCvListUpdated}
           />

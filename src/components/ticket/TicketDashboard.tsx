@@ -17,6 +17,7 @@ interface TicketDashboardProps {
   onLogTime?: (ticketId: string) => void;
   renderTicketActions?: (ticket: Ticket) => React.ReactNode;
   userCanEditDates?: boolean;
+  showEstimatedHours?: boolean;
 }
 
 export const TicketDashboard: React.FC<TicketDashboardProps> = ({
@@ -27,7 +28,8 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   userId = "",
   onLogTime,
   renderTicketActions,
-  userCanEditDates = false
+  userCanEditDates = false,
+  showEstimatedHours = false
 }) => {
   const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>(initialTickets);
@@ -174,6 +176,8 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
               onTicketAction={onTicketAction}
               onLogTime={showTimeTracking ? handleLogTime : undefined}
               renderTicketActions={renderTicketActions}
+              userCanEditDates={userCanEditDates}
+              showEstimatedHours={showEstimatedHours}
             />
           ))
         )}
@@ -181,25 +185,11 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
       
       {totalPages > 1 && (
         <div className="flex justify-center mt-4">
-          <Pagination>
-            <Button
-              variant="outline"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-            <span className="mx-4 flex items-center">
-              Page {currentPage} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </Button>
-          </Pagination>
+          <Pagination 
+            currentPage={currentPage} 
+            totalPages={totalPages} 
+            onPageChange={handlePageChange}
+          />
         </div>
       )}
       
