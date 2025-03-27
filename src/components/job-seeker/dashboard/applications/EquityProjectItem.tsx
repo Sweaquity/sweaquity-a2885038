@@ -121,18 +121,6 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                 </div>
               </div>
               <div className="flex items-center">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="ml-2" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleWithdraw();
-                  }}
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Withdraw
-                </Button>
                 {isExpanded ? (
                   <ArrowUp className="h-4 w-4 ml-2" />
                 ) : (
@@ -141,13 +129,13 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-2">
               <div>
                 <div className="text-xs font-medium">Task Status</div>
                 <div className="text-sm">{application.business_roles?.task_status || "pending"}</div>
               </div>
               
-              {/* Skills Required moved between Task Status and Timeframe */}
+              {/* Skills Required between Task Status and Timeframe */}
               <div>
                 <div className="text-xs font-medium">Skills Required</div>
                 <div className="flex flex-wrap gap-1 mt-1">
@@ -171,37 +159,49 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                 <div className="text-xs font-medium">Timeframe</div>
                 <div className="text-sm">{formatTimeframe(application.business_roles?.timeframe)}</div>
               </div>
-            </div>
-            
-            <div className="mt-2">
-              <div className="text-xs font-medium">Equity Allocation / Earned</div>
-              <div className="text-sm group relative" title={`${equityAllocated}% earned of ${equityAgreed}% agreed equity`}>
-                {equityDisplay}
-                <span className="absolute left-0 -top-8 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {equityAllocated}% earned of {equityAgreed}% agreed equity
-                </span>
+              
+              {/* Equity Allocation / Earned between Timeframe and Hours Logged */}
+              <div>
+                <div className="text-xs font-medium">Equity Allocation / Earned</div>
+                <div className="text-sm group relative" title={`${equityAllocated}% earned of ${equityAgreed}% agreed equity`}>
+                  {equityDisplay}
+                  <span className="absolute left-0 -top-8 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {equityAllocated}% earned of {equityAgreed}% agreed equity
+                  </span>
+                </div>
+              </div>
+              
+              <div>
+                <div className="text-xs font-medium">Hours Logged</div>
+                <div className="flex items-center">
+                  <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
+                  <span>{hoursLogged}h</span>
+                </div>
               </div>
             </div>
           </div>
           
-          <div className="flex items-center mt-4 md:mt-0 justify-between md:w-48">
-            <div className="text-center mr-6">
-              <div className="text-xs font-medium">Hours Logged</div>
-              <div className="flex items-center">
-                <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
-                <span>{hoursLogged}h</span>
-              </div>
-            </div>
+          <div className="flex items-center mt-4 md:mt-0 space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleWithdraw();
+              }}
+              className="whitespace-nowrap"
+            >
+              Withdraw
+            </Button>
             
-            <div className="flex space-x-2">
-              <Button variant="outline" size="sm" onClick={handleWithdraw}>
-                Withdraw
-              </Button>
-              
-              <Button variant="outline" size="sm" className="w-24">
-                {application.status === 'accepted' ? 'Accepted' : application.status}
-              </Button>
-            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="whitespace-nowrap"
+              disabled={true}
+            >
+              Accepted
+            </Button>
           </div>
         </div>
       </div>
@@ -305,6 +305,21 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Add Equity Earned section when fully allocated */}
+                {equityAgreed > 0 && equityAllocated >= equityAgreed && (
+                  <div>
+                    <h4 className="font-medium mb-2">Equity Earned</h4>
+                    <div className="bg-green-50 p-3 rounded-md border border-green-200">
+                      <div className="text-green-700 font-medium">
+                        Congratulations! You have earned the full {equityAgreed}% equity for this project.
+                      </div>
+                      <div className="text-sm text-green-600 mt-1">
+                        This equity has been fully allocated to your portfolio.
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </TabsContent>
           </Tabs>
