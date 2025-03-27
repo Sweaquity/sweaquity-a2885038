@@ -5,8 +5,6 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "./StatusBadge";
 import { WithdrawDialog } from "./WithdrawDialog";
 import { AcceptJobDialog } from "./AcceptJobDialog";
-import { ApplicationContent } from "./ApplicationContent";
-import { ApplicationHeader } from "./ApplicationHeader";
 import { EquityProject, JobApplication } from "@/types/jobSeeker";
 import { supabase } from "@/lib/supabase";
 
@@ -35,6 +33,8 @@ export const EquityProjectItem = ({
   useEffect(() => {
     const fetchJobDetails = async () => {
       try {
+        if (!project || !project.sub_tasks || project.sub_tasks.length === 0) return;
+        
         // Get the job_app_id from the project's sub_tasks
         const taskId = project.sub_tasks[0]?.task_id;
         
@@ -59,7 +59,7 @@ export const EquityProjectItem = ({
         // Get equity information from accepted_jobs
         const { data: acceptedJobData, error: acceptedJobError } = await supabase
           .from('accepted_jobs')
-          .select('agreed_equity, jobs_equity_allocated')
+          .select('equity_agreed, jobs_equity_allocated')
           .eq('job_app_id', jobAppId)
           .single();
           
@@ -69,14 +69,14 @@ export const EquityProjectItem = ({
         }
         
         if (acceptedJobData) {
-          setAgreedEquity(acceptedJobData.agreed_equity);
+          setAgreedEquity(acceptedJobData.equity_agreed);
           setJobsEquityAllocated(acceptedJobData.jobs_equity_allocated);
           
           // Check if agreed_equity equals jobs_equity_allocated
           setIsFullyAllocated(
-            acceptedJobData.agreed_equity !== null && 
+            acceptedJobData.equity_agreed !== null && 
             acceptedJobData.jobs_equity_allocated !== null && 
-            acceptedJobData.agreed_equity === acceptedJobData.jobs_equity_allocated
+            acceptedJobData.equity_agreed === acceptedJobData.jobs_equity_allocated
           );
         }
         
@@ -98,7 +98,7 @@ export const EquityProjectItem = ({
         
         const { data: timeEntriesData, error: timeEntriesError } = await supabase
           .from('time_entries')
-          .select('hours')
+          .select('hours_logged')
           .in('ticket_id', ticketIds);
           
         if (timeEntriesError) {
@@ -107,7 +107,7 @@ export const EquityProjectItem = ({
         }
         
         // Calculate total hours logged
-        const totalHours = timeEntriesData?.reduce((sum, entry) => sum + (entry.hours || 0), 0) || 0;
+        const totalHours = timeEntriesData?.reduce((sum, entry) => sum + (entry.hours_logged || 0), 0) || 0;
         setHoursLogged(totalHours);
         
       } catch (error) {
@@ -122,6 +122,17 @@ export const EquityProjectItem = ({
     setIsExpanded(!isExpanded);
   };
 
+  // If project is undefined, render a placeholder or return null
+  if (!project || !project.sub_tasks || project.sub_tasks.length === 0) {
+    return (
+      <Card className="overflow-hidden">
+        <CardContent className="p-4">
+          <p className="text-muted-foreground">Project data is unavailable</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Format the task from the project for display
   const task = project.sub_tasks[0] || {};
   const application = {
@@ -134,15 +145,39 @@ export const EquityProjectItem = ({
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-4">
-        <ApplicationHeader
-          application={application}
-          isExpanded={isExpanded}
-          toggleExpand={toggleExpand}
-        />
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-lg font-semibold">{task.title || "Untitled Task"}</h3>
+            <p className="text-sm text-muted-foreground">
+              {project.business_roles?.company_name || "Unknown Company"} - {project.title || "Untitled Project"}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleExpand}
+          >
+            {isExpanded ? "Less Details" : "More Details"}
+          </Button>
+        </div>
 
         {isExpanded && (
           <div className="mt-4 border-t pt-4">
-            <ApplicationContent application={application} />
+            <div className="space-y-3">
+              <h4 className="font-medium">Project Description</h4>
+              <p className="text-sm text-muted-foreground">
+                {task.description || "No description available."}
+              </p>
+              
+              {project.business_roles?.description && (
+                <div>
+                  <h4 className="font-medium mt-3">Company Details</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {project.business_roles.description}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -223,15 +258,24 @@ export const EquityProjectItem = ({
 
       <WithdrawDialog
         isOpen={isWithdrawDialogOpen}
-        onClose={() => setIsWithdrawDialogOpen(false)}
-        onWithdraw={() => {}}
+        onOpenChange={setIsWithdrawDialogOpen}
+        onWithdraw={async (reason?: string) => {
+          if (onWithdraw) {
+            await onWithdraw(application.job_app_id, reason);
+          }
+        }}
         isLoading={isWithdrawing}
       />
 
       <AcceptJobDialog
         isOpen={isAcceptDialogOpen}
-        onClose={() => setIsAcceptDialogOpen(false)}
-        onAccept={() => Promise.resolve()}
+        onOpenChange={setIsAcceptDialogOpen}
+        onAccept={async () => {
+          if (onAccept) {
+            await onAccept(application);
+          }
+          return Promise.resolve();
+        }}
         application={application}
       />
     </Card>

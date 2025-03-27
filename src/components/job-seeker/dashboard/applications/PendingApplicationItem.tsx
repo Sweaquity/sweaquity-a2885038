@@ -5,8 +5,6 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "./StatusBadge";
 import { WithdrawDialog } from "./WithdrawDialog";
 import { AcceptJobDialog } from "./AcceptJobDialog";
-import { ApplicationContent } from "./ApplicationContent";
-import { ApplicationHeader } from "./ApplicationHeader";
 import { JobApplication } from "@/types/jobSeeker";
 
 export interface PendingApplicationItemProps {
@@ -51,15 +49,39 @@ export const PendingApplicationItem = ({
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-4">
-        <ApplicationHeader
-          application={application}
-          isExpanded={isExpanded}
-          toggleExpand={toggleExpand}
-        />
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="text-lg font-semibold">{application.business_roles?.title || "Untitled Position"}</h3>
+            <p className="text-sm text-muted-foreground">
+              {application.business_roles?.company_name || "Unknown Company"}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleExpand}
+          >
+            {isExpanded ? "Less Details" : "More Details"}
+          </Button>
+        </div>
 
         {isExpanded && (
           <div className="mt-4 border-t pt-4">
-            <ApplicationContent application={application} />
+            <div className="space-y-3">
+              <h4 className="font-medium">Job Description</h4>
+              <p className="text-sm text-muted-foreground">
+                {application.business_roles?.description || "No description available."}
+              </p>
+              
+              {application.message && (
+                <div>
+                  <h4 className="font-medium mt-3">Your Application Message</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {application.message}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -92,14 +114,14 @@ export const PendingApplicationItem = ({
 
       <WithdrawDialog
         isOpen={isWithdrawDialogOpen}
-        onClose={() => setIsWithdrawDialogOpen(false)}
+        onOpenChange={setIsWithdrawDialogOpen}
         onWithdraw={handleWithdraw}
         isLoading={isWithdrawing}
       />
 
       <AcceptJobDialog
         isOpen={isAcceptDialogOpen}
-        onClose={() => setIsAcceptDialogOpen(false)}
+        onOpenChange={setIsAcceptDialogOpen}
         onAccept={handleAccept}
         application={application}
       />

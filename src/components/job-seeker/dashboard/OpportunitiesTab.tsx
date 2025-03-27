@@ -1,354 +1,230 @@
 
 import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase } from "@/lib/supabase";
-import { calculateSkillMatch, rankProjectsByRelevance } from "@/utils/skillMatching";
-import { EquityProject, Skill } from "@/types/jobSeeker";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { EmptyState } from "./opportunities/EmptyState";
 import { FilterSection } from "./opportunities/FilterSection";
 import { ProjectCard } from "./opportunities/ProjectCard";
 import { TaskCard } from "./opportunities/TaskCard";
-import { EmptyState } from "./opportunities/EmptyState";
-import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-
-export interface Project {
-  id: string;
-  title: string;
-  description?: string;
-  skills_required?: string[];
-  project_timeframe?: string;
-  equity_allocation?: number;
-  company_name?: string;
-  created_by?: string;
-  business_id?: string;
-  skill_match?: number;
-}
-
-export interface Task {
-  id: string;
-  task_id: string;
-  project_id: string;
-  title: string;
-  description?: string;
-  status: string;
-  skill_requirements?: Skill[];
-  equity_allocation: number;
-  timeframe: string;
-  skill_match?: number;
-  company_name?: string;
-  task_status?: string;
-  completion_percentage?: number;
-}
+import { ApplyDialog } from "./opportunities/ApplyDialog";
+import { EquityProject, Skill, SubTask } from "@/types/jobSeeker";
+import { calculateSkillMatch, convertSkillsToStrings } from "@/utils/skillMatching";
+import { toast } from "sonner";
 
 interface OpportunitiesTabProps {
-  projects: Project[];
-  userSkills: Skill[];
+  projects: EquityProject[] | undefined;
+  userSkills: (Skill | string)[];
 }
 
 export const OpportunitiesTab = ({ projects = [], userSkills = [] }: OpportunitiesTabProps) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
-  const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
-  const [allProjects, setAllProjects] = useState<Project[]>([]);
-  const [allTasks, setAllTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedTab, setSelectedTab] = useState("projects");
-  const [allSkills, setAllSkills] = useState<string[]>([]);
-  const [filters, setFilters] = useState({
-    equity: { min: 0, max: 100 },
-    timeframe: "all",
-    minSkillMatch: 0
-  });
+  const [filteredProjects, setFilteredProjects] = useState<EquityProject[]>([]);
+  const [activeTab, setActiveTab] = useState("projects");
+  const [filters, setFilters] = useState({ search: "", sortBy: "newest", filterBy: "all" });
+  const [isApplyDialogOpen, setIsApplyDialogOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<EquityProject | null>(null);
+  const [selectedTask, setSelectedTask] = useState<SubTask | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userSkillStrings, setUserSkillStrings] = useState<string[]>([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-
-        // Fetch projects
-        const { data: projectsData, error: projectsError } = await supabase
-          .from("business_projects")
-          .select(`
-            project_id,
-            title,
-            description,
-            skills_required,
-            project_timeframe,
-            equity_allocation,
-            created_by,
-            businesses (
-              company_name,
-              businesses_id
-            )
-          `)
-          .eq("status", "active");
-
-        if (projectsError) throw projectsError;
-
-        // Fetch subtasks
-        const { data: tasksData, error: tasksError } = await supabase
-          .from("project_sub_tasks")
-          .select(`
-            task_id,
-            project_id,
-            title,
-            description,
-            skill_requirements,
-            timeframe,
-            status,
-            equity_allocation,
-            task_status,
-            completion_percentage,
-            business_projects (
-              businesses (
-                company_name
-              )
-            )
-          `)
-          .eq("status", "open");
-
-        if (tasksError) throw tasksError;
-
-        // Format projects
-        const formattedProjects = projectsData.map((project) => ({
-          id: project.project_id,
-          title: project.title,
-          description: project.description,
-          skills_required: project.skills_required,
-          project_timeframe: project.project_timeframe,
-          equity_allocation: project.equity_allocation,
-          company_name: project.businesses?.company_name,
-          created_by: project.created_by,
-          business_id: project.businesses?.businesses_id
-        }));
-
-        // Format tasks
-        const formattedTasks = tasksData.map((task) => ({
-          id: task.task_id,
-          task_id: task.task_id,
-          project_id: task.project_id,
-          title: task.title,
-          description: task.description,
-          skill_requirements: task.skill_requirements,
-          equity_allocation: task.equity_allocation,
-          timeframe: task.timeframe,
-          status: task.status,
-          task_status: task.task_status,
-          completion_percentage: task.completion_percentage,
-          company_name: task.business_projects?.businesses?.company_name
-        }));
-
-        // Apply skill matching
-        const projectsWithMatches = formattedProjects.map(project => {
-          const skillMatch = calculateSkillMatch(userSkills, project.skills_required || []);
-          return {
-            ...project,
-            skill_match: skillMatch
-          };
-        });
-
-        const tasksWithMatches = formattedTasks.map(task => {
-          const skillMatch = calculateSkillMatch(userSkills, task.skill_requirements || []);
-          return {
-            ...task,
-            skill_match: skillMatch
-          };
-        });
-
-        // Collect all unique skills for filtering
-        const uniqueSkills = new Set<string>();
-        
-        projectsData.forEach(project => {
-          if (Array.isArray(project.skills_required)) {
-            project.skills_required.forEach(skill => {
-              if (typeof skill === 'string') {
-                uniqueSkills.add(skill);
-              } else if (skill && typeof skill === 'object' && 'skill' in skill) {
-                uniqueSkills.add(skill.skill);
-              }
-            });
-          }
-        });
-        
-        tasksData.forEach(task => {
-          if (Array.isArray(task.skill_requirements)) {
-            task.skill_requirements.forEach(skill => {
-              if (typeof skill === 'string') {
-                uniqueSkills.add(skill);
-              } else if (skill && typeof skill === 'object' && 'skill' in skill) {
-                uniqueSkills.add(skill.skill);
-              }
-            });
-          }
-        });
-
-        setAllSkills(Array.from(uniqueSkills));
-        setAllProjects(projectsWithMatches);
-        setAllTasks(tasksWithMatches);
-        setFilteredProjects(projectsWithMatches);
-        setFilteredTasks(tasksWithMatches);
-      } catch (error) {
-        console.error("Error fetching opportunities:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    // Convert user skills to lowercase strings for easier matching
+    setUserSkillStrings(convertSkillsToStrings(userSkills));
   }, [userSkills]);
 
   useEffect(() => {
-    // Filter projects based on search term and filters
-    const filterItems = () => {
-      const searchTermLower = searchTerm.toLowerCase();
+    if (!projects) {
+      setFilteredProjects([]);
+      return;
+    }
 
-      // Filter projects
-      const filteredProjs = allProjects.filter((project) => {
-        // Search term filter
-        const matchesSearch =
-          !searchTerm ||
-          project.title.toLowerCase().includes(searchTermLower) ||
-          (project.description && project.description.toLowerCase().includes(searchTermLower)) ||
-          (project.company_name && project.company_name.toLowerCase().includes(searchTermLower));
+    let result = [...projects];
 
-        // Equity filter
-        const matchesEquity =
-          project.equity_allocation !== undefined &&
-          project.equity_allocation >= filters.equity.min &&
-          project.equity_allocation <= filters.equity.max;
-
-        // Timeframe filter
-        const matchesTimeframe =
-          filters.timeframe === "all" ||
-          (project.project_timeframe && project.project_timeframe.toLowerCase().includes(filters.timeframe));
-
-        // Skill match filter
-        const matchesSkillThreshold =
-          project.skill_match !== undefined && project.skill_match >= filters.minSkillMatch;
-
-        return matchesSearch && matchesEquity && matchesTimeframe && matchesSkillThreshold;
+    // Apply search filter
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      result = result.filter(project => {
+        const titleMatch = project.title?.toLowerCase().includes(searchTerm);
+        const descMatch = project.business_roles?.description?.toLowerCase().includes(searchTerm);
+        const companyMatch = project.business_roles?.company_name?.toLowerCase().includes(searchTerm);
+        
+        // Check in sub_tasks
+        const taskMatch = project.sub_tasks?.some(task => 
+          task.title?.toLowerCase().includes(searchTerm) || 
+          task.description?.toLowerCase().includes(searchTerm)
+        );
+        
+        return titleMatch || descMatch || companyMatch || taskMatch;
       });
+    }
 
-      // Filter tasks
-      const filteredTsks = allTasks.filter((task) => {
-        // Search term filter
-        const matchesSearch =
-          !searchTerm ||
-          task.title.toLowerCase().includes(searchTermLower) ||
-          (task.description && task.description.toLowerCase().includes(searchTermLower)) ||
-          (task.company_name && task.company_name.toLowerCase().includes(searchTermLower));
-
-        // Equity filter
-        const matchesEquity =
-          task.equity_allocation !== undefined &&
-          task.equity_allocation >= filters.equity.min &&
-          task.equity_allocation <= filters.equity.max;
-
-        // Timeframe filter
-        const matchesTimeframe =
-          filters.timeframe === "all" ||
-          (task.timeframe && task.timeframe.toLowerCase().includes(filters.timeframe));
-
-        // Skill match filter
-        const matchesSkillThreshold =
-          task.skill_match !== undefined && task.skill_match >= filters.minSkillMatch;
-
-        return matchesSearch && matchesEquity && matchesTimeframe && matchesSkillThreshold;
+    // Apply filters
+    if (filters.filterBy === "match") {
+      result = result.filter(project => {
+        // Check if any sub_task has matching skills
+        return project.sub_tasks?.some(task => {
+          const skillReqs = task.skill_requirements || [];
+          return calculateSkillMatch(userSkills, skillReqs) > 0;
+        });
       });
+    } else if (filters.filterBy === "recent") {
+      // Filter for projects created in the last 7 days
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      
+      result = result.filter(project => {
+        const createdAt = project.start_date ? new Date(project.start_date) : null;
+        return createdAt && createdAt > oneWeekAgo;
+      });
+    } else if (filters.filterBy === "high-equity") {
+      // Filter for projects with >10% equity
+      result = result.filter(project => 
+        project.sub_tasks?.some(task => (task.equity_allocation || 0) > 10)
+      );
+    }
 
-      setFilteredProjects(filteredProjs);
-      setFilteredTasks(filteredTsks);
-    };
+    // Apply sorting
+    if (filters.sortBy === "newest") {
+      result.sort((a, b) => {
+        const dateA = a.start_date ? new Date(a.start_date).getTime() : 0;
+        const dateB = b.start_date ? new Date(b.start_date).getTime() : 0;
+        return dateB - dateA;
+      });
+    } else if (filters.sortBy === "oldest") {
+      result.sort((a, b) => {
+        const dateA = a.start_date ? new Date(a.start_date).getTime() : 0;
+        const dateB = b.start_date ? new Date(b.start_date).getTime() : 0;
+        return dateA - dateB;
+      });
+    } else if (filters.sortBy === "equity-high") {
+      result.sort((a, b) => {
+        const equityA = Math.max(...(a.sub_tasks?.map(t => t.equity_allocation || 0) || [0]));
+        const equityB = Math.max(...(b.sub_tasks?.map(t => t.equity_allocation || 0) || [0]));
+        return equityB - equityA;
+      });
+    } else if (filters.sortBy === "equity-low") {
+      result.sort((a, b) => {
+        const equityA = Math.min(...(a.sub_tasks?.map(t => t.equity_allocation || 0).filter(e => e > 0) || [100]));
+        const equityB = Math.min(...(b.sub_tasks?.map(t => t.equity_allocation || 0).filter(e => e > 0) || [100]));
+        return equityA - equityB;
+      });
+    } else if (filters.sortBy === "match-high") {
+      // Sort by best skill match
+      result.sort((a, b) => {
+        const matchA = a.skill_match || 0;
+        const matchB = b.skill_match || 0;
+        return matchB - matchA;
+      });
+    }
 
-    filterItems();
-  }, [searchTerm, filters, allProjects, allTasks]);
+    setFilteredProjects(result);
+  }, [projects, filters, userSkills]);
 
-  const handleFilterChange = (newFilters: any) => {
-    setFilters({ ...filters, ...newFilters });
+  const handleFilterChange = (newFilters: { search: string; sortBy: string; filterBy: string }) => {
+    setFilters(newFilters);
   };
 
-  if (loading) {
-    return (
-      <div className="p-4 border rounded-lg">
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="h-10 bg-gray-200 rounded mb-4"></div>
-          <div className="h-40 bg-gray-200 rounded mb-4"></div>
-          <div className="h-40 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    );
-  }
+  const handleApply = (project: EquityProject, task: SubTask) => {
+    setSelectedProject(project);
+    setSelectedTask(task);
+    setIsApplyDialogOpen(true);
+  };
+
+  const handleSubmitApplication = async (message: string) => {
+    if (!selectedProject || !selectedTask) {
+      toast.error("No project or task selected");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Mock application submission for now
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      toast.success("Application submitted successfully");
+      setIsApplyDialogOpen(false);
+      setSelectedProject(null);
+      setSelectedTask(null);
+    } catch (error) {
+      console.error("Error submitting application:", error);
+      toast.error("Failed to submit application");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-6">
-        <div>
-          <FilterSection
-            allSkills={allSkills}
-            searchTerm={searchTerm}
-            filterSkill={null}
-            onSearchChange={setSearchTerm}
-            onFilterSkillChange={() => {}}
-            newOpportunities={0}
-          />
-        </div>
-
-        <div className="space-y-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search projects and tasks..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-
-          <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-            <TabsList className="border-b w-full rounded-none justify-start mb-6">
-              <TabsTrigger value="projects" className="relative">
-                Projects
-                {filteredProjects.length > 0 && (
-                  <Badge className="ml-2 bg-primary text-white">{filteredProjects.length}</Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="tasks" className="relative">
-                Tasks
-                {filteredTasks.length > 0 && (
-                  <Badge className="ml-2 bg-primary text-white">{filteredTasks.length}</Badge>
-                )}
-              </TabsTrigger>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Opportunities
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <FilterSection onFilterChange={handleFilterChange} />
+          
+          <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="projects">Projects</TabsTrigger>
+              <TabsTrigger value="tasks">Individual Tasks</TabsTrigger>
             </TabsList>
-
-            <TabsContent value="projects" className="mt-0">
-              {filteredProjects.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredProjects.map((project) => (
-                    <ProjectCard key={project.id} project={project} userSkills={userSkills} />
+            
+            <TabsContent value="projects">
+              {filteredProjects.length === 0 ? (
+                <EmptyState searchTerm={filters.search} />
+              ) : (
+                <div className="space-y-4">
+                  {filteredProjects.map(project => (
+                    <ProjectCard
+                      key={project.id}
+                      project={project}
+                      userSkillStrings={userSkillStrings}
+                      onApply={handleApply}
+                    />
                   ))}
                 </div>
-              ) : (
-                <EmptyState searchTerm={searchTerm} />
               )}
             </TabsContent>
-
-            <TabsContent value="tasks" className="mt-0">
-              {filteredTasks.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredTasks.map((task) => (
-                    <TaskCard key={task.id} task={task} userSkills={userSkills} />
+            
+            <TabsContent value="tasks">
+              {filteredProjects.length === 0 ? (
+                <EmptyState searchTerm={filters.search} />
+              ) : (
+                <div className="space-y-4">
+                  {filteredProjects.map(project => (
+                    <div key={project.id} className="border rounded-md p-4">
+                      <h3 className="text-lg font-semibold mb-3">
+                        {project.title || "Untitled Project"}
+                      </h3>
+                      
+                      {project.sub_tasks?.map(task => (
+                        <TaskCard
+                          key={task.id}
+                          project={project}
+                          task={task}
+                          userSkillStrings={userSkillStrings}
+                          onApply={handleApply}
+                        />
+                      ))}
+                    </div>
                   ))}
                 </div>
-              ) : (
-                <EmptyState searchTerm={searchTerm} />
               )}
             </TabsContent>
           </Tabs>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
+      
+      <ApplyDialog
+        isOpen={isApplyDialogOpen}
+        onOpenChange={setIsApplyDialogOpen}
+        project={selectedProject}
+        task={selectedTask}
+        onSubmit={handleSubmitApplication}
+        isSubmitting={isSubmitting}
+      />
     </div>
   );
 };

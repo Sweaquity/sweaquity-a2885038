@@ -1,95 +1,61 @@
 
-import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogTitle, DialogDescription, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { JobApplication } from "@/types/jobSeeker";
-import { Loader2 } from "lucide-react";
 
 interface AcceptJobDialogProps {
   isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-  application: JobApplication;
+  onOpenChange: (open: boolean) => void;
   onAccept: () => Promise<void>;
+  application: JobApplication;
   isLoading?: boolean;
 }
 
 export const AcceptJobDialog = ({
   isOpen,
   onOpenChange,
-  application,
   onAccept,
+  application,
   isLoading = false
 }: AcceptJobDialogProps) => {
-  const [acceptingJob, setAcceptingJob] = useState(false);
-  
   const handleAccept = async () => {
-    try {
-      setAcceptingJob(true);
-      await onAccept();
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Error accepting job:", error);
-    } finally {
-      setAcceptingJob(false);
-    }
+    await onAccept();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Accept Job Offer</DialogTitle>
-          <DialogDescription>
-            You are accepting the job offer for "{application.business_roles?.title}" at {application.business_roles?.company_name}.
-            This will confirm your agreement to the equity terms.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent>
+        <DialogTitle>Accept Job Offer</DialogTitle>
+        <DialogDescription>
+          You are about to accept the job offer for {application.business_roles?.title || "this position"}.
+          This will create a binding agreement between you and the business.
+        </DialogDescription>
 
-        <div className="py-4">
-          <div className="rounded-md bg-muted p-4 mb-4">
-            <h4 className="font-medium mb-2">Equity Terms:</h4>
-            <p className="text-sm">{application.business_roles?.equity_allocation}% equity stake</p>
-            
-            <h4 className="font-medium mt-4 mb-2">Project:</h4>
-            <p className="text-sm">{application.business_roles?.project_title}</p>
-            
-            <h4 className="font-medium mt-4 mb-2">Role:</h4>
-            <p className="text-sm">{application.business_roles?.title}</p>
-            
-            <h4 className="font-medium mt-4 mb-2">Description:</h4>
-            <p className="text-sm">{application.business_roles?.description}</p>
+        <div className="py-2 space-y-2">
+          <div>
+            <p className="font-medium">Company:</p>
+            <p className="text-sm">{application.business_roles?.company_name || "Unknown Company"}</p>
           </div>
           
-          <p className="text-sm text-muted-foreground">
-            Once both you and the business accept, a formal contract will be generated for review and signature.
-          </p>
+          <div>
+            <p className="font-medium">Position:</p>
+            <p className="text-sm">{application.business_roles?.title || "Untitled Position"}</p>
+          </div>
+          
+          {application.business_roles?.equity_allocation && (
+            <div>
+              <p className="font-medium">Equity Allocation:</p>
+              <p className="text-sm">{application.business_roles.equity_allocation}%</p>
+            </div>
+          )}
         </div>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             Cancel
           </Button>
-          <Button 
-            type="button"
-            variant="default"
-            onClick={handleAccept} 
-            disabled={isLoading || acceptingJob}
-          >
-            {(isLoading || acceptingJob) ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Accepting...
-              </>
-            ) : (
-              "Accept Job"
-            )}
+          <Button onClick={handleAccept} disabled={isLoading}>
+            {isLoading ? "Accepting..." : "Accept Job Offer"}
           </Button>
         </DialogFooter>
       </DialogContent>
