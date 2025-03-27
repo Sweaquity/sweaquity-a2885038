@@ -23,7 +23,7 @@ interface JobSeekerProjectsTabProps {
   userId?: string;
 }
 
-export const JobSeekerProjectsTab = ({ userId }: { userId?: string }) => {
+export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const [activeTab, setActiveTab] = useState("all-tickets");
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -330,10 +330,6 @@ export const JobSeekerProjectsTab = ({ userId }: { userId?: string }) => {
     }
   };
 
-  const toggleTicketExpanded = (ticketId: string) => {
-    // Implement logic to toggle ticket details expansion
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
@@ -427,13 +423,17 @@ export const JobSeekerProjectsTab = ({ userId }: { userId?: string }) => {
         <TabsContent value={activeTab}>
           {showKanban ? (
             <div className="mb-6">
-              <KanbanBoard 
-                tickets={getActiveTickets()}
-                onStatusChange={(ticketId, newStatus) => 
-                  handleTicketAction(ticketId, 'updateStatus', newStatus)
-                }
-                onTicketClick={toggleTicketExpanded}
-              />
+              <DragDropContext onDragEnd={() => {}}>
+                <KanbanBoard 
+                  tickets={getActiveTickets()}
+                  onStatusChange={(ticketId, newStatus) => 
+                    handleTicketAction(ticketId, 'updateStatus', newStatus)
+                  }
+                  onTicketClick={(ticket) => {
+                    console.log("Ticket clicked:", ticket.id);
+                  }}
+                />
+              </DragDropContext>
             </div>
           ) : showGantt ? (
             <div className="mb-6">
@@ -449,8 +449,6 @@ export const JobSeekerProjectsTab = ({ userId }: { userId?: string }) => {
               showTimeTracking={true}
               userId={userId || ''}
               onLogTime={handleLogTime}
-              userCanEditDates={false}
-              showEstimatedHours={true}
             />
           )}
         </TabsContent>

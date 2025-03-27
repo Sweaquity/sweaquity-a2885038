@@ -395,9 +395,8 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   };
 
   const renderTicketActions = (ticket: Ticket) => {
-    // Only show review action for business users if the ticket is in review status AND has 100% completion
-    if ((ticket.status === 'review' || ticket.status === 'in review') && 
-        ticket.completion_percentage === 100) {
+    // Only show review action for business users and if the ticket is in review status
+    if (ticket.status === 'review' || ticket.status === 'in review') {
       return (
         <Button
           variant="outline"
@@ -511,6 +510,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
                 }
                 onTicketClick={(ticket) => {
                   console.log("Ticket clicked:", ticket.id);
+                  // Here you could show a ticket detail dialog or navigate to a ticket details page
                 }}
               />
             </div>
@@ -525,12 +525,10 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
               initialTickets={getActiveTickets()}
               onRefresh={handleRefresh}
               onTicketAction={handleTicketAction}
-              showTimeTracking={false} // Change to false to remove log time button
+              showTimeTracking={true}
               userId={businessId || ''}
               onLogTime={handleLogTime}
               renderTicketActions={renderTicketActions}
-              userCanEditDates={false} // Set to false to make due dates not editable
-              showEstimatedHours={true}
             />
           )}
         </TabsContent>
@@ -550,7 +548,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           open={isReviewOpen}
           setOpen={setIsReviewOpen}
           onClose={handleReviewClose}
-          onTaskAction={handleTicketAction}
         />
       )}
     </div>
