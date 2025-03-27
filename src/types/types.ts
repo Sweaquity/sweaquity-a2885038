@@ -1,3 +1,4 @@
+
 // If this file doesn't exist, we'll create it with the necessary types
 
 export interface Ticket {
@@ -78,4 +79,25 @@ export interface Task {
     progressColor?: string;
     progressSelectedColor?: string;
   };
+}
+
+export interface KanbanBoardProps {
+  onStatusChange: (ticketId: any, newStatus: any) => Promise<void>;
+  onTicketClick: (ticket: Ticket) => void;
+  tickets: Ticket[];
+}
+
+export interface TicketCardProps {
+  ticket: Ticket;
+  onClick?: (ticket: Ticket) => void;
+}
+
+export interface ExpandedTicketDetailsProps {
+  ticket: any;
+  onReply: (message: any) => Promise<void>;
+  onStatusChange: (status: any) => Promise<void>;
+  onPriorityChange: (priority: any) => Promise<void>;
+  onAssigneeChange: (userId: any) => Promise<void>;
+  users: any[];
+  messages?: any[];
 }

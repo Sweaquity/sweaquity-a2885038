@@ -3,15 +3,16 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { EquityProject } from '@/types/jobSeeker';
+import { EquityProject, SubTask } from '@/types/jobSeeker';
 
 interface ProjectCardProps {
   project: EquityProject;
+  userSkillStrings?: string[];
   onViewDetails?: (project: EquityProject) => void;
-  onApply?: (project: EquityProject) => void;
+  onApply?: (project: EquityProject, task: SubTask) => void;
 }
 
-const ProjectCard = ({ project, onViewDetails, onApply }: ProjectCardProps) => {
+const ProjectCard = ({ project, userSkillStrings = [], onViewDetails, onApply }: ProjectCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const toggleExpand = () => {
@@ -49,6 +50,12 @@ const ProjectCard = ({ project, onViewDetails, onApply }: ProjectCardProps) => {
 
   const skills = getSkills();
   const matchPercentage = project.skill_match || 0;
+  
+  const handleApply = () => {
+    if (onApply && project.sub_tasks && project.sub_tasks.length > 0) {
+      onApply(project, project.sub_tasks[0]);
+    }
+  };
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -111,7 +118,7 @@ const ProjectCard = ({ project, onViewDetails, onApply }: ProjectCardProps) => {
           </Button>
         )}
         {onApply && (
-          <Button size="sm" onClick={() => onApply(project)}>
+          <Button size="sm" onClick={handleApply}>
             Apply
           </Button>
         )}

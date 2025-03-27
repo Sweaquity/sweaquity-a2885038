@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useJobSeekerDashboard } from "@/hooks/useJobSeekerDashboard";
@@ -74,8 +73,8 @@ const JobSeekerDashboard = () => {
     // This is a placeholder. In a real implementation, you'd track which opportunities the user has seen
     const recentOpportunities = availableOpportunities ? 
       availableOpportunities.filter(opp => {
-        // Check for updated_at since created_at might not exist
-        const creationDate = opp.updated_at ? opp.updated_at : null;
+        // Check for created_at or start_date since updated_at might not exist
+        const creationDate = opp.created_at || opp.start_date || null;
         if (!creationDate) return false;
         return new Date(creationDate) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       }).length : 0;
