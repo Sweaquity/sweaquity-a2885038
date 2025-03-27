@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,7 +56,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     if (!userId) return;
     
     try {
-      // Fetch all projects where the user has tickets assigned
       const { data: projectsData, error } = await supabase
         .from('jobseeker_active_projects')
         .select('project_id, project_title')
@@ -66,7 +64,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       
       if (error) throw error;
       
-      // Deduplicate projects by project_id
       const uniqueProjects = Array.from(
         new Map(projectsData.map(item => [item.project_id, item])).values()
       );
@@ -95,7 +92,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         `)
         .or(`assigned_to.eq.${userId},reporter.eq.${userId}`);
       
-      // Filter by project if one is selected and it's not "all"
       if (selectedProject && selectedProject !== "all") {
         query = query.eq('project_id', selectedProject);
       }
@@ -104,9 +100,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       
       if (error) throw error;
       
-      // Filter out completed tickets (where equity has been fully allocated)
       const filteredTickets = (data || []).filter(ticket => {
-        // Skip tickets where equity is 100% allocated
         if (ticket.accepted_jobs && 
             ticket.accepted_jobs.equity_agreed > 0 && 
             ticket.accepted_jobs.jobs_equity_allocated >= ticket.accepted_jobs.equity_agreed) {
@@ -117,16 +111,14 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       
       const processedTickets = filteredTickets.map(ticket => ({
         ...ticket,
-        type: ticket.ticket_type || "task", // Map ticket_type to type for compatibility
-        description: ticket.description || "", // Ensure description exists
-        // Add equity information to the ticket
+        type: ticket.ticket_type || "task",
+        description: ticket.description || "",
         equity_agreed: ticket.accepted_jobs?.equity_agreed || 0,
         equity_allocated: ticket.accepted_jobs?.jobs_equity_allocated || 0
       }));
       
       setTickets(processedTickets);
       
-      // Calculate ticket stats
       const stats = {
         total: processedTickets.length,
         open: processedTickets.filter(t => t.status !== 'done' && t.status !== 'closed').length,
@@ -147,7 +139,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     try {
       switch (action) {
         case 'updateStatus': {
-          // Update ticket status
           const { error } = await supabase
             .from('tickets')
             .update({ status: data })
@@ -155,7 +146,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
           
           if (error) throw error;
           
-          // Update local state
           setTickets(prevTickets => 
             prevTickets.map(t => t.id === ticketId ? { ...t, status: data } : t)
           );
@@ -263,7 +253,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
 
   const handleLogTime = async (ticketId: string) => {
     toast.info("Time logging functionality is in development");
-    // Time logging functionality to be implemented
   };
 
   const handleRefresh = () => {
@@ -278,18 +267,18 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     setIsCreateTicketDialogOpen(true);
   };
 
-  const handleTicketCreated = async (ticketData: any): Promise<Ticket | null> => {
+  const handleTicketCreated = async (ticketData: any): Promise<void> => {
     try {
       if (!userId) {
         toast.error("User ID not found");
-        return null;
+        return;
       }
       
       const ticketToCreate = {
         ...ticketData,
         reporter: userId,
         created_at: new Date().toISOString(),
-        type: ticketData.type || "task", // Using 'type' instead of 'ticket_type'
+        type: ticketData.type || "task",
         status: "new",
         priority: ticketData.priority || "medium",
         health: ticketData.health || "good"
@@ -304,13 +293,13 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       if (error) throw error;
       
       toast.success("Ticket created successfully");
-      setTickets([data, ...tickets]);
+      if (data) {
+        setTickets([data, ...tickets]);
+      }
       setIsCreateTicketDialogOpen(false);
-      return data;
     } catch (error) {
       console.error("Error creating ticket:", error);
       toast.error("Failed to create ticket");
-      return null;
     }
   };
 

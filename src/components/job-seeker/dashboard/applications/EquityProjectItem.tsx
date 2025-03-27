@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,6 +18,68 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
   const [activeTab, setActiveTab] = useState("details");
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [withdrawReason, setWithdrawReason] = useState("");
+  const [equityData, setEquityData] = useState({
+    equityAgreed: 0,
+    equityAllocated: 0
+  });
+  const [hoursData, setHoursData] = useState({
+    hoursLogged: 0,
+    estimatedHours: 0
+  });
+  
+  // Fetch equity and hours data
+  useEffect(() => {
+    const fetchEquityData = async () => {
+      try {
+        // Get equity data from accepted_jobs using job_app_id
+        const { data: acceptedJobsData, error: acceptedJobsError } = await supabase
+          .from('accepted_jobs')
+          .select('equity_agreed, jobs_equity_allocated')
+          .eq('job_app_id', application.job_app_id)
+          .single();
+          
+        if (acceptedJobsError) {
+          console.error("Error fetching equity data:", acceptedJobsError);
+        } else if (acceptedJobsData) {
+          setEquityData({
+            equityAgreed: acceptedJobsData.equity_agreed || 0,
+            equityAllocated: acceptedJobsData.jobs_equity_allocated || 0
+          });
+        }
+        
+        // Get ticket data using task_id
+        const { data: ticketData, error: ticketError } = await supabase
+          .from('tickets')
+          .select('id, estimated_hours')
+          .eq('task_id', application.task_id)
+          .single();
+          
+        if (ticketError) {
+          console.error("Error fetching ticket data:", ticketError);
+        } else if (ticketData) {
+          // Get hours logged data from time_entries
+          const { data: timeEntries, error: timeEntriesError } = await supabase
+            .from('time_entries')
+            .select('hours_logged')
+            .eq('ticket_id', ticketData.id);
+            
+          if (timeEntriesError) {
+            console.error("Error fetching time entries:", timeEntriesError);
+          } else if (timeEntries) {
+            const totalHoursLogged = timeEntries.reduce((total, entry) => total + (entry.hours_logged || 0), 0);
+            setHoursData({
+              hoursLogged: totalHoursLogged,
+              estimatedHours: ticketData.estimated_hours || 0
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error in data fetching:", error);
+      }
+    };
+    
+    fetchEquityData();
+  }, [application.job_app_id, application.task_id]);
   
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
@@ -82,18 +144,15 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
     toast.info("Project view feature is coming soon");
   };
   
-  // Get equity information
-  const equityAgreed = application.accepted_jobs?.equity_agreed || 0;
-  const equityAllocated = application.accepted_jobs?.jobs_equity_allocated || 0;
-  const hoursLogged = application.hours_logged || 0;
-  
   // Calculate percentage of equity earned vs agreed
-  const percentageEarned = equityAgreed > 0 
-    ? ((equityAllocated / equityAgreed) * 100).toFixed(1) 
+  const percentageEarned = equityData.equityAgreed > 0 
+    ? ((equityData.equityAllocated / equityData.equityAgreed) * 100).toFixed(1) 
     : "0.0";
   
   // Format for display, showing earned/total
-  const equityDisplay = `${equityAllocated}%/${equityAgreed}%`;
+  const equityDisplay = `${equityData.equityAllocated}%/${equityData.equityAgreed}%`;
+  const hoursDisplay = `${hoursData.hoursLogged}h/${hoursData.estimatedHours}h`;
+  const completionPercentage = application.business_roles?.completion_percentage || 0;
   
   return (
     <Card className="mb-4 overflow-hidden">
@@ -102,12 +161,12 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
           <div className="flex-1">
             <div className="flex justify-between items-start mb-2">
               <div>
-                <CardTitle className="text-lg flex items-center">
+                <div className="text-lg flex items-center font-medium">
                   {application.business_roles?.title}
                   <Badge className="ml-2 bg-green-500" variant="secondary">
                     accepted
                   </Badge>
-                </CardTitle>
+                </div>
                 <div className="text-sm text-muted-foreground mt-1">
                   {application.business_roles?.company_name} | Project: {application.business_roles?.project_title}
                 </div>
@@ -136,7 +195,7 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-2">
               <div>
                 <div className="text-xs font-medium">Task Status</div>
                 <div className="text-sm">{application.business_roles?.task_status || "pending"}</div>
@@ -146,8 +205,16 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                 <div className="text-sm">{formatTimeframe(application.business_roles?.timeframe)}</div>
               </div>
               <div>
-                <div className="text-xs font-medium">Equity Allocation</div>
+                <div className="text-xs font-medium">Equity Allocation/Earned</div>
                 <div className="text-sm">{equityDisplay}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium">Hours Logged/Estimated</div>
+                <div className="text-sm">{hoursDisplay}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium">Completion</div>
+                <div className="text-sm">{completionPercentage}%</div>
               </div>
             </div>
             
@@ -161,7 +228,7 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                     
                     return (
                       <Badge variant="outline" key={index} className="text-xs">
-                        {skillName} <span className="ml-1 opacity-70">({level})</span>
+                        {skillName} {level && <span className="ml-1 opacity-70">({level})</span>}
                       </Badge>
                     );
                   }) : 
@@ -171,18 +238,7 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
             </div>
           </div>
           
-          <div className="flex items-center mt-4 md:mt-0 justify-between md:w-48">
-            <div className="text-center mr-6">
-              <div className="text-xs font-medium">Hours Logged</div>
-              <div className="flex items-center">
-                <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
-                <span>{hoursLogged}h</span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {percentageEarned}% earned
-              </div>
-            </div>
-            
+          <div className="flex mt-4 md:mt-0 justify-between items-center">
             <div>
               <Button variant="outline" size="sm" className="w-24">
                 {application.status === 'accepted' ? 'Accepted' : application.status}
@@ -213,23 +269,23 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                     <div className="space-y-2">
                       <div className="grid grid-cols-2">
                         <div className="text-sm font-medium">Estimated Hours:</div>
-                        <div className="text-sm">{application.business_roles?.estimated_hours || 0}h</div>
+                        <div className="text-sm">{hoursData.estimatedHours}h</div>
                       </div>
                       <div className="grid grid-cols-2">
                         <div className="text-sm font-medium">Hours Logged:</div>
-                        <div className="text-sm">{hoursLogged}h</div>
+                        <div className="text-sm">{hoursData.hoursLogged}h</div>
                       </div>
                       <div className="grid grid-cols-2">
                         <div className="text-sm font-medium">Completion:</div>
-                        <div className="text-sm">{application.business_roles?.completion_percentage || 0}%</div>
+                        <div className="text-sm">{completionPercentage}%</div>
                       </div>
                       <div className="grid grid-cols-2">
                         <div className="text-sm font-medium">Equity Agreed:</div>
-                        <div className="text-sm">{equityAgreed}%</div>
+                        <div className="text-sm">{equityData.equityAgreed}%</div>
                       </div>
                       <div className="grid grid-cols-2">
                         <div className="text-sm font-medium">Equity Earned:</div>
-                        <div className="text-sm">{equityAllocated}%</div>
+                        <div className="text-sm">{equityData.equityAllocated}%</div>
                       </div>
                     </div>
                   </div>
@@ -274,11 +330,11 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                   <div className="bg-gray-50 p-3 rounded-md">
                     <div className="flex justify-between mb-1">
                       <span className="text-sm">Equity Agreed:</span>
-                      <span className="text-sm font-medium">{equityAgreed}%</span>
+                      <span className="text-sm font-medium">{equityData.equityAgreed}%</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm">Equity Allocated:</span>
-                      <span className="text-sm font-medium">{equityAllocated}%</span>
+                      <span className="text-sm font-medium">{equityData.equityAllocated}%</span>
                     </div>
                     <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
                       <div

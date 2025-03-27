@@ -1,77 +1,63 @@
 
-import React, { useState } from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { XCircle, Loader2 } from 'lucide-react';
+import React, { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
-interface WithdrawDialogProps {
+export interface WithdrawDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onWithdraw: (reason?: string) => Promise<void>;
-  isWithdrawing: boolean;
+  isLoading?: boolean;
 }
 
 export const WithdrawDialog = ({ 
   isOpen, 
   onOpenChange, 
-  onWithdraw, 
-  isWithdrawing 
+  onWithdraw,
+  isLoading = false 
 }: WithdrawDialogProps) => {
-  const [reason, setReason] = useState('');
+  const [reason, setReason] = useState("");
 
   const handleWithdraw = async () => {
-    await onWithdraw(reason || undefined);
-    setReason('');
-    onOpenChange(false);
+    await onWithdraw(reason);
+    setReason("");
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Withdraw Application</DialogTitle>
           <DialogDescription>
-            Are you sure you want to withdraw this application? This action cannot be undone.
+            Are you sure you want to withdraw your application? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
-        
-        <div className="py-4">
+        <div className="space-y-4 py-4">
           <Textarea
-            placeholder="Optional: Provide a reason for withdrawing"
+            placeholder="Optional: Tell us why you're withdrawing this application..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={4}
           />
         </div>
-        
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             Cancel
           </Button>
           <Button 
             variant="destructive" 
-            onClick={handleWithdraw} 
-            disabled={isWithdrawing}
+            onClick={handleWithdraw}
+            disabled={isLoading}
           >
-            {isWithdrawing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Withdrawing...
-              </>
-            ) : (
-              <>
-                <XCircle className="mr-2 h-4 w-4" />
-                Withdraw Application
-              </>
-            )}
+            {isLoading ? "Withdrawing..." : "Withdraw Application"}
           </Button>
         </DialogFooter>
       </DialogContent>

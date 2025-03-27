@@ -1,35 +1,54 @@
 
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Eye, Mail } from 'lucide-react';
 import { ApplicationContent } from '../ApplicationContent';
-import { MessageActions } from './MessageActions';
-import { JobApplication } from '@/types/jobSeeker';
 
 interface ApplicationItemContentProps {
-  application: JobApplication;
-  onMessageClick: () => void;
-  onWithdrawClick: () => void;
+  description?: string;
+  message?: string;
+  discourse?: string;
+  appliedAt?: string;
+  onViewDetails?: () => void;
+  onSendMessage?: () => void;
 }
 
-export const ApplicationItemContent = ({ 
-  application,
-  onMessageClick,
-  onWithdrawClick
+export const ApplicationItemContent = ({
+  description,
+  message,
+  discourse,
+  appliedAt,
+  onViewDetails,
+  onSendMessage
 }: ApplicationItemContentProps) => {
   return (
-    <div className="border-t p-4">
-      {application.business_roles && (
-        <ApplicationContent 
-          description={application.business_roles.description || ""}
-          message={application.message || ""}
-          discourse={application.task_discourse}
-          appliedAt={application.applied_at}
-        />
+    <div className="space-y-4">
+      {description && (
+        <div>
+          <p className="text-sm text-gray-600 line-clamp-2">{description}</p>
+        </div>
       )}
-
-      <MessageActions 
-        onMessageClick={onMessageClick}
-        projectId={application.project_id}
-        onWithdrawClick={onWithdrawClick}
+      
+      <ApplicationContent 
+        message={message}
+        appliedAt={appliedAt}
+        discourse={discourse}
       />
+      
+      <div className="flex justify-end space-x-2">
+        {onSendMessage && (
+          <Button variant="outline" size="sm" onClick={onSendMessage}>
+            <Mail className="h-4 w-4 mr-1" />
+            Send Message
+          </Button>
+        )}
+        {onViewDetails && (
+          <Button variant="outline" size="sm" onClick={onViewDetails}>
+            <Eye className="h-4 w-4 mr-1" />
+            View Details
+          </Button>
+        )}
+      </div>
     </div>
   );
 };

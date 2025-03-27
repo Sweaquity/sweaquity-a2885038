@@ -125,7 +125,10 @@ export const ApplicationsTabBase = ({
       </TabsContent>
 
       <TabsContent value="equity">
-        <EquityProjectsList applications={currentApplications} />
+        <EquityProjectsList 
+          applications={currentApplications}
+          onApplicationUpdated={onApplicationUpdated}
+        />
       </TabsContent>
     </Tabs>
   );
