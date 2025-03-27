@@ -37,35 +37,18 @@ export const EquityProjectItem = ({
       try {
         if (!project) return;
         
-        // Safely get task ID
-        const taskId = project.sub_tasks && project.sub_tasks[0]?.task_id || project.id;
+        // Use project_id and job_app_id directly from the project
+        const projectId = project.project_id;
+        const jobAppId = project.job_app_id;
         
-        if (!taskId) return;
-        
-        // Get job_app_id for the task - using .eq instead of .single to handle multiple results
-        const { data: jobAppsData, error: jobAppError } = await supabase
-          .from('job_applications')
-          .select('job_app_id')
-          .eq('task_id', taskId);
-          
-        if (jobAppError) {
-          console.error("Error fetching job applications:", jobAppError);
+        if (!projectId || !jobAppId) {
+          console.log("Missing project_id or job_app_id", project);
           return;
         }
         
-        if (!jobAppsData || jobAppsData.length === 0) {
-          console.log("No job applications found for task:", taskId);
-          return;
-        }
+        console.log("Fetching job details for project:", projectId, "job app:", jobAppId);
         
-        // Get first job app id (we can handle multiple later if needed)
-        const jobAppId = jobAppsData[0]?.job_app_id;
-        
-        if (!jobAppId) return;
-        
-        console.log("Found job application ID:", jobAppId);
-        
-        // Get equity information from accepted_jobs
+        // Get equity information from accepted_jobs using job_app_id
         const { data: acceptedJobData, error: acceptedJobError } = await supabase
           .from('accepted_jobs')
           .select('equity_agreed, jobs_equity_allocated')
@@ -86,6 +69,26 @@ export const EquityProjectItem = ({
             acceptedJobData.equity_agreed === acceptedJobData.jobs_equity_allocated
           );
         }
+        
+        // Get task_id from job_applications for this job_app_id
+        const { data: jobAppData, error: jobAppError } = await supabase
+          .from('job_applications')
+          .select('task_id')
+          .eq('job_app_id', jobAppId)
+          .single();
+          
+        if (jobAppError) {
+          console.error("Error fetching job application:", jobAppError);
+          return;
+        }
+        
+        if (!jobAppData?.task_id) {
+          console.log("No task_id found for job_app_id:", jobAppId);
+          return;
+        }
+        
+        const taskId = jobAppData.task_id;
+        console.log("Found task_id:", taskId);
         
         // Get related tickets for the task
         const { data: ticketsData, error: ticketsError } = await supabase
@@ -152,23 +155,30 @@ export const EquityProjectItem = ({
     );
   }
 
-  // Format the task from the project for display
-  const task = project.sub_tasks && project.sub_tasks[0] ? project.sub_tasks[0] : {};
+  // Create a simplified application object from the project data
   const application = {
     job_app_id: project.job_app_id || "",
     status: project.status,
     created_at: project.start_date,
     business_roles: project.business_roles,
     user_id: "",
-    task_id: task.task_id || "",
+    task_id: project.id || "",
   } as JobApplication;
+
+  // Extract task information directly from business_roles
+  const taskTitle = project.business_roles?.title || project.title || "Untitled Task";
+  const taskDescription = project.business_roles?.description || "";
+  const taskStatus = project.status || 'active';
+  const taskTimeframe = project.time_allocated || '';
+  const taskEquityAllocation = project.equity_amount || 0;
+  const taskSkillRequirements = project.business_roles?.skill_requirements || [];
 
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-4">
         <div className="flex justify-between items-start">
           <div>
-            <h3 className="text-lg font-semibold">{task.title || project.title || "Untitled Task"}</h3>
+            <h3 className="text-lg font-semibold">{taskTitle}</h3>
             <p className="text-sm text-muted-foreground">
               {project.business_roles?.company_name || "Unknown Company"} - {project.title || "Untitled Project"}
             </p>
@@ -187,10 +197,10 @@ export const EquityProjectItem = ({
             <div className="space-y-3">
               <h4 className="font-medium">Project Description</h4>
               <p className="text-sm text-muted-foreground">
-                {task.description || project.business_roles?.description || "No description available."}
+                {taskDescription || "No description available."}
               </p>
               
-              {project.business_roles?.description && task.description !== project.business_roles?.description && (
+              {project.business_roles?.description && taskDescription !== project.business_roles?.description && (
                 <div>
                   <h4 className="font-medium mt-3">Company Details</h4>
                   <p className="text-sm text-muted-foreground">
@@ -232,13 +242,13 @@ export const EquityProjectItem = ({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
             <div>
               <div className="text-sm font-medium">Task Status</div>
-              <div className="text-sm">{task.task_status || project.status || 'In Progress'}</div>
+              <div className="text-sm">{taskStatus || 'In Progress'}</div>
             </div>
             
             <div>
               <div className="text-sm font-medium">Equity Allocation / Earned</div>
               <div className="text-sm">
-                {agreedEquity !== null ? `${agreedEquity}%` : (task.equity_allocation || project.equity_amount || 0) + '%'} / 
+                {agreedEquity !== null ? `${agreedEquity}%` : `${taskEquityAllocation}%`} / 
                 {jobsEquityAllocated !== null ? ` ${jobsEquityAllocated}%` : ' 0%'}
               </div>
             </div>
@@ -251,10 +261,10 @@ export const EquityProjectItem = ({
           
           <div className="mt-2">
             <ProjectInfo
-              taskStatus={task.task_status || project.status}
-              timeframe={task.timeframe || project.time_allocated}
-              equityAllocation={agreedEquity !== null ? agreedEquity : (task.equity_allocation || project.equity_amount || 0)}
-              skillRequirements={task.skill_requirements || []}
+              taskStatus={taskStatus}
+              timeframe={taskTimeframe}
+              equityAllocation={agreedEquity !== null ? agreedEquity : taskEquityAllocation}
+              skillRequirements={taskSkillRequirements}
             />
           </div>
           
@@ -277,6 +287,7 @@ export const EquityProjectItem = ({
             await onWithdraw(application.job_app_id, reason);
           }
         }}
+        isWithdrawing={isWithdrawing}
       />
 
       <AcceptJobDialog

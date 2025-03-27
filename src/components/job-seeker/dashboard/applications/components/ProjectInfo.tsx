@@ -14,14 +14,16 @@ export const ProjectInfo = ({
   equityAllocation = 0,
   skillRequirements = []
 }: ProjectInfoProps) => {
+  const safeSkillRequirements = skillRequirements || [];
+  
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-2 text-sm">
         <div>
           <p className="text-muted-foreground">Skills Required</p>
           <div className="flex flex-wrap gap-1 mt-1">
-            {skillRequirements && Array.isArray(skillRequirements) && skillRequirements.length > 0 ? (
-              skillRequirements.map((skill, index) => (
+            {Array.isArray(safeSkillRequirements) && safeSkillRequirements.length > 0 ? (
+              safeSkillRequirements.map((skill, index) => (
                 <Badge key={index} variant="outline" className="bg-slate-50">
                   {typeof skill === 'string' ? skill : skill.skill}
                   {typeof skill !== 'string' && skill.level && 

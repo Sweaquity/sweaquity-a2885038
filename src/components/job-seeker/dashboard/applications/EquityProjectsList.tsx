@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { EquityProject, JobApplication, SubTask, Skill } from "@/types/jobSeeker";
+import { EquityProject, JobApplication, Skill } from "@/types/jobSeeker";
 import { EquityProjectItem } from "./EquityProjectItem";
 import { EmptyState } from "../opportunities/EmptyState";
 
@@ -26,23 +26,8 @@ export const EquityProjectsList = ({
           typeof skill === 'string' ? { skill, level: 'Intermediate' } : skill as Skill
         );
 
-        // Create subtask with properly typed skill_requirements
-        const subTask: SubTask = {
-          id: app.task_id || "",
-          task_id: app.task_id || "",
-          project_id: app.project_id || "",
-          title: app.business_roles?.title || "Untitled Task",
-          description: app.business_roles?.description || "",
-          timeframe: app.business_roles?.timeframe || "",
-          status: app.status || "active",
-          equity_allocation: app.business_roles?.equity_allocation || 0,
-          skill_requirements: formattedSkillRequirements,
-          task_status: app.status || "active",
-          completion_percentage: 0
-        };
-
         const project: EquityProject = {
-          id: app.job_app_id || app.id || `app-${Math.random()}`,
+          id: app.task_id || `app-${Math.random()}`,
           project_id: app.project_id || "",
           title: app.business_roles?.title || "Untitled Project",
           equity_amount: app.business_roles?.equity_allocation || 0,
@@ -51,9 +36,16 @@ export const EquityProjectsList = ({
           start_date: app.created_at || app.applied_at || new Date().toISOString(),
           effort_logs: [],
           total_hours_logged: 0,
-          business_roles: app.business_roles,
-          job_app_id: app.job_app_id, // Add job_app_id to the project
-          sub_tasks: [subTask]
+          business_roles: {
+            title: app.business_roles?.title || "",
+            description: app.business_roles?.description || "",
+            company_name: app.business_roles?.company_name || "",
+            project_title: app.business_roles?.project_title || "",
+            timeframe: app.business_roles?.timeframe || "",
+            equity_allocation: app.business_roles?.equity_allocation || 0,
+            skill_requirements: formattedSkillRequirements,
+          },
+          job_app_id: app.job_app_id // Add job_app_id to link with accepted_jobs
         };
 
         return project;
