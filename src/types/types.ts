@@ -20,7 +20,8 @@ export interface Ticket {
   equity_points?: number;
   estimated_hours?: number;
   hours_logged?: number;
-  type?: string;  // Adding type property to the Ticket interface
+  type?: string;  // This property exists for backward compatibility
+  ticket_type?: string; // Adding this property to match the database schema
 }
 
 export interface BetaTicket extends Ticket {

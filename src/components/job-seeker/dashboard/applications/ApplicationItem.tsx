@@ -123,13 +123,19 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
   
   const showAcceptButton = application.status === 'accepted' && !application.accepted_jobseeker;
 
+  // Get safe values for each property, with fallbacks
+  const title = application.task_title || application.business_roles?.title || 'Untitled Task';
+  const company = application.company_name || application.business_roles?.company_name || 'Company';
+  const project = application.project_title || application.business_roles?.project_title || 'Project';
+  const description = application.description || application.business_roles?.description || '';
+
   return (
     <div className="border rounded-md overflow-hidden bg-card dashboard-card">
       {/* Application Header Section */}
       <ApplicationItemHeader
-        title={application.task_title || 'Untitled Task'}
-        company={application.company_name || 'Company'}
-        project={application.project_title || 'Project'}
+        title={title}
+        company={company}
+        project={project}
         status={application.status}
         isExpanded={isExpanded}
         toggleExpand={toggleExpand}
@@ -144,12 +150,15 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
       {/* Expanded Application Content */}
       {isExpanded && (
         <ApplicationItemContent
-          description={application.description}
-          message={application.message}
-          discourse={application.task_discourse}
-          appliedAt={application.applied_at}
-          onMessageClick={() => setIsCreateMessageOpen(true)}
+          description={description}
+          message={application.message || ''}
+          discourse={application.task_discourse || ''}
+          appliedAt={application.applied_at || ''}
+          onSendMessage={() => setIsCreateMessageOpen(true)}
           onWithdrawClick={() => setIsWithdrawDialogOpen(true)}
+          onViewProject={() => {
+            // Implement view project functionality if needed
+          }}
         />
       )}
 
