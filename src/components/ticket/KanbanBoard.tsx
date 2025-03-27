@@ -86,9 +86,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChang
     });
   };
 
-  console.log("Tickets in Kanban:", tickets);
-  console.log("Column statuses:", columns.map(col => col.id));
-
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -99,13 +96,11 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChang
             if (ticket.status === column.id) return true;
             
             // Handle alternative status formats
-            if (column.id === 'in-progress' && ticket.status === 'in_progress') return true;
-            if (column.id === 'todo' && (ticket.status === 'new' || ticket.status === 'open' || ticket.status === 'backlog')) return true;
+            if (column.id === 'in-progress' && (ticket.status === 'in_progress' || ticket.status === 'in progress')) return true;
+            if (column.id === 'todo' && (ticket.status === 'new' || ticket.status === 'open' || ticket.status === 'backlog' || ticket.status === 'to-do' || ticket.status === 'to_do')) return true;
             
             return false;
           });
-          
-          console.log(`Column ${column.id} has ${columnTickets.length} tickets`);
           
           return (
             <Droppable key={column.id} droppableId={column.id}>

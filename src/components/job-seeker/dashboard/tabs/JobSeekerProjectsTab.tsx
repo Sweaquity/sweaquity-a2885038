@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,10 +15,11 @@ import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
-import { Ticket } from "@/types/types";
+import { Ticket, TicketStatistics } from "@/types/types";
 import { RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
 import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
 import { DragDropContext } from "react-beautiful-dnd";
+import TicketStats from "@/components/ticket/TicketStats";
 
 interface JobSeekerProjectsTabProps {
   userId?: string;
@@ -29,7 +31,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>("all");
-  const [taskStats, setTaskStats] = useState({
+  const [taskStats, setTaskStats] = useState<TicketStatistics>({
     total: 0,
     open: 0,
     closed: 0,
@@ -97,21 +99,15 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       }
       
       const { data, error } = await query.order('created_at', { ascending: false });
+
+      console.log("Loaded tickets:", data);
       
       if (error) throw error;
       
-      const filteredTickets = (data || []).filter(ticket => {
-        if (ticket.accepted_jobs && 
-            ticket.accepted_jobs.equity_agreed > 0 && 
-            ticket.accepted_jobs.jobs_equity_allocated >= ticket.accepted_jobs.equity_agreed) {
-          return false;
-        }
-        return true;
-      });
-      
-      const processedTickets = filteredTickets.map(ticket => ({
+      // Include the ticket type property for compatibility
+      const processedTickets = (data || []).map(ticket => ({
         ...ticket,
-        ticket_type: ticket.ticket_type || "task",
+        ticket_type: ticket.ticket_type || ticket.type || "task",
         description: ticket.description || "",
         equity_agreed: ticket.accepted_jobs?.equity_agreed || 0,
         equity_allocated: ticket.accepted_jobs?.jobs_equity_allocated || 0
@@ -202,6 +198,22 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
           break;
         }
         
+        case 'updateEstimatedHours': {
+          const { error } = await supabase
+            .from('tickets')
+            .update({ estimated_hours: data })
+            .eq('id', ticketId);
+          
+          if (error) throw error;
+          
+          setTickets(prevTickets => 
+            prevTickets.map(t => t.id === ticketId ? { ...t, estimated_hours: data } : t)
+          );
+          
+          toast.success("Estimated hours updated");
+          break;
+        }
+        
         case 'addNote': {
           const { data: ticketData } = await supabase
             .from('tickets')
@@ -252,7 +264,44 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   };
 
   const handleLogTime = async (ticketId: string) => {
-    toast.info("Time logging functionality is in development");
+    try {
+      // Get the ticket
+      const ticket = tickets.find(t => t.id === ticketId);
+      if (!ticket) {
+        toast.error("Ticket not found");
+        return;
+      }
+      
+      // Simple prompt for hours (in a real app would be a proper form)
+      const hours = window.prompt("Enter hours to log:", "1");
+      if (!hours) return;
+      
+      const hoursLogged = parseFloat(hours);
+      if (isNaN(hoursLogged) || hoursLogged <= 0) {
+        toast.error("Please enter a valid number of hours");
+        return;
+      }
+      
+      // Create time entry
+      const { error } = await supabase
+        .from('time_entries')
+        .insert({
+          ticket_id: ticketId,
+          user_id: userId,
+          hours_logged: hoursLogged,
+          start_time: new Date().toISOString(),
+          description: `Time logged for ticket: ${ticket.title}`
+        });
+        
+      if (error) throw error;
+      
+      toast.success(`Logged ${hoursLogged} hours for this ticket`);
+      loadTickets(); // Refresh data
+      
+    } catch (error) {
+      console.error("Error logging time:", error);
+      toast.error("Failed to log time");
+    }
   };
 
   const handleRefresh = () => {
@@ -281,7 +330,8 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         ticket_type: ticketData.ticket_type || "task",
         status: "todo",
         priority: ticketData.priority || "medium",
-        health: ticketData.health || "good"
+        health: ticketData.health || "good",
+        description: ticketData.description || ""
       };
       
       const { data, error } = await supabase
@@ -385,32 +435,14 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <Card className="bg-blue-50">
-          <CardContent className="p-4 text-center">
-            <div className="text-sm font-medium text-blue-700">All Tickets</div>
-            <div className="text-2xl font-bold mt-1 text-blue-800">{taskStats.total}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-yellow-50">
-          <CardContent className="p-4 text-center">
-            <div className="text-sm font-medium text-yellow-700">Open Tasks</div>
-            <div className="text-2xl font-bold mt-1 text-yellow-800">{taskStats.open}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-green-50">
-          <CardContent className="p-4 text-center">
-            <div className="text-sm font-medium text-green-700">Closed Tasks</div>
-            <div className="text-2xl font-bold mt-1 text-green-800">{taskStats.closed}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-red-50">
-          <CardContent className="p-4 text-center">
-            <div className="text-sm font-medium text-red-700">High Priority</div>
-            <div className="text-2xl font-bold mt-1 text-red-800">{taskStats.highPriority}</div>
-          </CardContent>
-        </Card>
-      </div>
+      <TicketStats 
+        totalTickets={taskStats.total}
+        openTickets={taskStats.open}
+        closedTickets={taskStats.closed}
+        highPriorityTickets={taskStats.highPriority}
+        byStatus={{}}
+        byPriority={{}}
+      />
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
@@ -423,7 +455,15 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         <TabsContent value={activeTab}>
           {showKanban ? (
             <div className="mb-6">
-              <DragDropContext onDragEnd={() => {}}>
+              <DragDropContext onDragEnd={(result) => {
+                if (!result.destination) return;
+                
+                handleTicketAction(
+                  result.draggableId, 
+                  'updateStatus', 
+                  result.destination.droppableId
+                );
+              }}>
                 <KanbanBoard 
                   tickets={getActiveTickets()}
                   onStatusChange={(ticketId, newStatus) => 
