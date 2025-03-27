@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useRouter } from 'next/router';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion"
+} from "@/components/ui/accordion";
 import {
   Drawer,
   DrawerClose,
@@ -22,7 +22,7 @@ import {
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
-} from "@/components/ui/drawer"
+} from "@/components/ui/drawer";
 import {
   Command,
   CommandEmpty,
@@ -32,7 +32,7 @@ import {
   CommandList,
   CommandSeparator,
   CommandShortcut,
-} from "@/components/ui/command"
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,18 +40,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Icons } from "@/components/icons";
-import { DashboardHeader } from "@/components/header";
-import { DashboardShell } from "@/components/shell";
-import { SkillItem } from "@/components/skill/SkillItem";
-import { SkillForm } from "@/components/skill/SkillForm";
-import { ProfileForm } from "@/components/profile/ProfileForm";
-import { CVList } from "@/components/cv/CVList";
-import { CVUpload } from "@/components/cv/CVUpload";
-import { JobApplication } from "@/types/jobSeeker";
-import { Skill } from "@/types/jobSeeker";
-import { EquityProject } from "@/types/jobSeeker";
-import { DashboardTabProps } from "@/types/jobSeeker";
+import { Skill, JobApplication, EquityProject } from "@/types/types";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { ApplicationsTab } from "@/components/job-seeker/dashboard/tabs/ApplicationsTab";
@@ -59,21 +48,58 @@ import { JobSeekerProjectsTab } from "@/components/job-seeker/dashboard/tabs/Job
 import { DashboardTab } from "@/components/job-seeker/dashboard/tabs/DashboardTab";
 import { PendingApplicationsList } from "@/components/job-seeker/dashboard/applications/PendingApplicationsList";
 
+const DashboardShell: React.FC<{children: React.ReactNode}> = ({ children }) => (
+  <div className="container mx-auto py-6">
+    {children}
+  </div>
+);
+
+const DashboardHeader: React.FC<{
+  heading: string;
+  text: string;
+  tabs?: Array<{title: string; href: string}>;
+  activeTab?: string;
+}> = ({ heading, text, tabs, activeTab }) => {
+  const navigate = useNavigate();
+  
+  return (
+    <div className="flex flex-col space-y-4 mb-6">
+      <div>
+        <h1 className="text-2xl font-bold">{heading}</h1>
+        <p className="text-muted-foreground">{text}</p>
+      </div>
+      
+      {tabs && tabs.length > 0 && (
+        <Tabs value={activeTab || "dashboard"}>
+          <TabsList>
+            {tabs.map((tab) => (
+              <TabsTrigger 
+                key={tab.href}
+                value={tab.href.split('/').pop() || "dashboard"}
+                onClick={() => navigate(tab.href)}
+              >
+                {tab.title}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
+    </div>
+  );
+};
+
 const tabs = [
   {
     title: "Dashboard",
     href: "/dashboards/jobseeker",
-    content: "Dashboard Tab",
   },
   {
     title: "Applications",
     href: "/dashboards/jobseeker/applications",
-    content: "Applications Tab",
   },
   {
     title: "Projects",
     href: "/dashboards/jobseeker/projects",
-    content: "Projects Tab",
   },
 ];
 
@@ -178,9 +204,10 @@ export default function JobSeekerDashboard() {
   const [loadingApplications, setLoadingApplications] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [newMessagesCount, setNewMessagesCount] = useState<number>(0);
-  const router = useRouter();
-  const { tab } = router.query;
-  const activeTab = tab ? String(tab) : "dashboard";
+  
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeTab = location.pathname.split('/').pop() || "dashboard";
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -339,9 +366,13 @@ export default function JobSeekerDashboard() {
     await fetchCVs(userId || '');
   };
 
-  let sortedProjects = [...equityProjects].sort((a, b) => {
-    const dateA = a.updated_at ? new Date(a.updated_at).getTime() : a.created_at ? new Date(a.created_at).getTime() : 0;
-    const dateB = b.updated_at ? new Date(b.updated_at).getTime() : b.created_at ? new Date(b.created_at).getTime() : 0;
+  const sortedProjects = [...equityProjects].sort((a, b) => {
+    const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 
+                 a.created_at ? new Date(a.created_at).getTime() : 
+                 new Date(a.start_date).getTime();
+    const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 
+                 b.created_at ? new Date(b.created_at).getTime() : 
+                 new Date(b.start_date).getTime();
     return dateB - dateA;
   });
 
@@ -382,8 +413,7 @@ export default function JobSeekerDashboard() {
         {activeTab === "applications" && (
           <ApplicationsTab
             applications={applications}
-            onApplicationUpdated={() => {}}
-            newMessagesCount={newMessagesCount}
+            onApplicationUpdated={() => fetchApplications(userId || '')}
           />
         )}
         {activeTab === "projects" && (

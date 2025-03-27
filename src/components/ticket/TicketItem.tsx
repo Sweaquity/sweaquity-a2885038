@@ -1,34 +1,37 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Info, PencilRuler, User, Calendar } from "lucide-react";
-import { Ticket } from "@/types/types";
+import { Clock, Check, AlertCircle, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
+import { Ticket } from "@/types/types";
 
 interface TicketItemProps {
   ticket: Ticket;
-  onExpand: (ticket: Ticket) => void;
   onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
-  showTimeTracking?: boolean;
   onLogTime?: (ticketId: string) => void;
-  renderActions?: () => React.ReactNode;
+  renderTicketActions?: (ticket: Ticket) => React.ReactNode;
 }
 
 export const TicketItem: React.FC<TicketItemProps> = ({
   ticket,
-  onExpand,
   onTicketAction,
-  showTimeTracking = false,
   onLogTime,
-  renderActions
+  renderTicketActions
 }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  const toggleExpanded = () => {
+    setExpanded(!expanded);
+  };
+
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
+    switch (status) {
       case "new":
+      case "todo":
         return "bg-blue-100 text-blue-800";
       case "in-progress":
-      case "in_progress":
         return "bg-yellow-100 text-yellow-800";
       case "blocked":
         return "bg-red-100 text-red-800";
@@ -44,103 +47,150 @@ export const TicketItem: React.FC<TicketItemProps> = ({
   };
 
   const getPriorityColor = (priority: string) => {
-    switch (priority.toLowerCase()) {
-      case "high":
-        return "bg-red-100 text-red-800";
+    switch (priority) {
+      case "low":
+        return "bg-blue-100 text-blue-800";
       case "medium":
         return "bg-yellow-100 text-yellow-800";
-      case "low":
-        return "bg-green-100 text-green-800";
+      case "high":
+        return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
   };
 
-  const formatDate = (date: string | undefined) => {
-    if (!date) return "No due date";
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "new":
+      case "todo":
+        return <Clock className="h-4 w-4" />;
+      case "in-progress":
+        return <Clock className="h-4 w-4" />;
+      case "blocked":
+        return <AlertTriangle className="h-4 w-4" />;
+      case "review":
+        return <AlertCircle className="h-4 w-4" />;
+      case "done":
+      case "closed":
+        return <Check className="h-4 w-4" />;
+      default:
+        return <Clock className="h-4 w-4" />;
+    }
+  };
+
+  const formatDate = (date: string | null | undefined) => {
+    if (!date) return "Not set";
     try {
-      return format(new Date(date), "PPP");
-    } catch (error) {
+      return format(new Date(date), "MMM d, yyyy");
+    } catch (e) {
       return "Invalid date";
     }
   };
 
+  const getTicketTypeLabel = (ticket: Ticket) => {
+    // Use ticket_type if available, otherwise fall back to type
+    const ticketType = ticket.ticket_type || ticket.type || "task";
+    
+    switch (ticketType) {
+      case "task":
+        return "Task";
+      case "bug":
+        return "Bug";
+      case "feature":
+        return "Feature";
+      case "beta-test":
+      case "beta_testing":
+        return "Beta Test";
+      default:
+        return ticketType.charAt(0).toUpperCase() + ticketType.slice(1);
+    }
+  };
+
   return (
-    <div className="border rounded-lg overflow-hidden shadow-sm bg-white">
+    <Card className="mb-4">
       <div className="p-4">
         <div className="flex justify-between items-start">
-          <div>
+          <div className="flex-1">
             <h3 className="font-medium">{ticket.title}</h3>
-            <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-              {ticket.description}
-            </p>
+            <div className="flex flex-wrap gap-2 mt-1">
+              <Badge variant="outline" className={getStatusColor(ticket.status)}>
+                {getStatusIcon(ticket.status)} <span className="ml-1">{ticket.status}</span>
+              </Badge>
+              <Badge variant="outline" className={getPriorityColor(ticket.priority)}>
+                {ticket.priority}
+              </Badge>
+              <Badge variant="outline">
+                {getTicketTypeLabel(ticket)}
+              </Badge>
+            </div>
           </div>
-          <div className="flex space-x-2">
-            <Badge className={getStatusColor(ticket.status)}>{ticket.status}</Badge>
-            <Badge className={getPriorityColor(ticket.priority)}>{ticket.priority}</Badge>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2 mt-3 text-xs text-muted-foreground">
-          {ticket.due_date && (
-            <div className="flex items-center">
-              <Calendar className="h-3 w-3 mr-1" />
-              <span>Due: {formatDate(ticket.due_date)}</span>
-            </div>
-          )}
           
-          {ticket.assigned_to && (
-            <div className="flex items-center">
-              <User className="h-3 w-3 mr-1" />
-              <span>Assigned</span>
-            </div>
-          )}
-          
-          {ticket.estimated_hours != null && (
-            <div className="flex items-center">
-              <PencilRuler className="h-3 w-3 mr-1" />
-              <span>Est: {ticket.estimated_hours}h</span>
-            </div>
-          )}
-          
-          {ticket.hours_logged != null && (
-            <div className="flex items-center">
-              <Clock className="h-3 w-3 mr-1" />
-              <span>Logged: {ticket.hours_logged}h</span>
-            </div>
-          )}
-          
-          {ticket.ticket_type && (
-            <div className="flex items-center">
-              <Info className="h-3 w-3 mr-1" />
-              <span>Type: {ticket.ticket_type}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex justify-end mt-3 space-x-2">
-          {showTimeTracking && onLogTime && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => onLogTime(ticket.id)}
-            >
-              <Clock className="h-4 w-4 mr-1" />
-              Log Time
+          <div className="flex items-center space-x-2">
+            {renderTicketActions && renderTicketActions(ticket)}
+            <Button variant="ghost" size="sm" onClick={toggleExpanded}>
+              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
-          )}
-          
-          {renderActions && renderActions()}
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => onExpand(ticket)}
-          >
-            View Details
-          </Button>
+          </div>
         </div>
+        
+        {expanded && (
+          <div className="mt-4 border-t pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium">Due date:</span> {formatDate(ticket.due_date)}
+                </p>
+                {ticket.estimated_hours !== undefined && (
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium">Estimated hours:</span> {ticket.estimated_hours}
+                  </p>
+                )}
+                {ticket.hours_logged !== undefined && (
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium">Hours logged:</span> {ticket.hours_logged}
+                  </p>
+                )}
+              </div>
+              
+              <div>
+                {ticket.completion_percentage !== undefined && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      <span className="font-medium">Completion:</span> {ticket.completion_percentage}%
+                    </p>
+                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-500" 
+                        style={{ width: `${ticket.completion_percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="mb-4">
+              <p className="text-sm font-medium mb-1">Description</p>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {ticket.description || "No description provided."}
+              </p>
+            </div>
+            
+            <div className="flex justify-end space-x-2">
+              {onLogTime && (
+                <Button size="sm" variant="outline" onClick={() => onLogTime(ticket.id)}>
+                  Log Time
+                </Button>
+              )}
+              {onTicketAction && (
+                <Button size="sm" onClick={() => onTicketAction(ticket.id, "viewDetails", null)}>
+                  View Details
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </Card>
   );
 };

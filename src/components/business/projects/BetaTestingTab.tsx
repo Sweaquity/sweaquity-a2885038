@@ -640,20 +640,9 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
                                 hours_logged: ticket.hours_logged || 0,
                                 equity_earned: (ticket.equity_points || 0) * (ticket.completion_percentage || 0) / 100
                               }}
-                              onTicketAction={async (ticketId, action, data) => {
-                                if (action === 'addNote') {
-                                  await handleTicketReply(ticketId, data);
-                                } else if (action === 'updateStatus') {
-                                  await handleStatusChange(ticketId, data);
-                                } else if (action === 'updatePriority') {
-                                  await handlePriorityChange(ticketId, data);
-                                } else if (action === 'updateAssignee') {
-                                  await handleAssigneeChange(ticketId, data);
-                                }
-                              }}
+                              onTicketAction={handleTicketAction}
                               userCanEditStatus={true}
                               userCanEditDates={true}
-                              users={users}
                             />
                           </div>
                         )}

@@ -20,7 +20,7 @@ import { KanbanBoard } from "@/components/ticket/KanbanBoard";
 import { DragDropContext } from "react-beautiful-dnd";
 
 interface JobSeekerProjectsTabProps {
-  userId?: string;
+  userId?: string | null;
 }
 
 export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
@@ -310,16 +310,19 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   };
 
   const getActiveTickets = () => {
-    switch (activeTab) {
-      case "project-tasks":
-        return tickets.filter(t => t.ticket_type === "task");
-      case "project-tickets":
-        return tickets.filter(t => t.ticket_type === "ticket");
-      case "beta-testing":
-        return tickets.filter(t => t.ticket_type === "beta-test" || t.ticket_type === "beta_testing");
-      default:
-        return tickets;
+    if (activeTab === 'project-tasks') {
+      return tickets.filter(t => t.ticket_type === "task" || t.type === "task");
+    } else if (activeTab === 'project-tickets') {
+      return tickets.filter(t => t.ticket_type === "ticket" || t.type === "ticket");
+    } else if (activeTab === 'beta-testing') {
+      return tickets.filter(t => 
+        t.ticket_type === "beta-test" || 
+        t.ticket_type === "beta_testing" || 
+        t.type === "beta-test" || 
+        t.type === "beta_testing"
+      );
     }
+    return tickets;
   };
 
   const toggleKanbanView = () => {

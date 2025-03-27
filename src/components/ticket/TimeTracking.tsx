@@ -1,9 +1,15 @@
 
-import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import React, { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -11,114 +17,112 @@ import { toast } from "sonner";
 interface TimeTrackingProps {
   ticketId: string;
   userId: string;
+  open: boolean;
   onClose: () => void;
+  onTimeLogged?: () => void;
 }
 
 export const TimeTracking: React.FC<TimeTrackingProps> = ({
   ticketId,
   userId,
+  open,
   onClose,
+  onTimeLogged
 }) => {
-  const [hours, setHours] = useState<number>(1);
+  const [hours, setHours] = useState<number>(0);
   const [description, setDescription] = useState<string>("");
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isLogging, setIsLogging] = useState<boolean>(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (hours <= 0) {
-      toast.error("Hours must be greater than zero");
+      toast.error("Hours must be greater than 0");
       return;
     }
-
-    setIsSubmitting(true);
+    
     try {
-      // Log time in the time_entries table
-      const { error } = await supabase.from("time_entries").insert({
-        ticket_id: ticketId,
-        user_id: userId,
-        hours_logged: hours,
-        description,
-        start_time: new Date().toISOString(),
-      });
-
+      setIsLogging(true);
+      
+      const now = new Date();
+      const { error } = await supabase
+        .from('time_entries')
+        .insert({
+          ticket_id: ticketId,
+          user_id: userId,
+          hours_logged: hours,
+          description: description,
+          start_time: now.toISOString(),
+          created_at: now.toISOString()
+        });
+      
       if (error) throw error;
-
-      // Update ticket's total hours
-      const { error: updateError } = await supabase.rpc("update_ticket_hours", {
-        p_ticket_id: ticketId,
-        p_hours: hours,
-      });
-
-      if (updateError) {
-        console.error("Error updating ticket hours:", updateError);
-        // Fallback if RPC is not available
-        const { data: ticketData } = await supabase
-          .from("tickets")
-          .select("hours_logged")
-          .eq("id", ticketId)
-          .single();
-
-        if (ticketData) {
-          const currentHours = ticketData.hours_logged || 0;
-          await supabase
-            .from("tickets")
-            .update({ hours_logged: currentHours + hours })
-            .eq("id", ticketId);
-        }
-      }
-
+      
       toast.success("Time logged successfully");
+      
+      // Reset the form
+      setHours(0);
+      setDescription("");
+      
+      // Close the dialog and inform parent component
       onClose();
+      if (onTimeLogged) onTimeLogged();
+      
     } catch (error) {
       console.error("Error logging time:", error);
       toast.error("Failed to log time");
     } finally {
-      setIsSubmitting(false);
+      setIsLogging(false);
     }
   };
 
   return (
-    <Dialog open={true} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Log Time</DialogTitle>
+          <DialogDescription>
+            Record the time you've spent working on this ticket
+          </DialogDescription>
         </DialogHeader>
+        
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="hours" className="text-right">
+              <label htmlFor="hours" className="text-right text-sm">
                 Hours
-              </Label>
+              </label>
               <Input
                 id="hours"
                 type="number"
-                step="0.5"
-                min="0.5"
+                min="0.1"
+                step="0.1"
                 value={hours}
-                onChange={(e) => setHours(parseFloat(e.target.value))}
+                onChange={(e) => setHours(parseFloat(e.target.value) || 0)}
                 className="col-span-3"
               />
             </div>
+            
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
+              <label htmlFor="description" className="text-right text-sm">
                 Description
-              </Label>
+              </label>
               <Textarea
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="What did you work on?"
+                placeholder="Describe the work you've done"
                 className="col-span-3"
-                rows={3}
               />
             </div>
           </div>
+          
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isLogging}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Log Time"}
+            <Button type="submit" disabled={isLogging || hours <= 0}>
+              {isLogging ? "Logging..." : "Log Time"}
             </Button>
           </DialogFooter>
         </form>

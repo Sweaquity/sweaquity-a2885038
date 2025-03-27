@@ -1,99 +1,149 @@
 
-import React from "react";
-import { PendingApplicationItem } from "./PendingApplicationItem";
-import { JobApplication } from "@/types/jobSeeker";
-import { PendingApplicationsListProps } from "@/types/types";
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { PendingApplicationsListProps } from '@/types/types';
 
 export const PendingApplicationsList: React.FC<PendingApplicationsListProps> = ({
   applications,
   onWithdraw,
   onAccept,
-  isWithdrawing
+  isWithdrawing = false,
+  getMatchedSkills
 }) => {
-  const sortedApplications = [...applications].sort((a, b) => {
-    // Sort by application date, newest first
-    const dateA = a.applied_at ? new Date(a.applied_at).getTime() : 0;
-    const dateB = b.applied_at ? new Date(b.applied_at).getTime() : 0;
-    return dateB - dateA;
-  });
+  const [expandedApplicationId, setExpandedApplicationId] = useState<string | null>(null);
 
-  // Get matched skills for an application
-  const getMatchedSkills = (application: JobApplication) => {
-    // For job applications, skill requirements may be in different places
-    let requiredSkills: string[] = [];
-    let applicantSkills: string[] = [];
-    
-    // Try to get skill requirements from business_roles
-    if (application.business_roles?.skill_requirements) {
-      const skillReqs = application.business_roles.skill_requirements;
-      if (Array.isArray(skillReqs)) {
-        requiredSkills = skillReqs.map((sk: any) => {
-          if (typeof sk === 'string') return sk;
-          if (sk && typeof sk === 'object' && sk.skill) return sk.skill;
-          return '';
-        }).filter(Boolean);
-      }
-    }
-    
-    // Directly assigned skills_required (from a join query)
-    if (application.skills_required && Array.isArray(application.skills_required)) {
-      requiredSkills = [
-        ...new Set([
-          ...requiredSkills,
-          ...application.skills_required.map((sk: any) => {
-            if (typeof sk === 'string') return sk;
-            if (sk && typeof sk === 'object' && sk.skill) return sk.skill;
-            return '';
-          }).filter(Boolean)
-        ])
-      ];
-    }
-    
-    // Applicant skills
-    if (application.applicant_skills && Array.isArray(application.applicant_skills)) {
-      applicantSkills = application.applicant_skills.map((sk: any) => {
-        if (typeof sk === 'string') return sk;
-        if (sk && typeof sk === 'object' && sk.skill) return sk.skill;
-        return '';
-      }).filter(Boolean);
-    }
-    
-    // Find the intersection
-    const matchedSkills = requiredSkills.filter(skill => 
-      applicantSkills.some(appSkill => 
-        appSkill.toLowerCase() === skill.toLowerCase()
-      )
-    );
-    
+  const toggleApplicationExpansion = (applicationId: string) => {
+    setExpandedApplicationId(prevId => prevId === applicationId ? null : applicationId);
+  };
+
+  // Default implementation if getMatchedSkills is not provided
+  const defaultGetMatchedSkills = () => {
     return {
-      matched: matchedSkills,
-      total: requiredSkills.length,
-      matchPercentage: requiredSkills.length 
-        ? Math.round((matchedSkills.length / requiredSkills.length) * 100) 
-        : 0
+      matched: [],
+      total: 0,
+      matchPercentage: 0
     };
   };
 
+  // Use the provided getMatchedSkills function or fall back to the default
+  const calculateMatchedSkills = getMatchedSkills || defaultGetMatchedSkills;
+
   if (!applications || applications.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        No pending applications.
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Pending Applications</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">No pending applications found.</p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {sortedApplications.map((application) => (
-        <PendingApplicationItem
-          key={application.job_app_id}
-          application={application}
-          onAccept={onAccept || (() => Promise.resolve())}
-          onWithdraw={onWithdraw || (() => Promise.resolve())}
-          isWithdrawing={isWithdrawing || false}
-          getMatchedSkills={() => getMatchedSkills(application)}
-        />
-      ))}
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Pending Applications ({applications.length})</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {applications.map((application) => {
+            // Safely calculate matched skills without TypeScript errors
+            const matchResult = calculateMatchedSkills(application);
+            const matchedSkillsArray = matchResult.matched || [];
+            const totalSkills = matchResult.total || 0;
+            const matchPercentage = matchResult.matchPercentage || 0;
+            
+            return (
+              <div key={application.job_app_id} className="border rounded-lg p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-medium">
+                      {application.business_roles?.title || 'Task Title'}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {application.business_roles?.company_name || 'Company'} | 
+                      {application.business_roles?.project_title || 'Project'}
+                    </p>
+                    {matchedSkillsArray.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Matched Skills: {matchedSkillsArray.length}/{totalSkills} ({matchPercentage}%)
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {matchedSkillsArray.map((skill, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {skill}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    {onAccept && (
+                      <Button
+                        size="sm"
+                        onClick={() => onAccept(application)}
+                      >
+                        Accept
+                      </Button>
+                    )}
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleApplicationExpansion(application.job_app_id)}
+                    >
+                      {expandedApplicationId === application.job_app_id ? "Collapse" : "Expand"}
+                    </Button>
+                  </div>
+                </div>
+                
+                {expandedApplicationId === application.job_app_id && (
+                  <div className="mt-4 border-t pt-4">
+                    <div className="space-y-3">
+                      {application.business_roles?.description && (
+                        <div>
+                          <h4 className="text-sm font-medium">Description</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {application.business_roles.description}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {application.message && (
+                        <div>
+                          <h4 className="text-sm font-medium">Applicant Message</h4>
+                          <p className="text-sm italic text-muted-foreground">
+                            {application.message}
+                          </p>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-end">
+                        {onWithdraw && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => onWithdraw(application.job_app_id)}
+                            disabled={isWithdrawing}
+                          >
+                            {isWithdrawing ? "Withdrawing..." : "Withdraw"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 };

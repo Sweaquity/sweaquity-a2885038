@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -16,18 +15,9 @@ import { CalendarIcon, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Ticket } from "@/types/types";
+import { Ticket, ExpandedTicketDetailsProps } from "@/types/types";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-
-interface ExpandedTicketDetailsProps {
-  ticket: Ticket;
-  onClose?: () => void;
-  onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
-  onLogTime?: (ticketId: string) => void;
-  userCanEditStatus?: boolean;
-  userCanEditDates?: boolean;
-}
 
 export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   ticket,
@@ -35,7 +25,13 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   onTicketAction = async () => {},
   onLogTime,
   userCanEditStatus = false,
-  userCanEditDates = false
+  userCanEditDates = false,
+  users = [],
+  onReply,
+  onStatusChange,
+  onPriorityChange,
+  onAssigneeChange,
+  messages = []
 }) => {
   const [activeTab, setActiveTab] = useState("details");
   const [newNote, setNewNote] = useState("");
@@ -146,11 +142,19 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   };
 
   const handleStatusChange = async (value: string) => {
-    await onTicketAction(ticket.id, "updateStatus", value);
+    if (onStatusChange) {
+      await onStatusChange(value);
+    } else {
+      await onTicketAction(ticket.id, "updateStatus", value);
+    }
   };
 
   const handlePriorityChange = async (value: string) => {
-    await onTicketAction(ticket.id, "updatePriority", value);
+    if (onPriorityChange) {
+      await onPriorityChange(value);
+    } else {
+      await onTicketAction(ticket.id, "updatePriority", value);
+    }
   };
 
   const handleDueDateChange = async (selectedDate: Date | undefined) => {
@@ -169,8 +173,20 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   const handleAddNote = async () => {
     if (!newNote.trim()) return;
     
-    await onTicketAction(ticket.id, "addNote", newNote);
+    if (onReply) {
+      await onReply(newNote);
+    } else {
+      await onTicketAction(ticket.id, "addNote", newNote);
+    }
     setNewNote("");
+  };
+
+  const handleAssigneeChange = async (userId: string) => {
+    if (onAssigneeChange) {
+      await onAssigneeChange(userId);
+    } else {
+      await onTicketAction(ticket.id, "updateAssignee", userId);
+    }
   };
 
   return (
@@ -339,6 +355,48 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
               Add
             </Button>
           </div>
+
+          {users && users.length > 0 && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Assign To</label>
+              <Select
+                value={ticket.assigned_to || ""}
+                onValueChange={handleAssigneeChange}
+                disabled={!userCanEditStatus}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select assignee" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Unassigned</SelectItem>
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.first_name} {user.last_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {messages && messages.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-sm font-medium mb-2">Messages</h4>
+              <div className="max-h-[300px] overflow-y-auto space-y-3">
+                {messages.map((msg, index) => (
+                  <div key={index} className="border rounded p-3">
+                    <div className="flex justify-between">
+                      <span className="font-medium">{msg.user || "User"}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {msg.timestamp ? format(new Date(msg.timestamp), "PPp") : ""}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm">{msg.comment || msg.content}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="activity-log" className="space-y-4">

@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
-interface MessageApplicationDialogProps {
+export interface MessageApplicationDialogProps {
   open: boolean;
   onClose: () => void;
   onSendMessage: (message: string) => Promise<void>;
@@ -22,7 +22,7 @@ export const MessageApplicationDialog: React.FC<MessageApplicationDialogProps> =
   open,
   onClose,
   onSendMessage,
-  isSending
+  isSending = false // Default value provided
 }) => {
   const [message, setMessage] = useState("");
 

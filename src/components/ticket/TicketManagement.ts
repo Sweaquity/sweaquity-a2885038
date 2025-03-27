@@ -1,146 +1,73 @@
+import { Ticket } from "@/types/types";
 
-import { useState, useEffect } from 'react';
-import { Ticket, TicketStatistics } from '@/types/types';
-import { supabase } from '@/lib/supabase';
+export interface TicketFilters {
+  search?: string;
+  status?: string;
+  priority?: string;
+  type?: string;
+}
 
-export const useTicketManagement = (initialTickets: Ticket[]) => {
-  const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
-  const [filteredTickets, setFilteredTickets] = useState<Ticket[]>(initialTickets);
-  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const [ticketStats, setTicketStats] = useState<TicketStatistics>({
-    total: 0,
-    open: 0,
-    closed: 0,
-    highPriority: 0
-  });
-  const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
-  const [projectFilter, setProjectFilter] = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<string | null>(null);
-
-  useEffect(() => {
-    updateTicketStatistics(tickets);
-  }, [tickets]);
-
-  useEffect(() => {
-    applyFilters();
-  }, [tickets, searchQuery, statusFilter, priorityFilter, projectFilter, typeFilter]);
-
-  const updateTicketStatistics = (ticketsData: Ticket[]) => {
-    setTicketStats({
-      total: ticketsData.length,
-      open: ticketsData.filter(t => t.status !== 'done' && t.status !== 'closed').length,
-      closed: ticketsData.filter(t => t.status === 'done' || t.status === 'closed').length,
-      highPriority: ticketsData.filter(t => t.priority === 'high').length
-    });
-  };
-
-  const applyFilters = () => {
-    let filtered = [...tickets];
-    
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(ticket => 
-        ticket.title.toLowerCase().includes(query) || 
-        (ticket.description && ticket.description.toLowerCase().includes(query))
-      );
-    }
-    
-    // Apply status filter
-    if (statusFilter) {
-      filtered = filtered.filter(ticket => ticket.status === statusFilter);
-    }
-    
-    // Apply priority filter
-    if (priorityFilter) {
-      filtered = filtered.filter(ticket => ticket.priority === priorityFilter);
-    }
-    
-    // Apply project filter
-    if (projectFilter) {
-      filtered = filtered.filter(ticket => ticket.project_id === projectFilter);
-    }
-    
-    // Apply type filter
-    if (typeFilter) {
-      filtered = filtered.filter(ticket => ticket.ticket_type === typeFilter);
-    }
-    
-    setFilteredTickets(filtered);
-  };
-
-  const loadTickets = async (userId: string, projectId?: string) => {
-    setLoading(true);
-    try {
-      let query = supabase
-        .from('tickets')
-        .select(`
-          *,
-          project:project_id(title)
-        `);
-      
-      if (projectId && projectId !== 'all') {
-        query = query.eq('project_id', projectId);
-      } else {
-        query = query.or(`assigned_to.eq.${userId},reporter.eq.${userId}`);
+export const filterTickets = (tickets: Ticket[], filters: TicketFilters): Ticket[] => {
+  return tickets.filter(ticket => {
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      if (!ticket.title.toLowerCase().includes(searchTerm) &&
+          !ticket.description.toLowerCase().includes(searchTerm)) {
+        return false;
       }
-      
-      const { data, error } = await query.order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      setTickets(data || []);
-      setFilteredTickets(data || []);
-      updateTicketStatistics(data || []);
-    } catch (error) {
-      console.error('Error loading tickets:', error);
-    } finally {
-      setLoading(false);
     }
-  };
 
-  const selectTicket = (ticket: Ticket) => {
-    setSelectedTicket(ticket);
-  };
+    if (filters.status && filters.status !== 'all') {
+      if (ticket.status !== filters.status) {
+        return false;
+      }
+    }
 
-  const clearSelectedTicket = () => {
-    setSelectedTicket(null);
-  };
+    if (filters.priority && filters.priority !== 'all') {
+      if (ticket.priority !== filters.priority) {
+        return false;
+      }
+    }
 
-  const updateSelectedTicket = (updatedTicket: Ticket) => {
-    if (!selectedTicket) return;
-    
-    // Update ticket in tickets array
-    const updatedTickets = tickets.map(t => 
-      t.id === updatedTicket.id ? updatedTicket : t
-    );
-    
-    setTickets(updatedTickets);
-    setSelectedTicket(updatedTicket);
-  };
+    if (filters.type && filters.type !== 'all') {
+      const ticketType = ticket.ticket_type || ticket.type;
+      if (ticketType !== filters.type) {
+        return false;
+      }
+    }
 
-  return {
-    tickets,
-    filteredTickets,
-    selectedTicket,
-    ticketStats,
-    loading,
-    searchQuery,
-    statusFilter,
-    priorityFilter,
-    projectFilter,
-    typeFilter,
-    setSearchQuery,
-    setStatusFilter,
-    setPriorityFilter,
-    setProjectFilter,
-    setTypeFilter,
-    loadTickets,
-    selectTicket,
-    clearSelectedTicket,
-    updateSelectedTicket
-  };
+    return true;
+  });
+};
+
+export const sortTickets = (tickets: Ticket[], sortBy: string, sortOrder: string): Ticket[] => {
+  const sortedTickets = [...tickets];
+
+  sortedTickets.sort((a, b) => {
+    let comparison = 0;
+
+    switch (sortBy) {
+      case 'title':
+        comparison = a.title.localeCompare(b.title);
+        break;
+      case 'priority':
+        const priorityOrder = { 'high': 1, 'medium': 2, 'low': 3 };
+        comparison = (priorityOrder[a.priority] || 4) - (priorityOrder[b.priority] || 4);
+        break;
+      case 'status':
+        comparison = a.status.localeCompare(b.status);
+        break;
+      case 'dueDate':
+        const dateA = a.due_date ? new Date(a.due_date).getTime() : 0;
+        const dateB = b.due_date ? new Date(b.due_date).getTime() : 0;
+        comparison = dateA - dateB;
+        break;
+      default:
+        comparison = a.title.localeCompare(b.title);
+    }
+
+    return sortOrder === 'asc' ? comparison : -comparison;
+  });
+
+  return sortedTickets;
 };

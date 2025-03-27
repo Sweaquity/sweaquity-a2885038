@@ -15,7 +15,7 @@ import { ApplicationItemContent } from "./ApplicationItemContent";
 import { WithdrawApplicationDialog } from "./WithdrawApplicationDialog";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { JobApplication } from "@/types/jobSeeker";
+import { JobApplication } from "@/types/types";
 import { MessageApplicationDialog } from "./MessageApplicationDialog";
 
 interface ApplicationItemProps {
@@ -28,6 +28,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated }: Applicati
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [showMessageDialog, setShowMessageDialog] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   const getProjectTitle = () => {
     if (application.business_roles?.project_title) {
@@ -47,14 +48,14 @@ export const ApplicationItem = ({ application, onApplicationUpdated }: Applicati
     if (application.business_roles?.title) {
       return application.business_roles.title;
     }
-    return application.task_title || "Task";
+    return "Task";
   };
 
   const getDescription = () => {
     if (application.business_roles?.description) {
       return application.business_roles.description;
     }
-    return application.description || "No description available";
+    return "No description available";
   };
 
   const handleToggleExpand = () => {
@@ -92,6 +93,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated }: Applicati
 
   const handleSendMessage = async (message: string) => {
     try {
+      setIsSending(true);
       // Get the current discourse
       const currentDiscourse = application.task_discourse || '';
       
@@ -118,6 +120,8 @@ export const ApplicationItem = ({ application, onApplicationUpdated }: Applicati
     } catch (error) {
       console.error("Error sending message:", error);
       toast.error("Failed to send message");
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -156,7 +160,10 @@ export const ApplicationItem = ({ application, onApplicationUpdated }: Applicati
                 className="h-8 w-8 p-0" 
                 onClick={handleToggleExpand}
               >
-                {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {expanded ? 
+                  <span className="text-xs">Collapse</span> : 
+                  <span className="text-xs">Expand</span>
+                }
               </Button>
             </div>
           </div>
@@ -170,36 +177,8 @@ export const ApplicationItem = ({ application, onApplicationUpdated }: Applicati
                 appliedAt={formatDate(application.applied_at)}
                 onMessageClick={() => setShowMessageDialog(true)}
                 onWithdrawClick={() => setShowWithdrawDialog(true)}
+                onViewProject={() => console.log("View Project clicked")}
               />
-              
-              <div className="mt-4 flex space-x-2 justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowMessageDialog(true)}
-                >
-                  <MessageSquare className="mr-2 h-4 w-4" />
-                  Send Message
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                >
-                  <ArrowRight className="mr-2 h-4 w-4" />
-                  View Project
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-red-500 hover:text-red-700"
-                  onClick={() => setShowWithdrawDialog(true)}
-                >
-                  <BadgeAlert className="mr-2 h-4 w-4" />
-                  Withdraw
-                </Button>
-              </div>
             </div>
           )}
         </div>
@@ -209,13 +188,14 @@ export const ApplicationItem = ({ application, onApplicationUpdated }: Applicati
         open={showWithdrawDialog}
         onClose={() => setShowWithdrawDialog(false)}
         onWithdraw={handleWithdraw}
-        isLoading={isWithdrawing}
+        isWithdrawing={isWithdrawing}
       />
       
       <MessageApplicationDialog
         open={showMessageDialog}
         onClose={() => setShowMessageDialog(false)}
         onSendMessage={handleSendMessage}
+        isSending={isSending}
       />
     </div>
   );

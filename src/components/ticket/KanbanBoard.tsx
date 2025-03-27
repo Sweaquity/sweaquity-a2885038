@@ -8,9 +8,10 @@ export interface KanbanBoardProps {
   tickets: Ticket[];
   onStatusChange: (ticketId: string, newStatus: string) => void;
   onTicketClick?: (ticket: Ticket) => void;  
+  innerRef?: React.RefObject<HTMLDivElement>;
 }
 
-export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChange, onTicketClick }) => {
+export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChange, onTicketClick, innerRef }) => {
   const columns = [
     { id: 'todo', title: 'To Do' },
     { id: 'in-progress', title: 'In Progress' },
@@ -73,6 +74,27 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChang
       
       return 0;
     });
+  };
+
+  const getTicketType = (ticket: Ticket) => {
+    return ticket.ticket_type || ticket.type || "task";
+  };
+
+  const getTicketTypeLabel = (ticket: Ticket) => {
+    const type = getTicketType(ticket);
+    switch (type) {
+      case "task":
+        return "Task";
+      case "bug":
+        return "Bug";
+      case "feature":
+        return "Feature";
+      case "beta-test":
+      case "beta_testing":
+        return "Beta Test";
+      default:
+        return type.charAt(0).toUpperCase() + type.slice(1);
+    }
   };
 
   console.log("Tickets in Kanban:", tickets);

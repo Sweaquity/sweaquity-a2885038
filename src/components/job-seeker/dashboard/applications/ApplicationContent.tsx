@@ -1,41 +1,47 @@
 
 import React from 'react';
-import { formatDistanceToNow } from 'date-fns';
 
-export interface ApplicationContentProps {
-  description: string;
-  message: string;
+interface ApplicationContentProps {
+  description?: string;
+  message?: string;
   discourse?: string;
-  appliedAt: string;
+  appliedAt?: string;
 }
 
-export const ApplicationContent = ({ description, message, discourse, appliedAt }: ApplicationContentProps) => {
-  const timeAgo = formatDistanceToNow(new Date(appliedAt), { addSuffix: true });
-
+export const ApplicationContent: React.FC<ApplicationContentProps> = ({
+  description,
+  message,
+  discourse,
+  appliedAt
+}) => {
   return (
-    <div className="space-y-4">
-      <div>
-        <h4 className="text-sm font-medium mb-1">Role Description</h4>
-        <p className="text-sm text-muted-foreground">{description || "No description provided."}</p>
-      </div>
-      
-      <div>
-        <h4 className="text-sm font-medium mb-1">Your Application Message</h4>
-        <p className="text-sm text-muted-foreground">{message || "No message provided."}</p>
-      </div>
-      
-      {discourse && (
+    <div className="space-y-3">
+      {description && (
         <div>
-          <h4 className="text-sm font-medium mb-1">Message History</h4>
-          <div className="bg-muted/30 p-3 rounded-md text-sm whitespace-pre-wrap">
-            {discourse}
-          </div>
+          <h4 className="text-sm font-medium">Project Description</h4>
+          <p className="text-sm text-muted-foreground">{description}</p>
         </div>
       )}
       
-      <div className="text-xs text-muted-foreground">
-        Applied {timeAgo}
-      </div>
+      {message && (
+        <div>
+          <h4 className="text-sm font-medium">Your Message</h4>
+          <p className="text-sm italic text-muted-foreground">{message}</p>
+        </div>
+      )}
+      
+      {discourse && (
+        <div>
+          <h4 className="text-sm font-medium">Task Discussion</h4>
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{discourse}</p>
+        </div>
+      )}
+      
+      {appliedAt && (
+        <div className="text-xs text-muted-foreground">
+          Applied: {appliedAt}
+        </div>
+      )}
     </div>
   );
 };

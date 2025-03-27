@@ -10,7 +10,9 @@ export const ApplicationItemContent: React.FC<ApplicationItemContentProps> = ({
   discourse,
   appliedAt,
   onMessageClick,
-  onWithdrawClick
+  onWithdrawClick,
+  onViewProject,
+  onViewDetails
 }) => {
   return (
     <div className="space-y-4">
@@ -37,13 +39,13 @@ export const ApplicationItemContent: React.FC<ApplicationItemContentProps> = ({
         )}
         
         <div className="text-xs text-muted-foreground">
-          Applied: {new Date(appliedAt).toLocaleDateString()}
+          Applied: {appliedAt ? appliedAt : 'Unknown date'}
         </div>
       </div>
       
       <div className="flex justify-end space-x-2">
         {onWithdrawClick && (
-          <Button variant="destructive" size="sm" onClick={onWithdrawClick}>
+          <Button variant="outline" size="sm" onClick={onWithdrawClick}>
             Withdraw
           </Button>
         )}
@@ -51,6 +53,18 @@ export const ApplicationItemContent: React.FC<ApplicationItemContentProps> = ({
           <Button variant="outline" size="sm" onClick={onMessageClick}>
             <Mail className="h-4 w-4 mr-1" />
             Send Message
+          </Button>
+        )}
+        {onViewProject && (
+          <Button variant="outline" size="sm" onClick={onViewProject}>
+            <ExternalLink className="h-4 w-4 mr-1" />
+            View Project
+          </Button>
+        )}
+        {onViewDetails && (
+          <Button variant="outline" size="sm" onClick={onViewDetails}>
+            <Eye className="h-4 w-4 mr-1" />
+            View Details
           </Button>
         )}
       </div>
