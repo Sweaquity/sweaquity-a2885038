@@ -18,16 +18,22 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
   task,
   open,
   setOpen,
-  onClose
+  onClose,
+  businessId
 }) => {
   const [completionPercentage, setCompletionPercentage] = useState<number>(task?.completion_percentage || 0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [equityToAward, setEquityToAward] = useState<number>(0);
   const [jobAppData, setJobAppData] = useState<any>(null);
+  const [assignedUserData, setAssignedUserData] = useState<any>(null);
 
   useEffect(() => {
     if (task && task.job_app_id) {
       fetchJobApplicationData(task.job_app_id);
+    }
+    
+    if (task && task.assigned_to) {
+      fetchAssignedUserData(task.assigned_to);
     }
   }, [task]);
 
@@ -58,6 +64,7 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
       if (error) throw error;
       
       setJobAppData(data);
+      console.log("Job application data:", data);
       
       // Set initial completion percentage from the task
       if (task?.completion_percentage) {
@@ -66,6 +73,23 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
     } catch (error) {
       console.error("Error fetching job application data:", error);
       toast.error("Failed to load job application data");
+    }
+  };
+  
+  const fetchAssignedUserData = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', userId)
+        .single();
+        
+      if (error) throw error;
+      
+      setAssignedUserData(data);
+      console.log("Assigned user data:", data);
+    } catch (error) {
+      console.error("Error fetching assigned user data:", error);
     }
   };
 
@@ -182,9 +206,15 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
             <div>
               <div className="text-sm font-medium mb-1">Completed By</div>
               <div className="text-sm space-y-2">
-                <div className="text-muted-foreground">
-                  User information not available
-                </div>
+                {assignedUserData ? (
+                  <div>
+                    <span>{assignedUserData.first_name} {assignedUserData.last_name}</span>
+                  </div>
+                ) : (
+                  <div className="text-muted-foreground">
+                    User information not available
+                  </div>
+                )}
               </div>
             </div>
           </div>

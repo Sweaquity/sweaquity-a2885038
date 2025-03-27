@@ -95,11 +95,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChang
         {columns.map(column => {
           // Map statuses that might be in different formats
           let columnTickets = tickets.filter(ticket => {
-            // Check if the ticket status matches the column id directly
             if (ticket.status === column.id) return true;
             
             // Handle alternative status formats
-            if (column.id === 'in-progress' && ticket.status === 'in_progress') return true;
+            if (column.id === 'in-progress' && (ticket.status === 'in_progress' || ticket.status === 'in progress')) return true;
             if (column.id === 'todo' && (ticket.status === 'new' || ticket.status === 'open' || ticket.status === 'backlog')) return true;
             
             return false;

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,8 +17,7 @@ import { supabase } from "@/lib/supabase";
 import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
 import { Ticket } from "@/types/types";
 import { RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
-import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
-import { DragDropContext } from "react-beautiful-dnd";
+import { KanbanBoard } from "@/components/ticket/KanbanBoard";
 import { TaskCompletionReview } from "./TaskCompletionReview";
 
 interface LiveProjectsTabProps {
@@ -88,6 +88,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         .from('tickets')
         .select(`
           *,
+          job_app_id,
           accepted_jobs:job_app_id(
             equity_agreed,
             jobs_equity_allocated
@@ -114,18 +115,10 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       
       if (error) throw error;
       
-      // Filter out completed tickets (where equity has been fully allocated)
-      const filteredTickets = (data || []).filter(ticket => {
-        // Skip tickets where equity is 100% allocated
-        if (ticket.accepted_jobs && 
-            ticket.accepted_jobs.equity_agreed > 0 && 
-            ticket.accepted_jobs.jobs_equity_allocated >= ticket.accepted_jobs.equity_agreed) {
-          return false;
-        }
-        return true;
-      });
+      console.log("Loaded tickets:", data);
       
-      const processedTickets = filteredTickets.map(ticket => ({
+      // Convert data to the expected Ticket type format and include job_app_id/equity data
+      const processedTickets = (data || []).map(ticket => ({
         ...ticket,
         type: ticket.ticket_type || "task", // Map ticket_type to type for compatibility
         description: ticket.description || "", // Ensure description exists
@@ -222,6 +215,22 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           break;
         }
         
+        case 'updateEstimatedHours': {
+          const { error } = await supabase
+            .from('tickets')
+            .update({ estimated_hours: data })
+            .eq('id', ticketId);
+          
+          if (error) throw error;
+          
+          setTickets(prevTickets => 
+            prevTickets.map(t => t.id === ticketId ? { ...t, estimated_hours: data } : t)
+          );
+          
+          toast.success("Estimated hours updated");
+          break;
+        }
+        
         case 'reviewCompletion': {
           // Find the ticket to review
           const ticket = tickets.find(t => t.id === ticketId);
@@ -279,8 +288,33 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     }
   };
 
-  const handleLogTime = async (ticketId: string) => {
-    toast.info("Only job seekers can log time on tickets");
+  const handleLogTime = async (ticketId: string, hours: number, description: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("You must be logged in to log time");
+        return;
+      }
+      
+      const { error } = await supabase
+        .from('time_entries')
+        .insert({
+          ticket_id: ticketId,
+          user_id: session.user.id,
+          description: description,
+          hours_logged: hours,
+          start_time: new Date().toISOString(),
+          end_time: new Date(new Date().getTime() + hours * 60 * 60 * 1000).toISOString()
+        });
+        
+      if (error) throw error;
+      
+      toast.success("Time logged successfully");
+      loadTickets();
+    } catch (error) {
+      console.error("Error logging time:", error);
+      toast.error("Failed to log time");
+    }
   };
 
   const handleRefresh = () => {
@@ -329,11 +363,11 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   const getActiveTickets = () => {
     switch (activeTab) {
       case "project-tasks":
-        return tickets.filter(t => t.type === "task");
+        return tickets.filter(t => t.ticket_type === "task");
       case "project-tickets":
-        return tickets.filter(t => t.type === "ticket");
+        return tickets.filter(t => t.ticket_type === "ticket");
       case "beta-testing":
-        return tickets.filter(t => t.type === "beta-test");
+        return tickets.filter(t => t.ticket_type === "beta-test");
       default:
         return tickets;
     }
@@ -361,16 +395,19 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   };
 
   const renderTicketActions = (ticket: Ticket) => {
-    // Only show review action for business users
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => handleTicketAction(ticket.id, 'reviewCompletion', null)}
-      >
-        Review
-      </Button>
-    );
+    // Only show review action for business users and if the ticket is in review status
+    if (ticket.status === 'review' || ticket.status === 'in review') {
+      return (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleTicketAction(ticket.id, 'reviewCompletion', null)}
+        >
+          Review
+        </Button>
+      );
+    }
+    return null;
   };
 
   return (
@@ -466,17 +503,16 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         <TabsContent value={activeTab}>
           {showKanban ? (
             <div className="mb-6">
-              <DragDropContext onDragEnd={() => {}}>
-                <KanbanBoard 
-                  tickets={getActiveTickets()}
-                  onStatusChange={(ticketId, newStatus) => 
-                    handleTicketAction(ticketId, 'updateStatus', newStatus)
-                  }
-                  onTicketClick={(ticket) => {
-                    console.log("Ticket clicked:", ticket.id);
-                  }}
-                />
-              </DragDropContext>
+              <KanbanBoard 
+                tickets={getActiveTickets()}
+                onStatusChange={(ticketId, newStatus) => 
+                  handleTicketAction(ticketId, 'updateStatus', newStatus)
+                }
+                onTicketClick={(ticket) => {
+                  console.log("Ticket clicked:", ticket.id);
+                  // Here you could show a ticket detail dialog or navigate to a ticket details page
+                }}
+              />
             </div>
           ) : showGantt ? (
             <div className="mb-6">
@@ -489,7 +525,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
               initialTickets={getActiveTickets()}
               onRefresh={handleRefresh}
               onTicketAction={handleTicketAction}
-              showTimeTracking={false}
+              showTimeTracking={true}
               userId={businessId || ''}
               onLogTime={handleLogTime}
               renderTicketActions={renderTicketActions}

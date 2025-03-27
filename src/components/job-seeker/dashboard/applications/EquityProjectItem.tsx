@@ -4,11 +4,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { EquityProjectItemProps, JobApplication } from '@/types/jobSeeker';
-import { ArrowDown, ArrowUp, Clock, Eye, MessageSquare, X } from 'lucide-react';
+import { EquityProject, JobApplication } from '@/types/jobSeeker';
+import { Clock, Eye, MessageSquare } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+
+export interface EquityProjectItemProps {
+  application: JobApplication;
+  onApplicationUpdated: () => void;
+}
 
 export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({ 
   application, 
@@ -174,25 +179,6 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                   Applied: {getTimeAgo(application.applied_at)}
                 </div>
               </div>
-              <div className="flex items-center">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="ml-2" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleWithdraw();
-                  }}
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Withdraw
-                </Button>
-                {isExpanded ? (
-                  <ArrowUp className="h-4 w-4 ml-2" />
-                ) : (
-                  <ArrowDown className="h-4 w-4 ml-2" />
-                )}
-              </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-2">
@@ -238,12 +224,20 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
             </div>
           </div>
           
-          <div className="flex mt-4 md:mt-0 justify-between items-center">
-            <div>
-              <Button variant="outline" size="sm" className="w-24">
-                {application.status === 'accepted' ? 'Accepted' : application.status}
-              </Button>
-            </div>
+          <div className="flex mt-4 md:mt-0 justify-between items-center space-x-2">
+            <Button variant="outline" size="sm" className="w-24">
+              {application.status === 'accepted' ? 'Accepted' : application.status}
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleExpand();
+              }}
+            >
+              {isExpanded ? "Collapse" : "Expand"}
+            </Button>
           </div>
         </div>
       </div>
@@ -293,13 +287,21 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                   <div>
                     <h4 className="font-medium mb-2">Actions</h4>
                     <div className="flex flex-wrap gap-2">
-                      <Button variant="secondary" size="sm" onClick={handleSendMessage}>
+                      <Button variant="outline" size="sm" onClick={handleSendMessage}>
                         <MessageSquare className="h-4 w-4 mr-1" />
                         Send Message
                       </Button>
-                      <Button variant="secondary" size="sm" onClick={handleViewProject}>
+                      <Button variant="outline" size="sm" onClick={handleViewProject}>
                         <Eye className="h-4 w-4 mr-1" />
                         View Project
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                        onClick={handleWithdraw}
+                      >
+                        Withdraw
                       </Button>
                     </div>
                   </div>
@@ -355,3 +357,4 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
     </Card>
   );
 };
+
