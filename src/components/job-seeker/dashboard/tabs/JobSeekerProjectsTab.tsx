@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTicketManagement } from '@/hooks/useTicketManagement';
-import { KanbanBoard } from '@/components/shared/beta-testing/KanbanBoard';
+import { KanbanBoard } from '@/components/ticket/KanbanBoard';
 import { CreateTicketDialog } from '@/components/ticket/CreateTicketDialog';
 import TicketStats from '@/components/ticket/TicketStats';
 import { supabase } from '@/lib/supabase';

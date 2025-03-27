@@ -1,21 +1,54 @@
 
 import React from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { TicketCard } from './TicketCard';
 import { Card } from '@/components/ui/card';
-import { KanbanColumn, Ticket } from '@/types/types';
-
-interface KanbanBoardProps {
-  columns: KanbanColumn[];
-  onTicketMove?: (ticketId: string, newColumnId: string) => Promise<void>;
-  onTicketClick?: (ticket: Ticket) => void;
-}
+import { KanbanColumn, Ticket, KanbanBoardProps, TicketCardProps } from '@/types/types';
 
 export const KanbanBoard = ({
   columns,
+  tickets,
   onTicketMove,
+  onStatusChange,
   onTicketClick
 }: KanbanBoardProps) => {
+  // If tickets are provided but not columns, generate columns from ticket statuses
+  const kanbanColumns = React.useMemo(() => {
+    if (columns) return columns;
+    
+    if (tickets) {
+      // Create default column structure
+      const statusMap: Record<string, string> = {
+        'todo': 'To Do',
+        'in-progress': 'In Progress',
+        'review': 'In Review',
+        'done': 'Done',
+        'backlog': 'Backlog',
+        'blocked': 'Blocked',
+        'closed': 'Closed'
+      };
+      
+      // Group tickets by status
+      const groupedTickets: Record<string, Ticket[]> = {};
+      
+      tickets.forEach(ticket => {
+        const status = ticket.status || 'todo';
+        if (!groupedTickets[status]) {
+          groupedTickets[status] = [];
+        }
+        groupedTickets[status].push(ticket);
+      });
+      
+      // Convert to column format
+      return Object.entries(statusMap).map(([id, title]) => ({
+        id,
+        title,
+        tickets: groupedTickets[id] || []
+      }));
+    }
+    
+    return [];
+  }, [columns, tickets]);
+
   const handleDragEnd = (result: any) => {
     const { destination, source, draggableId } = result;
 
@@ -31,29 +64,37 @@ export const KanbanBoard = ({
     // Call the callback function with the ticket ID and new column ID
     if (onTicketMove) {
       onTicketMove(draggableId, destination.droppableId);
+    } else if (onStatusChange) {
+      onStatusChange(draggableId, destination.droppableId);
     }
   };
 
-  // Get appropriate icon based on ticket type
-  const getTicketType = (ticket: Ticket) => {
-    // Check both ticket_type (new property) and type (old property) for compatibility
-    const ticketType = ticket.ticket_type || ticket.type || 'task';
-    
-    if (ticketType === 'bug') {
-      return 'bug';
-    } else if (ticketType === 'feature') {
-      return 'feature';
-    } else if (ticketType === 'improvement') {
-      return 'improvement';
-    } else {
-      return 'task';
-    }
+  // Render a simple card for tickets without needing the TicketCard component
+  const renderTicketCard = (ticket: Ticket) => {
+    return (
+      <div className="p-3">
+        <h3 className="font-medium text-sm mb-1">{ticket.title}</h3>
+        <p className="text-xs text-muted-foreground line-clamp-2">{ticket.description}</p>
+        <div className="flex justify-between items-center mt-2">
+          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+            {ticket.priority}
+          </span>
+          <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">
+            {ticket.ticket_type || ticket.type || 'task'}
+          </span>
+        </div>
+      </div>
+    );
   };
+
+  if (!kanbanColumns.length) {
+    return <div className="text-center py-8">No tickets to display</div>;
+  }
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {columns.map((column) => (
+        {kanbanColumns.map((column) => (
           <div key={column.id} className="flex flex-col">
             <div className="mb-2 font-medium text-sm px-2">
               {column.title} ({column.tickets.length})
@@ -82,18 +123,7 @@ export const KanbanBoard = ({
                             className="cursor-pointer hover:shadow-md transition-shadow"
                             onClick={() => onTicketClick && onTicketClick(ticket)}
                           >
-                            <TicketCard
-                              title={ticket.title}
-                              description={ticket.description}
-                              type={getTicketType(ticket)}
-                              priority={ticket.priority}
-                              status={ticket.status}
-                              ticketId={ticket.id}
-                              assignee={ticket.assigned_to}
-                              health={ticket.health}
-                              dueDate={ticket.due_date}
-                              completionPercentage={ticket.completion_percentage}
-                            />
+                            {renderTicketCard(ticket)}
                           </Card>
                         </div>
                       )}

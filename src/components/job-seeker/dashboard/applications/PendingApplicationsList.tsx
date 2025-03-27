@@ -1,27 +1,22 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Check, Cross, ExternalLink } from 'lucide-react';
+import { Cross, Check, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { JobApplication } from '@/types/jobSeeker';
+import { JobApplication, PendingApplicationsListProps } from '@/types/types';
 
-interface PendingApplicationsListProps {
-  applications: JobApplication[];
-  onWithdraw?: (applicationId: string) => void;
-  onStatusChange?: (applicationId: string, newStatus: string) => void;
-}
-
-// Inside the PendingApplicationsList component
 export const PendingApplicationsList = ({ 
   applications,
   onWithdraw,
-  onStatusChange
+  onAccept,
+  isWithdrawing
 }: PendingApplicationsListProps) => {
   
-  // Fix the getSkills function to always require an application argument
+  // Fix the getSkills function to handle both formats safely
   const getSkills = (application: JobApplication): string[] => {
     if (!application) return [];
     
-    // Try to extract skills from the application data
+    // Try to extract skills from different possible structures
     let skills: string[] = [];
     
     if (application.sub_task && application.sub_task.skill_requirements) {
@@ -42,15 +37,15 @@ export const PendingApplicationsList = ({
   return (
     <div className="space-y-4">
       {applications.map((application) => (
-        <div key={application.id} className="border rounded-md p-4">
+        <div key={application.id || application.job_app_id} className="border rounded-md p-4">
           <div className="flex justify-between items-start">
             <div>
-              <h3 className="text-lg font-semibold">{application.project_title}</h3>
+              <h3 className="text-lg font-semibold">{application.project_title || "Untitled Project"}</h3>
               <p className="text-sm text-muted-foreground">
-                Task: {application.task_title}
+                Task: {application.task_title || "Untitled Task"}
               </p>
               <p className="text-sm text-muted-foreground">
-                Applied on: {new Date(application.created_at).toLocaleDateString()}
+                Applied on: {new Date(application.applied_at || application.created_at || Date.now()).toLocaleDateString()}
               </p>
               <div className="mt-2">
                 {application.status === 'pending' && (
@@ -66,28 +61,30 @@ export const PendingApplicationsList = ({
             </div>
             <div className="flex gap-2">
               {application.status === 'pending' && onWithdraw && (
-                <Button variant="outline" size="sm" onClick={() => onWithdraw(application.id)}>
+                <Button variant="outline" size="sm" onClick={() => onWithdraw(application.id || application.job_app_id || '')}>
                   Withdraw
                 </Button>
               )}
-              {application.status === 'accepted' && application.accepted_business && !application.accepted_jobseeker && onStatusChange && (
+              {application.status === 'accepted' && application.accepted_business && !application.accepted_jobseeker && onAccept && (
                 <>
-                  <Button variant="outline" size="sm" onClick={() => onStatusChange(application.id, 'accepted_jobseeker')}>
+                  <Button variant="outline" size="sm" onClick={() => onAccept(application)}>
                     <Check className="h-4 w-4 mr-1" />
                     Accept
                   </Button>
-                  <Button variant="destructive" size="sm" onClick={() => onStatusChange(application.id, 'rejected_jobseeker')}>
+                  <Button variant="destructive" size="sm" onClick={() => onWithdraw && onWithdraw(application.id || application.job_app_id || '', 'rejected_jobseeker')}>
                     <Cross className="h-4 w-4 mr-1" />
                     Reject
                   </Button>
                 </>
               )}
-              <Button variant="outline" size="sm" asChild>
-                <a href={`/projects/${application.project_id}`} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4 mr-1" />
-                  View Project
-                </a>
-              </Button>
+              {application.project_id && (
+                <Button variant="outline" size="sm" asChild>
+                  <a href={`/projects/${application.project_id}`} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4 mr-1" />
+                    View Project
+                  </a>
+                </Button>
+              )}
             </div>
           </div>
           <div className="mt-4">

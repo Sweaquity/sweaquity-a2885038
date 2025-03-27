@@ -45,7 +45,7 @@ export interface CreateTicketDialogProps {
 }
 
 export interface TaskCompletionReviewProps {
-  task: any;
+  task?: any;
   businessId?: string;
   onClose: () => void;
   onTaskAction?: (taskId: string, action: string, data: any) => Promise<void>;
@@ -58,6 +58,10 @@ export interface TicketStatistics {
   open: number;
   closed: number;
   highPriority: number;
+}
+
+export interface TicketStatsProps {
+  tickets: Ticket[];
 }
 
 export interface UserData {
@@ -82,22 +86,69 @@ export interface Task {
 }
 
 export interface KanbanBoardProps {
-  onStatusChange: (ticketId: any, newStatus: any) => Promise<void>;
-  onTicketClick: (ticket: Ticket) => void;
-  tickets: Ticket[];
+  columns?: KanbanColumn[];
+  tickets?: Ticket[];
+  onStatusChange?: (ticketId: any, newStatus: any) => Promise<void>;
+  onTicketMove?: (ticketId: string, newColumnId: string) => Promise<void>;
+  onTicketClick?: (ticket: Ticket) => void;
 }
 
 export interface TicketCardProps {
   ticket: Ticket;
+  title?: string;
+  description?: string;
+  type?: string;
+  priority?: string;
+  status?: string;
+  ticketId?: string;
+  assignee?: string;
+  health?: string;
+  dueDate?: string;
+  completionPercentage?: number;
   onClick?: (ticket: Ticket) => void;
 }
 
 export interface ExpandedTicketDetailsProps {
   ticket: any;
-  onReply: (message: any) => Promise<void>;
-  onStatusChange: (status: any) => Promise<void>;
-  onPriorityChange: (priority: any) => Promise<void>;
-  onAssigneeChange: (userId: any) => Promise<void>;
-  users: any[];
   messages?: any[];
+  onReply?: (message: any) => Promise<void>;
+  onStatusChange?: (status: any) => Promise<void>;
+  onPriorityChange?: (priority: any) => Promise<void>;
+  onAssigneeChange?: (userId: any) => Promise<void>;
+  onClose?: () => void;
+  onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
+  onLogTime?: (ticketId: string) => void;
+  userCanEditStatus?: boolean;
+  userCanEditDates?: boolean;
+  users?: any[];
+}
+
+export interface JobApplication {
+  id: string;
+  job_app_id?: string;
+  user_id: string;
+  project_id?: string;
+  task_id?: string;
+  applied_at?: string;
+  status: string;
+  accepted_business?: boolean;
+  accepted_jobseeker?: boolean;
+  message?: string;
+  applicant_id?: string;
+  project_title?: string;
+  task_title?: string;
+  company_name?: string;
+  created_at?: string;
+  updated_at?: string;
+  // For compatibility with operations expecting sub_task
+  sub_task?: {
+    skill_requirements?: Array<string | { skill: string }>;
+  };
+}
+
+export interface PendingApplicationsListProps {
+  applications: JobApplication[];
+  onWithdraw?: (applicationId: string, reason?: string) => Promise<void>;
+  onAccept?: (application: JobApplication) => Promise<void>;
+  isWithdrawing?: boolean;
 }
