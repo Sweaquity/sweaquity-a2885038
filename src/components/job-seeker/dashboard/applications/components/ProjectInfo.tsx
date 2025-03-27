@@ -5,7 +5,7 @@ interface ProjectInfoProps {
   taskStatus?: string;
   timeframe?: string;
   equityAllocation?: number;
-  skillRequirements?: (string | { skill: string; level?: string })[];
+  skillRequirements?: (string | { skill: string; level?: string })[] | null;
 }
 
 export const ProjectInfo = ({ 
@@ -20,7 +20,7 @@ export const ProjectInfo = ({
         <div>
           <p className="text-muted-foreground">Skills Required</p>
           <div className="flex flex-wrap gap-1 mt-1">
-            {Array.isArray(skillRequirements) && skillRequirements.length > 0 ? (
+            {skillRequirements && Array.isArray(skillRequirements) && skillRequirements.length > 0 ? (
               skillRequirements.map((skill, index) => (
                 <Badge key={index} variant="outline" className="bg-slate-50">
                   {typeof skill === 'string' ? skill : skill.skill}

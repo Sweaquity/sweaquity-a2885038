@@ -38,7 +38,7 @@ export const EquityProjectItem = ({
         if (!project) return;
         
         // Safely get task ID
-        const taskId = project.sub_tasks?.[0]?.task_id || project.id;
+        const taskId = project.sub_tasks && project.sub_tasks[0]?.task_id || project.id;
         
         if (!taskId) return;
         
@@ -153,7 +153,7 @@ export const EquityProjectItem = ({
   }
 
   // Format the task from the project for display
-  const task = project.sub_tasks?.[0] || {};
+  const task = project.sub_tasks && project.sub_tasks[0] ? project.sub_tasks[0] : {};
   const application = {
     job_app_id: project.job_app_id || "",
     status: project.status,
@@ -277,7 +277,6 @@ export const EquityProjectItem = ({
             await onWithdraw(application.job_app_id, reason);
           }
         }}
-        isLoading={isWithdrawing}
       />
 
       <AcceptJobDialog
