@@ -1,30 +1,27 @@
 
-import { ApplicationsList } from './ApplicationsList';
-import { PendingApplicationsList } from './PendingApplicationsList';
-import { PastApplicationsList } from './PastApplicationsList';
-import { EquityProjectsList } from './EquityProjectsList';
-import { ApplicationsTabBase } from './ApplicationsTabBase';
-import { EquityProjectItem } from './EquityProjectItem';
-import { PendingApplicationItem } from './PendingApplicationItem';
-import { ApplicationHeader } from './ApplicationHeader';
-import { ApplicationContent } from './ApplicationContent';
-import { ProjectInfo } from './components/ProjectInfo';
-import { WithdrawDialog } from './WithdrawDialog';
-import { AcceptJobDialog } from './AcceptJobDialog';
-import { StatusBadge } from './StatusBadge';
-
-export {
-  ApplicationsList,
-  PendingApplicationsList,
-  PastApplicationsList,
-  EquityProjectsList,
-  ApplicationsTabBase,
-  EquityProjectItem,
-  PendingApplicationItem,
-  ApplicationHeader,
-  ApplicationContent,
+export { ApplicationsTabBase } from './ApplicationsTabBase';
+export { ApplicationItem } from './ApplicationItem';
+export { ApplicationsList } from './ApplicationsList';
+export { StatusBadge } from './StatusBadge';
+export { WithdrawDialog } from './WithdrawDialog';
+export { ApplicationHeader } from './ApplicationHeader';
+export { ApplicationContent } from './ApplicationContent';
+export { PendingApplicationsList } from './PendingApplicationsList';
+export { PendingApplicationItem } from './PendingApplicationItem';
+export { EquityProjectsList } from './EquityProjectsList';
+export { EquityProjectItem } from './EquityProjectItem';
+export { PastApplicationsList } from './PastApplicationsList';
+export { PastApplicationItem } from './PastApplicationItem';
+export { CreateMessageDialog } from './CreateMessageDialog';
+// Export components
+export { 
+  MessageActions, 
+  ApplicationStatus, 
+  StatusChangeDialog,
+  ProjectActions,
   ProjectInfo,
-  WithdrawDialog,
-  AcceptJobDialog,
-  StatusBadge
-};
+  ProjectDetails,
+  ProjectHeader,
+  ApplicationItemHeader,
+  ApplicationItemContent
+} from './components';

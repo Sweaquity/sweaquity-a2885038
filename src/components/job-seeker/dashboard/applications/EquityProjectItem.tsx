@@ -1,306 +1,301 @@
 
-import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { StatusBadge } from "./StatusBadge";
-import { WithdrawDialog } from "./WithdrawDialog";
-import { AcceptJobDialog } from "./AcceptJobDialog";
-import { EquityProject, JobApplication } from "@/types/jobSeeker";
-import { supabase } from "@/lib/supabase";
-import { ProjectInfo } from "./components/ProjectInfo";
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EquityProjectItemProps, JobApplication } from '@/types/jobSeeker';
+import { ArrowDown, ArrowUp, Clock, Eye, MessageSquare, X } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 
-interface EquityProjectItemProps {
-  project: EquityProject;
-  onWithdraw?: (applicationId: string, reason?: string) => Promise<void>;
-  onAccept?: (application: JobApplication) => Promise<void>;
-  isWithdrawing?: boolean;
-}
-
-export const EquityProjectItem = ({
-  project,
-  onWithdraw,
-  onAccept,
-  isWithdrawing = false
-}: EquityProjectItemProps) => {
+export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({ 
+  application, 
+  onApplicationUpdated 
+}) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
-  const [isAcceptDialogOpen, setIsAcceptDialogOpen] = useState(false);
-  const [hoursLogged, setHoursLogged] = useState(0);
-  const [agreedEquity, setAgreedEquity] = useState<number | null>(null);
-  const [jobsEquityAllocated, setJobsEquityAllocated] = useState<number | null>(null);
-  const [isFullyAllocated, setIsFullyAllocated] = useState(false);
-  const [estimatedHours, setEstimatedHours] = useState<number | null>(null);
-
-  // Fetch accepted job details and hours logged from time_entries
-  useEffect(() => {
-    const fetchJobDetails = async () => {
-      try {
-        if (!project) return;
-        
-        // Use project_id and job_app_id directly from the project
-        const projectId = project.project_id;
-        const jobAppId = project.job_app_id;
-        
-        if (!projectId || !jobAppId) {
-          console.log("Missing project_id or job_app_id", project);
-          return;
-        }
-        
-        console.log("Fetching job details for project:", projectId, "job app:", jobAppId);
-        
-        // Get equity information from accepted_jobs using job_app_id
-        const { data: acceptedJobData, error: acceptedJobError } = await supabase
-          .from('accepted_jobs')
-          .select('equity_agreed, jobs_equity_allocated')
-          .eq('job_app_id', jobAppId)
-          .single();
-          
-        if (acceptedJobError) {
-          console.error("Error fetching accepted job:", acceptedJobError);
-        } else if (acceptedJobData) {
-          console.log("Accepted job data:", acceptedJobData);
-          setAgreedEquity(acceptedJobData.equity_agreed);
-          setJobsEquityAllocated(acceptedJobData.jobs_equity_allocated);
-          
-          // Check if agreed_equity equals jobs_equity_allocated
-          setIsFullyAllocated(
-            acceptedJobData.equity_agreed !== null && 
-            acceptedJobData.jobs_equity_allocated !== null && 
-            acceptedJobData.equity_agreed === acceptedJobData.jobs_equity_allocated
-          );
-        }
-        
-        // Get task_id from job_applications for this job_app_id
-        const { data: jobAppData, error: jobAppError } = await supabase
-          .from('job_applications')
-          .select('task_id')
-          .eq('job_app_id', jobAppId)
-          .single();
-          
-        if (jobAppError) {
-          console.error("Error fetching job application:", jobAppError);
-          return;
-        }
-        
-        if (!jobAppData?.task_id) {
-          console.log("No task_id found for job_app_id:", jobAppId);
-          return;
-        }
-        
-        const taskId = jobAppData.task_id;
-        console.log("Found task_id:", taskId);
-        
-        // Get related tickets for the task
-        const { data: ticketsData, error: ticketsError } = await supabase
-          .from('tickets')
-          .select('id, estimated_hours')
-          .eq('task_id', taskId);
-          
-        if (ticketsError) {
-          console.error("Error fetching tickets:", ticketsError);
-          return;
-        }
-        
-        if (!ticketsData || ticketsData.length === 0) {
-          console.log("No tickets found for task:", taskId);
-          return;
-        }
-        
-        console.log("Found tickets:", ticketsData);
-        
-        // Set estimated hours from first ticket
-        if (ticketsData[0]?.estimated_hours) {
-          setEstimatedHours(ticketsData[0].estimated_hours);
-        }
-        
-        // Get time entries for all tickets
-        const ticketIds = ticketsData.map(ticket => ticket.id);
-        
-        const { data: timeEntriesData, error: timeEntriesError } = await supabase
-          .from('time_entries')
-          .select('hours_logged')
-          .in('ticket_id', ticketIds);
-          
-        if (timeEntriesError) {
-          console.error("Error fetching time entries:", timeEntriesError);
-          return;
-        }
-        
-        console.log("Time entries:", timeEntriesData);
-        
-        // Calculate total hours logged
-        const totalHours = timeEntriesData?.reduce((sum, entry) => sum + (entry.hours_logged || 0), 0) || 0;
-        setHoursLogged(totalHours);
-        
-      } catch (error) {
-        console.error("Error in fetchJobDetails:", error);
-      }
-    };
-    
-    fetchJobDetails();
-  }, [project]);
-
+  const [activeTab, setActiveTab] = useState("details");
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [withdrawReason, setWithdrawReason] = useState("");
+  
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
   };
-
-  // If project is undefined, render a placeholder or return null
-  if (!project) {
-    return (
-      <Card className="overflow-hidden">
-        <CardContent className="p-4">
-          <p className="text-muted-foreground">Project data is unavailable</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Create a simplified application object from the project data
-  const application = {
-    job_app_id: project.job_app_id || "",
-    status: project.status,
-    created_at: project.start_date,
-    business_roles: project.business_roles,
-    user_id: "",
-    task_id: project.id || "",
-  } as JobApplication;
-
-  // Extract task information directly from business_roles
-  const taskTitle = project.business_roles?.title || project.title || "Untitled Task";
-  const taskDescription = project.business_roles?.description || "";
-  const taskStatus = project.status || 'active';
-  const taskTimeframe = project.time_allocated || '';
-  const taskEquityAllocation = project.equity_amount || 0;
-  const taskSkillRequirements = project.business_roles?.skill_requirements || [];
-
+  
+  const formatTimeframe = (timeframe: string | undefined) => {
+    if (!timeframe) return "Not specified";
+    return timeframe;
+  };
+  
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return "N/A";
+    try {
+      return format(new Date(dateString), "PPP");
+    } catch (e) {
+      return "Invalid date";
+    }
+  };
+  
+  const getTimeAgo = (dateString: string | undefined) => {
+    if (!dateString) return "";
+    try {
+      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+    } catch (e) {
+      return "";
+    }
+  };
+  
+  const handleWithdraw = async () => {
+    try {
+      setIsWithdrawing(true);
+      
+      const { error } = await supabase
+        .from('job_applications')
+        .update({
+          status: 'withdrawn',
+          notes: withdrawReason ? [{
+            timestamp: new Date().toISOString(),
+            content: `Withdrawn: ${withdrawReason}`
+          }] : undefined
+        })
+        .eq('job_app_id', application.job_app_id);
+        
+      if (error) throw error;
+      
+      toast.success("Application withdrawn successfully");
+      onApplicationUpdated();
+    } catch (error) {
+      console.error("Error withdrawing application:", error);
+      toast.error("Failed to withdraw application");
+    } finally {
+      setIsWithdrawing(false);
+      setWithdrawReason("");
+    }
+  };
+  
+  const handleSendMessage = () => {
+    toast.info("The messaging feature is coming soon");
+  };
+  
+  const handleViewProject = () => {
+    toast.info("Project view feature is coming soon");
+  };
+  
+  // Get equity information
+  const equityAgreed = application.accepted_jobs?.equity_agreed || 0;
+  const equityAllocated = application.accepted_jobs?.jobs_equity_allocated || 0;
+  const hoursLogged = application.hours_logged || 0;
+  
+  // Calculate percentage of equity earned vs agreed
+  const percentageEarned = equityAgreed > 0 
+    ? ((equityAllocated / equityAgreed) * 100).toFixed(1) 
+    : "0.0";
+  
+  // Format for display, showing earned/total
+  const equityDisplay = `${equityAllocated}%/${equityAgreed}%`;
+  
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-4">
-        <div className="flex justify-between items-start">
-          <div>
-            <h3 className="text-lg font-semibold">{taskTitle}</h3>
-            <p className="text-sm text-muted-foreground">
-              {project.business_roles?.company_name || "Unknown Company"} - {project.title || "Untitled Project"}
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleExpand}
-          >
-            {isExpanded ? "Less Details" : "More Details"}
-          </Button>
-        </div>
-
-        {isExpanded && (
-          <div className="mt-4 border-t pt-4">
-            <div className="space-y-3">
-              <h4 className="font-medium">Project Description</h4>
-              <p className="text-sm text-muted-foreground">
-                {taskDescription || "No description available."}
-              </p>
-              
-              {project.business_roles?.description && taskDescription !== project.business_roles?.description && (
-                <div>
-                  <h4 className="font-medium mt-3">Company Details</h4>
-                  <p className="text-sm text-muted-foreground">
-                    {project.business_roles.description}
-                  </p>
+    <Card className="mb-4 overflow-hidden">
+      <div className="border-b cursor-pointer" onClick={toggleExpand}>
+        <div className="flex flex-col md:flex-row justify-between p-4">
+          <div className="flex-1">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <CardTitle className="text-lg flex items-center">
+                  {application.business_roles?.title}
+                  <Badge className="ml-2 bg-green-500" variant="secondary">
+                    accepted
+                  </Badge>
+                </CardTitle>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {application.business_roles?.company_name} | Project: {application.business_roles?.project_title}
                 </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="mt-4 space-y-2">
-          <div className="flex flex-wrap justify-between items-center gap-2">
-            <div className="flex items-center gap-2">
-              <StatusBadge status={project.status} />
-              <span className="text-sm text-muted-foreground">
-                Started: {new Date(project.start_date).toLocaleDateString()}
-              </span>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsWithdrawDialogOpen(true)}
-                disabled={isWithdrawing}
-              >
-                {isWithdrawing ? "Withdrawing..." : "Withdraw"}
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => setIsAcceptDialogOpen(true)}
-              >
-                Accept
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
-            <div>
-              <div className="text-sm font-medium">Task Status</div>
-              <div className="text-sm">{taskStatus || 'In Progress'}</div>
+                <div className="text-xs text-muted-foreground">
+                  Applied: {getTimeAgo(application.applied_at)}
+                </div>
+              </div>
+              <div className="flex items-center">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="ml-2" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleWithdraw();
+                  }}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Withdraw
+                </Button>
+                {isExpanded ? (
+                  <ArrowUp className="h-4 w-4 ml-2" />
+                ) : (
+                  <ArrowDown className="h-4 w-4 ml-2" />
+                )}
+              </div>
             </div>
             
-            <div>
-              <div className="text-sm font-medium">Equity Allocation / Earned</div>
-              <div className="text-sm">
-                {agreedEquity !== null ? `${agreedEquity}%` : `${taskEquityAllocation}%`} / 
-                {jobsEquityAllocated !== null ? ` ${jobsEquityAllocated}%` : ' 0%'}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+              <div>
+                <div className="text-xs font-medium">Task Status</div>
+                <div className="text-sm">{application.business_roles?.task_status || "pending"}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium">Timeframe</div>
+                <div className="text-sm">{formatTimeframe(application.business_roles?.timeframe)}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium">Equity Allocation</div>
+                <div className="text-sm">{equityDisplay}</div>
+              </div>
+            </div>
+            
+            <div className="mt-2">
+              <div className="text-xs font-medium">Skills Required</div>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {Array.isArray(application.business_roles?.skill_requirements) ? 
+                  application.business_roles?.skill_requirements.map((skill, index) => {
+                    const skillName = typeof skill === 'string' ? skill : skill.skill;
+                    const level = typeof skill === 'string' ? 'Intermediate' : skill.level;
+                    
+                    return (
+                      <Badge variant="outline" key={index} className="text-xs">
+                        {skillName} <span className="ml-1 opacity-70">({level})</span>
+                      </Badge>
+                    );
+                  }) : 
+                  <span className="text-muted-foreground text-xs">No skills specified</span>
+                }
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center mt-4 md:mt-0 justify-between md:w-48">
+            <div className="text-center mr-6">
+              <div className="text-xs font-medium">Hours Logged</div>
+              <div className="flex items-center">
+                <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
+                <span>{hoursLogged}h</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {percentageEarned}% earned
               </div>
             </div>
             
             <div>
-              <div className="text-sm font-medium">Hours Estimated / Logged</div>
-              <div className="text-sm">{estimatedHours || 'Not set'} / {hoursLogged || 0} hrs</div>
+              <Button variant="outline" size="sm" className="w-24">
+                {application.status === 'accepted' ? 'Accepted' : application.status}
+              </Button>
             </div>
           </div>
-          
-          <div className="mt-2">
-            <ProjectInfo
-              taskStatus={taskStatus}
-              timeframe={taskTimeframe}
-              equityAllocation={agreedEquity !== null ? agreedEquity : taskEquityAllocation}
-              skillRequirements={taskSkillRequirements}
-            />
-          </div>
-          
-          {isFullyAllocated && (
-            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
-              <div className="text-sm font-medium text-green-700">Equity Earned</div>
-              <div className="text-sm text-green-600">
-                Congratulations! You have earned {agreedEquity}% equity in this project.
-              </div>
-            </div>
-          )}
         </div>
-      </CardContent>
-
-      <WithdrawDialog
-        isOpen={isWithdrawDialogOpen}
-        onOpenChange={setIsWithdrawDialogOpen}
-        onWithdraw={async (reason?: string) => {
-          if (onWithdraw && application.job_app_id) {
-            await onWithdraw(application.job_app_id, reason);
-          }
-        }}
-        isWithdrawing={isWithdrawing}
-      />
-
-      <AcceptJobDialog
-        isOpen={isAcceptDialogOpen}
-        onOpenChange={setIsAcceptDialogOpen}
-        onAccept={async () => {
-          if (onAccept) {
-            await onAccept(application);
-          }
-          return Promise.resolve();
-        }}
-        application={application}
-      />
+      </div>
+      
+      {isExpanded && (
+        <div>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="w-full border-b rounded-none">
+              <TabsTrigger value="details" className="flex-1">Project Details</TabsTrigger>
+              <TabsTrigger value="activity" className="flex-1">Activity & Hours</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="details" className="p-4">
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-medium mb-1">Project Description</h4>
+                  <p className="text-sm text-muted-foreground">{application.business_roles?.description || "No description provided."}</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-medium mb-2">Task Information</h4>
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2">
+                        <div className="text-sm font-medium">Estimated Hours:</div>
+                        <div className="text-sm">{application.business_roles?.estimated_hours || 0}h</div>
+                      </div>
+                      <div className="grid grid-cols-2">
+                        <div className="text-sm font-medium">Hours Logged:</div>
+                        <div className="text-sm">{hoursLogged}h</div>
+                      </div>
+                      <div className="grid grid-cols-2">
+                        <div className="text-sm font-medium">Completion:</div>
+                        <div className="text-sm">{application.business_roles?.completion_percentage || 0}%</div>
+                      </div>
+                      <div className="grid grid-cols-2">
+                        <div className="text-sm font-medium">Equity Agreed:</div>
+                        <div className="text-sm">{equityAgreed}%</div>
+                      </div>
+                      <div className="grid grid-cols-2">
+                        <div className="text-sm font-medium">Equity Earned:</div>
+                        <div className="text-sm">{equityAllocated}%</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-medium mb-2">Actions</h4>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="secondary" size="sm" onClick={handleSendMessage}>
+                        <MessageSquare className="h-4 w-4 mr-1" />
+                        Send Message
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={handleViewProject}>
+                        <Eye className="h-4 w-4 mr-1" />
+                        View Project
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="activity" className="p-4">
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-medium mb-2">Application Timeline</h4>
+                  <div className="space-y-3">
+                    <div className="flex">
+                      <div className="flex-none w-32 text-sm font-medium">Applied:</div>
+                      <div className="text-sm">{formatDate(application.applied_at)}</div>
+                    </div>
+                    {application.accepted_jobs?.date_accepted && (
+                      <div className="flex">
+                        <div className="flex-none w-32 text-sm font-medium">Accepted:</div>
+                        <div className="text-sm">{formatDate(application.accepted_jobs.date_accepted)}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium mb-2">Equity Tracking</h4>
+                  <div className="bg-gray-50 p-3 rounded-md">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm">Equity Agreed:</span>
+                      <span className="text-sm font-medium">{equityAgreed}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm">Equity Allocated:</span>
+                      <span className="text-sm font-medium">{equityAllocated}%</span>
+                    </div>
+                    <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-green-500 rounded-full"
+                        style={{ width: `${parseFloat(percentageEarned)}%` }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-end mt-1">
+                      <span className="text-xs text-muted-foreground">{percentageEarned}% earned</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      )}
     </Card>
   );
 };

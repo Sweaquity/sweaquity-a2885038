@@ -29,7 +29,7 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
-  const [projectId, setProjectId] = useState("none"); // Changed from empty string to "none"
+  const [projectId, setProjectId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,7 +46,7 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
         title,
         description,
         priority,
-        project_id: projectId === "none" ? null : projectId, // Handle "none" value
+        project_id: projectId || null,
         health: "good",
         type: "task" // Using type instead of ticket_type
       });
@@ -55,7 +55,7 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
       setTitle("");
       setDescription("");
       setPriority("medium");
-      setProjectId("none"); // Reset to "none" instead of empty string
+      setProjectId("");
       
     } catch (error) {
       console.error("Error creating ticket:", error);
@@ -124,7 +124,7 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No project</SelectItem> {/* Changed empty value to "none" */}
+                  <SelectItem value="">No project</SelectItem>
                   {projects.map((project) => (
                     <SelectItem key={project.project_id} value={project.project_id}>
                       {project.project_title || project.title}
