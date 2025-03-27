@@ -1,149 +1,248 @@
 
 import React, { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 import { TaskCompletionReviewProps } from "@/types/types";
 
 export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
   task,
-  businessId,
-  onClose,
-  onTaskAction,
-  open = false,
+  open,
   setOpen,
+  onClose
 }) => {
-  const [equityAllocated, setEquityAllocated] = useState(0);
-  const [completionPercentage, setCompletionPercentage] = useState(task?.completion_percentage || 0);
-  const [equityAgreed, setEquityAgreed] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [jobAppId, setJobAppId] = useState<string | null>(null);
+  const [completionPercentage, setCompletionPercentage] = useState<number>(task?.completion_percentage || 0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [equityToAward, setEquityToAward] = useState<number>(0);
+  const [jobAppData, setJobAppData] = useState<any>(null);
 
   useEffect(() => {
-    if (task && open) {
-      setCompletionPercentage(task.completion_percentage || 0);
-      
-      // Fetch equity information from accepted_jobs
-      const fetchEquityData = async () => {
-        try {
-          // If task has job_app_id, use it directly
-          let appId = task.job_app_id;
-          
-          // If no job_app_id on task, try to find it using task_id
-          if (!appId && task.task_id) {
-            const { data: jobAppData, error: jobAppError } = await supabase
-              .from('job_applications')
-              .select('job_app_id')
-              .eq('task_id', task.task_id)
-              .single();
-              
-            if (jobAppData) {
-              appId = jobAppData.job_app_id;
-              setJobAppId(appId);
-            }
-          }
-          
-          if (appId) {
-            const { data: acceptedJobData, error: acceptedJobError } = await supabase
-              .from('accepted_jobs')
-              .select('equity_agreed, jobs_equity_allocated')
-              .eq('job_app_id', appId)
-              .single();
-              
-            if (acceptedJobData) {
-              setEquityAgreed(acceptedJobData.equity_agreed || 0);
-              setEquityAllocated(acceptedJobData.jobs_equity_allocated || 0);
-            }
-          }
-        } catch (error) {
-          console.error("Error fetching equity data:", error);
-        }
-      };
-      
-      fetchEquityData();
+    if (task && task.job_app_id) {
+      fetchJobApplicationData(task.job_app_id);
     }
-  }, [task, open]);
+  }, [task]);
 
-  const handleCompletionUpdate = async () => {
-    if (!task) return;
-    
-    setIsLoading(true);
-    
+  useEffect(() => {
+    if (jobAppData?.accepted_jobs?.equity_agreed) {
+      // Calculate equity to award based on completion percentage
+      const equityAgreed = jobAppData.accepted_jobs.equity_agreed;
+      const percentageToAward = completionPercentage / 100;
+      setEquityToAward(Math.round(equityAgreed * percentageToAward * 10) / 10); // Round to 1 decimal place
+    }
+  }, [completionPercentage, jobAppData]);
+
+  const fetchJobApplicationData = async (jobAppId: string) => {
     try {
-      // Update task completion percentage
-      if (onTaskAction) {
-        await onTaskAction(task.id, 'updateCompletionPercentage', completionPercentage);
-      }
-      
-      // If applicable, update equity allocation in accepted_jobs
-      if (jobAppId && completionPercentage > 0) {
-        // Calculate equity to allocate (proportional to completion)
-        const newEquityToAllocate = (equityAgreed * (completionPercentage / 100)).toFixed(2);
+      const { data, error } = await supabase
+        .from('job_applications')
+        .select(`
+          *,
+          accepted_jobs:job_app_id(
+            equity_agreed,
+            jobs_equity_allocated,
+            id
+          )
+        `)
+        .eq('job_app_id', jobAppId)
+        .single();
         
-        // Update the accepted_jobs record
-        const { error: updateError } = await supabase
-          .from('accepted_jobs')
-          .update({ jobs_equity_allocated: parseFloat(newEquityToAllocate) })
-          .eq('job_app_id', jobAppId);
-          
-        if (updateError) throw updateError;
-      }
+      if (error) throw error;
       
-      if (setOpen) setOpen(false);
-      if (onClose) onClose();
+      setJobAppData(data);
+      
+      // Set initial completion percentage from the task
+      if (task?.completion_percentage) {
+        setCompletionPercentage(task.completion_percentage);
+      }
     } catch (error) {
-      console.error("Error updating task completion:", error);
-    } finally {
-      setIsLoading(false);
+      console.error("Error fetching job application data:", error);
+      toast.error("Failed to load job application data");
     }
   };
 
+  const handleApproveTask = async () => {
+    try {
+      setIsSubmitting(true);
+      
+      if (!task || !jobAppData?.accepted_jobs?.id) {
+        toast.error("Missing task or accepted job data");
+        return;
+      }
+      
+      // Update the accepted_jobs table with the newly allocated equity
+      const { error: updateError } = await supabase
+        .from('accepted_jobs')
+        .update({
+          jobs_equity_allocated: equityToAward
+        })
+        .eq('id', jobAppData.accepted_jobs.id);
+        
+      if (updateError) throw updateError;
+      
+      // Update the task status if it's 100% complete
+      if (completionPercentage >= 100) {
+        const { error: taskError } = await supabase
+          .from('project_sub_tasks')
+          .update({
+            task_status: 'closed',
+            completion_percentage: 100
+          })
+          .eq('task_id', task.task_id);
+          
+        if (taskError) throw taskError;
+      }
+      
+      // Update the ticket completion percentage and status
+      const { error: ticketError } = await supabase
+        .from('tickets')
+        .update({
+          completion_percentage: completionPercentage,
+          status: completionPercentage >= 100 ? 'done' : 'in-progress'
+        })
+        .eq('id', task.id);
+        
+      if (ticketError) throw ticketError;
+      
+      // Call the update_active_project function to update relevant tables
+      const { error: functionError } = await supabase.rpc('update_active_project', {
+        p_task_id: task.task_id,
+        p_completion_percentage: completionPercentage,
+        p_status: completionPercentage >= 100 ? 'done' : 'in-progress'
+      });
+      
+      if (functionError) {
+        console.error("Error calling update_active_project function:", functionError);
+        // Don't throw here as we've already made the main updates
+      }
+      
+      toast.success(`Task approved. ${equityToAward}% equity awarded.`);
+      
+      // Close the dialog and refresh
+      setOpen(false);
+      if (onClose) onClose();
+    } catch (error) {
+      console.error("Error approving task:", error);
+      toast.error("Failed to approve task");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRequestChanges = () => {
+    toast.info("Feature coming soon");
+  };
+
+  if (!task) return null;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Review Task Completion</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="taskName">Task Name</Label>
-            <Input id="taskName" value={task?.title} readOnly className="bg-gray-50" />
+          <div className="space-y-1">
+            <h3 className="font-medium text-lg">{task.title}</h3>
+            <p className="text-sm text-muted-foreground">
+              {task.description || "No description available"}
+            </p>
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="equity-agreed">Agreed Equity</Label>
-            <Input id="equity-agreed" value={`${equityAgreed}%`} readOnly className="bg-gray-50" />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="equity-allocated">Allocated Equity</Label>
-            <Input id="equity-allocated" value={`${equityAllocated}%`} readOnly className="bg-gray-50" />
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label htmlFor="completion">Completion Percentage</Label>
-              <span>{completionPercentage}%</span>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="text-sm font-medium mb-1">Task Details</div>
+              <div className="text-sm space-y-2">
+                <div className="flex justify-between">
+                  <span>Status:</span>
+                  <Badge variant="outline" className="bg-gray-100">
+                    {task.status}
+                  </Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span>Equity Points:</span>
+                  <span>{task.equity_points || 0}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Estimated Hours:</span>
+                  <span>{task.estimated_hours || 0}</span>
+                </div>
+              </div>
             </div>
-            <Slider
-              id="completion"
-              value={[completionPercentage]}
-              min={0}
-              max={100}
-              step={5}
-              onValueChange={(value) => setCompletionPercentage(value[0])}
-            />
+            
+            <div>
+              <div className="text-sm font-medium mb-1">Completed By</div>
+              <div className="text-sm space-y-2">
+                <div className="text-muted-foreground">
+                  User information not available
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div>
+            <div className="text-sm font-medium mb-2">Completion Assessment</div>
+            <div className="space-y-3">
+              <div>
+                <label htmlFor="completion" className="text-sm">
+                  Completion Percentage:
+                </label>
+                <div className="flex items-center mt-1">
+                  <Input
+                    id="completion"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={completionPercentage}
+                    onChange={(e) => setCompletionPercentage(Number(e.target.value))}
+                    className="w-20 text-right"
+                  />
+                  <span className="ml-1">%</span>
+                </div>
+              </div>
+              
+              <div className="p-3 border rounded-md bg-blue-50 text-blue-900">
+                <div className="font-medium">Equity to be awarded: {equityToAward}%</div>
+                <div className="text-xs text-blue-700 mt-1">
+                  Based on {completionPercentage}% completion of {jobAppData?.accepted_jobs?.equity_agreed || 0}% agreed equity
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleCompletionUpdate} disabled={isLoading}>
-            {isLoading ? "Updating..." : "Update Completion"}
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={() => setOpen(false)}
+          >
+            Cancel
+          </Button>
+          
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleRequestChanges}
+          >
+            Request Changes
+          </Button>
+          
+          <Button
+            type="button"
+            onClick={handleApproveTask}
+            disabled={isSubmitting}
+          >
+            Approve Task
           </Button>
         </DialogFooter>
       </DialogContent>

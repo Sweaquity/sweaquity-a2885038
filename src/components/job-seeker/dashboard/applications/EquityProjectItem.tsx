@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EquityProjectItemProps, JobApplication } from '@/types/jobSeeker';
-import { Clock, Eye, MessageSquare, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Clock, Eye, MessageSquare, X } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
@@ -26,9 +27,11 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
     estimatedHours: 0
   });
   
+  // Fetch equity and hours data
   useEffect(() => {
     const fetchEquityData = async () => {
       try {
+        // Get equity data from accepted_jobs using job_app_id
         const { data: acceptedJobsData, error: acceptedJobsError } = await supabase
           .from('accepted_jobs')
           .select('equity_agreed, jobs_equity_allocated')
@@ -44,6 +47,7 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
           });
         }
         
+        // Get ticket data using task_id
         const { data: ticketData, error: ticketError } = await supabase
           .from('tickets')
           .select('id, estimated_hours')
@@ -53,6 +57,7 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
         if (ticketError) {
           console.error("Error fetching ticket data:", ticketError);
         } else if (ticketData) {
+          // Get hours logged data from time_entries
           const { data: timeEntries, error: timeEntriesError } = await supabase
             .from('time_entries')
             .select('hours_logged')
@@ -139,10 +144,12 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
     toast.info("Project view feature is coming soon");
   };
   
+  // Calculate percentage of equity earned vs agreed
   const percentageEarned = equityData.equityAgreed > 0 
     ? ((equityData.equityAllocated / equityData.equityAgreed) * 100).toFixed(1) 
     : "0.0";
   
+  // Format for display, showing earned/total
   const equityDisplay = `${equityData.equityAllocated}%/${equityData.equityAgreed}%`;
   const hoursDisplay = `${hoursData.hoursLogged}h/${hoursData.estimatedHours}h`;
   const completionPercentage = application.business_roles?.completion_percentage || 0;
@@ -174,11 +181,17 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                   className="ml-2" 
                   onClick={(e) => {
                     e.stopPropagation();
-                    toggleExpand();
+                    handleWithdraw();
                   }}
                 >
-                  {isExpanded ? "Collapse" : "Expand"}
+                  <X className="h-4 w-4 mr-1" />
+                  Withdraw
                 </Button>
+                {isExpanded ? (
+                  <ArrowUp className="h-4 w-4 ml-2" />
+                ) : (
+                  <ArrowDown className="h-4 w-4 ml-2" />
+                )}
               </div>
             </div>
             
@@ -287,10 +300,6 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                       <Button variant="secondary" size="sm" onClick={handleViewProject}>
                         <Eye className="h-4 w-4 mr-1" />
                         View Project
-                      </Button>
-                      <Button variant="destructive" size="sm" onClick={handleWithdraw}>
-                        <X className="h-4 w-4 mr-1" />
-                        Withdraw
                       </Button>
                     </div>
                   </div>

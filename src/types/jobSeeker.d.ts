@@ -1,4 +1,3 @@
-
 export interface Profile {
   id: string;
   first_name: string;
@@ -59,33 +58,26 @@ export interface EquityProject {
   created_by?: string;
   skill_match?: number; // Added property for skill match percentage
 }
-
 export interface EffortLog {
   date: string;
   hours: number;
   description: string;
 }
 
-export interface SkillRequirement {
-  skill: string; 
-  level: string;
-}
-
 export interface JobApplication {
-  id: string; // Making required for compatibility with types.ts
   job_app_id: string;
-  role_id?: string;
+  role_id: string;
   status: string;
   applied_at: string;
   task_id: string;
   project_id: string;
-  notes?: string;
-  message?: string; 
-  cv_url?: string | null;
+  notes: string;
+  message: string; 
+  cv_url: string | null;
   task_discourse?: string;
   business_roles?: {
-    title?: string;
-    description?: string;
+    title: string;
+    description: string;
     company_name?: string;
     project_title?: string;
     timeframe?: string;
@@ -94,19 +86,10 @@ export interface JobApplication {
     completion_percentage?: number;
     task_status?: string;
   };
+  id: string; // Adding this for backward compatibility
   accepted_jobseeker?: boolean;
   accepted_business?: boolean;
   applicant_anonymized?: boolean;
   applicant_email?: string;
-  user_id?: string;
-  accepted_jobs?: {
-    date_accepted?: string;
-    equity_agreed?: number;
-    jobs_equity_allocated?: number;
-  };
-}
-
-export interface EquityProjectItemProps {
-  application: JobApplication;
-  onApplicationUpdated: () => void;
+  user_id?: string; // Adding user_id to match database schema
 }
