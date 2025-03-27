@@ -2,20 +2,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { JobApplication } from "@/types/jobSeeker";
+import { JobApplication, ApplicationsTabBaseProps } from "@/types/jobSeeker";
 import { ApplicationsList } from "./ApplicationsList";
-import { PendingApplicationsList } from "./PendingApplicationsList";
+import { PendingApplicationsList } from "./PendingApplicationsListProps";
 import { PastApplicationsList } from "./PastApplicationsList";
 import { EquityProjectsList } from "./EquityProjectsList";
 import { useApplicationActions } from "./hooks/useApplicationActions";
 import { useWithdrawApplication } from "./hooks/useWithdrawApplication";
 import { useAcceptedJobs } from "@/hooks/useAcceptedJobs";
-
-interface ApplicationsTabBaseProps {
-  applications: JobApplication[];
-  onApplicationUpdated: () => void;
-  newMessagesCount?: number;
-}
 
 export const ApplicationsTabBase = ({
   applications,
@@ -125,7 +119,10 @@ export const ApplicationsTabBase = ({
       </TabsContent>
 
       <TabsContent value="equity">
-        <EquityProjectsList applications={currentApplications} />
+        <EquityProjectsList 
+          applications={currentApplications}
+          onApplicationUpdated={onApplicationUpdated}
+        />
       </TabsContent>
     </Tabs>
   );

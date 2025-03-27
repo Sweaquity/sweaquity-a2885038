@@ -33,8 +33,6 @@ export interface Ticket {
   estimated_hours?: number;
   hours_logged?: number;
   type?: string; // Added type property
-  // Legacy property to ensure backward compatibility:
-  ticket_type?: string;
 }
 
 export interface TicketMessage {
@@ -51,6 +49,52 @@ export interface PendingApplicationsListProps {
   isWithdrawing?: boolean;
 }
 
+export interface TaskCompletionReviewProps {
+  task: any;
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  onClose: () => void;
+  businessId?: string; // Added optional businessId prop
+}
+
+export interface TimeLogDialogProps {
+  ticket: Ticket;
+  userId: string;
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export interface TicketDetailsProps {
+  ticket: Ticket;
+  onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
+  onClose?: () => void;
+  userCanEditStatus?: boolean;
+  userCanEditDates?: boolean;
+  messages?: any[]; // Added optional messages prop
+  onReply?: (message: any) => Promise<void>; // Added optional onReply prop
+  onStatusChange?: (status: any) => Promise<void>; // Added optional onStatusChange prop
+  onPriorityChange?: (priority: any) => Promise<void>; // Added optional onPriorityChange prop
+  onAssigneeChange?: (userId: any) => Promise<void>; // Added optional onAssigneeChange prop
+  users?: any[]; // Added optional users prop
+}
+
+export interface TicketDashboardProps {
+  initialTickets: Ticket[];
+  onRefresh: () => void;
+  onTicketAction: (ticketId: string, action: string, data: any) => Promise<void>;
+  showTimeTracking?: boolean;
+  userId: string;
+  onLogTime?: (ticketId: string) => void;
+  renderTicketActions?: (ticket: Ticket) => React.ReactNode;
+}
+
+export interface CreateTicketDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onCreateTicket: (ticketData: any) => Promise<void>;
+  projects: any[];
+}
+
 export interface ExpandedTicketDetailsProps {
   ticket: Ticket;
   onClose?: () => void;
@@ -58,4 +102,10 @@ export interface ExpandedTicketDetailsProps {
   onLogTime?: (ticketId: string) => void;
   userCanEditStatus?: boolean;
   userCanEditDates?: boolean;
+  messages?: any[]; // Added optional messages prop
+  onReply?: (message: any) => Promise<void>; // Added optional onReply prop
+  onStatusChange?: (status: any) => Promise<void>; // Added optional onStatusChange prop
+  onPriorityChange?: (priority: any) => Promise<void>; // Added optional onPriorityChange prop
+  onAssigneeChange?: (userId: any) => Promise<void>; // Added optional onAssigneeChange prop
+  users?: any[]; // Added optional users prop
 }

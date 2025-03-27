@@ -1,3 +1,4 @@
+
 export interface Skill {
   skill: string;
   level?: string;
@@ -44,6 +45,7 @@ export interface BusinessRole {
   project_title?: string;
   task_status?: string;
   completion_percentage?: number;
+  estimated_hours?: number;
 }
 
 export interface JobApplication {
@@ -128,6 +130,7 @@ export interface EquityProject {
     date_accepted: string;
   };
   created_at?: string; // Added for sorting by creation date
+  updated_at?: string; // Added for sorting by update date
 }
 
 export interface ProjectEquity {

@@ -4,11 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { EquityProjectItemProps, JobApplication } from '@/types/jobSeeker';
+import { JobApplication } from '@/types/jobSeeker';
 import { ArrowDown, ArrowUp, Clock, Eye, MessageSquare, X } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+
+export interface EquityProjectItemProps {
+  application: JobApplication;
+  onApplicationUpdated: () => void;
+}
 
 export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({ 
   application, 
@@ -141,32 +146,40 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                 <div className="text-xs font-medium">Task Status</div>
                 <div className="text-sm">{application.business_roles?.task_status || "pending"}</div>
               </div>
+              
+              {/* Skills Required moved between Task Status and Timeframe */}
+              <div>
+                <div className="text-xs font-medium">Skills Required</div>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {Array.isArray(application.business_roles?.skill_requirements) ? 
+                    application.business_roles?.skill_requirements.map((skill, index) => {
+                      const skillName = typeof skill === 'string' ? skill : skill.skill;
+                      const level = typeof skill === 'string' ? 'Intermediate' : skill.level;
+                      
+                      return (
+                        <Badge variant="outline" key={index} className="text-xs">
+                          {skillName} <span className="ml-1 opacity-70">({level})</span>
+                        </Badge>
+                      );
+                    }) : 
+                    <span className="text-muted-foreground text-xs">No skills specified</span>
+                  }
+                </div>
+              </div>
+              
               <div>
                 <div className="text-xs font-medium">Timeframe</div>
                 <div className="text-sm">{formatTimeframe(application.business_roles?.timeframe)}</div>
               </div>
-              <div>
-                <div className="text-xs font-medium">Equity Allocation</div>
-                <div className="text-sm">{equityDisplay}</div>
-              </div>
             </div>
             
             <div className="mt-2">
-              <div className="text-xs font-medium">Skills Required</div>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {Array.isArray(application.business_roles?.skill_requirements) ? 
-                  application.business_roles?.skill_requirements.map((skill, index) => {
-                    const skillName = typeof skill === 'string' ? skill : skill.skill;
-                    const level = typeof skill === 'string' ? 'Intermediate' : skill.level;
-                    
-                    return (
-                      <Badge variant="outline" key={index} className="text-xs">
-                        {skillName} <span className="ml-1 opacity-70">({level})</span>
-                      </Badge>
-                    );
-                  }) : 
-                  <span className="text-muted-foreground text-xs">No skills specified</span>
-                }
+              <div className="text-xs font-medium">Equity Allocation / Earned</div>
+              <div className="text-sm group relative" title={`${equityAllocated}% earned of ${equityAgreed}% agreed equity`}>
+                {equityDisplay}
+                <span className="absolute left-0 -top-8 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {equityAllocated}% earned of {equityAgreed}% agreed equity
+                </span>
               </div>
             </div>
           </div>
@@ -178,12 +191,13 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                 <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
                 <span>{hoursLogged}h</span>
               </div>
-              <div className="text-xs text-muted-foreground">
-                {percentageEarned}% earned
-              </div>
             </div>
             
-            <div>
+            <div className="flex space-x-2">
+              <Button variant="outline" size="sm" onClick={handleWithdraw}>
+                Withdraw
+              </Button>
+              
               <Button variant="outline" size="sm" className="w-24">
                 {application.status === 'accepted' ? 'Accepted' : application.status}
               </Button>
@@ -213,7 +227,7 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                     <div className="space-y-2">
                       <div className="grid grid-cols-2">
                         <div className="text-sm font-medium">Estimated Hours:</div>
-                        <div className="text-sm">{application.business_roles?.estimated_hours || 0}h</div>
+                        <div className="text-sm">0h</div>
                       </div>
                       <div className="grid grid-cols-2">
                         <div className="text-sm font-medium">Hours Logged:</div>

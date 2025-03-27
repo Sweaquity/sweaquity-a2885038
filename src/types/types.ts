@@ -32,6 +32,9 @@ export interface Ticket {
   completion_percentage?: number;
   estimated_hours?: number;
   hours_logged?: number;
+  type?: string; // Added type property
+  // Legacy property to ensure backward compatibility:
+  ticket_type?: string;
 }
 
 // BetaTicket interface with all required properties
@@ -43,6 +46,8 @@ export interface BetaTicket extends Ticket {
   isTaskTicket?: boolean;
   isProjectTicket?: boolean;
   completion_percentage?: number;
+  health: string; // Making health required for BetaTicket
+  type?: string; // Added type property
 }
 
 // Task interface for project tasks
