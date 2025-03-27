@@ -23,13 +23,8 @@ export const ApplicationItemContent = ({
 }: ApplicationItemContentProps) => {
   return (
     <div className="space-y-4">
-      {description && (
-        <div>
-          <p className="text-sm text-gray-600 line-clamp-2">{description}</p>
-        </div>
-      )}
-      
       <ApplicationContent 
+        description={description}
         message={message}
         appliedAt={appliedAt}
         discourse={discourse}

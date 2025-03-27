@@ -48,8 +48,8 @@ export const FilterSection = ({
         
         <div className="w-full md:w-64">
           <Select
-            value={filterSkill || ""}
-            onValueChange={(value) => onFilterSkillChange(value === "" ? null : value)}
+            value={filterSkill || "all-skills"}
+            onValueChange={(value) => onFilterSkillChange(value === "all-skills" ? null : value)}
           >
             <SelectTrigger>
               <div className="flex items-center">
@@ -58,7 +58,7 @@ export const FilterSection = ({
               </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Skills</SelectItem>
+              <SelectItem value="all-skills">All Skills</SelectItem>
               {allSkills.map((skill) => (
                 <SelectItem key={skill} value={skill}>
                   {skill}

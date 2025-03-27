@@ -18,7 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CreateTicketDialogProps } from "@/types/types";
+
+// Explicitly define the props interface since it's missing from types
+interface CreateTicketDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onCreateTicket: (ticket: any) => Promise<void>;
+  projects: Array<{ project_id: string; project_title?: string; title?: string }>;
+}
 
 export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
   open,
@@ -124,7 +131,7 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No project</SelectItem>
+                  <SelectItem value="no-project">No project</SelectItem>
                   {projects.map((project) => (
                     <SelectItem key={project.project_id} value={project.project_id}>
                       {project.project_title || project.title}
