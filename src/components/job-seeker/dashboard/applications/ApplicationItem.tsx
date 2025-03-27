@@ -1,187 +1,221 @@
 
-import { useState } from 'react';
-import { JobApplication } from '@/types/jobSeeker';
-import { CreateMessageDialog } from './CreateMessageDialog';
-import { WithdrawDialog } from './WithdrawDialog';
-import { useWithdrawApplication } from './hooks/useWithdrawApplication';
-import { useApplicationActions } from './hooks/useApplicationActions';
-import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
-import { useAcceptedJobs } from '@/hooks/useAcceptedJobs';
-import { AcceptJobDialog } from './AcceptJobDialog';
+import React, { useState } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { 
-  StatusChangeDialog,
-  ApplicationItemHeader,
-  ApplicationItemContent
-} from './components';
+  ChevronDown, 
+  ChevronUp, 
+  ArrowRight, 
+  MessageSquare,
+  BadgeAlert
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { formatDistanceToNow } from "date-fns";
+import { ApplicationItemContent } from "./ApplicationItemContent";
+import { WithdrawApplicationDialog } from "./WithdrawApplicationDialog";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
+import { JobApplication } from "@/types/jobSeeker";
+import { MessageApplicationDialog } from "./MessageApplicationDialog";
 
 interface ApplicationItemProps {
   application: JobApplication;
-  onApplicationUpdated?: () => void;
-  compact?: boolean;
+  onApplicationUpdated: () => void;
 }
 
-export const ApplicationItem = ({ application, onApplicationUpdated, compact = false }: ApplicationItemProps) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isCreateMessageOpen, setIsCreateMessageOpen] = useState(false);
-  const [isAcceptJobDialogOpen, setIsAcceptJobDialogOpen] = useState(false);
-  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState(application.status);
-  
-  // Ensure we have a valid ID for our application
-  const applicationId = application.job_app_id || application.id || `app-${Math.random()}`;
-  
-  const { 
-    isWithdrawDialogOpen, 
-    setIsWithdrawDialogOpen,
-    handleWithdrawApplication 
-  } = useWithdrawApplication(onApplicationUpdated);
-  
-  const { 
-    isUpdatingStatus, 
-    updateApplicationStatus 
-  } = useApplicationActions(onApplicationUpdated);
-  
-  const {
-    acceptJobAsJobSeeker,
-    isLoading: isAcceptingJob
-  } = useAcceptedJobs(onApplicationUpdated);
+export const ApplicationItem = ({ application, onApplicationUpdated }: ApplicationItemProps) => {
+  const [expanded, setExpanded] = useState(false);
+  const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [showMessageDialog, setShowMessageDialog] = useState(false);
 
-  const toggleExpand = () => {
-    setIsExpanded(!isExpanded);
+  const getProjectTitle = () => {
+    if (application.business_roles?.project_title) {
+      return application.business_roles.project_title;
+    }
+    return "Unnamed Project";
+  };
+
+  const getCompanyName = () => {
+    if (application.business_roles?.company_name) {
+      return application.business_roles.company_name;
+    }
+    return "Company";
+  };
+
+  const getTaskTitle = () => {
+    if (application.business_roles?.title) {
+      return application.business_roles.title;
+    }
+    return application.task_title || "Task";
+  };
+
+  const getDescription = () => {
+    if (application.business_roles?.description) {
+      return application.business_roles.description;
+    }
+    return application.description || "No description available";
+  };
+
+  const handleToggleExpand = () => {
+    setExpanded(!expanded);
   };
 
   const handleWithdraw = async (reason?: string) => {
-    await handleWithdrawApplication(applicationId, reason);
-    return Promise.resolve();
-  };
-  
-  const handleMessageSubmit = async (message: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("You must be logged in to send messages");
-        return;
-      }
-
-      // Get existing discourse
-      const { data: applicationData, error: fetchError } = await supabase
-        .from('job_applications')
-        .select('task_discourse')
-        .eq('job_app_id', applicationId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Format the message with timestamp and sender
-      const timestamp = new Date().toLocaleString();
-      const formattedMessage = `[${timestamp}] Job Seeker: ${message}`;
-
-      // Append to existing discourse or create new
-      const updatedDiscourse = applicationData?.task_discourse
-        ? `${applicationData.task_discourse}\n\n${formattedMessage}`
-        : formattedMessage;
-
-      // Update the application with the new discourse
-      const { error: updateError } = await supabase
-        .from('job_applications')
-        .update({ task_discourse: updatedDiscourse })
-        .eq('job_app_id', applicationId);
-
-      if (updateError) throw updateError;
-
-      toast.success("Message sent successfully");
+      setIsWithdrawing(true);
       
-      if (onApplicationUpdated) {
-        onApplicationUpdated();
-      }
+      const { error } = await supabase
+        .from('job_applications')
+        .update({ 
+          status: 'withdrawn',
+          notes: reason ? [...(application.notes || []), {
+            type: 'withdrawal',
+            content: reason,
+            timestamp: new Date().toISOString()
+          }] : application.notes
+        })
+        .eq('job_app_id', application.job_app_id);
+      
+      if (error) throw error;
+      
+      toast.success("Application withdrawn successfully");
+      onApplicationUpdated();
+      setShowWithdrawDialog(false);
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error withdrawing application:", error);
+      toast.error("Failed to withdraw application");
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+
+  const handleSendMessage = async (message: string) => {
+    try {
+      // Get the current discourse
+      const currentDiscourse = application.task_discourse || '';
+      
+      // Format the new message with timestamp and add it to the discourse
+      const now = new Date();
+      const timestamp = now.toISOString();
+      const newMessage = `\n[${timestamp}] Job Seeker: ${message}`;
+      const updatedDiscourse = currentDiscourse + newMessage;
+      
+      // Update the application with the new discourse
+      const { error } = await supabase
+        .from('job_applications')
+        .update({ 
+          task_discourse: updatedDiscourse,
+          updated_at: now.toISOString()
+        })
+        .eq('job_app_id', application.job_app_id);
+      
+      if (error) throw error;
+      
+      toast.success("Message sent");
+      setShowMessageDialog(false);
+      onApplicationUpdated();
+    } catch (error) {
+      console.error("Error sending message:", error);
       toast.error("Failed to send message");
     }
   };
-  
-  const handleStatusChange = (status: string) => {
-    if (status === 'withdrawn') {
-      setIsWithdrawDialogOpen(true);
-      return;
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "Unknown date";
+    try {
+      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+    } catch (e) {
+      return dateString;
     }
-    
-    setSelectedStatus(status);
-    setStatusDialogOpen(true);
   };
-  
-  const confirmStatusChange = async () => {
-    await updateApplicationStatus(applicationId, selectedStatus);
-    setStatusDialogOpen(false);
-  };
-  
-  const handleAcceptJob = async () => {
-    await acceptJobAsJobSeeker(application);
-    if (onApplicationUpdated) onApplicationUpdated();
-  };
-  
-  const showAcceptButton = application.status === 'accepted' && !application.accepted_jobseeker;
 
   return (
-    <div className="border rounded-md overflow-hidden bg-card dashboard-card">
-      {/* Application Header Section */}
-      <ApplicationItemHeader
-        title={application.task_title || 'Untitled Task'}
-        company={application.company_name || 'Company'}
-        project={application.project_title || 'Project'}
-        status={application.status}
-        isExpanded={isExpanded}
-        toggleExpand={toggleExpand}
-        onStatusChange={handleStatusChange}
-        isUpdatingStatus={isUpdatingStatus === applicationId}
-        showAcceptButton={showAcceptButton}
-        onAcceptClick={() => setIsAcceptJobDialogOpen(true)}
-        isAcceptingJob={isAcceptingJob}
-        compact={compact}
-      />
-
-      {/* Expanded Application Content */}
-      {isExpanded && (
-        <ApplicationItemContent
-          description={application.description}
-          message={application.message}
-          discourse={application.task_discourse}
-          appliedAt={application.applied_at}
-          onMessageClick={() => setIsCreateMessageOpen(true)}
-          onWithdrawClick={() => setIsWithdrawDialogOpen(true)}
-        />
-      )}
-
-      {/* Dialogs */}
-      <CreateMessageDialog
-        isOpen={isCreateMessageOpen}
-        onOpenChange={setIsCreateMessageOpen}
-        applicationId={applicationId}
-        existingMessage={application.task_discourse}
-        onMessageSent={onApplicationUpdated}
-      />
-
-      <WithdrawDialog
-        isOpen={isWithdrawDialogOpen}
-        onOpenChange={setIsWithdrawDialogOpen}
+    <div className="mb-4">
+      <Card className="overflow-hidden">
+        <div className="p-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="font-medium">{getTaskTitle()}</h3>
+              <p className="text-sm text-muted-foreground">
+                {getCompanyName()} | {getProjectTitle()}
+              </p>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Badge 
+                variant={application.status === 'accepted' ? "default" : "outline"}
+                className={application.status === 'accepted' ? "bg-green-500" : ""}
+              >
+                {application.status === 'accepted' ? 'Accepted' : application.status}
+              </Badge>
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 p-0" 
+                onClick={handleToggleExpand}
+              >
+                {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+          
+          {expanded && (
+            <div className="mt-4 border-t pt-4">
+              <ApplicationItemContent 
+                description={getDescription()}
+                message={application.message || ""}
+                discourse={application.task_discourse || ""}
+                appliedAt={formatDate(application.applied_at)}
+                onMessageClick={() => setShowMessageDialog(true)}
+                onWithdrawClick={() => setShowWithdrawDialog(true)}
+              />
+              
+              <div className="mt-4 flex space-x-2 justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowMessageDialog(true)}
+                >
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Send Message
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                >
+                  <ArrowRight className="mr-2 h-4 w-4" />
+                  View Project
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-500 hover:text-red-700"
+                  onClick={() => setShowWithdrawDialog(true)}
+                >
+                  <BadgeAlert className="mr-2 h-4 w-4" />
+                  Withdraw
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
+      
+      <WithdrawApplicationDialog
+        open={showWithdrawDialog}
+        onClose={() => setShowWithdrawDialog(false)}
         onWithdraw={handleWithdraw}
+        isLoading={isWithdrawing}
       />
       
-      <StatusChangeDialog 
-        isOpen={statusDialogOpen}
-        onOpenChange={setStatusDialogOpen}
-        selectedStatus={selectedStatus}
-        onConfirm={confirmStatusChange}
-        isLoading={isUpdatingStatus === applicationId}
-      />
-      
-      <AcceptJobDialog
-        isOpen={isAcceptJobDialogOpen}
-        onOpenChange={setIsAcceptJobDialogOpen}
-        application={application}
-        onAccept={handleAcceptJob}
-        isLoading={isAcceptingJob}
+      <MessageApplicationDialog
+        open={showMessageDialog}
+        onClose={() => setShowMessageDialog(false)}
+        onSendMessage={handleSendMessage}
       />
     </div>
   );

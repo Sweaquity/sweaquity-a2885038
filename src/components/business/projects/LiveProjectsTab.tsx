@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -121,6 +120,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       const processedTickets = (data || []).map(ticket => ({
         ...ticket,
         type: ticket.ticket_type || "task", // Map ticket_type to type for compatibility
+        ticket_type: ticket.ticket_type || "task", // Ensure ticket_type is always set
         description: ticket.description || "", // Ensure description exists
         // Add equity information to the ticket
         equity_agreed: ticket.accepted_jobs?.equity_agreed || 0,
@@ -288,33 +288,8 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     }
   };
 
-  const handleLogTime = async (ticketId: string, hours: number, description: string) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("You must be logged in to log time");
-        return;
-      }
-      
-      const { error } = await supabase
-        .from('time_entries')
-        .insert({
-          ticket_id: ticketId,
-          user_id: session.user.id,
-          description: description,
-          hours_logged: hours,
-          start_time: new Date().toISOString(),
-          end_time: new Date(new Date().getTime() + hours * 60 * 60 * 1000).toISOString()
-        });
-        
-      if (error) throw error;
-      
-      toast.success("Time logged successfully");
-      loadTickets();
-    } catch (error) {
-      console.error("Error logging time:", error);
-      toast.error("Failed to log time");
-    }
+  const handleLogTime = async (ticketId: string) => {
+    console.log("Log time button clicked for ticket:", ticketId);
   };
 
   const handleRefresh = () => {
@@ -367,7 +342,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       case "project-tickets":
         return tickets.filter(t => t.ticket_type === "ticket");
       case "beta-testing":
-        return tickets.filter(t => t.ticket_type === "beta-test");
+        return tickets.filter(t => t.ticket_type === "beta-test" || t.ticket_type === "beta_testing");
       default:
         return tickets;
     }
@@ -396,7 +371,9 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
 
   const renderTicketActions = (ticket: Ticket) => {
     // Only show review action for business users and if the ticket is in review status
-    if (ticket.status === 'review' || ticket.status === 'in review') {
+    // AND completion percentage is 100%
+    if ((ticket.status === 'review' || ticket.status === 'in review') && 
+        ticket.completion_percentage === 100) {
       return (
         <Button
           variant="outline"
@@ -525,10 +502,11 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
               initialTickets={getActiveTickets()}
               onRefresh={handleRefresh}
               onTicketAction={handleTicketAction}
-              showTimeTracking={true}
+              showTimeTracking={false}
               userId={businessId || ''}
               onLogTime={handleLogTime}
               renderTicketActions={renderTicketActions}
+              userCanEditDates={true}
             />
           )}
         </TabsContent>

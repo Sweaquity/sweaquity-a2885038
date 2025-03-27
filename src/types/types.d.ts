@@ -1,9 +1,11 @@
+
 export interface Ticket {
   id: string;
   title: string;
   description: string; // Required field
   status: string;
   priority: string;
+  ticket_type: string; // Add this explicitly
   reporter?: string;
   assigned_to?: string;
   created_at?: string;
@@ -32,9 +34,7 @@ export interface Ticket {
   completion_percentage?: number;
   estimated_hours?: number;
   hours_logged?: number;
-  type?: string; // Added type property
-  // Legacy property to ensure backward compatibility:
-  ticket_type?: string;
+  type?: string; // Keep this for backward compatibility
 }
 
 export interface TicketMessage {
@@ -58,4 +58,37 @@ export interface ExpandedTicketDetailsProps {
   onLogTime?: (ticketId: string) => void;
   userCanEditStatus?: boolean;
   userCanEditDates?: boolean;
+  users?: any[];
+  onReply?: (message: any) => Promise<void>;
+  onStatusChange?: (status: any) => Promise<void>;
+  onPriorityChange?: (priority: any) => Promise<void>;
+  onAssigneeChange?: (userId: any) => Promise<void>;
+  messages?: any[];
+}
+
+export interface TaskCompletionReviewProps {
+  task: any;
+  businessId?: string;
+  onClose: () => void;
+  onTaskAction?: (taskId: string, action: string, data: any) => Promise<void>;
+  open?: boolean;
+  setOpen?: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+export interface PendingApplicationItemProps {
+  application: JobApplication;
+  onAccept: (application: JobApplication) => Promise<void>;
+  onWithdraw: (applicationId: string, reason?: string) => Promise<void>;
+  isWithdrawing: boolean;
+  getMatchedSkills: () => any;
+  onApplicationUpdated?: () => void;
+}
+
+export interface ApplicationItemContentProps {
+  description: any;
+  message: string;
+  discourse: string;
+  appliedAt: string;
+  onMessageClick?: () => void;
+  onWithdrawClick?: () => void;
 }

@@ -16,7 +16,7 @@ import { supabase } from "@/lib/supabase";
 import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
 import { Ticket } from "@/types/types";
 import { RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
-import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
+import { KanbanBoard } from "@/components/ticket/KanbanBoard";
 import { DragDropContext } from "react-beautiful-dnd";
 
 interface JobSeekerProjectsTabProps {
@@ -252,6 +252,12 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   };
 
   const handleLogTime = async (ticketId: string) => {
+    const ticket = tickets.find(t => t.id === ticketId);
+    if (!ticket) {
+      toast.error("Ticket not found");
+      return;
+    }
+    
     toast.info("Time logging functionality is in development");
   };
 
@@ -310,7 +316,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       case "project-tickets":
         return tickets.filter(t => t.ticket_type === "ticket");
       case "beta-testing":
-        return tickets.filter(t => t.ticket_type === "beta-test");
+        return tickets.filter(t => t.ticket_type === "beta-test" || t.ticket_type === "beta_testing");
       default:
         return tickets;
     }
@@ -423,7 +429,11 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         <TabsContent value={activeTab}>
           {showKanban ? (
             <div className="mb-6">
-              <DragDropContext onDragEnd={() => {}}>
+              <DragDropContext onDragEnd={(result) => {
+                if (!result.destination) return;
+                const { draggableId, destination } = result;
+                handleTicketAction(draggableId, 'updateStatus', destination.droppableId);
+              }}>
                 <KanbanBoard 
                   tickets={getActiveTickets()}
                   onStatusChange={(ticketId, newStatus) => 
@@ -449,6 +459,8 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
               showTimeTracking={true}
               userId={userId || ''}
               onLogTime={handleLogTime}
+              userCanEditDates={true}
+              showEstimatedHours={true}
             />
           )}
         </TabsContent>

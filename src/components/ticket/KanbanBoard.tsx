@@ -137,10 +137,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChang
                           
                           <p className="text-xs text-gray-500 line-clamp-2 mt-1">{ticket.description}</p>
                           
-                          {ticket.ticket_type && (
+                          {(ticket.ticket_type || ticket.type) && (
                             <div className="mt-2 flex items-center text-xs text-blue-600">
                               <CheckCircle className="h-3 w-3 mr-1" />
-                              <span>{ticket.ticket_type}</span>
+                              <span>{ticket.ticket_type || ticket.type}</span>
                               {ticket.equity_points !== undefined && ticket.equity_points > 0 && (
                                 <span className="ml-1">(Equity: {ticket.equity_points}%)</span>
                               )}
