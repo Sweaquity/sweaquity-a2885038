@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -94,9 +95,11 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           )
         `);
       
+      // Filter by project if one is selected and it's not "all"
       if (selectedProject && selectedProject !== "all") {
         query = query.eq('project_id', selectedProject);
       } else {
+        // If "all" is selected, get tickets from all projects owned by this business
         const { data: businessProjects } = await supabase
           .from('business_projects')
           .select('project_id')
@@ -114,17 +117,19 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       
       console.log("Loaded tickets:", data);
       
+      // Convert data to the expected Ticket type format and include job_app_id/equity data
       const processedTickets = (data || []).map(ticket => ({
         ...ticket,
-        type: ticket.ticket_type || "task",
-        ticket_type: ticket.ticket_type || "task",
-        description: ticket.description || "",
+        type: ticket.ticket_type || "task", // Map ticket_type to type for compatibility
+        description: ticket.description || "", // Ensure description exists
+        // Add equity information to the ticket
         equity_agreed: ticket.accepted_jobs?.equity_agreed || 0,
         equity_allocated: ticket.accepted_jobs?.jobs_equity_allocated || 0
       }));
       
       setTickets(processedTickets);
       
+      // Calculate ticket stats
       const stats = {
         total: processedTickets.length,
         open: processedTickets.filter(t => t.status !== 'done' && t.status !== 'closed').length,
@@ -145,6 +150,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     try {
       switch (action) {
         case 'updateStatus': {
+          // Update ticket status
           const { error } = await supabase
             .from('tickets')
             .update({ status: data })
@@ -152,6 +158,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           
           if (error) throw error;
           
+          // Update local state
           setTickets(prevTickets => 
             prevTickets.map(t => t.id === ticketId ? { ...t, status: data } : t)
           );
@@ -225,6 +232,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         }
         
         case 'reviewCompletion': {
+          // Find the ticket to review
           const ticket = tickets.find(t => t.id === ticketId);
           if (ticket) {
             setReviewTask(ticket);
@@ -280,8 +288,33 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     }
   };
 
-  const handleLogTime = async (ticketId: string) => {
-    console.log("Log time button clicked for ticket:", ticketId);
+  const handleLogTime = async (ticketId: string, hours: number, description: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("You must be logged in to log time");
+        return;
+      }
+      
+      const { error } = await supabase
+        .from('time_entries')
+        .insert({
+          ticket_id: ticketId,
+          user_id: session.user.id,
+          description: description,
+          hours_logged: hours,
+          start_time: new Date().toISOString(),
+          end_time: new Date(new Date().getTime() + hours * 60 * 60 * 1000).toISOString()
+        });
+        
+      if (error) throw error;
+      
+      toast.success("Time logged successfully");
+      loadTickets();
+    } catch (error) {
+      console.error("Error logging time:", error);
+      toast.error("Failed to log time");
+    }
   };
 
   const handleRefresh = () => {
@@ -302,8 +335,8 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         ...ticketData,
         reporter: businessId,
         created_at: new Date().toISOString(),
-        ticket_type: ticketData.ticket_type || "task",
-        status: "todo",
+        ticket_type: ticketData.ticket_type || "task", // Using ticket_type instead of type
+        status: "todo", // Changed from "new" to match Kanban column ids
         priority: ticketData.priority || "medium",
         health: ticketData.health || "good"
       };
@@ -328,19 +361,16 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   };
 
   const getActiveTickets = () => {
-    if (activeTab === 'project-tasks') {
-      return tickets.filter(t => t.ticket_type === "task" || t.type === "task");
-    } else if (activeTab === 'project-tickets') {
-      return tickets.filter(t => t.ticket_type === "ticket" || t.type === "ticket");
-    } else if (activeTab === 'beta-testing') {
-      return tickets.filter(t => 
-        t.ticket_type === "beta-test" || 
-        t.ticket_type === "beta_testing" || 
-        t.type === "beta-test" || 
-        t.type === "beta_testing"
-      );
+    switch (activeTab) {
+      case "project-tasks":
+        return tickets.filter(t => t.ticket_type === "task");
+      case "project-tickets":
+        return tickets.filter(t => t.ticket_type === "ticket");
+      case "beta-testing":
+        return tickets.filter(t => t.ticket_type === "beta-test");
+      default:
+        return tickets;
     }
-    return tickets;
   };
 
   const toggleKanbanView = () => {
@@ -360,12 +390,13 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   const handleReviewClose = () => {
     setIsReviewOpen(false);
     setReviewTask(null);
+    // Reload tickets to reflect changes
     loadTickets();
   };
 
   const renderTicketActions = (ticket: Ticket) => {
-    if ((ticket.status === 'review' || ticket.status === 'in review') && 
-        ticket.completion_percentage === 100) {
+    // Only show review action for business users and if the ticket is in review status
+    if (ticket.status === 'review' || ticket.status === 'in review') {
       return (
         <Button
           variant="outline"
@@ -479,6 +510,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
                 }
                 onTicketClick={(ticket) => {
                   console.log("Ticket clicked:", ticket.id);
+                  // Here you could show a ticket detail dialog or navigate to a ticket details page
                 }}
               />
             </div>
@@ -493,11 +525,10 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
               initialTickets={getActiveTickets()}
               onRefresh={handleRefresh}
               onTicketAction={handleTicketAction}
-              showTimeTracking={false}
+              showTimeTracking={true}
               userId={businessId || ''}
               onLogTime={handleLogTime}
               renderTicketActions={renderTicketActions}
-              userCanEditDates={true}
             />
           )}
         </TabsContent>

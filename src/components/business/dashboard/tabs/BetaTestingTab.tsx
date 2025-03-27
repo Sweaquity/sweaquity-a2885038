@@ -1,7 +1,11 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TaskCompletionReview } from "../../projects/TaskCompletionReview";
+import { BetaTestingTab as SharedBetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
+import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { toast } from "sonner";
 import { Ticket } from "@/types/types";
 import { 
@@ -13,10 +17,8 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Plus, RefreshCw } from "lucide-react";
+import { GanttChartView } from "../../testing/GanttChartView";
 import { KanbanBoard } from "@/components/ticket/KanbanBoard";
-
-// Note: Importing TaskCompletionReview but we'll modify how we use it
-import { TaskCompletionReview } from "../../projects/TaskCompletionReview";
 
 export const BetaTestingTab = () => {
   // Rename this component to LiveProjectsTab to match naming in UI
@@ -211,10 +213,6 @@ export const BetaTestingTab = () => {
     toast.info("Create ticket functionality will be implemented soon");
   };
 
-  // Add state for task completion review
-  const [selectedTask, setSelectedTask] = useState<any>(null);
-  const [isCompletionReviewOpen, setIsCompletionReviewOpen] = useState(false);
-
   if (!userId) {
     return <div>Loading...</div>;
   }
@@ -290,48 +288,75 @@ export const BetaTestingTab = () => {
           <TabsTrigger value="beta-tickets">Beta Testing Tickets</TabsTrigger>
           <TabsTrigger value="task-review">Task Completion Review</TabsTrigger>
           <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
+          <TabsTrigger value="gantt">Gantt Chart</TabsTrigger>
         </TabsList>
         
         <TabsContent value="tickets">
-          
+          <TicketDashboard 
+            initialTickets={tickets}
+            onRefresh={handleRefresh}
+            onTicketAction={handleTicketAction}
+            showTimeTracking={false}
+            userId={userId}
+          />
         </TabsContent>
         
         <TabsContent value="project-tasks">
-          
+          <TicketDashboard 
+            initialTickets={tickets.filter(t => t.task_id)}
+            onRefresh={handleRefresh}
+            onTicketAction={handleTicketAction}
+            showTimeTracking={false}
+            userId={userId}
+          />
         </TabsContent>
         
         <TabsContent value="project-tickets">
-          
+          <TicketDashboard 
+            initialTickets={tickets.filter(t => t.project_id && !t.task_id)}
+            onRefresh={handleRefresh}
+            onTicketAction={handleTicketAction}
+            showTimeTracking={false}
+            userId={userId}
+          />
         </TabsContent>
         
         <TabsContent value="beta-tickets">
-          
+          <SharedBetaTestingTab 
+            userType="business" 
+            userId={userId} 
+            includeProjectTickets={true} 
+          />
         </TabsContent>
         
         <TabsContent value="task-review">
-          <div className="text-center py-8">
-            Please select a task in "Review" status to start the completion review.
-          </div>
+          <TaskCompletionReview businessId={userId} />
         </TabsContent>
         
         <TabsContent value="kanban">
-          
+          {selectedProject ? (
+            <KanbanBoard 
+              tickets={tickets}
+              onStatusChange={(ticketId, newStatus) => 
+                handleTicketAction(ticketId, 'updateStatus', newStatus)
+              }
+              onTicketClick={(ticket) => 
+                console.log("Ticket clicked:", ticket.id)
+              }
+            />
+          ) : (
+            <div className="text-center py-8">Please select a project to view the Kanban board</div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="gantt">
+          {selectedProject ? (
+            <GanttChartView projectId={selectedProject} />
+          ) : (
+            <div className="text-center py-8">Please select a project to view the Gantt chart</div>
+          )}
         </TabsContent>
       </Tabs>
-      
-      {selectedTask && (
-        <TaskCompletionReview 
-          task={selectedTask}
-          businessId={userId}
-          onClose={() => {
-            setSelectedTask(null);
-            setIsCompletionReviewOpen(false);
-            handleRefresh();
-          }}
-          open={isCompletionReviewOpen}
-          setOpen={setIsCompletionReviewOpen}
-        />
-      )}
     </div>
   );
 };

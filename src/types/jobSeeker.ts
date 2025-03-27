@@ -44,7 +44,6 @@ export interface BusinessRole {
   project_title?: string;
   task_status?: string;
   completion_percentage?: number;
-  task_title?: string;
 }
 
 export interface JobApplication {
@@ -73,14 +72,9 @@ export interface JobApplication {
     id: string;
     date_accepted: string;
   };
-  task_title?: string; // Add these fields to resolve errors
-  company_name?: string;
-  project_title?: string;
-  description?: string;
-  skills_required?: any[];
-  applicant_skills?: any[];
 }
 
+// Add SkillRequirement for compatibility with existing code
 export interface SkillRequirement {
   skill: string;
   level?: string;
@@ -134,7 +128,6 @@ export interface EquityProject {
     date_accepted: string;
   };
   created_at?: string; // Added for sorting by creation date
-  updated_at?: string; // Added for comparison and sorting
 }
 
 export interface ProjectEquity {
@@ -176,11 +169,13 @@ export interface TimeEntry {
   created_at: string;
 }
 
+// Adding interface for EquityProjectItemProps
 export interface EquityProjectItemProps {
   application: JobApplication;
   onApplicationUpdated: () => void;
 }
 
+// Adding new interface for PendingApplicationsListProps
 export interface PendingApplicationsListProps {
   applications: JobApplication[];
   onWithdraw?: (applicationId: string, reason?: string) => Promise<void>;
@@ -188,12 +183,14 @@ export interface PendingApplicationsListProps {
   isWithdrawing?: boolean;
 }
 
+// Adding interface for ApplicationsTabBaseProps
 export interface ApplicationsTabBaseProps {
   applications: JobApplication[];
   onApplicationUpdated: () => void;
   newMessagesCount?: number;
 }
 
+// Adding interface for DashboardTabProps
 export interface DashboardTabProps {
   activeTab: string;
   profile: Profile;

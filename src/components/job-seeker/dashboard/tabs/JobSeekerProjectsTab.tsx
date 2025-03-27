@@ -16,11 +16,11 @@ import { supabase } from "@/lib/supabase";
 import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
 import { Ticket } from "@/types/types";
 import { RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
-import { KanbanBoard } from "@/components/ticket/KanbanBoard";
+import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
 import { DragDropContext } from "react-beautiful-dnd";
 
 interface JobSeekerProjectsTabProps {
-  userId?: string | null;
+  userId?: string;
 }
 
 export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
@@ -252,12 +252,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   };
 
   const handleLogTime = async (ticketId: string) => {
-    const ticket = tickets.find(t => t.id === ticketId);
-    if (!ticket) {
-      toast.error("Ticket not found");
-      return;
-    }
-    
     toast.info("Time logging functionality is in development");
   };
 
@@ -310,19 +304,16 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   };
 
   const getActiveTickets = () => {
-    if (activeTab === 'project-tasks') {
-      return tickets.filter(t => t.ticket_type === "task" || t.type === "task");
-    } else if (activeTab === 'project-tickets') {
-      return tickets.filter(t => t.ticket_type === "ticket" || t.type === "ticket");
-    } else if (activeTab === 'beta-testing') {
-      return tickets.filter(t => 
-        t.ticket_type === "beta-test" || 
-        t.ticket_type === "beta_testing" || 
-        t.type === "beta-test" || 
-        t.type === "beta_testing"
-      );
+    switch (activeTab) {
+      case "project-tasks":
+        return tickets.filter(t => t.ticket_type === "task");
+      case "project-tickets":
+        return tickets.filter(t => t.ticket_type === "ticket");
+      case "beta-testing":
+        return tickets.filter(t => t.ticket_type === "beta-test");
+      default:
+        return tickets;
     }
-    return tickets;
   };
 
   const toggleKanbanView = () => {
@@ -432,11 +423,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         <TabsContent value={activeTab}>
           {showKanban ? (
             <div className="mb-6">
-              <DragDropContext onDragEnd={(result) => {
-                if (!result.destination) return;
-                const { draggableId, destination } = result;
-                handleTicketAction(draggableId, 'updateStatus', destination.droppableId);
-              }}>
+              <DragDropContext onDragEnd={() => {}}>
                 <KanbanBoard 
                   tickets={getActiveTickets()}
                   onStatusChange={(ticketId, newStatus) => 
@@ -462,8 +449,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
               showTimeTracking={true}
               userId={userId || ''}
               onLogTime={handleLogTime}
-              userCanEditDates={true}
-              showEstimatedHours={true}
             />
           )}
         </TabsContent>

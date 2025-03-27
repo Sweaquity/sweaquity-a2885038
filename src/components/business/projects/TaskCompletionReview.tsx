@@ -26,7 +26,6 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
   const [equityToAward, setEquityToAward] = useState<number>(0);
   const [jobAppData, setJobAppData] = useState<any>(null);
   const [assignedUserData, setAssignedUserData] = useState<any>(null);
-  const [agreedEquity, setAgreedEquity] = useState<number>(0);
 
   useEffect(() => {
     if (task && task.job_app_id) {
@@ -42,7 +41,6 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
     if (jobAppData?.accepted_jobs?.equity_agreed) {
       // Calculate equity to award based on completion percentage
       const equityAgreed = jobAppData.accepted_jobs.equity_agreed;
-      setAgreedEquity(equityAgreed);
       const percentageToAward = completionPercentage / 100;
       setEquityToAward(Math.round(equityAgreed * percentageToAward * 10) / 10); // Round to 1 decimal place
     }
@@ -245,7 +243,7 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
               <div className="p-3 border rounded-md bg-blue-50 text-blue-900">
                 <div className="font-medium">Equity to be awarded: {equityToAward}%</div>
                 <div className="text-xs text-blue-700 mt-1">
-                  Based on {completionPercentage}% completion of {agreedEquity}% agreed equity
+                  Based on {completionPercentage}% completion of {jobAppData?.accepted_jobs?.equity_agreed || 0}% agreed equity
                 </div>
               </div>
             </div>
