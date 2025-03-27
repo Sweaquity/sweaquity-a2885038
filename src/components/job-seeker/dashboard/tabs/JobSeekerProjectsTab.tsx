@@ -111,7 +111,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       
       const processedTickets = filteredTickets.map(ticket => ({
         ...ticket,
-        type: ticket.ticket_type || "task",
+        ticket_type: ticket.ticket_type || "task",
         description: ticket.description || "",
         equity_agreed: ticket.accepted_jobs?.equity_agreed || 0,
         equity_allocated: ticket.accepted_jobs?.jobs_equity_allocated || 0
@@ -278,8 +278,8 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         ...ticketData,
         reporter: userId,
         created_at: new Date().toISOString(),
-        type: ticketData.type || "task",
-        status: "new",
+        ticket_type: ticketData.ticket_type || "task",
+        status: "todo",
         priority: ticketData.priority || "medium",
         health: ticketData.health || "good"
       };
@@ -306,11 +306,11 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const getActiveTickets = () => {
     switch (activeTab) {
       case "project-tasks":
-        return tickets.filter(t => t.type === "task");
+        return tickets.filter(t => t.ticket_type === "task");
       case "project-tickets":
-        return tickets.filter(t => t.type === "ticket");
+        return tickets.filter(t => t.ticket_type === "ticket");
       case "beta-testing":
-        return tickets.filter(t => t.type === "beta-test");
+        return tickets.filter(t => t.ticket_type === "beta-test");
       default:
         return tickets;
     }

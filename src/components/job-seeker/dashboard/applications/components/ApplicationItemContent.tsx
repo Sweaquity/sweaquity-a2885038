@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Eye, Mail } from 'lucide-react';
+import { Eye, Mail, ExternalLink } from 'lucide-react';
 import { ApplicationContent } from '../ApplicationContent';
 
 interface ApplicationItemContentProps {
@@ -11,6 +11,8 @@ interface ApplicationItemContentProps {
   appliedAt?: string;
   onViewDetails?: () => void;
   onSendMessage?: () => void;
+  onWithdrawClick?: () => void;
+  onViewProject?: () => void;
 }
 
 export const ApplicationItemContent = ({
@@ -19,7 +21,9 @@ export const ApplicationItemContent = ({
   discourse,
   appliedAt,
   onViewDetails,
-  onSendMessage
+  onSendMessage,
+  onWithdrawClick,
+  onViewProject
 }: ApplicationItemContentProps) => {
   return (
     <div className="space-y-4">
@@ -31,10 +35,21 @@ export const ApplicationItemContent = ({
       />
       
       <div className="flex justify-end space-x-2">
+        {onWithdrawClick && (
+          <Button variant="destructive" size="sm" onClick={onWithdrawClick}>
+            Withdraw
+          </Button>
+        )}
         {onSendMessage && (
           <Button variant="outline" size="sm" onClick={onSendMessage}>
             <Mail className="h-4 w-4 mr-1" />
             Send Message
+          </Button>
+        )}
+        {onViewProject && (
+          <Button variant="outline" size="sm" onClick={onViewProject}>
+            <ExternalLink className="h-4 w-4 mr-1" />
+            View Project
           </Button>
         )}
         {onViewDetails && (

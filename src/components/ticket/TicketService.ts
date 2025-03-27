@@ -3,143 +3,159 @@ import { supabase } from '@/lib/supabase';
 import { Ticket, UserData } from '@/types/types';
 import { toast } from 'sonner';
 
-export class TicketService {
-  static async createTicket(ticket: Partial<Ticket>): Promise<Ticket | null> {
+export const TicketService = {
+  async updateTicketStatus(ticketId: string, newStatus: string): Promise<Ticket | null> {
     try {
-      // Ensure ticket has required fields with non-empty values
-      const sanitizedTicket = {
-        ...ticket,
-        status: ticket.status || 'new',
-        priority: ticket.priority || 'medium',
-        title: ticket.title || 'Untitled Ticket',
-        description: ticket.description || 'No description provided'
-      };
-      
       const { data, error } = await supabase
         .from('tickets')
-        .insert(sanitizedTicket)
-        .select()
-        .single();
-        
-      if (error) throw error;
-      
-      return data;
-    } catch (error) {
-      console.error('Error creating ticket:', error);
-      toast.error('Failed to create ticket');
-      return null;
-    }
-  }
-  
-  static async updateTicket(ticketId: string, updates: Partial<Ticket>): Promise<Ticket | null> {
-    try {
-      // Validate status and priority to ensure they're never empty
-      const sanitizedUpdates = {
-        ...updates
-      };
-      
-      if ('status' in updates && (!updates.status || updates.status.trim() === '')) {
-        sanitizedUpdates.status = 'new';
-      }
-      
-      if ('priority' in updates && (!updates.priority || updates.priority.trim() === '')) {
-        sanitizedUpdates.priority = 'medium';
-      }
-      
-      const { data, error } = await supabase
-        .from('tickets')
-        .update(sanitizedUpdates)
+        .update({ status: newStatus })
         .eq('id', ticketId)
         .select()
         .single();
         
       if (error) throw error;
-      
       return data;
     } catch (error) {
-      console.error('Error updating ticket:', error);
-      toast.error('Failed to update ticket');
+      console.error('Error updating ticket status:', error);
+      toast.error('Failed to update ticket status');
       return null;
     }
-  }
+  },
   
-  static async deleteTicket(ticketId: string): Promise<boolean> {
+  async updateTicketPriority(ticketId: string, newPriority: string): Promise<Ticket | null> {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('tickets')
-        .delete()
-        .eq('id', ticketId);
-        
-      if (error) throw error;
-      
-      return true;
-    } catch (error) {
-      console.error('Error deleting ticket:', error);
-      toast.error('Failed to delete ticket');
-      return false;
-    }
-  }
-  
-  static async addComment(ticketId: string, content: string, userId: string): Promise<boolean> {
-    try {
-      // Get the current ticket
-      const { data: ticket, error: fetchError } = await supabase
-        .from('tickets')
-        .select('notes')
+        .update({ priority: newPriority })
         .eq('id', ticketId)
+        .select()
         .single();
         
-      if (fetchError) throw fetchError;
-      
-      // Create new comment
-      const newComment = {
-        id: crypto.randomUUID(),
-        user: userId,
-        timestamp: new Date().toISOString(),
-        content: content,
-        action: 'comment'
-      };
-      
-      // Add to existing notes or create new array
-      const updatedNotes = ticket.notes ? [...ticket.notes, newComment] : [newComment];
-      
-      // Update the ticket
-      const { error: updateError } = await supabase
-        .from('tickets')
-        .update({ notes: updatedNotes })
-        .eq('id', ticketId);
-        
-      if (updateError) throw updateError;
-      
-      return true;
+      if (error) throw error;
+      return data;
     } catch (error) {
-      console.error('Error adding comment:', error);
-      toast.error('Failed to add comment');
-      return false;
+      console.error('Error updating ticket priority:', error);
+      toast.error('Failed to update ticket priority');
+      return null;
     }
-  }
+  },
   
-  static async getUserProfile(userId: string): Promise<UserData | null> {
+  async updateTicketDueDate(ticketId: string, newDueDate: string): Promise<Ticket | null> {
+    try {
+      const { data, error } = await supabase
+        .from('tickets')
+        .update({ due_date: newDueDate })
+        .eq('id', ticketId)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating ticket due date:', error);
+      toast.error('Failed to update ticket due date');
+      return null;
+    }
+  },
+  
+  async updateTicketAssignee(ticketId: string, assigneeId: string): Promise<Ticket | null> {
+    try {
+      const { data, error } = await supabase
+        .from('tickets')
+        .update({ assigned_to: assigneeId })
+        .eq('id', ticketId)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating ticket assignee:', error);
+      toast.error('Failed to update ticket assignee');
+      return null;
+    }
+  },
+  
+  async updateTicketCompletionPercentage(ticketId: string, percentage: number): Promise<Ticket | null> {
+    try {
+      const { data, error } = await supabase
+        .from('tickets')
+        .update({ completion_percentage: percentage })
+        .eq('id', ticketId)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating ticket completion percentage:', error);
+      toast.error('Failed to update ticket completion');
+      return null;
+    }
+  },
+  
+  async loadUserData(userId: string): Promise<UserData | null> {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, first_name, last_name, email')
         .eq('id', userId)
         .single();
         
       if (error) throw error;
       
-      // Ensure we have safe values
-      const userData: UserData = {
-        first_name: data.first_name || 'Anonymous',
-        last_name: data.last_name || 'User',
-        company_name: data.company_name || ''
+      return {
+        id: data.id,
+        first_name: data.first_name || '',
+        last_name: data.last_name || '',
+        email: data.email || ''
       };
-      
-      return userData;
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('Error loading user data:', error);
       return null;
     }
+  },
+  
+  async getAllUsers(): Promise<UserData[]> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email');
+        
+      if (error) throw error;
+      
+      return data.map(user => ({
+        id: user.id,
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        email: user.email || ''
+      }));
+    } catch (error) {
+      console.error('Error loading users:', error);
+      return [];
+    }
+  },
+  
+  async logTime(ticketId: string, userId: string, hours: number, description: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('time_entries')
+        .insert({
+          ticket_id: ticketId,
+          user_id: userId,
+          hours_logged: hours,
+          description: description,
+          start_time: new Date().toISOString()
+        });
+        
+      if (error) throw error;
+      
+      toast.success('Time logged successfully');
+      return true;
+    } catch (error) {
+      console.error('Error logging time:', error);
+      toast.error('Failed to log time');
+      return false;
+    }
   }
-}
+};

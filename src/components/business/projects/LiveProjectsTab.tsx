@@ -295,14 +295,14 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     setIsCreateTicketDialogOpen(true);
   };
 
-  const handleTicketCreated = async (ticketData: any): Promise<Ticket | null> => {
+  const handleTicketCreated = async (ticketData: any): Promise<void> => {
     try {
       const ticketToCreate = {
         ...ticketData,
         reporter: businessId,
         created_at: new Date().toISOString(),
-        type: ticketData.type || "task", // Using 'type' instead of 'ticket_type'
-        status: "new",
+        ticket_type: ticketData.ticket_type || "task", // Using ticket_type instead of type
+        status: "todo", // Changed from "new" to match Kanban column ids
         priority: ticketData.priority || "medium",
         health: ticketData.health || "good"
       };
@@ -316,13 +316,13 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       if (error) throw error;
       
       toast.success("Ticket created successfully");
-      setTickets([data, ...tickets]);
+      if (data) {
+        setTickets([data, ...tickets]);
+      }
       setIsCreateTicketDialogOpen(false);
-      return data;
     } catch (error) {
       console.error("Error creating ticket:", error);
       toast.error("Failed to create ticket");
-      return null;
     }
   };
 

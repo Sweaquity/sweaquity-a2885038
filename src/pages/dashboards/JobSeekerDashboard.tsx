@@ -75,7 +75,7 @@ const JobSeekerDashboard = () => {
     const recentOpportunities = availableOpportunities ? 
       availableOpportunities.filter(opp => {
         // Check for updated_at since created_at might not exist
-        const creationDate = opp.updated_at || null;
+        const creationDate = opp.updated_at ? opp.updated_at : null;
         if (!creationDate) return false;
         return new Date(creationDate) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       }).length : 0;

@@ -36,7 +36,8 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
-  const [projectId, setProjectId] = useState("");
+  const [projectId, setProjectId] = useState("no-project");
+  const [ticketType, setTicketType] = useState("task");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,16 +54,17 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
         title,
         description,
         priority,
-        project_id: projectId || null,
+        project_id: projectId === "no-project" ? null : projectId,
         health: "good",
-        type: "task" // Using type instead of ticket_type
+        ticket_type: ticketType // Using ticket_type instead of type
       });
       
       // Reset form
       setTitle("");
       setDescription("");
       setPriority("medium");
-      setProjectId("");
+      setProjectId("no-project");
+      setTicketType("task");
       
     } catch (error) {
       console.error("Error creating ticket:", error);
@@ -105,7 +107,7 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <label htmlFor="priority" className="text-sm font-medium">
                 Priority
@@ -123,6 +125,23 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
             </div>
             
             <div className="space-y-2">
+              <label htmlFor="ticketType" className="text-sm font-medium">
+                Ticket Type
+              </label>
+              <Select value={ticketType} onValueChange={setTicketType}>
+                <SelectTrigger id="ticketType">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="task">Task</SelectItem>
+                  <SelectItem value="bug">Bug</SelectItem>
+                  <SelectItem value="feature">Feature</SelectItem>
+                  <SelectItem value="beta-test">Beta Test</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
               <label htmlFor="project" className="text-sm font-medium">
                 Project
               </label>
@@ -134,7 +153,7 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
                   <SelectItem value="no-project">No project</SelectItem>
                   {projects.map((project) => (
                     <SelectItem key={project.project_id} value={project.project_id}>
-                      {project.project_title || project.title}
+                      {project.project_title || project.title || 'Unnamed Project'}
                     </SelectItem>
                   ))}
                 </SelectContent>

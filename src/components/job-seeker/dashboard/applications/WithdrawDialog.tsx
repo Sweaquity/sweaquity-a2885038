@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -7,57 +7,65 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 export interface WithdrawDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onWithdraw: (reason?: string) => Promise<void>;
-  isLoading?: boolean;
+  isWithdrawing?: boolean;
 }
 
-export const WithdrawDialog = ({ 
-  isOpen, 
-  onOpenChange, 
+export const WithdrawDialog = ({
+  isOpen,
+  onOpenChange,
   onWithdraw,
-  isLoading = false 
+  isWithdrawing = false
 }: WithdrawDialogProps) => {
-  const [reason, setReason] = useState("");
-
-  const handleWithdraw = async () => {
+  const [reason, setReason] = useState('');
+  
+  const handleSubmit = async () => {
     await onWithdraw(reason);
-    setReason("");
   };
-
+  
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Withdraw Application</DialogTitle>
           <DialogDescription>
             Are you sure you want to withdraw your application? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        
+        <div className="py-4">
+          <label className="block text-sm font-medium mb-2">
+            Reason for withdrawing (optional)
+          </label>
           <Textarea
-            placeholder="Optional: Tell us why you're withdrawing this application..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
+            placeholder="Please provide a reason for withdrawing your application"
             rows={4}
           />
         </div>
+        
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isWithdrawing}
+          >
             Cancel
           </Button>
-          <Button 
-            variant="destructive" 
-            onClick={handleWithdraw}
-            disabled={isLoading}
+          <Button
+            variant="destructive"
+            onClick={handleSubmit}
+            disabled={isWithdrawing}
           >
-            {isLoading ? "Withdrawing..." : "Withdraw Application"}
+            {isWithdrawing ? 'Withdrawing...' : 'Withdraw Application'}
           </Button>
         </DialogFooter>
       </DialogContent>

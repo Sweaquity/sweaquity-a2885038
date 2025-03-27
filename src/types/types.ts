@@ -1,4 +1,3 @@
-
 // If this file doesn't exist, we'll create it with the necessary types
 
 export interface Ticket {
@@ -45,8 +44,11 @@ export interface CreateTicketDialogProps {
 
 export interface TaskCompletionReviewProps {
   task: any;
+  businessId?: string;
   onClose: () => void;
-  onTaskAction: (taskId: string, action: string, data: any) => Promise<void>;
+  onTaskAction?: (taskId: string, action: string, data: any) => Promise<void>;
+  open?: boolean;
+  setOpen?: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export interface TicketStatistics {
