@@ -72,15 +72,9 @@ export interface JobApplication {
     id: string;
     date_accepted: string;
   };
-  description?: string;
-  company_name?: string;
-  project_title?: string;
-  task_title?: string;
-  skills_required?: any[];
-  applicant_skills?: any[];
-  discourse?: string;
 }
 
+// Add SkillRequirement for compatibility with existing code
 export interface SkillRequirement {
   skill: string;
   level?: string;
@@ -175,20 +169,13 @@ export interface TimeEntry {
   created_at: string;
 }
 
+// Adding interface for EquityProjectItemProps
 export interface EquityProjectItemProps {
   application: JobApplication;
   onApplicationUpdated: () => void;
 }
 
-export interface PendingApplicationItemProps {
-  application: JobApplication;
-  onAccept?: (application: JobApplication) => Promise<void>;
-  onWithdraw?: (applicationId: string, reason?: string) => Promise<void>;
-  isWithdrawing?: boolean;
-  getMatchedSkills?: () => any;
-  onApplicationUpdated?: () => void;
-}
-
+// Adding new interface for PendingApplicationsListProps
 export interface PendingApplicationsListProps {
   applications: JobApplication[];
   onWithdraw?: (applicationId: string, reason?: string) => Promise<void>;
@@ -196,12 +183,14 @@ export interface PendingApplicationsListProps {
   isWithdrawing?: boolean;
 }
 
+// Adding interface for ApplicationsTabBaseProps
 export interface ApplicationsTabBaseProps {
   applications: JobApplication[];
   onApplicationUpdated: () => void;
   newMessagesCount?: number;
 }
 
+// Adding interface for DashboardTabProps
 export interface DashboardTabProps {
   activeTab: string;
   profile: Profile;

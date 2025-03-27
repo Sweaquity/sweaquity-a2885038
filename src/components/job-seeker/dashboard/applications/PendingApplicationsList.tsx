@@ -1,109 +1,84 @@
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Cross, Check, ExternalLink } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { JobApplication, PendingApplicationsListProps } from '@/types/types';
+import { Card, CardContent } from '@/components/ui/card';
+import { PendingApplicationItem } from './PendingApplicationItem';
+import { JobApplication } from '@/types/jobSeeker';
 
-export const PendingApplicationsList = ({ 
+export interface PendingApplicationsListProps {
+  applications: JobApplication[];
+  onApplicationUpdated?: () => void;
+  onWithdraw?: (applicationId: string, reason?: string) => Promise<void>;
+  onAccept?: (application: JobApplication) => Promise<void>;
+  isWithdrawing?: boolean;
+}
+
+export const PendingApplicationsList = ({
   applications,
+  onApplicationUpdated,
   onWithdraw,
   onAccept,
-  isWithdrawing
+  isWithdrawing = false
 }: PendingApplicationsListProps) => {
-  
-  // Fix the getSkills function to handle both formats safely
-  const getSkills = (application: JobApplication): string[] => {
-    if (!application) return [];
+  // Helper function to count matched skills
+  const getMatchedSkills = (application: JobApplication) => {
+    const projectSkills = application.skills_required || [];
+    const applicantSkills = application.applicant_skills || [];
     
-    // Try to extract skills from different possible structures
-    let skills: string[] = [];
-    
-    if (application.sub_task && application.sub_task.skill_requirements) {
-      if (Array.isArray(application.sub_task.skill_requirements)) {
-        skills = application.sub_task.skill_requirements.map(skill => {
-          if (typeof skill === 'string') return skill;
-          if (typeof skill === 'object' && skill && skill.skill) {
-            return typeof skill.skill === 'string' ? skill.skill : '';
-          }
-          return '';
-        }).filter(Boolean);
-      }
+    if (!projectSkills.length || !applicantSkills.length) {
+      return [];
     }
     
-    return skills;
+    return projectSkills.filter(skill => 
+      applicantSkills.some(applicantSkill => 
+        applicantSkill.toLowerCase() === skill.toLowerCase()
+      )
+    );
   };
   
+  if (applications.length === 0) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center py-6">
+            <h3 className="text-lg font-medium">No Pending Applications</h3>
+            <p className="text-muted-foreground mt-2">
+              You don't have any pending applications at the moment.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Sort applications - those needing acceptance first, then by date
+  const sortedApplications = [...applications].sort((a, b) => {
+    // Applications awaiting job seeker acceptance come first
+    if (a.status === 'accepted' && a.accepted_business && !a.accepted_jobseeker) {
+      return -1;
+    }
+    if (b.status === 'accepted' && b.accepted_business && !b.accepted_jobseeker) {
+      return 1;
+    }
+    
+    // Then sort by date (newest first)
+    const dateA = a.applied_at ? new Date(a.applied_at).getTime() : 0;
+    const dateB = b.applied_at ? new Date(b.applied_at).getTime() : 0;
+    return dateB - dateA;
+  });
+
   return (
     <div className="space-y-4">
-      {applications.map((application) => (
-        <div key={application.id || application.job_app_id} className="border rounded-md p-4">
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="text-lg font-semibold">{application.project_title || "Untitled Project"}</h3>
-              <p className="text-sm text-muted-foreground">
-                Task: {application.task_title || "Untitled Task"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Applied on: {new Date(application.applied_at || application.created_at || Date.now()).toLocaleDateString()}
-              </p>
-              <div className="mt-2">
-                {application.status === 'pending' && (
-                  <Badge variant="secondary">Pending</Badge>
-                )}
-                {application.status === 'accepted' && (
-                  <Badge variant="success">Accepted</Badge>
-                )}
-                {application.status === 'rejected' && (
-                  <Badge variant="destructive">Rejected</Badge>
-                )}
-              </div>
-            </div>
-            <div className="flex gap-2">
-              {application.status === 'pending' && onWithdraw && (
-                <Button variant="outline" size="sm" onClick={() => onWithdraw(application.id || application.job_app_id || '')}>
-                  Withdraw
-                </Button>
-              )}
-              {application.status === 'accepted' && application.accepted_business && !application.accepted_jobseeker && onAccept && (
-                <>
-                  <Button variant="outline" size="sm" onClick={() => onAccept(application)}>
-                    <Check className="h-4 w-4 mr-1" />
-                    Accept
-                  </Button>
-                  <Button variant="destructive" size="sm" onClick={() => onWithdraw && onWithdraw(application.id || application.job_app_id || '', 'rejected_jobseeker')}>
-                    <Cross className="h-4 w-4 mr-1" />
-                    Reject
-                  </Button>
-                </>
-              )}
-              {application.project_id && (
-                <Button variant="outline" size="sm" asChild>
-                  <a href={`/projects/${application.project_id}`} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4 mr-1" />
-                    View Project
-                  </a>
-                </Button>
-              )}
-            </div>
-          </div>
-          <div className="mt-4">
-            <h4 className="text-sm font-medium">Skills Required</h4>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {getSkills(application).map((skill, index) => (
-                <Badge key={index} variant="secondary" className="text-xs">
-                  {skill}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </div>
+      {sortedApplications.map(application => (
+        <PendingApplicationItem
+          key={application.job_app_id || application.id || `app-${Math.random()}`}
+          application={application}
+          onAccept={onAccept}
+          onWithdraw={onWithdraw}
+          isWithdrawing={isWithdrawing}
+          getMatchedSkills={() => getMatchedSkills(application)}
+          onApplicationUpdated={onApplicationUpdated}
+        />
       ))}
-      {applications.length === 0 && (
-        <div className="text-center py-4">
-          <p className="text-muted-foreground">No pending applications.</p>
-        </div>
-      )}
     </div>
   );
 };

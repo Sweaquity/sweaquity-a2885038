@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { EquityProject, Skill, SubTask } from "@/types/jobSeeker";
-import ProjectCard from "./opportunities/ProjectCard";
+import { ProjectCard } from "./opportunities/ProjectCard";
 import { FilterSection } from "./opportunities/FilterSection";
 import { EmptyState } from "./opportunities/EmptyState";
 import { toast } from "sonner";

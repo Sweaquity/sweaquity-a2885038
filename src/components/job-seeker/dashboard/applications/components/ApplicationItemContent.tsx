@@ -9,11 +9,10 @@ interface ApplicationItemContentProps {
   message?: string;
   discourse?: string;
   appliedAt?: string;
+  onViewDetails?: () => void;
   onSendMessage?: () => void;
   onWithdrawClick?: () => void;
   onViewProject?: () => void;
-  onViewDetails?: () => void;
-  onMessageClick?: () => void; // Added this property to fix the build error
 }
 
 export const ApplicationItemContent = ({
@@ -24,8 +23,7 @@ export const ApplicationItemContent = ({
   onViewDetails,
   onSendMessage,
   onWithdrawClick,
-  onViewProject,
-  onMessageClick
+  onViewProject
 }: ApplicationItemContentProps) => {
   return (
     <div className="space-y-4">
@@ -40,12 +38,6 @@ export const ApplicationItemContent = ({
         {onWithdrawClick && (
           <Button variant="destructive" size="sm" onClick={onWithdrawClick}>
             Withdraw
-          </Button>
-        )}
-        {onMessageClick && (
-          <Button variant="outline" size="sm" onClick={onMessageClick}>
-            <Mail className="h-4 w-4 mr-1" />
-            Send Message
           </Button>
         )}
         {onSendMessage && (
