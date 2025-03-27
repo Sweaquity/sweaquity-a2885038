@@ -86,7 +86,13 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       
       let query = supabase
         .from('tickets')
-        .select('*')
+        .select(`
+          *,
+          accepted_jobs:job_app_id(
+            equity_agreed,
+            jobs_equity_allocated
+          )
+        `)
         .or(`assigned_to.eq.${userId},reporter.eq.${userId}`);
       
       // Filter by project if one is selected and it's not "all"
@@ -98,10 +104,24 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       
       if (error) throw error;
       
-      const processedTickets = (data || []).map(ticket => ({
+      // Filter out completed tickets (where equity has been fully allocated)
+      const filteredTickets = (data || []).filter(ticket => {
+        // Skip tickets where equity is 100% allocated
+        if (ticket.accepted_jobs && 
+            ticket.accepted_jobs.equity_agreed > 0 && 
+            ticket.accepted_jobs.jobs_equity_allocated >= ticket.accepted_jobs.equity_agreed) {
+          return false;
+        }
+        return true;
+      });
+      
+      const processedTickets = filteredTickets.map(ticket => ({
         ...ticket,
         type: ticket.ticket_type || "task", // Map ticket_type to type for compatibility
-        description: ticket.description || "" // Ensure description exists
+        description: ticket.description || "", // Ensure description exists
+        // Add equity information to the ticket
+        equity_agreed: ticket.accepted_jobs?.equity_agreed || 0,
+        equity_allocated: ticket.accepted_jobs?.jobs_equity_allocated || 0
       }));
       
       setTickets(processedTickets);
@@ -258,24 +278,26 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     setIsCreateTicketDialogOpen(true);
   };
 
-  const handleTicketCreated = async (ticketData: any) => {
+  const handleTicketCreated = async (ticketData: any): Promise<Ticket | null> => {
     try {
       if (!userId) {
         toast.error("User ID not found");
-        return;
+        return null;
       }
+      
+      const ticketToCreate = {
+        ...ticketData,
+        reporter: userId,
+        created_at: new Date().toISOString(),
+        type: ticketData.type || "task", // Using 'type' instead of 'ticket_type'
+        status: "new",
+        priority: ticketData.priority || "medium",
+        health: ticketData.health || "good"
+      };
       
       const { data, error } = await supabase
         .from('tickets')
-        .insert({
-          ...ticketData,
-          reporter: userId,
-          created_at: new Date().toISOString(),
-          ticket_type: "task",
-          status: "new",
-          priority: ticketData.priority || "medium",
-          health: ticketData.health || "good"
-        })
+        .insert(ticketToCreate)
         .select()
         .single();
       
@@ -284,20 +306,22 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       toast.success("Ticket created successfully");
       setTickets([data, ...tickets]);
       setIsCreateTicketDialogOpen(false);
+      return data;
     } catch (error) {
       console.error("Error creating ticket:", error);
       toast.error("Failed to create ticket");
+      return null;
     }
   };
 
   const getActiveTickets = () => {
     switch (activeTab) {
       case "project-tasks":
-        return tickets.filter(t => t.task_id);
+        return tickets.filter(t => t.type === "task");
       case "project-tickets":
-        return tickets.filter(t => t.project_id && !t.task_id);
+        return tickets.filter(t => t.type === "ticket");
       case "beta-testing":
-        return tickets.filter(t => t.ticket_type === "beta-test");
+        return tickets.filter(t => t.type === "beta-test");
       default:
         return tickets;
     }
@@ -373,28 +397,28 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <Card>
+        <Card className="bg-blue-50">
           <CardContent className="p-4 text-center">
-            <div className="text-sm font-medium text-muted-foreground">All Tickets</div>
-            <div className="text-2xl font-bold mt-1">{taskStats.total}</div>
+            <div className="text-sm font-medium text-blue-700">All Tickets</div>
+            <div className="text-2xl font-bold mt-1 text-blue-800">{taskStats.total}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-yellow-50">
           <CardContent className="p-4 text-center">
-            <div className="text-sm font-medium text-muted-foreground">Open Tasks</div>
-            <div className="text-2xl font-bold mt-1">{taskStats.open}</div>
+            <div className="text-sm font-medium text-yellow-700">Open Tasks</div>
+            <div className="text-2xl font-bold mt-1 text-yellow-800">{taskStats.open}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-green-50">
           <CardContent className="p-4 text-center">
-            <div className="text-sm font-medium text-muted-foreground">Closed Tasks</div>
-            <div className="text-2xl font-bold mt-1">{taskStats.closed}</div>
+            <div className="text-sm font-medium text-green-700">Closed Tasks</div>
+            <div className="text-2xl font-bold mt-1 text-green-800">{taskStats.closed}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-red-50">
           <CardContent className="p-4 text-center">
-            <div className="text-sm font-medium text-muted-foreground">High Priority</div>
-            <div className="text-2xl font-bold mt-1">{taskStats.highPriority}</div>
+            <div className="text-sm font-medium text-red-700">High Priority</div>
+            <div className="text-2xl font-bold mt-1 text-red-800">{taskStats.highPriority}</div>
           </CardContent>
         </Card>
       </div>
@@ -442,7 +466,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       </Tabs>
 
       <CreateTicketDialog
-        isOpen={isCreateTicketDialogOpen}
+        open={isCreateTicketDialogOpen}
         onClose={() => setIsCreateTicketDialogOpen(false)}
         onCreateTicket={handleTicketCreated}
         projects={projects}

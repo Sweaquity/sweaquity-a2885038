@@ -45,8 +45,10 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
   useEffect(() => {
     // Count new opportunities based on recent creation date
     const recentOpportunities = projects.filter(opp => {
-      const creationDate = opp.created_by ? null : null; // This field doesn't exist, using created_by as fallback
+      const creationDate = opp.created_at || opp.start_date || null;
       if (!creationDate) return false;
+      
+      // Consider opportunities created in the last 7 days as "new"
       return new Date(creationDate) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     }).length;
     
@@ -98,6 +100,19 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
   const clearFilters = () => {
     setSearchTerm("");
     setFilterSkill(null);
+  };
+
+  const formatTimeSince = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays < 1) return "Today";
+    if (diffInDays === 1) return "Yesterday";
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
+    if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} months ago`;
+    return `${Math.floor(diffInDays / 365)} years ago`;
   };
 
   return (

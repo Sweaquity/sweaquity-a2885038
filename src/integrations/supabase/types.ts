@@ -18,6 +18,7 @@ export type Database = {
           equity_agreed: number | null
           id: string
           job_app_id: string
+          jobs_equity_allocated: number | null
           updated_at: string | null
         }
         Insert: {
@@ -28,6 +29,7 @@ export type Database = {
           equity_agreed?: number | null
           id?: string
           job_app_id: string
+          jobs_equity_allocated?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -38,6 +40,7 @@ export type Database = {
           equity_agreed?: number | null
           id?: string
           job_app_id?: string
+          jobs_equity_allocated?: number | null
           updated_at?: string | null
         }
         Relationships: [

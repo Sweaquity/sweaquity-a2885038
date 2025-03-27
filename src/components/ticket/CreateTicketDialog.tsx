@@ -3,10 +3,10 @@ import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogClose
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,31 +18,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { CalendarIcon } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-
-interface CreateTicketDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onCreateTicket: (ticketData: any) => Promise<void>;
-  projects: any[];
-}
+import { CreateTicketDialogProps } from "@/types/types";
 
 export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
-  isOpen,
+  open,
   onClose,
   onCreateTicket,
-  projects,
+  projects
 }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
-  const [projectId, setProjectId] = useState<string>("");
-  const [date, setDate] = useState<Date | undefined>(undefined);
+  const [projectId, setProjectId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,15 +39,16 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
       return;
     }
     
-    setIsSubmitting(true);
-    
     try {
+      setIsSubmitting(true);
+      
       await onCreateTicket({
         title,
         description,
         priority,
         project_id: projectId || null,
-        due_date: date ? date.toISOString().split("T")[0] : null,
+        health: "good",
+        type: "task" // Using type instead of ticket_type
       });
       
       // Reset form
@@ -68,28 +56,26 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
       setDescription("");
       setPriority("medium");
       setProjectId("");
-      setDate(undefined);
       
     } catch (error) {
-      console.error("Error in form submission:", error);
+      console.error("Error creating ticket:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Create New Ticket</DialogTitle>
-          <DialogDescription>
-            Add a new ticket to track your work. Fill out the details below.
-          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
+            <label htmlFor="title" className="text-sm font-medium">
+              Title *
+            </label>
             <Input
               id="title"
               value={title}
@@ -100,19 +86,23 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <label htmlFor="description" className="text-sm font-medium">
+              Description
+            </label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the ticket"
-              rows={3}
+              placeholder="Provide additional details"
+              rows={4}
             />
           </div>
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="priority">Priority</Label>
+              <label htmlFor="priority" className="text-sm font-medium">
+                Priority
+              </label>
               <Select value={priority} onValueChange={setPriority}>
                 <SelectTrigger id="priority">
                   <SelectValue placeholder="Select priority" />
@@ -126,15 +116,18 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="project">Project</Label>
+              <label htmlFor="project" className="text-sm font-medium">
+                Project
+              </label>
               <Select value={projectId} onValueChange={setProjectId}>
                 <SelectTrigger id="project">
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="">No project</SelectItem>
                   {projects.map((project) => (
                     <SelectItem key={project.project_id} value={project.project_id}>
-                      {project.project_title}
+                      {project.project_title || project.title}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -142,36 +135,13 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
             </div>
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="due-date">Due Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : "Select due date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-          
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-              Cancel
-            </Button>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                Cancel
+              </Button>
+            </DialogClose>
+            
             <Button type="submit" disabled={isSubmitting || !title.trim()}>
               {isSubmitting ? "Creating..." : "Create Ticket"}
             </Button>

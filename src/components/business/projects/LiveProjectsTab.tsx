@@ -1,11 +1,7 @@
-
-import { useState, useEffect } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import React, { useState, useEffect } from "react";
+import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TaskCompletionReview } from "@/components/business/projects/TaskCompletionReview";
-import { TicketDashboard } from "@/components/ticket/TicketDashboard";
-import { toast } from "sonner";
-import { Ticket } from "@/types/types";
 import { 
   Select,
   SelectContent,
@@ -13,12 +9,16 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Plus, RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
-import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
+import { Input } from "@/components/ui/input";
+import { TicketDashboard } from "@/components/ticket/TicketDashboard";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
+import { Ticket } from "@/types/types";
+import { RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
+import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
 import { DragDropContext } from "react-beautiful-dnd";
+import { TaskCompletionReview } from "./TaskCompletionReview";
 
 interface LiveProjectsTabProps {
   businessId: string;
@@ -36,37 +36,41 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     closed: 0,
     highPriority: 0
   });
-  const [reviewTicket, setReviewTicket] = useState<any>(null);
-  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   const [isCreateTicketDialogOpen, setIsCreateTicketDialogOpen] = useState(false);
   const [showKanban, setShowKanban] = useState(false);
   const [showGantt, setShowGantt] = useState(false);
+  const [reviewTask, setReviewTask] = useState<any>(null);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
 
   useEffect(() => {
     if (businessId) {
-      fetchProjects(businessId);
+      fetchProjects();
+      loadTickets();
     }
   }, [businessId]);
   
   useEffect(() => {
-    if (businessId && selectedProject) {
-      loadTickets(businessId);
+    if (businessId) {
+      loadTickets();
     }
   }, [businessId, selectedProject]);
 
-  const fetchProjects = async (userId: string) => {
+  const fetchProjects = async () => {
+    if (!businessId) return;
+    
     try {
-      const { data, error } = await supabase
+      const { data: projectsData, error } = await supabase
         .from('business_projects')
-        .select('project_id, title')
-        .eq('business_id', userId);
+        .select('*')
+        .eq('business_id', businessId)
+        .order('created_at', { ascending: false });
       
       if (error) throw error;
       
-      setProjects(data || []);
+      setProjects(projectsData || []);
       
-      if (data && data.length > 0 && !selectedProject) {
-        setSelectedProject(data[0].project_id);
+      if (projectsData && projectsData.length > 0 && selectedProject === "all") {
+        // Keep "all" as the selected project
       }
     } catch (error) {
       console.error("Error fetching projects:", error);
@@ -74,30 +78,60 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     }
   };
 
-  const loadTickets = async (userId: string) => {
+  const loadTickets = async () => {
+    if (!businessId) return;
+    
     try {
       setLoading(true);
       
       let query = supabase
         .from('tickets')
-        .select('*')
-        .or(`reporter.eq.${userId},assigned_to.eq.${userId}`);
+        .select(`
+          *,
+          accepted_jobs:job_app_id(
+            equity_agreed,
+            jobs_equity_allocated
+          )
+        `);
       
       // Filter by project if one is selected and it's not "all"
       if (selectedProject && selectedProject !== "all") {
         query = query.eq('project_id', selectedProject);
+      } else {
+        // If "all" is selected, get tickets from all projects owned by this business
+        const { data: businessProjects } = await supabase
+          .from('business_projects')
+          .select('project_id')
+          .eq('business_id', businessId);
+          
+        if (businessProjects && businessProjects.length > 0) {
+          const projectIds = businessProjects.map(p => p.project_id);
+          query = query.in('project_id', projectIds);
+        }
       }
       
-      query = query.order('created_at', { ascending: false });
-      
-      const { data, error } = await query;
+      const { data, error } = await query.order('created_at', { ascending: false });
       
       if (error) throw error;
       
-      const processedTickets = (data || []).map(ticket => ({
+      // Filter out completed tickets (where equity has been fully allocated)
+      const filteredTickets = (data || []).filter(ticket => {
+        // Skip tickets where equity is 100% allocated
+        if (ticket.accepted_jobs && 
+            ticket.accepted_jobs.equity_agreed > 0 && 
+            ticket.accepted_jobs.jobs_equity_allocated >= ticket.accepted_jobs.equity_agreed) {
+          return false;
+        }
+        return true;
+      });
+      
+      const processedTickets = filteredTickets.map(ticket => ({
         ...ticket,
         type: ticket.ticket_type || "task", // Map ticket_type to type for compatibility
-        description: ticket.description || ""  // Ensure description exists
+        description: ticket.description || "", // Ensure description exists
+        // Add equity information to the ticket
+        equity_agreed: ticket.accepted_jobs?.equity_agreed || 0,
+        equity_allocated: ticket.accepted_jobs?.jobs_equity_allocated || 0
       }));
       
       setTickets(processedTickets);
@@ -136,23 +170,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
             prevTickets.map(t => t.id === ticketId ? { ...t, status: data } : t)
           );
           
-          // Check if ticket has a task_id, if so update related tables
-          const ticket = tickets.find(t => t.id === ticketId);
-          if (ticket?.task_id) {
-            try {
-              const { error: rpcError } = await supabase.rpc('update_active_project', {
-                p_task_id: ticket.task_id,
-                p_status: data
-              });
-              
-              if (rpcError) {
-                console.error("Error in RPC call:", rpcError);
-              }
-            } catch (e) {
-              console.error("Error updating related tables:", e);
-            }
-          }
-          
           toast.success("Status updated");
           break;
         }
@@ -185,57 +202,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
             prevTickets.map(t => t.id === ticketId ? { ...t, due_date: data } : t)
           );
           
-          // Update active project if this is a task
-          const ticket = tickets.find(t => t.id === ticketId);
-          if (ticket?.task_id) {
-            try {
-              const { error: rpcError } = await supabase.rpc('update_active_project', {
-                p_task_id: ticket.task_id,
-                p_due_date: data
-              });
-              
-              if (rpcError) {
-                console.error("Error in RPC call:", rpcError);
-              }
-            } catch (e) {
-              console.error("Error updating related tables:", e);
-            }
-          }
-          
           toast.success("Due date updated");
-          break;
-        }
-        
-        case 'updateEstimatedHours': {
-          const { error } = await supabase
-            .from('tickets')
-            .update({ estimated_hours: data })
-            .eq('id', ticketId);
-          
-          if (error) throw error;
-          
-          setTickets(prevTickets => 
-            prevTickets.map(t => t.id === ticketId ? { ...t, estimated_hours: data } : t)
-          );
-          
-          // Update active project if this is a task
-          const ticket = tickets.find(t => t.id === ticketId);
-          if (ticket?.task_id) {
-            try {
-              const { error: rpcError } = await supabase.rpc('update_active_project', {
-                p_task_id: ticket.task_id,
-                p_estimated_hours: data
-              });
-              
-              if (rpcError) {
-                console.error("Error in RPC call:", rpcError);
-              }
-            } catch (e) {
-              console.error("Error updating related tables:", e);
-            }
-          }
-          
-          toast.success("Estimated hours updated");
           break;
         }
         
@@ -251,28 +218,21 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
             prevTickets.map(t => t.id === ticketId ? { ...t, completion_percentage: data } : t)
           );
           
-          // Update active project if this is a task
-          const ticket = tickets.find(t => t.id === ticketId);
-          if (ticket?.task_id) {
-            try {
-              const { error: rpcError } = await supabase.rpc('update_active_project', {
-                p_task_id: ticket.task_id,
-                p_completion_percentage: data
-              });
-              
-              if (rpcError) {
-                console.error("Error in RPC call:", rpcError);
-              }
-            } catch (e) {
-              console.error("Error updating related tables:", e);
-            }
-          }
-          
           toast.success("Completion percentage updated");
           break;
         }
         
-        case 'addNote':
+        case 'reviewCompletion': {
+          // Find the ticket to review
+          const ticket = tickets.find(t => t.id === ticketId);
+          if (ticket) {
+            setReviewTask(ticket);
+            setIsReviewOpen(true);
+          }
+          break;
+        }
+        
+        case 'addNote': {
           const { data: ticketData } = await supabase
             .from('tickets')
             .select('notes')
@@ -280,14 +240,12 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
             .single();
           
           const { data: profileData } = await supabase
-            .from('profiles')
-            .select('first_name, last_name')
-            .eq('id', businessId)
+            .from('businesses')
+            .select('company_name')
+            .eq('businesses_id', businessId)
             .single();
           
-          const userName = profileData ? 
-            `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() : 
-            'User';
+          const userName = profileData ? profileData.company_name : 'Business';
           
           const newNote = {
             id: Date.now().toString(),
@@ -310,6 +268,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           
           toast.success("Note added");
           break;
+        }
         
         default:
           console.warn("Unknown action:", action);
@@ -320,14 +279,12 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     }
   };
 
-  const handleLogTime = (ticketId: string) => {
-    toast.info("Time logging functionality coming soon");
+  const handleLogTime = async (ticketId: string) => {
+    toast.info("Only job seekers can log time on tickets");
   };
 
   const handleRefresh = () => {
-    if (businessId) {
-      loadTickets(businessId);
-    }
+    loadTickets();
   };
 
   const handleProjectChange = (projectId: string) => {
@@ -337,25 +294,22 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   const handleCreateTicket = () => {
     setIsCreateTicketDialogOpen(true);
   };
-  
-  const handleTicketCreated = async (ticketData: any) => {
+
+  const handleTicketCreated = async (ticketData: any): Promise<Ticket | null> => {
     try {
-      if (!businessId) {
-        toast.error("Business ID not found");
-        return;
-      }
+      const ticketToCreate = {
+        ...ticketData,
+        reporter: businessId,
+        created_at: new Date().toISOString(),
+        type: ticketData.type || "task", // Using 'type' instead of 'ticket_type'
+        status: "new",
+        priority: ticketData.priority || "medium",
+        health: ticketData.health || "good"
+      };
       
       const { data, error } = await supabase
         .from('tickets')
-        .insert({
-          ...ticketData,
-          reporter: businessId,
-          created_at: new Date().toISOString(),
-          ticket_type: "task",
-          status: "new",
-          priority: ticketData.priority || "medium",
-          health: ticketData.health || "good"
-        })
+        .insert(ticketToCreate)
         .select()
         .single();
       
@@ -364,20 +318,22 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       toast.success("Ticket created successfully");
       setTickets([data, ...tickets]);
       setIsCreateTicketDialogOpen(false);
+      return data;
     } catch (error) {
       console.error("Error creating ticket:", error);
       toast.error("Failed to create ticket");
+      return null;
     }
   };
 
   const getActiveTickets = () => {
     switch (activeTab) {
       case "project-tasks":
-        return tickets.filter(t => t.task_id);
+        return tickets.filter(t => t.type === "task");
       case "project-tickets":
-        return tickets.filter(t => t.project_id && !t.task_id);
+        return tickets.filter(t => t.type === "ticket");
       case "beta-testing":
-        return tickets.filter(t => t.ticket_type === "beta-test");
+        return tickets.filter(t => t.type === "beta-test");
       default:
         return tickets;
     }
@@ -397,44 +353,35 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     }
   };
 
-  const renderTicketActions = (ticket: Ticket) => {
-    // For tickets in "review" status with 100% completion, show review buttons
-    if (ticket.status === 'review' && ticket.completion_percentage === 100) {
-      return (
-        <Button 
-          size="sm" 
-          variant="outline" 
-          onClick={() => {
-            setReviewTicket(ticket);
-            setIsReviewDialogOpen(true);
-          }}
-        >
-          Review Task
-        </Button>
-      );
-    }
-    return null;
-  };
-
   const handleReviewClose = () => {
-    setIsReviewDialogOpen(false);
-    setReviewTicket(null);
-    handleRefresh();
+    setIsReviewOpen(false);
+    setReviewTask(null);
+    // Reload tickets to reflect changes
+    loadTickets();
   };
 
-  if (!businessId) {
-    return <div>Loading...</div>;
-  }
+  const renderTicketActions = (ticket: Ticket) => {
+    // Only show review action for business users
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => handleTicketAction(ticket.id, 'reviewCompletion', null)}
+      >
+        Review
+      </Button>
+    );
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
         <h2 className="text-2xl font-bold">Project Management</h2>
-        <p className="text-muted-foreground">View and manage your project tasks</p>
+        <p className="text-muted-foreground">View and manage all your active projects</p>
       </div>
 
       <div className="flex items-center justify-between mb-4">
-        <Select value={selectedProject || "all"} onValueChange={handleProjectChange}>
+        <Select value={selectedProject} onValueChange={handleProjectChange}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Select project" />
           </SelectTrigger>
@@ -476,34 +423,34 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           </Button>
           
           <Button size="sm" onClick={handleCreateTicket}>
-            <Plus className="h-4 w-4 mr-1" /> Create Ticket
+            Create Ticket
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <Card>
+        <Card className="bg-blue-50">
           <CardContent className="p-4 text-center">
-            <div className="text-sm font-medium text-muted-foreground">All Tickets</div>
-            <div className="text-2xl font-bold mt-1">{taskStats.total}</div>
+            <div className="text-sm font-medium text-blue-700">All Tickets</div>
+            <div className="text-2xl font-bold mt-1 text-blue-800">{taskStats.total}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-yellow-50">
           <CardContent className="p-4 text-center">
-            <div className="text-sm font-medium text-muted-foreground">Open Tasks</div>
-            <div className="text-2xl font-bold mt-1">{taskStats.open}</div>
+            <div className="text-sm font-medium text-yellow-700">Open Tasks</div>
+            <div className="text-2xl font-bold mt-1 text-yellow-800">{taskStats.open}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-green-50">
           <CardContent className="p-4 text-center">
-            <div className="text-sm font-medium text-muted-foreground">Closed Tasks</div>
-            <div className="text-2xl font-bold mt-1">{taskStats.closed}</div>
+            <div className="text-sm font-medium text-green-700">Closed Tasks</div>
+            <div className="text-2xl font-bold mt-1 text-green-800">{taskStats.closed}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-red-50">
           <CardContent className="p-4 text-center">
-            <div className="text-sm font-medium text-muted-foreground">High Priority</div>
-            <div className="text-2xl font-bold mt-1">{taskStats.highPriority}</div>
+            <div className="text-sm font-medium text-red-700">High Priority</div>
+            <div className="text-2xl font-bold mt-1 text-red-800">{taskStats.highPriority}</div>
           </CardContent>
         </Card>
       </div>
@@ -526,13 +473,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
                     handleTicketAction(ticketId, 'updateStatus', newStatus)
                   }
                   onTicketClick={(ticket) => {
-                    // For "review" status tickets with 100% completion, open the review dialog
-                    if (ticket.status === 'review' && ticket.completion_percentage === 100) {
-                      setReviewTicket(ticket);
-                      setIsReviewDialogOpen(true);
-                    } else {
-                      console.log("Ticket clicked:", ticket.id);
-                    }
+                    console.log("Ticket clicked:", ticket.id);
                   }}
                 />
               </DragDropContext>
@@ -548,8 +489,8 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
               initialTickets={getActiveTickets()}
               onRefresh={handleRefresh}
               onTicketAction={handleTicketAction}
-              showTimeTracking={true}
-              userId={businessId}
+              showTimeTracking={false}
+              userId={businessId || ''}
               onLogTime={handleLogTime}
               renderTicketActions={renderTicketActions}
             />
@@ -557,23 +498,21 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         </TabsContent>
       </Tabs>
 
-      {/* Task Completion Review Dialog */}
-      {reviewTicket && (
-        <TaskCompletionReview 
-          businessId={businessId}
-          task={reviewTicket}
-          open={isReviewDialogOpen} 
-          setOpen={setIsReviewDialogOpen}
-          onClose={handleReviewClose}
-        />
-      )}
-
       <CreateTicketDialog
-        isOpen={isCreateTicketDialogOpen}
+        open={isCreateTicketDialogOpen}
         onClose={() => setIsCreateTicketDialogOpen(false)}
         onCreateTicket={handleTicketCreated}
         projects={projects}
       />
+
+      {reviewTask && (
+        <TaskCompletionReview
+          task={reviewTask}
+          open={isReviewOpen}
+          setOpen={setIsReviewOpen}
+          onClose={handleReviewClose}
+        />
+      )}
     </div>
   );
 };

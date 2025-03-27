@@ -107,3 +107,42 @@ export interface UserData {
   company_name?: string;
   [key: string]: any; // Allow for additional properties
 }
+
+export interface TicketDashboardProps {
+  initialTickets: Ticket[];
+  onRefresh: () => void;
+  onTicketAction: (ticketId: string, action: string, data: any) => Promise<void>;
+  showTimeTracking?: boolean;
+  userId: string;
+  onLogTime?: (ticketId: string) => void;
+  renderTicketActions?: (ticket: Ticket) => React.ReactNode;
+}
+
+export interface CreateTicketDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onCreateTicket: (ticketData: any) => Promise<void>;
+  projects: any[];
+}
+
+export interface TaskCompletionReviewProps {
+  task: any;
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  onClose: () => void;
+}
+
+export interface TimeLogDialogProps {
+  ticket: Ticket;
+  userId: string;
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export interface TicketDetailsProps {
+  ticket: Ticket;
+  onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
+  onClose?: () => void;
+  userCanEditStatus?: boolean;
+  userCanEditDates?: boolean;
+}

@@ -1,25 +1,40 @@
-
 export interface Ticket {
   id: string;
   title: string;
-  description?: string;
+  description: string; // Required field
   status: string;
   priority: string;
-  health?: string;
+  reporter?: string;
+  assigned_to?: string;
   created_at?: string;
   updated_at?: string;
-  reporter?: string;
-  project_id?: string;
-  job_app_id?: string;
   due_date?: string;
-  assigned_to?: string;
+  notes?: Array<{
+    id: string;
+    user: string;
+    timestamp: string;
+    content?: string;
+    action?: string;
+    comment?: string;
+  }>;
+  expanded?: boolean;
+  newNote?: string;
+  system_info?: string;
+  reproduction_steps?: string;
+  health?: string;
+  replies?: any[];
+  project_id?: string;
+  task_id?: string;
+  job_app_id?: string;
+  equity_points?: number;
+  isTaskTicket?: boolean;
+  isProjectTicket?: boolean;
   completion_percentage?: number;
   estimated_hours?: number;
   hours_logged?: number;
-  notes?: any[];
-  task_id?: string;
+  type?: string; // Added type property
+  // Legacy property to ensure backward compatibility:
   ticket_type?: string;
-  type?: string;
 }
 
 export interface TicketMessage {
