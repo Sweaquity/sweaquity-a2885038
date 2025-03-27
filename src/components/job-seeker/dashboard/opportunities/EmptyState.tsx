@@ -1,28 +1,31 @@
 
-import { Briefcase } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import React from "react";
+import { AlertCircle } from "lucide-react";
 
 interface EmptyStateProps {
-  hasFilters: boolean;
-  onClearFilters: () => void;
+  searchTerm?: string;
 }
 
-export const EmptyState = ({ hasFilters, onClearFilters }: EmptyStateProps) => {
+export const EmptyState = ({ searchTerm }: EmptyStateProps) => {
   return (
-    <Card>
-      <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-        <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-xl font-semibold mb-2">No Matching Opportunities</h3>
-        <p className="text-muted-foreground mb-4">
-          We couldn't find any opportunities matching your criteria. Try adjusting your search or check back later.
-        </p>
-        {hasFilters ? (
-          <Button variant="outline" onClick={onClearFilters}>
-            Clear Filters
-          </Button>
-        ) : null}
-      </CardContent>
-    </Card>
+    <div className="flex flex-col items-center justify-center p-8 bg-muted/20 rounded-lg text-center">
+      <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+      
+      {searchTerm ? (
+        <>
+          <h3 className="text-lg font-medium">No results found</h3>
+          <p className="text-muted-foreground mt-2">
+            No matches found for "{searchTerm}". Try adjusting your search terms.
+          </p>
+        </>
+      ) : (
+        <>
+          <h3 className="text-lg font-medium">No opportunities available</h3>
+          <p className="text-muted-foreground mt-2">
+            There are currently no opportunities matching your criteria.
+          </p>
+        </>
+      )}
+    </div>
   );
 };

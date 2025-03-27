@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/lib/supabase";
-import { matchSkillsWithProjects } from "@/utils/skillMatching";
+import { calculateSkillMatch, rankProjectsByRelevance } from "@/utils/skillMatching";
 import { EquityProject, Skill } from "@/types/jobSeeker";
 import { FilterSection } from "./opportunities/FilterSection";
 import { ProjectCard } from "./opportunities/ProjectCard";
@@ -38,6 +38,8 @@ export interface Task {
   timeframe: string;
   skill_match?: number;
   company_name?: string;
+  task_status?: string;
+  completion_percentage?: number;
 }
 
 interface OpportunitiesTabProps {
@@ -53,6 +55,7 @@ export const OpportunitiesTab = ({ projects = [], userSkills = [] }: Opportuniti
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState("projects");
+  const [allSkills, setAllSkills] = useState<string[]>([]);
   const [filters, setFilters] = useState({
     equity: { min: 0, max: 100 },
     timeframe: "all",
@@ -96,6 +99,8 @@ export const OpportunitiesTab = ({ projects = [], userSkills = [] }: Opportuniti
             timeframe,
             status,
             equity_allocation,
+            task_status,
+            completion_percentage,
             business_projects (
               businesses (
                 company_name
@@ -130,13 +135,56 @@ export const OpportunitiesTab = ({ projects = [], userSkills = [] }: Opportuniti
           equity_allocation: task.equity_allocation,
           timeframe: task.timeframe,
           status: task.status,
+          task_status: task.task_status,
+          completion_percentage: task.completion_percentage,
           company_name: task.business_projects?.businesses?.company_name
         }));
 
         // Apply skill matching
-        const projectsWithMatches = matchSkillsWithProjects(formattedProjects, userSkills);
-        const tasksWithMatches = matchSkillsWithProjects(formattedTasks, userSkills);
+        const projectsWithMatches = formattedProjects.map(project => {
+          const skillMatch = calculateSkillMatch(userSkills, project.skills_required || []);
+          return {
+            ...project,
+            skill_match: skillMatch
+          };
+        });
 
+        const tasksWithMatches = formattedTasks.map(task => {
+          const skillMatch = calculateSkillMatch(userSkills, task.skill_requirements || []);
+          return {
+            ...task,
+            skill_match: skillMatch
+          };
+        });
+
+        // Collect all unique skills for filtering
+        const uniqueSkills = new Set<string>();
+        
+        projectsData.forEach(project => {
+          if (Array.isArray(project.skills_required)) {
+            project.skills_required.forEach(skill => {
+              if (typeof skill === 'string') {
+                uniqueSkills.add(skill);
+              } else if (skill && typeof skill === 'object' && 'skill' in skill) {
+                uniqueSkills.add(skill.skill);
+              }
+            });
+          }
+        });
+        
+        tasksData.forEach(task => {
+          if (Array.isArray(task.skill_requirements)) {
+            task.skill_requirements.forEach(skill => {
+              if (typeof skill === 'string') {
+                uniqueSkills.add(skill);
+              } else if (skill && typeof skill === 'object' && 'skill' in skill) {
+                uniqueSkills.add(skill.skill);
+              }
+            });
+          }
+        });
+
+        setAllSkills(Array.from(uniqueSkills));
         setAllProjects(projectsWithMatches);
         setAllTasks(tasksWithMatches);
         setFilteredProjects(projectsWithMatches);
@@ -238,7 +286,14 @@ export const OpportunitiesTab = ({ projects = [], userSkills = [] }: Opportuniti
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-6">
         <div>
-          <FilterSection filters={filters} onFilterChange={handleFilterChange} />
+          <FilterSection
+            allSkills={allSkills}
+            searchTerm={searchTerm}
+            filterSkill={null}
+            onSearchChange={setSearchTerm}
+            onFilterSkillChange={() => {}}
+            newOpportunities={0}
+          />
         </div>
 
         <div className="space-y-6">
@@ -276,7 +331,7 @@ export const OpportunitiesTab = ({ projects = [], userSkills = [] }: Opportuniti
                   ))}
                 </div>
               ) : (
-                <EmptyState type="projects" searchTerm={searchTerm} />
+                <EmptyState searchTerm={searchTerm} />
               )}
             </TabsContent>
 
@@ -288,7 +343,7 @@ export const OpportunitiesTab = ({ projects = [], userSkills = [] }: Opportuniti
                   ))}
                 </div>
               ) : (
-                <EmptyState type="tasks" searchTerm={searchTerm} />
+                <EmptyState searchTerm={searchTerm} />
               )}
             </TabsContent>
           </Tabs>
