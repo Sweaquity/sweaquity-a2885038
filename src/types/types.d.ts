@@ -33,8 +33,7 @@ export interface Ticket {
   estimated_hours?: number;
   hours_logged?: number;
   type?: string; // Added type property
-  // Legacy property to ensure backward compatibility:
-  ticket_type?: string;
+  ticket_type?: string; // Legacy property for backward compatibility
 }
 
 export interface TicketMessage {

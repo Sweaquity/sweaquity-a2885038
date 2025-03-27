@@ -21,6 +21,7 @@ export interface Ticket {
   estimated_hours?: number;
   hours_logged?: number;
   type?: string;  // Adding type property to the Ticket interface
+  ticket_type?: string; // Legacy property for backward compatibility
 }
 
 export interface BetaTicket extends Ticket {
@@ -77,4 +78,16 @@ export interface Task {
     progressColor?: string;
     progressSelectedColor?: string;
   };
+}
+
+export interface TicketDashboardProps {
+  initialTickets: Ticket[];
+  onRefresh: () => void;
+  onTicketAction: (ticketId: string, action: string, data: any) => Promise<void>;
+  showTimeTracking?: boolean;
+  userId: string;
+  onLogTime?: (ticketId: string, hours?: number, description?: string) => Promise<void>;
+  renderTicketActions?: (ticket: Ticket) => React.ReactNode;
+  userCanEditDates?: boolean;
+  showEstimatedHours?: boolean;
 }

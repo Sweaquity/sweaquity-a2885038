@@ -241,6 +241,16 @@ export const DashboardTab = ({
     }
   };
 
+  const conformTicket = (ticket: any): Ticket => {
+    return {
+      ...ticket,
+      description: ticket.description || "",
+      priority: ticket.priority || "medium",
+      status: ticket.status || "todo",
+      health: ticket.health || "good"
+    };
+  };
+
   useEffect(() => {
     loadUserTickets();
     loadAcceptedJobs();
@@ -655,7 +665,7 @@ export const DashboardTab = ({
                   );
                 }}>
                   <KanbanBoard 
-                    tickets={betaTickets} 
+                    tickets={betaTickets.map(ticket => conformTicket(ticket))} 
                     onStatusChange={(ticketId, newStatus) => 
                       handleTicketAction(ticketId, 'update_status', { status: newStatus })
                     }
