@@ -23,6 +23,8 @@ export const useEquityProjects = () => {
         effort_logs: [],
         total_hours_logged: 0,
         title: app.business_roles?.title || '',
+        job_app_id: app.job_app_id, // Add job_app_id to allow proper data linking
+        business_roles: app.business_roles,
         sub_tasks: [{
           id: app.task_id,
           task_id: app.task_id,

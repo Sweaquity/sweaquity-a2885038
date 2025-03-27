@@ -8,6 +8,7 @@ import { EquityProjectItem } from './EquityProjectItem';
 import { PendingApplicationItem } from './PendingApplicationItem';
 import { ApplicationHeader } from './ApplicationHeader';
 import { ApplicationContent } from './ApplicationContent';
+import { ProjectInfo } from './components/ProjectInfo';
 
 export {
   ApplicationsList,
@@ -18,5 +19,6 @@ export {
   EquityProjectItem,
   PendingApplicationItem,
   ApplicationHeader,
-  ApplicationContent
+  ApplicationContent,
+  ProjectInfo
 };

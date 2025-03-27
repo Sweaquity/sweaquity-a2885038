@@ -1,6 +1,5 @@
 
 import { useEffect, useState } from "react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EquityProject, JobApplication } from "@/types/jobSeeker";
 import { EquityProjectItem } from "./EquityProjectItem";
 import { EmptyState } from "../opportunities/EmptyState";
@@ -31,6 +30,7 @@ export const EquityProjectsList = ({
         effort_logs: [],
         total_hours_logged: 0,
         business_roles: app.business_roles,
+        job_app_id: app.job_app_id, // Add job_app_id to the project
         sub_tasks: [{
           id: app.task_id || "",
           task_id: app.task_id || "",
