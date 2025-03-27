@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
 import { Ticket } from "@/types/types";
-import { RefreshCw, KanbanSquare, BarChart2, Plus } from "lucide-react";
+import { RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
 import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
 import { DragDropContext } from "react-beautiful-dnd";
 
@@ -23,7 +24,7 @@ interface JobSeekerProjectsTabProps {
   userId?: string;
 }
 
-export const JobSeekerProjectsTab = ({ userId }: { userId: string }) => {
+export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const [activeTab, setActiveTab] = useState("all-tickets");
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +57,7 @@ export const JobSeekerProjectsTab = ({ userId }: { userId: string }) => {
     if (!userId) return;
     
     try {
+      // Fetch all projects where the user has tickets assigned
       const { data: projectsData, error } = await supabase
         .from('jobseeker_active_projects')
         .select('project_id, project_title')
@@ -64,6 +66,7 @@ export const JobSeekerProjectsTab = ({ userId }: { userId: string }) => {
       
       if (error) throw error;
       
+      // Deduplicate projects by project_id
       const uniqueProjects = Array.from(
         new Map(projectsData.map(item => [item.project_id, item])).values()
       );
@@ -76,33 +79,34 @@ export const JobSeekerProjectsTab = ({ userId }: { userId: string }) => {
   };
 
   const loadTickets = async () => {
+    if (!userId) return;
+    
     try {
       setLoading(true);
       
       let query = supabase
         .from('tickets')
         .select('*')
-        .or(`reporter.eq.${userId},assigned_to.eq.${userId}`);
+        .or(`assigned_to.eq.${userId},reporter.eq.${userId}`);
       
+      // Filter by project if one is selected and it's not "all"
       if (selectedProject && selectedProject !== "all") {
         query = query.eq('project_id', selectedProject);
       }
       
-      query = query.order('created_at', { ascending: false });
-      
-      const { data, error } = await query;
+      const { data, error } = await query.order('created_at', { ascending: false });
       
       if (error) throw error;
       
       const processedTickets = (data || []).map(ticket => ({
         ...ticket,
-        type: ticket.ticket_type || "task",
-        description: ticket.description || "",
-        health: ticket.health || "unknown"
+        type: ticket.ticket_type || "task", // Map ticket_type to type for compatibility
+        description: ticket.description || "" // Ensure description exists
       }));
       
       setTickets(processedTickets);
       
+      // Calculate ticket stats
       const stats = {
         total: processedTickets.length,
         open: processedTickets.filter(t => t.status !== 'done' && t.status !== 'closed').length,
@@ -123,6 +127,7 @@ export const JobSeekerProjectsTab = ({ userId }: { userId: string }) => {
     try {
       switch (action) {
         case 'updateStatus': {
+          // Update ticket status
           const { error } = await supabase
             .from('tickets')
             .update({ status: data })
@@ -130,6 +135,7 @@ export const JobSeekerProjectsTab = ({ userId }: { userId: string }) => {
           
           if (error) throw error;
           
+          // Update local state
           setTickets(prevTickets => 
             prevTickets.map(t => t.id === ticketId ? { ...t, status: data } : t)
           );
@@ -237,9 +243,10 @@ export const JobSeekerProjectsTab = ({ userId }: { userId: string }) => {
 
   const handleLogTime = async (ticketId: string) => {
     toast.info("Time logging functionality is in development");
+    // Time logging functionality to be implemented
   };
 
-  const handleRefreshTickets = () => {
+  const handleRefresh = () => {
     loadTickets();
   };
 
@@ -283,167 +290,31 @@ export const JobSeekerProjectsTab = ({ userId }: { userId: string }) => {
     }
   };
 
-  const renderTicketsSection = () => {
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <Select 
-              value={selectedProject} 
-              onValueChange={setSelectedProject}
-            >
-              <SelectTrigger className="w-[240px]">
-                <SelectValue placeholder="Select a project" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Projects</SelectItem>
-                {projects.map(project => (
-                  <SelectItem key={project.project_id} value={project.project_id}>
-                    {project.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowKanban(!showKanban)}
-            >
-              <KanbanSquare className="mr-2 h-4 w-4" />
-              Kanban
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowGantt(!showGantt)}
-            >
-              <BarChart2 className="mr-2 h-4 w-4" />
-              Gantt
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleRefreshTickets}
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh
-            </Button>
-            <Button 
-              variant="default" 
-              size="sm" 
-              onClick={() => setIsCreateTicketDialogOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Create Ticket
-            </Button>
-          </div>
-        </div>
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-4 w-full">
-            <TabsTrigger value="all-tickets">All Tickets</TabsTrigger>
-            <TabsTrigger value="project-tasks">Project Tasks</TabsTrigger>
-            <TabsTrigger value="project-tickets">Project Tickets</TabsTrigger>
-            <TabsTrigger value="beta-tickets">Beta Testing Tickets</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="all-tickets">
-            {showKanban ? (
-              <DragDropContext onDragEnd={() => {}}>
-                <KanbanBoard projectId={selectedProject !== "all" ? selectedProject : undefined} />
-              </DragDropContext>
-            ) : (
-              <TicketDashboard
-                tickets={tickets}
-                isLoading={loading}
-                handleTicketAction={handleTicketAction}
-                columns={[
-                  { field: 'title', header: 'Title' },
-                  { field: 'status', header: 'Status' },
-                  { field: 'priority', header: 'Priority' },
-                  { field: 'hours_logged', header: 'Hours' },
-                  { 
-                    field: 'completion_percentage', 
-                    header: 'Completion',
-                    render: (ticket) => `${ticket.completion_percentage || 0}%`
-                  }
-                ]}
-                cardStats={[
-                  { label: 'All Tickets', value: taskStats.total, color: 'blue' },
-                  { label: 'Open Tasks', value: taskStats.open, color: 'yellow' },
-                  { label: 'Closed Tasks', value: taskStats.closed, color: 'green' },
-                  { label: 'High Priority', value: taskStats.highPriority, color: 'red' }
-                ]}
-                showTimeLogDialog={true}
-              />
-            )}
-          </TabsContent>
-          
-          <TabsContent value="project-tasks">
-            <TicketDashboard
-              tickets={tickets.filter(t => (t.ticket_type || t.type) === 'task')}
-              isLoading={loading}
-              handleTicketAction={handleTicketAction}
-              columns={[
-                { field: 'title', header: 'Title' },
-                { field: 'status', header: 'Status' },
-                { field: 'priority', header: 'Priority' },
-                { field: 'hours_logged', header: 'Hours' },
-                { 
-                  field: 'completion_percentage', 
-                  header: 'Completion',
-                  render: (ticket) => `${ticket.completion_percentage || 0}%`
-                }
-              ]}
-              showTimeLogDialog={true}
-            />
-          </TabsContent>
-          
-          <TabsContent value="project-tickets">
-            <TicketDashboard
-              tickets={tickets.filter(t => (t.ticket_type || t.type) === 'project')}
-              isLoading={loading}
-              handleTicketAction={handleTicketAction}
-              columns={[
-                { field: 'title', header: 'Title' },
-                { field: 'status', header: 'Status' },
-                { field: 'priority', header: 'Priority' },
-                { field: 'hours_logged', header: 'Hours' },
-                { 
-                  field: 'completion_percentage', 
-                  header: 'Completion',
-                  render: (ticket) => `${ticket.completion_percentage || 0}%`
-                }
-              ]}
-              showTimeLogDialog={true}
-            />
-          </TabsContent>
-          
-          <TabsContent value="beta-tickets">
-            <TicketDashboard
-              tickets={tickets.filter(t => (t.ticket_type || t.type) === 'beta')}
-              isLoading={loading}
-              handleTicketAction={handleTicketAction}
-              columns={[
-                { field: 'title', header: 'Title' },
-                { field: 'status', header: 'Status' },
-                { field: 'priority', header: 'Priority' },
-                { field: 'hours_logged', header: 'Hours' },
-                { 
-                  field: 'completion_percentage', 
-                  header: 'Completion',
-                  render: (ticket) => `${ticket.completion_percentage || 0}%`
-                }
-              ]}
-              showTimeLogDialog={true}
-            />
-          </TabsContent>
-        </Tabs>
-      </div>
-    );
+  const getActiveTickets = () => {
+    switch (activeTab) {
+      case "project-tasks":
+        return tickets.filter(t => t.task_id);
+      case "project-tickets":
+        return tickets.filter(t => t.project_id && !t.task_id);
+      case "beta-testing":
+        return tickets.filter(t => t.ticket_type === "beta-test");
+      default:
+        return tickets;
+    }
+  };
+
+  const toggleKanbanView = () => {
+    setShowKanban(!showKanban);
+    if (showKanban) {
+      setShowGantt(false);
+    }
+  };
+
+  const toggleGanttView = () => {
+    setShowGantt(!showGantt);
+    if (showGantt) {
+      setShowKanban(false);
+    }
   };
 
   return (
@@ -453,7 +324,122 @@ export const JobSeekerProjectsTab = ({ userId }: { userId: string }) => {
         <p className="text-muted-foreground">View and manage your project tasks</p>
       </div>
 
-      {renderTicketsSection()}
+      <div className="flex items-center justify-between mb-4">
+        <Select value={selectedProject} onValueChange={handleProjectChange}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select project" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Projects</SelectItem>
+            {projects.length === 0 ? (
+              <SelectItem value="none" disabled>No projects available</SelectItem>
+            ) : (
+              projects.map(project => (
+                <SelectItem key={project.project_id} value={project.project_id}>
+                  {project.project_title}
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+        
+        <div className="flex gap-2">
+          <Button 
+            size="sm" 
+            variant={showKanban ? "default" : "outline"} 
+            onClick={toggleKanbanView}
+          >
+            <KanbanSquare className="h-4 w-4 mr-1" /> 
+            {showKanban ? "Hide Kanban" : "Show Kanban"}
+          </Button>
+          
+          <Button 
+            size="sm" 
+            variant={showGantt ? "default" : "outline"} 
+            onClick={toggleGanttView}
+          >
+            <BarChart2 className="h-4 w-4 mr-1" /> 
+            {showGantt ? "Hide Gantt" : "Show Gantt"}
+          </Button>
+          
+          <Button size="sm" variant="outline" onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4 mr-1" /> Refresh
+          </Button>
+          
+          <Button size="sm" onClick={handleCreateTicket}>
+            Create Ticket
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-sm font-medium text-muted-foreground">All Tickets</div>
+            <div className="text-2xl font-bold mt-1">{taskStats.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-sm font-medium text-muted-foreground">Open Tasks</div>
+            <div className="text-2xl font-bold mt-1">{taskStats.open}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-sm font-medium text-muted-foreground">Closed Tasks</div>
+            <div className="text-2xl font-bold mt-1">{taskStats.closed}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-sm font-medium text-muted-foreground">High Priority</div>
+            <div className="text-2xl font-bold mt-1">{taskStats.highPriority}</div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="all-tickets">All Tickets</TabsTrigger>
+          <TabsTrigger value="project-tasks">Project Tasks</TabsTrigger>
+          <TabsTrigger value="project-tickets">Project Tickets</TabsTrigger>
+          <TabsTrigger value="beta-testing">Beta Testing Tickets</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value={activeTab}>
+          {showKanban ? (
+            <div className="mb-6">
+              <DragDropContext onDragEnd={() => {}}>
+                <KanbanBoard 
+                  tickets={getActiveTickets()}
+                  onStatusChange={(ticketId, newStatus) => 
+                    handleTicketAction(ticketId, 'updateStatus', newStatus)
+                  }
+                  onTicketClick={(ticket) => {
+                    console.log("Ticket clicked:", ticket.id);
+                  }}
+                />
+              </DragDropContext>
+            </div>
+          ) : showGantt ? (
+            <div className="mb-6">
+              <div className="text-center py-8">
+                <p>Gantt view is being implemented. Please check back later.</p>
+              </div>
+            </div>
+          ) : (
+            <TicketDashboard 
+              initialTickets={getActiveTickets()}
+              onRefresh={handleRefresh}
+              onTicketAction={handleTicketAction}
+              showTimeTracking={true}
+              userId={userId || ''}
+              onLogTime={handleLogTime}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
 
       <CreateTicketDialog
         isOpen={isCreateTicketDialogOpen}

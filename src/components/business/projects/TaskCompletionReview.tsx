@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 
 interface TaskCompletionReviewProps {
   businessId: string;
-  task?: any;
+  task?: any; // Adding task as an optional prop to fix the type error
   open?: boolean;
   setOpen?: (open: boolean) => void;
   onClose?: () => void;
@@ -30,15 +30,15 @@ export const TaskCompletionReview = ({
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [completionPercentage, setCompletionPercentage] = useState(0);
-  const [equityAgreed, setEquityAgreed] = useState(0);
 
   useEffect(() => {
     if (businessId) {
       if (task) {
+        // If task is provided, use it directly
         setSelectedTask(task);
         setCompletionPercentage(task.completion_percentage || 0);
-        fetchEquityAgreed(task.job_app_id);
       } else {
+        // Otherwise load tasks from database
         loadCompletedTasks();
       }
     }
@@ -47,7 +47,6 @@ export const TaskCompletionReview = ({
   useEffect(() => {
     if (selectedTask) {
       setCompletionPercentage(selectedTask.completion_percentage || 0);
-      fetchEquityAgreed(selectedTask.job_app_id);
     }
   }, [selectedTask]);
 
@@ -57,26 +56,6 @@ export const TaskCompletionReview = ({
       setIsReviewOpen(open);
     }
   }, [open]);
-
-  const fetchEquityAgreed = async (jobAppId: string) => {
-    if (!jobAppId) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('accepted_jobs')
-        .select('equity_agreed')
-        .eq('job_app_id', jobAppId)
-        .maybeSingle();
-        
-      if (error) throw error;
-      
-      if (data) {
-        setEquityAgreed(data.equity_agreed || 0);
-      }
-    } catch (error) {
-      console.error("Error fetching equity agreed:", error);
-    }
-  };
 
   const loadCompletedTasks = async () => {
     try {
@@ -146,9 +125,8 @@ export const TaskCompletionReview = ({
     }
   };
 
-  const handleOpenReview = async (task: any) => {
+  const handleOpenReview = (task: any) => {
     setSelectedTask(task);
-    await fetchEquityAgreed(task.job_app_id);
     setIsReviewOpen(true);
   };
 
@@ -173,35 +151,16 @@ export const TaskCompletionReview = ({
             .from('project_sub_tasks')
             .update({ 
               completion_percentage: completionPercentage,
-              task_status: completionPercentage >= 100 ? 'closed' : 'active',
               last_activity_at: new Date().toISOString()
             })
             .eq('task_id', selectedTask.task_id);
-          
-          // Update accepted_jobs to track allocated equity
-          if (selectedTask.job_app_id) {
-            const equityAwarded = (equityAgreed * completionPercentage) / 100;
-            
-            await supabase
-              .from('accepted_jobs')
-              .update({
-                jobs_equity_allocated: equityAwarded,
-                updated_at: new Date().toISOString()
-              })
-              .eq('job_app_id', selectedTask.job_app_id);
-          }
             
           // Update jobseeker_active_projects using RPC
           await supabase.rpc('update_active_project', {
             p_task_id: selectedTask.task_id,
             p_completion_percentage: completionPercentage,
-            p_status: completionPercentage >= 100 ? 'done' : 'in_progress'
+            p_status: 'done'
           });
-          
-          // Update business_projects table with aggregate completion percentage and equity allocated
-          if (selectedTask.project_id) {
-            await updateProjectCompletionAndEquity(selectedTask.project_id);
-          }
         } catch (e) {
           console.error("Error updating related tables:", e);
           // Don't fail if this secondary update fails
@@ -227,61 +186,6 @@ export const TaskCompletionReview = ({
     } catch (error) {
       console.error("Error approving task:", error);
       toast.error("Failed to approve task");
-    }
-  };
-
-  const updateProjectCompletionAndEquity = async (projectId: string) => {
-    try {
-      // Get all tasks for this project
-      const { data: tasks, error: tasksError } = await supabase
-        .from('project_sub_tasks')
-        .select('*')
-        .eq('project_id', projectId);
-        
-      if (tasksError) throw tasksError;
-      
-      if (!tasks || tasks.length === 0) return;
-      
-      // Calculate weighted completion percentage
-      let totalEquity = 0;
-      let totalCompletedEquity = 0;
-      
-      tasks.forEach(task => {
-        const equity = task.equity_allocation || 0;
-        totalEquity += equity;
-        totalCompletedEquity += equity * (task.completion_percentage || 0) / 100;
-      });
-      
-      const completionPercentage = totalEquity > 0 
-        ? (totalCompletedEquity / totalEquity) * 100 
-        : 0;
-      
-      // Get equity allocated from accepted_jobs
-      const { data: acceptedJobs, error: jobsError } = await supabase
-        .from('accepted_jobs')
-        .select('job_app_id, equity_agreed, jobs_equity_allocated')
-        .in('job_app_id', tasks.map(t => t.job_app_id).filter(Boolean));
-        
-      if (jobsError) throw jobsError;
-      
-      let totalEquityAllocated = 0;
-      if (acceptedJobs) {
-        acceptedJobs.forEach(job => {
-          totalEquityAllocated += job.jobs_equity_allocated || 0;
-        });
-      }
-      
-      // Update business_projects
-      await supabase
-        .from('business_projects')
-        .update({
-          completion_percentage: Math.round(completionPercentage),
-          equity_allocated: totalEquityAllocated,
-          updated_at: new Date().toISOString()
-        })
-        .eq('project_id', projectId);
-    } catch (error) {
-      console.error("Error updating project completion and equity:", error);
     }
   };
 
@@ -346,9 +250,8 @@ export const TaskCompletionReview = ({
   };
 
   // Calculate equity to be awarded with 1 decimal place
-  const calculateEquity = () => {
-    const equity = (equityAgreed * completionPercentage / 100).toFixed(1);
-    return equity;
+  const calculateEquity = (equityPoints: number, completion: number) => {
+    return ((equityPoints || 0) * completion / 100).toFixed(1);
   };
 
   // If a specific task is provided, just render the dialog
@@ -426,9 +329,9 @@ export const TaskCompletionReview = ({
                 </div>
               </div>
               <div>
-                <p className="font-medium">Equity to be awarded: {calculateEquity()}%</p>
+                <p className="font-medium">Equity to be awarded: {calculateEquity(task.equity_points, completionPercentage)}%</p>
                 <p className="text-sm text-muted-foreground">
-                  Based on {completionPercentage}% completion of {equityAgreed}% agreed equity
+                  Based on {completionPercentage}% completion of {task.equity_points || 0}% task
                 </p>
               </div>
             </div>

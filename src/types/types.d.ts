@@ -2,7 +2,7 @@
 export interface Ticket {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   status: string;
   priority: string;
   health?: string;
@@ -20,7 +20,6 @@ export interface Ticket {
   task_id?: string;
   ticket_type?: string;
   type?: string;
-  equity_points?: number;
 }
 
 export interface TicketMessage {
@@ -44,5 +43,4 @@ export interface ExpandedTicketDetailsProps {
   onLogTime?: (ticketId: string) => void;
   userCanEditStatus?: boolean;
   userCanEditDates?: boolean;
-  messages?: any[];
 }

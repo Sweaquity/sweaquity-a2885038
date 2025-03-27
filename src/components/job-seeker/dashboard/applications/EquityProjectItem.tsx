@@ -213,12 +213,6 @@ export const EquityProjectItem = ({
   };
 
   const getEquityEarned = () => {
-    if (application.accepted_jobs && application.accepted_jobs.equity_agreed) {
-      const equityAgreed = application.accepted_jobs.equity_agreed;
-      const completion = getCompletionPercentage();
-      return (completion / 100) * equityAgreed;
-    }
-    
     const equity = application.business_roles?.equity_allocation || 0;
     const completion = getCompletionPercentage();
     const hoursLogged = getHoursLogged();
