@@ -76,7 +76,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
     ticket.estimated_hours || 0
   );
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
-  const [isLoadingTimeEntries, setIsLoadingTimeEntries] = useState(false);
+  const [isLoadingTimeEntries, setIsLoadingTimeEntries] = useState(true);
   const [timeEntriesError, setTimeEntriesError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -93,7 +93,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
         .from('time_entries')
         .select('*, profiles(first_name, last_name, email)')
         .eq('ticket_id', ticketId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
         
       if (error) throw error;
       
@@ -102,7 +102,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
       console.error('Error fetching time entries:', error);
       setTimeEntriesError('Failed to load time entries. Please try again.');
     } finally {
-      setIsLoadingTimeEntries(false);
+      setIsLoadingTimeEntries(true);
     }
   };
 
