@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import { Ticket } from "@/types/types";
 import { RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
 import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
 import { DragDropContext } from "react-beautiful-dnd";
+import { TimeLogDialog } from "../TimeLogDialog";
 
 interface JobSeekerProjectsTabProps {
   userId?: string;
@@ -38,6 +40,8 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const [isCreateTicketDialogOpen, setIsCreateTicketDialogOpen] = useState(false);
   const [showKanban, setShowKanban] = useState(false);
   const [showGantt, setShowGantt] = useState(false);
+  const [isTimeLogDialogOpen, setIsTimeLogDialogOpen] = useState(false);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 
   useEffect(() => {
     if (userId) {
@@ -202,6 +206,22 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
           break;
         }
         
+        case 'updateEstimatedHours': {
+          const { error } = await supabase
+            .from('tickets')
+            .update({ estimated_hours: data })
+            .eq('id', ticketId);
+          
+          if (error) throw error;
+          
+          setTickets(prevTickets => 
+            prevTickets.map(t => t.id === ticketId ? { ...t, estimated_hours: data } : t)
+          );
+          
+          toast.success("Estimated hours updated");
+          break;
+        }
+        
         case 'addNote': {
           const { data: ticketData } = await supabase
             .from('tickets')
@@ -252,7 +272,18 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   };
 
   const handleLogTime = async (ticketId: string) => {
-    toast.info("Time logging functionality is in development");
+    if (!userId) {
+      toast.error("User ID not found");
+      return;
+    }
+    
+    setSelectedTicketId(ticketId);
+    setIsTimeLogDialogOpen(true);
+  };
+
+  const handleTimeLogged = () => {
+    // Refresh tickets to show updated time
+    loadTickets();
   };
 
   const handleRefresh = () => {
@@ -449,6 +480,8 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
               showTimeTracking={true}
               userId={userId || ''}
               onLogTime={handleLogTime}
+              userCanEditDates={true}
+              userCanEditStatus={true}
             />
           )}
         </TabsContent>
@@ -460,6 +493,16 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         onCreateTicket={handleTicketCreated}
         projects={projects}
       />
+
+      {selectedTicketId && userId && (
+        <TimeLogDialog
+          open={isTimeLogDialogOpen}
+          onClose={() => setIsTimeLogDialogOpen(false)}
+          ticketId={selectedTicketId}
+          userId={userId}
+          onTimeLogged={handleTimeLogged}
+        />
+      )}
     </div>
   );
 };

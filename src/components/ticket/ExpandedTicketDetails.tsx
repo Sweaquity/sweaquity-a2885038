@@ -45,6 +45,9 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   const [completionPercent, setCompletionPercent] = useState<number>(
     ticket.completion_percentage || 0
   );
+  const [estimatedHours, setEstimatedHours] = useState<number>(
+    ticket.estimated_hours || 0
+  );
   const [timeEntries, setTimeEntries] = useState<any[]>([]);
   const [isLoadingTimeEntries, setIsLoadingTimeEntries] = useState(false);
 
@@ -74,14 +77,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
     try {
       const { data, error } = await supabase
         .from('time_entries')
-        .select(`
-          *,
-          profiles:user_id (
-            first_name,
-            last_name,
-            email
-          )
-        `)
+        .select('*, profiles:user_id(first_name, last_name, email)')
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: false });
         
@@ -164,6 +160,12 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
     const value = Number(e.target.value);
     setCompletionPercent(value);
     await onTicketAction(ticket.id, "updateCompletionPercentage", value);
+  };
+
+  const handleEstimatedHoursChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = Number(e.target.value);
+    setEstimatedHours(value);
+    await onTicketAction(ticket.id, "updateEstimatedHours", value);
   };
 
   const handleAddNote = async () => {
@@ -259,6 +261,22 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
                   />
                 </PopoverContent>
               </Popover>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Estimated Hours</label>
+              <div className="flex items-center space-x-2">
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={estimatedHours}
+                  onChange={handleEstimatedHoursChange}
+                  disabled={!userCanEditDates}
+                  className="w-20"
+                />
+                <span>hrs</span>
+              </div>
             </div>
 
             <div>
