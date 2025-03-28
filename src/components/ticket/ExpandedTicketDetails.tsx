@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { CalendarIcon, Clock, AlertCircle } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Ticket } from "@/types/types";
@@ -67,7 +67,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   const [activeTab, setActiveTab] = useState("details");
   const [newNote, setNewNote] = useState("");
   const [date, setDate] = useState<Date | undefined>(
-    ticket.due_date ? new Date(ticket.due_date) : undefined
+    ticket.due_date ? parseISO(ticket.due_date) : undefined
   );
   const [completionPercent, setCompletionPercent] = useState<number>(
     ticket.completion_percentage || 0
@@ -76,7 +76,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
     ticket.estimated_hours || 0
   );
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
-  const [isLoadingTimeEntries, setIsLoadingTimeEntries] = useState(true);
+  const [isLoadingTimeEntries, setIsLoadingTimeEntries] = useState(false);
   const [timeEntriesError, setTimeEntriesError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -93,7 +93,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
         .from('time_entries')
         .select('*, profiles(first_name, last_name, email)')
         .eq('ticket_id', ticketId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false });
         
       if (error) throw error;
       
@@ -102,7 +102,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
       console.error('Error fetching time entries:', error);
       setTimeEntriesError('Failed to load time entries. Please try again.');
     } finally {
-      setIsLoadingTimeEntries(true);
+      setIsLoadingTimeEntries(false);
     }
   };
 
@@ -165,9 +165,20 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   };
 
   const handleDueDateChange = async (selectedDate: Date | undefined) => {
-    setDate(selectedDate);
-    if (selectedDate) {
-      await onTicketAction(ticket.id, "updateDueDate", selectedDate.toISOString().split('T')[0]);
+    try {
+      // Ensure the date is converted to ISO string, trimming time component
+      const formattedDate = selectedDate 
+        ? selectedDate.toISOString().split('T')[0] 
+        : null;
+      
+      // Call the onTicketAction prop to update the due date
+      await onTicketAction(ticket.id, "updateDueDate", formattedDate);
+      
+      // Update local state
+      setDate(selectedDate);
+    } catch (error) {
+      console.error('Failed to update due date:', error);
+      // Optionally show an error message to the user
     }
   };
 
@@ -396,7 +407,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
             </p>
           </div>
           
-          {isLoadingTimeEntries ? (
+{isLoadingTimeEntries ? (
             <div className="flex justify-center p-8">
               <p>Loading time entries...</p>
             </div>
