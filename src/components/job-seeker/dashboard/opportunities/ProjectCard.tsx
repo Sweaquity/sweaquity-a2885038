@@ -31,7 +31,10 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
     
     const taskSkills = task.skill_requirements.map(skill => {
       if (typeof skill === 'string') return skill.toLowerCase();
-      return typeof skill.skill === 'string' ? skill.skill.toLowerCase() : '';
+      if (typeof skill === 'object' && skill !== null && 'skill' in skill && typeof skill.skill === 'string') {
+        return skill.skill.toLowerCase();
+      }
+      return '';
     }).filter(Boolean);
     
     if (taskSkills.length === 0) {
@@ -144,9 +147,16 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
                     <div className="text-xs font-medium mb-1">Required Skills</div>
                     <div className="flex flex-wrap gap-1">
                       {Array.isArray(task.skill_requirements) && task.skill_requirements.map((skill, index) => {
-                        const skillName = typeof skill === 'string' ? skill : skill.skill;
-                        const skillLevel = typeof skill === 'string' ? 'Intermediate' : skill.level;
-                        const isMatched = userSkillStrings.includes(typeof skillName === 'string' ? skillName.toLowerCase() : '');
+                        const skillName = typeof skill === 'string' ? skill : 
+                                         (typeof skill === 'object' && skill !== null && 'skill' in skill) ? 
+                                         skill.skill : '';
+                        const skillLevel = typeof skill === 'string' ? 'Intermediate' : 
+                                         (typeof skill === 'object' && skill !== null && 'level' in skill) ? 
+                                         skill.level : '';
+                        
+                        const isMatched = userSkillStrings.includes(
+                          typeof skillName === 'string' ? skillName.toLowerCase() : ''
+                        );
                         
                         return (
                           <Badge 

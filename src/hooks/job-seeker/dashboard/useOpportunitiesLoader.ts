@@ -1,7 +1,8 @@
 
 import { useCallback } from "react";
 import { supabase } from "@/lib/supabase";
-import { EquityProject, Skill } from "@/types/equity";
+import { EquityProject } from "@/types/equity";
+import { Skill } from "@/types/profile";
 
 export const useOpportunitiesLoader = () => {
   const loadOpportunities = useCallback(async (userId: string, userSkills: Skill[] | null) => {
@@ -124,6 +125,7 @@ export const useOpportunitiesLoader = () => {
             total_hours_logged: 0,
             title: projectTitle,
             created_by: task.created_by,
+            updated_at: task.updated_at,  // Add updated_at for filtering new opportunities
             skill_match: matchPercentage,
             sub_tasks: [{
               id: task.task_id,

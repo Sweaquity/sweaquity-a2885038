@@ -1,5 +1,5 @@
 
-import { OpportunitiesTab as OpportunitiesTabComponent } from "@/components/job-seeker/dashboard/OpportunitiesTab";
+import { OpportunitiesTabContent } from "../opportunities/OpportunitiesTabContent";
 import { EquityProject, Skill } from "@/types/jobSeeker";
 
 interface OpportunitiesTabProps {
@@ -13,7 +13,7 @@ export const OpportunitiesTab = ({
 }: OpportunitiesTabProps) => {
   return (
     <div className="space-y-6">
-      <OpportunitiesTabComponent 
+      <OpportunitiesTabContent 
         projects={projects} 
         userSkills={userSkills || []} 
       />
