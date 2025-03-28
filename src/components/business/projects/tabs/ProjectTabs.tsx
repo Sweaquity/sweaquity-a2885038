@@ -1,29 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProjectList } from "../ProjectList";
+import { ProjectForm } from "../ProjectForm";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { supabase } from "@/lib/supabase";
-import { ProjectForm } from "../ProjectForm";
-
-interface SkillRequirement {
-  skill: string;
-  level: string;
-}
 
 interface Task {
   id: string;
   title: string;
   description: string;
   status: string;
-  hours_logged: number;
-  equity_earned: number;
-  equity_allocation: number;
-  timeframe: string;
   skills_required: string[];
-  skill_requirements: SkillRequirement[];
-  dependencies: string[];
+  timeframe: string;
+  equity_allocation: number;
 }
 
 interface Project {
@@ -38,8 +29,15 @@ interface Project {
   tasks: Task[];
 }
 
+interface EquityStats {
+  taskEquityTotal: number;
+  agreedEquityTotal: number;
+  earnedEquityTotal: number;
+}
+
 interface ProjectTabsProps {
   projects: Project[];
+  equityStats: Record<string, EquityStats>;
   showProjectForm: boolean;
   setShowProjectForm: (show: boolean) => void;
   handleProjectCreated: (newProject: Project) => void;
@@ -49,6 +47,7 @@ interface ProjectTabsProps {
 
 export const ProjectTabs = ({
   projects,
+  equityStats,
   showProjectForm,
   setShowProjectForm,
   handleProjectCreated,
@@ -56,62 +55,6 @@ export const ProjectTabs = ({
   handleProjectDeleted
 }: ProjectTabsProps) => {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
-  const [equityStats, setEquityStats] = useState<Record<string, {
-    taskEquityTotal: number,
-    agreedEquityTotal: number,
-    earnedEquityTotal: number
-  }>>({});
-
-  useEffect(() => {
-    calculateEquityStats();
-  }, [projects]);
-
-  const calculateEquityStats = async () => {
-    const stats: Record<string, {
-      taskEquityTotal: number,
-      agreedEquityTotal: number,
-      earnedEquityTotal: number
-    }> = {};
-    
-    for (const project of projects) {
-      try {
-        // Sum task equity
-        const taskEquityTotal = project.tasks.reduce(
-          (sum, task) => sum + (task.equity_allocation || 0), 0
-        );
-        
-        // Get accepted jobs data for this project
-        const { data: acceptedJobs, error } = await supabase
-          .from('accepted_jobs')
-          .select('job_app_id, equity_agreed, jobs_equity_allocated')
-          .eq('project_id', project.project_id);
-          
-        if (error) {
-          console.error("Error fetching equity data:", error);
-          continue;
-        }
-          
-        // Sum agreed and earned equity
-        const agreedEquityTotal = acceptedJobs?.reduce(
-          (sum, job) => sum + (job.equity_agreed || 0), 0
-        ) || 0;
-        
-        const earnedEquityTotal = acceptedJobs?.reduce(
-          (sum, job) => sum + (job.jobs_equity_allocated || 0), 0
-        ) || 0;
-        
-        stats[project.project_id] = {
-          taskEquityTotal,
-          agreedEquityTotal,
-          earnedEquityTotal
-        };
-      } catch (error) {
-        console.error("Error calculating equity stats:", error);
-      }
-    }
-    
-    setEquityStats(stats);
-  };
 
   const toggleProjectExpanded = (projectId: string) => {
     setExpandedProjects(prev => {
@@ -125,7 +68,7 @@ export const ProjectTabs = ({
     });
   };
 
-  const renderProjectDetails = (project: Project) => {
+  const renderEquityBreakdown = (project: Project) => {
     const stats = equityStats[project.project_id] || {
       taskEquityTotal: 0,
       agreedEquityTotal: 0,
@@ -133,102 +76,133 @@ export const ProjectTabs = ({
     };
 
     return (
-      <div className="p-4 bg-white">
-        <div className="mb-4">
-          <h4 className="font-medium mb-1">Description</h4>
-          <p className="text-sm text-muted-foreground">
-            {project.description || 'No description provided.'}
-          </p>
+      <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2">
+        <div className="flex items-center">
+          <span className="text-sm font-medium mr-1">Total Equity Offered:</span>
+          <span className="text-sm">{project.equity_allocation || 0}%</span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-4 w-4 ml-1 p-0">
+                  <HelpCircle className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs text-xs">
+                  Total equity amount allocated to this project when it was created
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div>
-            <h4 className="font-medium mb-2">Project Details</h4>
-            <div className="space-y-2">
-              <div>
-                <span className="text-sm font-medium">Status:</span>
-                <span className="text-sm ml-2">{project.status}</span>
-              </div>
-              <div>
-                <span className="text-sm font-medium">Timeframe:</span>
-                <span className="text-sm ml-2">{project.project_timeframe || 'Not specified'}</span>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="font-medium mb-2">Equity Breakdown</h4>
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <span className="text-sm font-medium">Total Equity Offered:</span>
-                <span className="text-sm ml-2">{project.equity_allocation || 0}%</span>
-              </div>
-              <div className="flex items-center">
-                <span className="text-sm font-medium">Task Equity %:</span>
-                <span className="text-sm ml-2">{stats.taskEquityTotal.toFixed(2)}%</span>
-              </div>
-              <div className="flex items-center">
-                <span className="text-sm font-medium">Agreed Equity:</span>
-                <span className="text-sm ml-2">{stats.agreedEquityTotal.toFixed(2)}%</span>
-              </div>
-              <div className="flex items-center">
-                <span className="text-sm font-medium">Equity Earned:</span>
-                <span className="text-sm ml-2">{stats.earnedEquityTotal.toFixed(2)}%</span>
-              </div>
-            </div>
-          </div>
+        
+        <div className="flex items-center">
+          <span className="text-sm font-medium mr-1">Task Equity %:</span>
+          <span className="text-sm">{stats.taskEquityTotal.toFixed(2)}%</span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-4 w-4 ml-1 p-0">
+                  <HelpCircle className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs text-xs">
+                  Sum of equity allocations across all tasks in this project
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
+        
+        <div className="flex items-center">
+          <span className="text-sm font-medium mr-1">Agreed Equity:</span>
+          <span className="text-sm">{stats.agreedEquityTotal.toFixed(2)}%</span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-4 w-4 ml-1 p-0">
+                  <HelpCircle className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs text-xs">
+                  Sum of all agreed equity amounts across accepted job applications
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        
+        <div className="flex items-center">
+          <span className="text-sm font-medium mr-1">Equity Earned:</span>
+          <span className="text-sm">{stats.earnedEquityTotal.toFixed(2)}%</span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-4 w-4 ml-1 p-0">
+                  <HelpCircle className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs text-xs">
+                  Sum of all equity actually allocated to job seekers as they complete tasks
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </div>
+    );
+  };
 
-        <div className="mb-4">
-          <h4 className="font-medium mb-2">Tasks</h4>
-          {project.tasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tasks have been created for this project yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {project.tasks.map(task => (
-                <div key={task.id} className="border p-3 rounded-md">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h5 className="font-medium">{task.title}</h5>
-                      <p className="text-sm text-muted-foreground">{task.description || 'No description'}</p>
-                    </div>
-                    <Badge>{task.status}</Badge>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
-                    <div>
-                      <p className="text-xs font-medium">Equity</p>
-                      <p className="text-sm">{task.equity_allocation || 0}%</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium">Timeframe</p>
-                      <p className="text-sm">{task.timeframe || 'Not specified'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium">Skills Required</p>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {Array.isArray(task.skill_requirements) ? 
-                          task.skill_requirements.slice(0, 3).map((skill, index) => {
-                            const skillName = typeof skill === 'string' ? skill : (skill.skill || '');
-                            
-                            return (
-                              <Badge key={index} variant="outline" className="text-xs">
-                                {skillName}
-                              </Badge>
-                            );
-                          }) : 
-                          <span className="text-xs text-muted-foreground">None</span>
-                        }
-                        {Array.isArray(task.skill_requirements) && task.skill_requirements.length > 3 && (
-                          <Badge variant="outline" className="text-xs">+{task.skill_requirements.length - 3} more</Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+  const renderTaskDetails = (tasks: Task[]) => {
+    if (tasks.length === 0) {
+      return <p className="text-sm text-muted-foreground">No tasks have been created for this project yet.</p>;
+    }
+
+    return (
+      <div className="space-y-2 mt-2">
+        {tasks.map(task => (
+          <div key={task.id} className="border p-3 rounded-md">
+            <div className="flex justify-between items-start">
+              <div>
+                <h5 className="font-medium">{task.title}</h5>
+                <p className="text-sm text-muted-foreground">{task.description || 'No description'}</p>
+              </div>
+              <Badge>{task.status}</Badge>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
+              <div>
+                <p className="text-xs font-medium">Equity</p>
+                <p className="text-sm">{task.equity_allocation || 0}%</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium">Timeframe</p>
+                <p className="text-sm">{task.timeframe || 'Not specified'}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-xs font-medium">Skills Required</p>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {task.skills_required && task.skills_required.length > 0 ? (
+                    task.skills_required.slice(0, 3).map((skill, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {skill}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-xs text-muted-foreground">None</span>
+                  )}
+                  {task.skills_required && task.skills_required.length > 3 && (
+                    <Badge variant="outline" className="text-xs">
+                      +{task.skills_required.length - 3} more
+                    </Badge>
+                  )}
                 </div>
-              ))}
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        ))}
       </div>
     );
   };
@@ -262,9 +236,19 @@ export const ProjectTabs = ({
                     className="p-4 flex justify-between items-center border-b bg-gray-50 cursor-pointer"
                     onClick={() => toggleProjectExpanded(project.project_id)}
                   >
-                    <div>
+                    <div className="flex-grow">
                       <h3 className="font-medium text-lg">{project.title}</h3>
+                      <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mt-1">
+                        <p className="text-sm text-muted-foreground">
+                          Status: {project.status}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Timeframe: {project.project_timeframe || 'Not specified'}
+                        </p>
+                      </div>
+                      {renderEquityBreakdown(project)}
                     </div>
+                    
                     <Button variant="ghost">
                       {expandedProjects.has(project.project_id) ? (
                         <ChevronUp className="h-4 w-4" />
@@ -274,7 +258,21 @@ export const ProjectTabs = ({
                     </Button>
                   </div>
                   
-                  {expandedProjects.has(project.project_id) && renderProjectDetails(project)}
+                  {expandedProjects.has(project.project_id) && (
+                    <div className="p-4">
+                      <div className="mb-4">
+                        <h4 className="font-medium mb-1">Description</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {project.description || 'No description provided.'}
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium mb-2">Tasks</h4>
+                        {renderTaskDetails(project.tasks)}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))
             )}
