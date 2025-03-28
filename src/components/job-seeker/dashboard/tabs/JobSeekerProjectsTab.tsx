@@ -18,6 +18,7 @@ import { Ticket } from "@/types/types";
 import { RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
 import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
 import { DragDropContext } from "react-beautiful-dnd";
+import { enhanceTicket } from "@/utils/dataAdapters";
 
 interface JobSeekerProjectsTabProps {
   userId?: string;
@@ -109,7 +110,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         return true;
       });
       
-      const processedTickets = filteredTickets.map(ticket => ({
+      const processedTickets = filteredTickets.map(ticket => enhanceTicket({
         ...ticket,
         ticket_type: ticket.ticket_type || "task",
         description: ticket.description || "",
@@ -306,11 +307,20 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const getActiveTickets = () => {
     switch (activeTab) {
       case "project-tasks":
-        return tickets.filter(t => t.ticket_type === "task");
+        return tickets.filter(t => {
+          const ticketType = t.type || t.ticket_type;
+          return ticketType === "task";
+        });
       case "project-tickets":
-        return tickets.filter(t => t.ticket_type === "ticket");
+        return tickets.filter(t => {
+          const ticketType = t.type || t.ticket_type;
+          return ticketType === "ticket";
+        });
       case "beta-testing":
-        return tickets.filter(t => t.ticket_type === "beta-test");
+        return tickets.filter(t => {
+          const ticketType = t.type || t.ticket_type;
+          return ticketType === "beta-test";
+        });
       default:
         return tickets;
     }

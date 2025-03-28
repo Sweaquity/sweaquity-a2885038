@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { Ticket, TicketStatistics } from '@/types/types';
 import { supabase } from '@/lib/supabase';
+import { enhanceTicket } from '@/utils/dataAdapters';
 
 export const useTicketManagement = (initialTickets: Ticket[]) => {
   const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
@@ -40,7 +40,6 @@ export const useTicketManagement = (initialTickets: Ticket[]) => {
   const applyFilters = () => {
     let filtered = [...tickets];
     
-    // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(ticket => 
@@ -49,24 +48,23 @@ export const useTicketManagement = (initialTickets: Ticket[]) => {
       );
     }
     
-    // Apply status filter
     if (statusFilter) {
       filtered = filtered.filter(ticket => ticket.status === statusFilter);
     }
     
-    // Apply priority filter
     if (priorityFilter) {
       filtered = filtered.filter(ticket => ticket.priority === priorityFilter);
     }
     
-    // Apply project filter
     if (projectFilter) {
       filtered = filtered.filter(ticket => ticket.project_id === projectFilter);
     }
     
-    // Apply type filter
     if (typeFilter) {
-      filtered = filtered.filter(ticket => ticket.ticket_type === typeFilter);
+      filtered = filtered.filter(ticket => {
+        const ticketType = ticket.type || ticket.ticket_type;
+        return ticketType === typeFilter;
+      });
     }
     
     setFilteredTickets(filtered);
@@ -113,7 +111,6 @@ export const useTicketManagement = (initialTickets: Ticket[]) => {
   const updateSelectedTicket = (updatedTicket: Ticket) => {
     if (!selectedTicket) return;
     
-    // Update ticket in tickets array
     const updatedTickets = tickets.map(t => 
       t.id === updatedTicket.id ? updatedTicket : t
     );

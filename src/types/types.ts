@@ -21,6 +21,9 @@ export interface Ticket {
   estimated_hours?: number;
   hours_logged?: number;
   type?: string;  // Adding type property to the Ticket interface
+  ticket_type?: string; // Adding ticket_type property to maintain compatibility
+  isTaskTicket?: boolean; // For compatibility
+  isProjectTicket?: boolean; // For compatibility
 }
 
 export interface BetaTicket extends Ticket {

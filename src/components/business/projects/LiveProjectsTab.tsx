@@ -313,6 +313,10 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     loadTickets();
   };
 
+  const handleRefreshTickets = () => {
+    loadTickets();
+  };
+
   const handleProjectChange = (projectId: string) => {
     setSelectedProject(projectId);
   };
@@ -514,11 +518,11 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           ) : (
             <TicketDashboard 
               initialTickets={getActiveTickets()}
-              onRefresh={handleRefresh}
+              onRefresh={handleRefreshTickets}
               onTicketAction={handleTicketAction}
               showTimeTracking={true}
               userId={businessId || ''}
-              onLogTime={handleLogTime}
+              onLogTime={(ticketId) => handleLogTime(ticketId, 0, "")}
               renderTicketActions={renderTicketActions}
             />
           )}

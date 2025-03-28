@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useJobSeekerDashboard } from "@/hooks/useJobSeekerDashboard";
@@ -60,6 +59,13 @@ const JobSeekerDashboard = () => {
     
     getCurrentUser();
   }, []);
+
+  // Sort equity projects by updated_at or created_at
+  const sortedEquityProjects = equityProjects.sort((a, b) => {
+    const dateA = a.updated_at || a.created_at || '';
+    const dateB = b.updated_at || b.created_at || '';
+    return new Date(dateB).getTime() - new Date(dateA).getTime();
+  });
 
   // Calculate notifications for tabs
   useEffect(() => {

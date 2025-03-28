@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskCompletionReview } from "../../projects/TaskCompletionReview";
-import { SharedBetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
+import { BetaTestingTab as SharedBetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { toast } from "sonner";
 import { Ticket } from "@/types/types";
@@ -337,7 +336,13 @@ export const BetaTestingTab = () => {
         </TabsContent>
         
         <TabsContent value="task-review">
-          <TaskCompletionReview businessId={userId} />
+          <TaskCompletionReview
+            task={{}} // Provide at least an empty object as the task prop
+            businessId={userId}
+            onClose={() => setOpenCompletionReview(false)} // Add the required onClose prop
+            open={openCompletionReview}
+            setOpen={setOpenCompletionReview}
+          />
         </TabsContent>
         
         <TabsContent value="kanban">
