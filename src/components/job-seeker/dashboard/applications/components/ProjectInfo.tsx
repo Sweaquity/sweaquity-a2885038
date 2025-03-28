@@ -1,54 +1,50 @@
 
-import { Badge } from '@/components/ui/badge';
+import React from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 interface ProjectInfoProps {
-  taskStatus?: string;
-  timeframe?: string;
-  equityAllocation?: number;
-  skillRequirements?: (string | { skill: string; level?: string })[];
+  company?: string;
+  project?: string;
+  role?: string;
+  appliedDate?: string;
 }
 
-export const ProjectInfo = ({ 
-  taskStatus, 
-  timeframe, 
-  equityAllocation,
-  skillRequirements = []
-}: ProjectInfoProps) => {
+export const ProjectInfo = ({ company, project, role, appliedDate }: ProjectInfoProps) => {
   return (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2 text-sm">
-        <div>
-          <p className="text-muted-foreground">Task Status</p>
-          <p>{taskStatus || "Pending"}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Timeframe</p>
-          <p>{timeframe || "Not specified"}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Equity Allocation</p>
-          <p>{equityAllocation}%</p>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 gap-4 mb-2 text-sm">
-        <div>
-          <p className="text-muted-foreground">Skills Required</p>
-          <div className="flex flex-wrap gap-1 mt-1">
-            {skillRequirements.map((skill, index) => (
-              <Badge key={index} variant="outline" className="bg-slate-50">
-                {typeof skill === 'string' ? skill : skill.skill}
-                {typeof skill !== 'string' && skill.level && 
-                  <span className="ml-1 opacity-70">({skill.level})</span>
-                }
-              </Badge>
-            ))}
-            {(!skillRequirements || skillRequirements.length === 0) && 
-              <span className="text-muted-foreground">No specific skills required</span>
-            }
+    <Card>
+      <CardContent className="p-4">
+        <div className="space-y-2">
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">Company</span>
+            <span className="text-sm">{company || 'N/A'}</span>
           </div>
+          
+          <Separator className="my-2" />
+          
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">Project</span>
+            <span className="text-sm">{project || 'N/A'}</span>
+          </div>
+          
+          <Separator className="my-2" />
+          
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">Role</span>
+            <span className="text-sm">{role || 'N/A'}</span>
+          </div>
+          
+          {appliedDate && (
+            <>
+              <Separator className="my-2" />
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">Applied</span>
+                <span className="text-sm">{new Date(appliedDate).toLocaleDateString()}</span>
+              </div>
+            </>
+          )}
         </div>
-      </div>
-    </>
+      </CardContent>
+    </Card>
   );
 };

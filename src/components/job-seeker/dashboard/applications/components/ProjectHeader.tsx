@@ -1,62 +1,44 @@
 
+import React from 'react';
+import { CalendarIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { format, formatDistanceToNow } from 'date-fns';
 
 interface ProjectHeaderProps {
-  title?: string;
-  companyName?: string;
-  projectTitle?: string;
-  status: string;
-  appliedAt: string;
+  title: string;
+  company?: string;
+  date?: string;
+  status?: string;
 }
 
-export const ProjectHeader = ({ 
-  title, 
-  companyName, 
-  projectTitle,
-  status,
-  appliedAt
-}: ProjectHeaderProps) => {
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'negotiation':
-        return 'bg-amber-100 text-amber-800 border-amber-300';
-      case 'accepted':
-        return 'bg-green-100 text-green-800 border-green-300';
-      default:
-        return 'bg-blue-100 text-blue-800 border-blue-300';
-    }
-  };
-  
-  const formatDate = (dateString: string) => {
-    try {
-      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
-    } catch (error) {
-      return "Unknown date";
-    }
-  };
-
+export const ProjectHeader = ({ title, company, date, status }: ProjectHeaderProps) => {
   return (
-    <div className="flex flex-1 flex-col space-y-1.5">
-      <div className="flex flex-wrap items-center gap-2 mb-1">
-        <h3 className="text-md font-semibold line-clamp-1">
-          {title || "Untitled Role"}
-        </h3>
-        <Badge className={getStatusColor(status)}>
-          {status}
-        </Badge>
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">{title}</h3>
+        {status && (
+          <Badge 
+            variant={status.toLowerCase() === 'active' ? 'default' : 'secondary'}
+            className="ml-2"
+          >
+            {status}
+          </Badge>
+        )}
       </div>
       
-      <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-        <span className="inline-flex items-center">
-          {companyName || "Unknown company"}
-        </span>
-        <span className="inline-flex items-center">
-          Project: {projectTitle || "Untitled Project"}
-        </span>
-        <span className="inline-flex items-center">
-          Applied: {formatDate(appliedAt)}
-        </span>
+      <div className="flex flex-col md:flex-row md:items-center text-sm text-muted-foreground gap-1 md:gap-3">
+        {company && <span>{company}</span>}
+        
+        {company && date && <span className="hidden md:inline">•</span>}
+        
+        {date && (
+          <span className="flex items-center">
+            <CalendarIcon className="mr-1 h-3 w-3" />
+            {typeof date === 'string' && date.includes('T') 
+              ? new Date(date).toLocaleDateString() 
+              : date
+            }
+          </span>
+        )}
       </div>
     </div>
   );

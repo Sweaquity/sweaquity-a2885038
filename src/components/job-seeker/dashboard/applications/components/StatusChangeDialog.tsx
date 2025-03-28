@@ -1,5 +1,5 @@
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -7,63 +7,61 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Loader2 } from 'lucide-react';
 
 interface StatusChangeDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  selectedStatus: string;
   onConfirm: () => Promise<void>;
   isLoading: boolean;
+  status: string;
 }
 
-export function StatusChangeDialog({
+export const StatusChangeDialog = ({
   isOpen,
   onOpenChange,
-  selectedStatus,
   onConfirm,
   isLoading,
-}: StatusChangeDialogProps) {
-  // Ensure we never have an empty status - default to "pending" if empty
-  const safeStatus = selectedStatus || "pending";
-  
+  status
+}: StatusChangeDialogProps) => {
+  const handleConfirm = async () => {
+    await onConfirm();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Confirm Status Change</DialogTitle>
+          <DialogTitle>Change application status</DialogTitle>
           <DialogDescription>
-            Are you sure you want to change the application status to {safeStatus}?
+            Are you sure you want to change the status to &quot;{status}&quot;?
           </DialogDescription>
         </DialogHeader>
-
-        <RadioGroup defaultValue={safeStatus} className="gap-2">
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="negotiation" id="negotiation" />
-            <Label htmlFor="negotiation">Negotiation</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="accepted" id="accepted" />
-            <Label htmlFor="accepted">Accepted</Label>
-          </div>
-        </RadioGroup>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="sm:justify-start">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            disabled={isLoading}
+          >
             Cancel
           </Button>
           <Button 
-            onClick={onConfirm} 
+            type="submit" 
             disabled={isLoading}
+            onClick={handleConfirm}
           >
-            {isLoading ? "Updating..." : "Confirm"}
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              <>Confirm</>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-}
-
-export default StatusChangeDialog;
+};

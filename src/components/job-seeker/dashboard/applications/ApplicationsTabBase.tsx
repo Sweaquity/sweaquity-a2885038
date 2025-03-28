@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -122,7 +123,7 @@ export const ApplicationsTabBase = ({
       </TabsList>
 
       <TabsContent value="pending">
-        <Alert variant="secondary" className="mb-4">
+        <Alert>
           <InfoIcon className="h-4 w-4 mr-2" />
           <AlertDescription>
             This tab shows applications that are awaiting a response or require your acceptance.
@@ -137,7 +138,7 @@ export const ApplicationsTabBase = ({
       </TabsContent>
 
       <TabsContent value="current">
-        <Alert variant="secondary" className="mb-4">
+        <Alert>
           <InfoIcon className="h-4 w-4 mr-2" />
           <AlertDescription>
             This tab shows your active projects where both you and the business have accepted the work agreement.
@@ -150,7 +151,7 @@ export const ApplicationsTabBase = ({
       </TabsContent>
 
       <TabsContent value="past">
-        <Alert variant="secondary" className="mb-4">
+        <Alert>
           <InfoIcon className="h-4 w-4 mr-2" />
           <AlertDescription>
             This tab shows applications that were rejected, withdrawn, or completed.
@@ -163,7 +164,7 @@ export const ApplicationsTabBase = ({
       </TabsContent>
 
       <TabsContent value="equity">
-        <Alert variant="secondary" className="mb-4">
+        <Alert>
           <InfoIcon className="h-4 w-4 mr-2" />
           <AlertDescription>
             This tab shows your equity-based projects, both active and completed.

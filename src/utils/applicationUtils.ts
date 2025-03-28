@@ -14,10 +14,18 @@ import { JobApplication, Skill, SkillRequirement } from "@/types/jobSeeker";
  */
 export function convertApplicationToJobApplication(application: Application): JobApplication {
   // Convert skill requirements to the correct format that satisfies both interfaces
-  const convertedSkillRequirements = Array.isArray(application.business_roles?.skill_requirements) 
+  const convertedSkillRequirements: Skill[] = Array.isArray(application.business_roles?.skill_requirements) 
     ? application.business_roles.skill_requirements.map(req => {
         if (typeof req === 'string') {
           return { skill: req, level: "Intermediate" } as Skill;
+        }
+        // Handle SkillRequirement -> Skill conversion
+        if (typeof req === 'object' && 'skill' in req) {
+          return { 
+            skill: req.skill,
+            level: req.level || "Intermediate",
+            name: req.skill // Add name property for backward compatibility
+          } as Skill;
         }
         return req as Skill;
       }) 

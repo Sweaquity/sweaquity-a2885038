@@ -80,5 +80,5 @@ export interface EquityProject {
   created_at?: string;
   skill_match?: number;
   updated_at?: string;
-  skills_required?: string[]; // Adding this for ProjectCard.tsx
+  skills_required?: string[] | Skill[]; // Allow both string[] and Skill[] for backward compatibility
 }
