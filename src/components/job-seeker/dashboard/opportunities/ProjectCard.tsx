@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,12 +40,9 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
       return { count: 0, total: 0, percentage: 0 };
     }
     
-    const matchCount = userSkillStrings.filter(skill => {
-      if (typeof skill === 'string') {
-        return taskSkills.includes(skill.toLowerCase());
-      }
-      return false;
-    }).length;
+    const matchCount = userSkillStrings.filter(skill => 
+      taskSkills.includes(skill.toLowerCase())
+    ).length;
     
     return {
       count: matchCount,
@@ -76,16 +72,12 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
     return [];
   };
 
-  // Make sure we're handling potential undefined values safely
-  const projectSkills = project.business_roles?.skills_required || project.skills_required || [];
-  
-  const matchedSkills = formatSkills(projectSkills).filter(skill => 
-    userSkillStrings.some(userSkill => {
-      if (typeof userSkill === 'string' && typeof skill === 'string') {
-        return userSkill.toLowerCase().includes(skill.toLowerCase());
-      }
-      return false;
-    })
+  const matchedSkills = formatSkills(project.skills_required).filter(skill => 
+    userSkillStrings.some(userSkill => 
+      (typeof userSkill === 'string' ? userSkill.toLowerCase() : 
+       (userSkill.name || userSkill.skill || '').toLowerCase())
+       .includes(skill.toLowerCase())
+    )
   );
 
   const tasks = project.sub_tasks || [];
@@ -147,7 +139,7 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
               const skillMatch = getSkillMatch(task);
               
               return (
-                <div key={task.id || task.task_id} className="p-3 border rounded-md">
+                <div key={task.id} className="p-3 border rounded-md">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <div className="font-medium">{task.title}</div>
@@ -182,20 +174,15 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
                     <div className="text-xs font-medium mb-1">Required Skills</div>
                     <div className="flex flex-wrap gap-1">
                       {Array.isArray(task.skill_requirements) && task.skill_requirements.map((skill, index) => {
-                        let skillName = '';
-                        let skillLevel = 'Intermediate';
+                        const skillName = typeof skill === 'string' ? skill : 
+                                         (typeof skill === 'object' && skill !== null && 'skill' in skill) ? 
+                                         skill.skill : '';
+                        const skillLevel = typeof skill === 'string' ? 'Intermediate' : 
+                                         (typeof skill === 'object' && skill !== null && 'level' in skill) ? 
+                                         skill.level : '';
                         
-                        if (typeof skill === 'string') {
-                          skillName = skill;
-                        } else if (typeof skill === 'object' && skill !== null) {
-                          skillName = (skill as any).skill || (skill as any).name || '';
-                          skillLevel = (skill as any).level || 'Intermediate';
-                        }
-                        
-                        if (!skillName) return null;
-                        
-                        const isMatched = userSkillStrings.some(userSkill => 
-                          typeof userSkill === 'string' && userSkill.toLowerCase() === skillName.toLowerCase()
+                        const isMatched = userSkillStrings.includes(
+                          typeof skillName === 'string' ? skillName.toLowerCase() : ''
                         );
                         
                         return (

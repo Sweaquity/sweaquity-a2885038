@@ -9,20 +9,16 @@ import { Clock, Eye, MessageSquare } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
-import { useNavigate } from 'react-router-dom';
 
 export interface EquityProjectItemProps {
   application: JobApplication;
   onApplicationUpdated: () => void;
-  isComplete?: boolean;
 }
 
 export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({ 
   application, 
-  onApplicationUpdated,
-  isComplete = false
+  onApplicationUpdated 
 }) => {
-  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
   const [isWithdrawing, setIsWithdrawing] = useState(false);
@@ -35,7 +31,6 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
     hoursLogged: 0,
     estimatedHours: 0
   });
-  const [ticketId, setTicketId] = useState<string | null>(null);
   
   // Fetch equity and hours data
   useEffect(() => {
@@ -67,8 +62,6 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
         if (ticketError) {
           console.error("Error fetching ticket data:", ticketError);
         } else if (ticketData) {
-          setTicketId(ticketData.id);
-          
           // Get hours logged data from time_entries
           const { data: timeEntries, error: timeEntriesError } = await supabase
             .from('time_entries')
@@ -153,12 +146,7 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
   };
   
   const handleViewProject = () => {
-    if (ticketId) {
-      // Navigate to the live projects tab with the selected ticket
-      navigate(`/seeker/dashboard?tab=live-projects&ticket=${ticketId}`);
-    } else {
-      toast.error("Could not find the associated ticket");
-    }
+    toast.info("Project view feature is coming soon");
   };
   
   // Calculate percentage of equity earned vs agreed
@@ -180,8 +168,8 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
               <div>
                 <div className="text-lg flex items-center font-medium">
                   {application.business_roles?.title}
-                  <Badge className={`ml-2 ${isComplete ? 'bg-green-600' : 'bg-blue-500'}`} variant="secondary">
-                    {isComplete ? 'completed' : 'active'}
+                  <Badge className="ml-2 bg-green-500" variant="secondary">
+                    accepted
                   </Badge>
                 </div>
                 <div className="text-sm text-muted-foreground mt-1">
@@ -212,7 +200,7 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
               </div>
               <div>
                 <div className="text-xs font-medium">Completion</div>
-                <div className="text-sm">{isComplete ? '100' : completionPercentage}%</div>
+                <div className="text-sm">{completionPercentage}%</div>
               </div>
             </div>
             
@@ -238,7 +226,7 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
           
           <div className="flex mt-4 md:mt-0 justify-between items-center space-x-2">
             <Button variant="outline" size="sm" className="w-24">
-              {isComplete ? 'Completed' : (application.status === 'accepted' ? 'Accepted' : application.status)}
+              {application.status === 'accepted' ? 'Accepted' : application.status}
             </Button>
             <Button 
               variant="ghost" 
@@ -283,7 +271,7 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                       </div>
                       <div className="grid grid-cols-2">
                         <div className="text-sm font-medium">Completion:</div>
-                        <div className="text-sm">{isComplete ? '100' : completionPercentage}%</div>
+                        <div className="text-sm">{completionPercentage}%</div>
                       </div>
                       <div className="grid grid-cols-2">
                         <div className="text-sm font-medium">Equity Agreed:</div>
@@ -307,17 +295,14 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                         <Eye className="h-4 w-4 mr-1" />
                         View Project
                       </Button>
-                      {!isComplete && (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="text-red-500 hover:bg-red-50 hover:text-red-600"
-                          onClick={handleWithdraw}
-                          disabled={isWithdrawing}
-                        >
-                          Withdraw
-                        </Button>
-                      )}
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                        onClick={handleWithdraw}
+                      >
+                        Withdraw
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -339,12 +324,6 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                         <div className="text-sm">{formatDate(application.accepted_jobs.date_accepted)}</div>
                       </div>
                     )}
-                    {isComplete && (
-                      <div className="flex">
-                        <div className="flex-none w-32 text-sm font-medium">Completed:</div>
-                        <div className="text-sm">{formatDate(application.updated_at)}</div>
-                      </div>
-                    )}
                   </div>
                 </div>
                 
@@ -361,12 +340,12 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                     </div>
                     <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
                       <div
-                        className={`h-full ${isComplete ? 'bg-green-600' : 'bg-blue-500'} rounded-full`}
-                        style={{ width: `${isComplete ? 100 : parseFloat(percentageEarned)}%` }}
+                        className="h-full bg-green-500 rounded-full"
+                        style={{ width: `${parseFloat(percentageEarned)}%` }}
                       ></div>
                     </div>
                     <div className="flex justify-end mt-1">
-                      <span className="text-xs text-muted-foreground">{isComplete ? '100' : percentageEarned}% earned</span>
+                      <span className="text-xs text-muted-foreground">{percentageEarned}% earned</span>
                     </div>
                   </div>
                 </div>
@@ -378,3 +357,4 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
     </Card>
   );
 };
+
