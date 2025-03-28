@@ -65,6 +65,13 @@ export interface JobApplication {
   task_discourse?: string;
   id?: string; // Add id field for compatibility
   notes?: any[]; // Add notes field for compatibility
+  hours_logged?: number; // Added for time tracking
+  accepted_jobs?: {
+    equity_agreed: number;
+    jobs_equity_allocated: number;
+    id: string;
+    date_accepted: string;
+  };
 }
 
 // Add SkillRequirement for compatibility with existing code
@@ -113,7 +120,14 @@ export interface EquityProject {
   skill_match?: number;
   sub_tasks?: SubTask[];
   business_roles?: BusinessRole;
-  updated_at?: string; // Add this property
+  job_app_id?: string;
+  accepted_jobs?: {
+    equity_agreed: number;
+    jobs_equity_allocated: number;
+    id: string;
+    date_accepted: string;
+  };
+  created_at?: string; // Added for sorting by creation date
 }
 
 export interface ProjectEquity {
@@ -153,4 +167,38 @@ export interface TimeEntry {
   hours_logged: number;
   description: string;
   created_at: string;
+}
+
+// Adding interface for EquityProjectItemProps
+export interface EquityProjectItemProps {
+  application: JobApplication;
+  onApplicationUpdated: () => void;
+}
+
+// Adding new interface for PendingApplicationsListProps
+export interface PendingApplicationsListProps {
+  applications: JobApplication[];
+  onWithdraw?: (applicationId: string, reason?: string) => Promise<void>;
+  onAccept?: (application: JobApplication) => Promise<void>;
+  isWithdrawing?: boolean;
+}
+
+// Adding interface for ApplicationsTabBaseProps
+export interface ApplicationsTabBaseProps {
+  applications: JobApplication[];
+  onApplicationUpdated: () => void;
+  newMessagesCount?: number;
+}
+
+// Adding interface for DashboardTabProps
+export interface DashboardTabProps {
+  activeTab: string;
+  profile: Profile;
+  cvUrl: string;
+  parsedCvData: any;
+  skills: Skill[];
+  onSkillsUpdate: (skills: Skill[]) => void;
+  equityProjects: EquityProject[];
+  userCVs?: any[];
+  onCvListUpdated?: () => void;
 }

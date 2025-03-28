@@ -1,473 +1,400 @@
 
-import React, { useState, useCallback, useEffect } from "react";
-import { Ticket } from "@/types/types";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import React, { useState, useEffect } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Calendar, MessageSquare, Clock, AlertTriangle } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
-import { TimeTracker } from "@/components/job-seeker/dashboard/TimeTracker";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ProgressCircle } from "@/components/ui/progress-circle";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Pagination } from "@/components/ui/pagination";
+import { Ticket } from "@/types/types";
+import { AlertTriangle, CheckCircle2, Clock, RefreshCw } from "lucide-react";
+import { format } from "date-fns";
+import { ExpandedTicketDetails } from "./ExpandedTicketDetails";
 
-interface FilterBarProps {
-  onFilterChange: (status: string | null, priority: string | null) => void;
-  onRefresh?: () => void;
-}
-
-const FilterBar: React.FC<FilterBarProps> = ({ onFilterChange, onRefresh }) => {
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
-
-  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newStatus = e.target.value === "all" ? null : e.target.value;
-    setStatusFilter(newStatus);
-    onFilterChange(newStatus, priorityFilter);
-  };
-
-  const handlePriorityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newPriority = e.target.value === "all" ? null : e.target.value;
-    setPriorityFilter(newPriority);
-    onFilterChange(statusFilter, newPriority);
-  };
-
-  return (
-    <Card className="bg-secondary/30">
-      <div className="flex items-center justify-between p-4">
-        <div className="flex items-center space-x-4">
-          <div>
-            <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700">
-              Status:
-            </label>
-            <select
-              id="status-filter"
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-              onChange={handleStatusChange}
-              defaultValue="all"
-            >
-              <option value="all">All</option>
-              <option value="new">New</option>
-              <option value="in-progress">In Progress</option>
-              <option value="blocked">Blocked</option>
-              <option value="review">Review</option>
-              <option value="done">Done</option>
-              <option value="closed">Closed</option>
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="priority-filter" className="block text-sm font-medium text-gray-700">
-              Priority:
-            </label>
-            <select
-              id="priority-filter"
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-              onChange={handlePriorityChange}
-              defaultValue="all"
-            >
-              <option value="all">All</option>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-          </div>
-        </div>
-        {onRefresh && (
-          <Button variant="outline" size="sm" onClick={onRefresh}>
-            Refresh
-          </Button>
-        )}
-      </div>
-    </Card>
-  );
-};
-
-interface TicketCardProps {
-  ticket: Ticket;
-  onExpand: (isExpanded: boolean) => void;
-  onStatusChange: (status: string) => void;
-  onPriorityChange: (priority: string) => void;
-  onDueDateChange: (dueDate: string) => void;
-  onAddNote: (note: string) => void;
-  formatDate: (dateString: string) => string;
-}
-
-const TicketCard: React.FC<TicketCardProps> = ({
-  ticket,
-  onExpand,
-  onStatusChange,
-  onPriorityChange,
-  onDueDateChange,
-  onAddNote,
-  formatDate
-}) => {
-  const safeStatus = ticket.status || "new";
-  const safePriority = ticket.priority || "medium";
-  const [noteText, setNoteText] = useState('');
-  const equity = ticket.equity_points || 0;
-  const completion = ticket.completion_percentage || 0;
-
-  // Calculate earned equity based on completion percentage
-  const earnedEquity = equity * (completion / 100);
-  const formattedEarnedEquity = earnedEquity.toFixed(2);
-  
-  return (
-    <Card className="shadow-md">
-      <div className="flex items-start justify-between p-4">
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold">{ticket.title}</h3>
-          <p className="text-sm text-gray-500">{ticket.description}</p>
-          <div className="flex flex-wrap gap-2 items-center">
-            <Badge variant="secondary">{safeStatus}</Badge>
-            <Badge>{safePriority}</Badge>
-            {ticket.due_date && (
-              <div className="flex items-center text-gray-500">
-                <Calendar className="h-4 w-4 mr-1" />
-                <span className="text-xs">{formatDate(ticket.due_date)}</span>
-              </div>
-            )}
-            {ticket.completion_percentage !== undefined && (
-              <div className="flex items-center gap-1">
-                <ProgressCircle 
-                  value={ticket.completion_percentage}
-                  size="sm"
-                  strokeWidth={3}
-                />
-                <span className="text-xs">{ticket.completion_percentage}%</span>
-              </div>
-            )}
-            {ticket.hours_logged !== undefined && (
-              <div className="flex items-center text-gray-500">
-                <Clock className="h-4 w-4 mr-1" />
-                <span className="text-xs">{ticket.hours_logged} hrs</span>
-              </div>
-            )}
-            {equity > 0 && (
-              <Badge variant="outline" className="bg-green-50 text-green-700">
-                {equity}% equity
-              </Badge>
-            )}
-            {equity > 0 && completion > 0 && (
-              <Badge variant="outline" className="bg-green-100 text-green-800">
-                {formattedEarnedEquity}% earned
-              </Badge>
-            )}
-          </div>
-        </div>
-        <Button variant="ghost" size="sm" onClick={() => onExpand(!ticket.expanded)}>
-          {ticket.expanded ? "Collapse" : "Expand"}
-        </Button>
-      </div>
-
-      {ticket.expanded && (
-        <div className="p-4 border-t">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="text-md font-semibold mb-2">Description</h4>
-              <div className="bg-slate-50 rounded p-3 text-sm whitespace-pre-wrap">
-                {ticket.description || "No description provided."}
-              </div>
-              
-              {ticket.completion_percentage !== undefined && (
-                <div className="mt-4">
-                  <h4 className="text-md font-semibold mb-2">Completion</h4>
-                  <div className="flex items-center gap-3">
-                    <ProgressCircle 
-                      value={ticket.completion_percentage}
-                      size="md"
-                      strokeWidth={4}
-                    />
-                    <div>
-                      <p className="font-medium">{ticket.completion_percentage}% Complete</p>
-                      {ticket.equity_points && (
-                        <p className="text-sm text-green-700">
-                          Earning {formattedEarnedEquity}% of {ticket.equity_points}% equity
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {ticket.hours_logged !== undefined && ticket.estimated_hours && (
-                <div className="mt-4">
-                  <h4 className="text-md font-semibold mb-2">Time Tracking</h4>
-                  <div className="flex items-start gap-3">
-                    <Clock className="h-5 w-5 mt-0.5 text-blue-500" />
-                    <div>
-                      <p className="font-medium">{ticket.hours_logged} of {ticket.estimated_hours} hours logged</p>
-                      <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                        <div 
-                          className="bg-blue-500 h-2 rounded-full" 
-                          style={{ width: `${Math.min(100, (ticket.hours_logged / ticket.estimated_hours) * 100)}%` }}
-                        ></div>
-                      </div>
-                      {ticket.equity_points && (
-                        <p className="text-sm text-green-700 mt-1">
-                          Earning {((ticket.hours_logged / ticket.estimated_hours) * ticket.equity_points).toFixed(2)}% of {ticket.equity_points}% equity
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <h4 className="text-md font-semibold mb-2">Update Details</h4>
-              <div className="space-y-2">
-                <div>
-                  <label htmlFor="status-select" className="block text-sm font-medium text-gray-700">
-                    Status:
-                  </label>
-                  <Select
-                    value={safeStatus}
-                    onValueChange={onStatusChange}
-                  >
-                    <SelectTrigger className="w-full h-8 text-xs">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="new">New</SelectItem>
-                      <SelectItem value="in-progress">In Progress</SelectItem>
-                      <SelectItem value="blocked">Blocked</SelectItem>
-                      <SelectItem value="review">Review</SelectItem>
-                      <SelectItem value="done">Done</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label htmlFor="priority-select" className="block text-sm font-medium text-gray-700">
-                    Priority:
-                  </label>
-                  <Select
-                    value={safePriority}
-                    onValueChange={onPriorityChange}
-                  >
-                    <SelectTrigger className="w-full h-8 text-xs">
-                      <SelectValue placeholder="Select priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="critical">Critical</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="low">Low</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label htmlFor="due-date" className="block text-sm font-medium text-gray-700">
-                    Due Date:
-                  </label>
-                  <input
-                    type="date"
-                    id="due-date"
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                    onChange={(e) => onDueDateChange(e.target.value)}
-                    value={ticket.due_date || ''}
-                  />
-                </div>
-              </div>
-              
-              <h4 className="text-md font-semibold mb-2 mt-4">Add Note</h4>
-              <div className="space-y-2">
-                <Textarea
-                  placeholder="Add a note..."
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                  className="text-sm"
-                />
-                <Button variant="outline" size="sm" onClick={() => {
-                  onAddNote(noteText);
-                  setNoteText('');
-                }}>
-                  Add Note
-                </Button>
-              </div>
-              
-              {ticket.notes && Array.isArray(ticket.notes) && ticket.notes.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-md font-semibold mb-2">Notes History</h4>
-                  <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
-                    {ticket.notes.map((note: any, index: number) => (
-                      <div key={note.id || index} className="border-b pb-2 last:border-0">
-                        <div className="flex justify-between text-xs">
-                          <span className="font-semibold">{note.user || 'User'}</span>
-                          <span className="text-gray-500">
-                            {new Date(note.timestamp).toLocaleString()}
-                          </span>
-                        </div>
-                        <p className="text-sm mt-1">{note.comment || note.content || ''}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </Card>
-  );
-};
-
-export interface TicketDashboardProps {
-  initialTickets?: Ticket[];
-  onRefresh?: () => void;
-  onTicketExpand?: (ticketId: string, isExpanded: boolean) => void;
-  onTicketAction?: (ticketId: string, action: string, data: any) => void;
+interface TicketDashboardProps {
+  initialTickets: Ticket[];
+  onRefresh: () => void;
+  onTicketAction: (ticketId: string, action: string, data: any) => Promise<void>;
   showTimeTracking?: boolean;
-  currentUserId?: string;
-  expandedTickets?: Record<string, boolean>;
-  timeEntries?: any[];
-  logTimeForm?: {
-    hours: number;
-    description: string;
-    ticketId: string;
-  };
-  onLogTimeChange?: (field: string, value: any) => void;
-  onLogTime?: () => void;
-  userId?: string;
-  onToggleTicket?: (ticketId: string, isExpanded: boolean) => void;
+  userId: string;
+  onLogTime?: (ticketId: string) => void;
+  renderTicketActions?: (ticket: Ticket) => React.ReactNode;
 }
 
 export const TicketDashboard: React.FC<TicketDashboardProps> = ({
-  initialTickets = [],
+  initialTickets,
   onRefresh,
-  onTicketExpand,
   onTicketAction,
   showTimeTracking = false,
-  currentUserId,
-  expandedTickets = {},
-  timeEntries = [],
-  logTimeForm = { hours: 0, description: "", ticketId: "" },
-  onLogTimeChange,
-  onLogTime,
   userId,
-  onToggleTicket
+  onLogTime,
+  renderTicketActions
 }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
-  const [displayedTickets, setDisplayedTickets] = useState<Ticket[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const itemsPerPage = 10;
 
   useEffect(() => {
-    if (initialTickets && Array.isArray(initialTickets)) {
-      setTickets(initialTickets);
-      setFilteredTickets(initialTickets);
-      setDisplayedTickets(initialTickets);
-    } else {
-      setTickets([]);
-      setFilteredTickets([]);
-      setDisplayedTickets([]);
-    }
+    setTickets(initialTickets);
   }, [initialTickets]);
 
-  const handleFilterChange = useCallback(
-    (status: string | null, priority: string | null) => {
-      let filtered = tickets;
+  useEffect(() => {
+    let filtered = [...tickets];
 
-      if (status) {
-        filtered = filtered.filter((ticket) => ticket.status === status);
-      }
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (ticket) =>
+          ticket.title.toLowerCase().includes(term) ||
+          (ticket.description && ticket.description.toLowerCase().includes(term))
+      );
+    }
 
-      if (priority) {
-        filtered = filtered.filter((ticket) => ticket.priority === priority);
-      }
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((ticket) => ticket.status === statusFilter);
+    }
 
-      setFilteredTickets(filtered);
-      setDisplayedTickets(filtered);
-    },
-    [tickets]
+    if (priorityFilter !== "all") {
+      filtered = filtered.filter((ticket) => ticket.priority === priorityFilter);
+    }
+
+    if (typeFilter !== "all") {
+      filtered = filtered.filter((ticket) => ticket.type === typeFilter);
+    }
+
+    setFilteredTickets(filtered);
+    setCurrentPage(1);
+  }, [tickets, searchTerm, statusFilter, priorityFilter, typeFilter]);
+
+  const totalPages = Math.ceil(filteredTickets.length / itemsPerPage);
+  const displayedTickets = filteredTickets.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
-  const handleRefresh = () => {
-    if (onRefresh) {
-      onRefresh();
+  const openTicketDetails = (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+    setIsDialogOpen(true);
+  };
+
+  const handleUpdateStatus = async (ticketId: string, status: string) => {
+    await onTicketAction(ticketId, "updateStatus", status);
+    setTickets(
+      tickets.map((ticket) =>
+        ticket.id === ticketId ? { ...ticket, status } : ticket
+      )
+    );
+  };
+
+  const handleUpdatePriority = async (ticketId: string, priority: string) => {
+    await onTicketAction(ticketId, "updatePriority", priority);
+    setTickets(
+      tickets.map((ticket) =>
+        ticket.id === ticketId ? { ...ticket, priority } : ticket
+      )
+    );
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "new":
+        return "bg-blue-100 text-blue-800";
+      case "in-progress":
+        return "bg-yellow-100 text-yellow-800";
+      case "blocked":
+        return "bg-red-100 text-red-800";
+      case "review":
+        return "bg-purple-100 text-purple-800";
+      case "done":
+        return "bg-green-100 text-green-800";
+      case "closed":
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  const handleToggleTicket = (ticketId: string, isExpanded: boolean) => {
-    if (onToggleTicket) {
-      onToggleTicket(ticketId, isExpanded);
-    } else if (onTicketExpand) {
-      onTicketExpand(ticketId, isExpanded);
-    } else {
-      setTickets(prevTickets => 
-        prevTickets.map(ticket => 
-          ticket.id === ticketId ? { ...ticket, expanded: isExpanded } : ticket
-        )
-      );
-      setFilteredTickets(prevTickets => 
-        prevTickets.map(ticket => 
-          ticket.id === ticketId ? { ...ticket, expanded: isExpanded } : ticket
-        )
-      );
-      setDisplayedTickets(prevTickets => 
-        prevTickets.map(ticket => 
-          ticket.id === ticketId ? { ...ticket, expanded: isExpanded } : ticket
-        )
-      );
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "low":
+        return "bg-blue-100 text-blue-800";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800";
+      case "high":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  const handleTicketAction = (ticketId: string, action: string, data: any) => {
-    if (onTicketAction) {
-      onTicketAction(ticketId, action, data);
-    }
-  };
-
-  const formatDate = (dateString: string) => {
+  const formatDate = (date: string | null) => {
+    if (!date) return "Not set";
     try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch (e) {
-      return dateString || 'Invalid date';
+      return format(new Date(date), "MMM d, yyyy");
+    } catch (error) {
+      return "Invalid date";
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "new":
+        return <Clock className="h-4 w-4 mr-1 text-blue-500" />;
+      case "in-progress":
+        return <Clock className="h-4 w-4 mr-1 text-yellow-500" />;
+      case "blocked":
+        return <AlertTriangle className="h-4 w-4 mr-1 text-red-500" />;
+      case "done":
+      case "closed":
+        return <CheckCircle2 className="h-4 w-4 mr-1 text-green-500" />;
+      default:
+        return <Clock className="h-4 w-4 mr-1 text-gray-500" />;
+    }
+  };
+
+  const getTicketTypeLabel = (type: string) => {
+    switch (type) {
+      case "task":
+        return "Task";
+      case "ticket":
+        return "Ticket";
+      case "beta-test":
+        return "Beta Test";
+      default:
+        return type.charAt(0).toUpperCase() + type.slice(1);
     }
   };
 
   return (
-    <div className="mt-4">
-      <FilterBar 
-        onFilterChange={handleFilterChange} 
-        onRefresh={handleRefresh}
-      />
-      
-      <div className="space-y-4 mt-4">
-        {!displayedTickets || displayedTickets.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-md">
-            <p className="text-gray-500">No tickets found that match your filter criteria.</p>
-          </div>
-        ) : (
-          displayedTickets.map((ticket) => (
-            <div key={ticket.id} className="mb-4">
-              <TicketCard
-                ticket={ticket}
-                onExpand={(isExpanded) => handleToggleTicket(ticket.id, isExpanded)}
-                onStatusChange={(status) => handleTicketAction(ticket.id, 'updateStatus', status)}
-                onPriorityChange={(priority) => handleTicketAction(ticket.id, 'updatePriority', priority)}
-                onDueDateChange={(dueDate) => handleTicketAction(ticket.id, 'updateDueDate', dueDate)}
-                onAddNote={(note) => handleTicketAction(ticket.id, 'addNote', note)}
-                formatDate={formatDate}
-              />
-              
-              {ticket.expanded && showTimeTracking && userId && 
-                ticket.task_id && ticket.project_id && (
-                <div className="mt-2 border rounded-md p-4 bg-gray-50">
-                  <h3 className="text-sm font-medium mb-2">Time Tracking</h3>
-                  <TimeTracker 
-                    ticketId={ticket.id} 
-                    userId={userId} 
-                    jobAppId={ticket.job_app_id}
-                  />
-                </div>
-              )}
-            </div>
-          ))
-        )}
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row justify-between gap-4">
+        <div className="flex-1">
+          <Input
+            placeholder="Search tickets..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <Select
+            value={statusFilter}
+            onValueChange={setStatusFilter}
+          >
+            <SelectTrigger className="w-[130px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="new">New</SelectItem>
+              <SelectItem value="in-progress">In Progress</SelectItem>
+              <SelectItem value="blocked">Blocked</SelectItem>
+              <SelectItem value="review">Review</SelectItem>
+              <SelectItem value="done">Done</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={priorityFilter}
+            onValueChange={setPriorityFilter}
+          >
+            <SelectTrigger className="w-[130px]">
+              <SelectValue placeholder="Priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Priorities</SelectItem>
+              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={typeFilter}
+            onValueChange={setTypeFilter}
+          >
+            <SelectTrigger className="w-[130px]">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="task">Task</SelectItem>
+              <SelectItem value="ticket">Ticket</SelectItem>
+              <SelectItem value="beta-test">Beta Test</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button variant="outline" onClick={onRefresh}>
+            <RefreshCw className="h-4 w-4 mr-1" /> Refresh
+          </Button>
+        </div>
       </div>
+
+      {displayedTickets.length === 0 ? (
+        <div className="text-center py-12 border rounded-md bg-gray-50">
+          <h3 className="font-medium text-lg">No tickets found</h3>
+          <p className="text-muted-foreground mt-1">
+            Try adjusting your search or filters to find what you're looking for.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="border rounded-md overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Type</TableHead>
+                  {showTimeTracking && <TableHead>Hours</TableHead>}
+                  <TableHead>Due Date</TableHead>
+                  <TableHead>Completion</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {displayedTickets.map((ticket) => (
+                  <TableRow key={ticket.id}>
+                    <TableCell
+                      className="font-medium cursor-pointer hover:text-blue-600"
+                      onClick={() => openTicketDetails(ticket)}
+                    >
+                      {ticket.title}
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={ticket.status}
+                        onValueChange={(value) => handleUpdateStatus(ticket.id, value)}
+                      >
+                        <SelectTrigger className={`w-[130px] ${getStatusColor(ticket.status)}`}>
+                          <SelectValue>
+                            <div className="flex items-center">
+                              {getStatusIcon(ticket.status)}
+                              <span>
+                                {ticket.status === "in-progress"
+                                  ? "In Progress"
+                                  : ticket.status.charAt(0).toUpperCase() +
+                                    ticket.status.slice(1)}
+                              </span>
+                            </div>
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="new">New</SelectItem>
+                          <SelectItem value="in-progress">In Progress</SelectItem>
+                          <SelectItem value="blocked">Blocked</SelectItem>
+                          <SelectItem value="review">Review</SelectItem>
+                          <SelectItem value="done">Done</SelectItem>
+                          <SelectItem value="closed">Closed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={ticket.priority}
+                        onValueChange={(value) => handleUpdatePriority(ticket.id, value)}
+                      >
+                        <SelectTrigger className={`w-[100px] ${getPriorityColor(ticket.priority)}`}>
+                          <SelectValue>
+                            {ticket.priority.charAt(0).toUpperCase() +
+                              ticket.priority.slice(1)}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {getTicketTypeLabel(ticket.type || "task")}
+                      </Badge>
+                    </TableCell>
+                    {showTimeTracking && (
+                      <TableCell>
+                        {ticket.estimated_hours || 0} / {ticket.hours_logged || 0} hrs
+                      </TableCell>
+                    )}
+                    <TableCell>{formatDate(ticket.due_date)}</TableCell>
+                    <TableCell>{ticket.completion_percentage || 0}%</TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openTicketDetails(ticket)}
+                        >
+                          View
+                        </Button>
+                        {showTimeTracking && onLogTime && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onLogTime(ticket.id)}
+                          >
+                            Log Time
+                          </Button>
+                        )}
+                        {renderTicketActions && renderTicketActions(ticket)}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          )}
+        </>
+      )}
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-4xl">
+          {selectedTicket && (
+            <ExpandedTicketDetails
+              ticket={selectedTicket}
+              onClose={() => setIsDialogOpen(false)}
+              onTicketAction={onTicketAction}
+              onLogTime={showTimeTracking && onLogTime ? onLogTime : undefined}
+              userCanEditStatus={true}
+              userCanEditDates={true}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

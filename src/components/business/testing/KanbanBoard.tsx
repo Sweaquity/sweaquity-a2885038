@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -128,105 +129,121 @@ export const KanbanBoard = ({ tickets = [], onStatusChange = () => {}, onTicketC
     }
   };
 
+  const onDragEnd = (result: any) => {
+    const { destination, source, draggableId } = result;
+
+    // If there's no destination, or the item is dropped back to the same place
+    if (!destination || 
+        (destination.droppableId === source.droppableId && 
+         destination.index === source.index)) {
+      return;
+    }
+
+    // Call the parent's status change handler
+    onStatusChange(draggableId, destination.droppableId);
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-      {statusColumns.map((column) => (
-        <div key={column.id} className="flex flex-col">
-          <div className="rounded-t-lg px-3 py-2 mb-2 border border-gray-200 bg-gray-50">
-            <h3 className="font-medium">{column.title}</h3>
-            <p className="text-xs text-muted-foreground">
-              {getTicketsForStatus(column.id).length} items
-            </p>
-          </div>
-          
-          <Droppable droppableId={column.id}>
-            {(provided) => (
-              <div
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-                className="flex-1 min-h-[200px] bg-gray-50/50 rounded-b-lg p-2 space-y-2"
-              >
-                {getTicketsForStatus(column.id).map((ticket, index) => (
-                  <Draggable key={ticket.id} draggableId={ticket.id} index={index}>
-                    {(provided) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                      >
-                        <Card className="mb-2 cursor-grab">
-                          <CardHeader className="py-3 px-3">
-                            <div className="flex justify-between items-start">
-                              <CardTitle className="text-sm font-medium line-clamp-2">
-                                {ticket.title}
-                              </CardTitle>
-                              <div className="flex items-center space-x-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
-                                  onClick={() => handleViewTicket(ticket)}
-                                >
-                                  <Eye className="h-3.5 w-3.5" />
-                                  <span className="sr-only">View</span>
-                                </Button>
-                              </div>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="py-0 px-3">
-                            {ticket.description && (
-                              <CardDescription className="line-clamp-2 text-xs mt-1">
-                                {ticket.description}
-                              </CardDescription>
-                            )}
-                          </CardContent>
-                          <CardFooter className="py-2 px-3 flex justify-between">
-                            <div className="flex space-x-1">
-                              <Badge variant="outline" className={getPriorityColor(ticket.priority)}>
-                                {ticket.priority}
-                              </Badge>
-                              <Badge variant="outline" className={getHealthColor(ticket.health)}>
-                                {ticket.health}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center text-xs text-muted-foreground">
-                              <Clock className="h-3 w-3 mr-1" />
-                              {getTimeAgo(ticket.created_at)}
-                            </div>
-                          </CardFooter>
-                          
-                          {expandedTicket === ticket.id && (
-                            <div className="px-3 py-2 border-t border-gray-100 bg-gray-50 text-xs">
-                              <h4 className="font-medium mb-1">Details</h4>
-                              <div className="space-y-1">
-                                <p><span className="font-medium">Created:</span> {getTimeAgo(ticket.created_at)}</p>
-                                <p><span className="font-medium">Updated:</span> {getTimeAgo(ticket.updated_at)}</p>
-                                <p><span className="font-medium">Status:</span> {ticket.status}</p>
-                                <div className="flex justify-end mt-2">
+    <DragDropContext onDragEnd={onDragEnd}>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {statusColumns.map((column) => (
+          <div key={column.id} className="flex flex-col">
+            <div className="rounded-t-lg px-3 py-2 mb-2 border border-gray-200 bg-gray-50">
+              <h3 className="font-medium">{column.title}</h3>
+              <p className="text-xs text-muted-foreground">
+                {getTicketsForStatus(column.id).length} items
+              </p>
+            </div>
+            
+            <Droppable droppableId={column.id}>
+              {(provided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className="flex-1 min-h-[200px] bg-gray-50/50 rounded-b-lg p-2 space-y-2"
+                >
+                  {getTicketsForStatus(column.id).map((ticket, index) => (
+                    <Draggable key={ticket.id} draggableId={ticket.id} index={index}>
+                      {(provided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                        >
+                          <Card className="mb-2 cursor-grab">
+                            <CardHeader className="py-3 px-3">
+                              <div className="flex justify-between items-start">
+                                <CardTitle className="text-sm font-medium line-clamp-2">
+                                  {ticket.title}
+                                </CardTitle>
+                                <div className="flex items-center space-x-1">
                                   <Button
+                                    variant="ghost"
                                     size="sm"
-                                    variant="outline"
-                                    className="h-7 text-xs"
-                                    onClick={() => window.open(`/tickets/${ticket.id}`, '_blank')}
+                                    className="h-6 w-6 p-0"
+                                    onClick={() => handleViewTicket(ticket)}
                                   >
-                                    <ArrowUpRight className="h-3 w-3 mr-1" />
-                                    Open Details
+                                    <Eye className="h-3.5 w-3.5" />
+                                    <span className="sr-only">View</span>
                                   </Button>
                                 </div>
                               </div>
-                            </div>
-                          )}
-                        </Card>
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        </div>
-      ))}
-    </div>
+                            </CardHeader>
+                            <CardContent className="py-0 px-3">
+                              {ticket.description && (
+                                <CardDescription className="line-clamp-2 text-xs mt-1">
+                                  {ticket.description}
+                                </CardDescription>
+                              )}
+                            </CardContent>
+                            <CardFooter className="py-2 px-3 flex justify-between">
+                              <div className="flex space-x-1">
+                                <Badge variant="outline" className={getPriorityColor(ticket.priority)}>
+                                  {ticket.priority}
+                                </Badge>
+                                <Badge variant="outline" className={getHealthColor(ticket.health)}>
+                                  {ticket.health}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center text-xs text-muted-foreground">
+                                <Clock className="h-3 w-3 mr-1" />
+                                {getTimeAgo(ticket.created_at)}
+                              </div>
+                            </CardFooter>
+                            
+                            {expandedTicket === ticket.id && (
+                              <div className="px-3 py-2 border-t border-gray-100 bg-gray-50 text-xs">
+                                <h4 className="font-medium mb-1">Details</h4>
+                                <div className="space-y-1">
+                                  <p><span className="font-medium">Created:</span> {getTimeAgo(ticket.created_at)}</p>
+                                  <p><span className="font-medium">Updated:</span> {getTimeAgo(ticket.updated_at)}</p>
+                                  <p><span className="font-medium">Status:</span> {ticket.status}</p>
+                                  <div className="flex justify-end mt-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 text-xs"
+                                      onClick={() => window.open(`/tickets/${ticket.id}`, '_blank')}
+                                    >
+                                      <ArrowUpRight className="h-3 w-3 mr-1" />
+                                      Open Details
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </Card>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </div>
+        ))}
+      </div>
+    </DragDropContext>
   );
 };

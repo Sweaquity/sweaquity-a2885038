@@ -1,522 +1,432 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { TicketMessage } from "@/types/dashboard";
-import { formatDistanceToNow } from "date-fns";
-import { AlertTriangle, CheckCircle2, Clock, Edit, MessageCircle, Save, User } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ProgressCircle } from "@/components/ui/progress-circle";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { CalendarIcon, Clock } from "lucide-react";
+import { format } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Ticket } from "@/types/types";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
-export interface ExpandedTicketDetailsProps {
-  ticket: any;
-  messages: TicketMessage[];
-  onReply: (message: string) => void;
-  onStatusChange: (status: string) => void;
-  onPriorityChange?: (priority: string) => void;
-  onAssigneeChange?: (userId: string) => void;
-  onUpdateEstimatedHours?: (hours: number) => void;
-  onUpdateCompletionPercentage?: (percentage: number) => void;
-  users?: Array<{id: string, first_name: string, last_name: string, email: string}>;
-  projects?: Array<{project_id: string, title: string}>;
-  tasks?: Array<{task_id: string, title: string}>;
+interface ExpandedTicketDetailsProps {
+  ticket: Ticket;
+  onClose?: () => void;
+  onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
+  onLogTime?: (ticketId: string) => void;
+  userCanEditStatus?: boolean;
+  userCanEditDates?: boolean;
 }
 
-export const ExpandedTicketDetails = ({
+export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   ticket,
-  messages,
-  onReply,
-  onStatusChange,
-  onPriorityChange,
-  onAssigneeChange,
-  onUpdateEstimatedHours,
-  onUpdateCompletionPercentage,
-  users = [],
-  projects = [],
-  tasks = []
-}: ExpandedTicketDetailsProps) => {
-  const [newMessage, setNewMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState('details');
-  const [isEditingHours, setIsEditingHours] = useState(false);
-  const [isEditingCompletion, setIsEditingCompletion] = useState(false);
-  const [estimatedHours, setEstimatedHours] = useState(ticket.estimated_hours || 0);
-  const [completionPercentage, setCompletionPercentage] = useState(ticket.completion_percentage || 0);
+  onClose,
+  onTicketAction = async () => {},
+  onLogTime,
+  userCanEditStatus = false,
+  userCanEditDates = false
+}) => {
+  const [activeTab, setActiveTab] = useState("details");
+  const [newNote, setNewNote] = useState("");
+  const [date, setDate] = useState<Date | undefined>(
+    ticket.due_date ? new Date(ticket.due_date) : undefined
+  );
+  const [completionPercent, setCompletionPercent] = useState<number>(
+    ticket.completion_percentage || 0
+  );
+  const [timeEntries, setTimeEntries] = useState<any[]>([]);
+  const [isLoadingTimeEntries, setIsLoadingTimeEntries] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim()) return;
-
-    setIsSubmitting(true);
-    try {
-      await onReply(newMessage);
-      setNewMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSaveHours = () => {
-    if (onUpdateEstimatedHours) {
-      onUpdateEstimatedHours(Number(estimatedHours));
-    }
-    setIsEditingHours(false);
-  };
-
-  const handleSaveCompletion = () => {
-    if (onUpdateCompletionPercentage) {
-      onUpdateCompletionPercentage(Number(completionPercentage));
-    }
-    setIsEditingCompletion(false);
-  };
-
-  // Format date helpers
-  const formatMessageDate = (dateString: string) => {
-    try {
-      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
-    } catch (error) {
-      return 'Invalid date';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    try {
-      return new Date(dateString).toLocaleDateString();
-    } catch (error) {
-      return 'Invalid date';
-    }
-  };
-
-  // Status options for ticket
   const statusOptions = [
-    { value: 'new', label: 'New' },
-    { value: 'in-progress', label: 'In Progress' },
-    { value: 'blocked', label: 'Blocked' },
-    { value: 'review', label: 'Review' },
-    { value: 'done', label: 'Done' }
+    { value: "new", label: "New" },
+    { value: "in-progress", label: "In Progress" },
+    { value: "blocked", label: "Blocked" },
+    { value: "review", label: "Review" },
+    { value: "done", label: "Done" },
+    { value: "closed", label: "Closed" }
   ];
 
   const priorityOptions = [
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' }
+    { value: "low", label: "Low" },
+    { value: "medium", label: "Medium" },
+    { value: "high", label: "High" }
   ];
 
-  // Helper functions for displaying status information (from TicketsList)
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'new':
-        return <Clock className="h-4 w-4 text-blue-500" />;
-      case 'in-progress':
-        return <Clock className="h-4 w-4 text-yellow-500" />;
-      case 'blocked':
-        return <AlertTriangle className="h-4 w-4 text-red-500" />;
-      case 'done':
-      case 'closed':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      default:
-        return <Clock className="h-4 w-4 text-blue-500" />;
+  useEffect(() => {
+    if (ticket.id) {
+      fetchTimeEntries(ticket.id);
+    }
+  }, [ticket.id]);
+
+  const fetchTimeEntries = async (ticketId: string) => {
+    setIsLoadingTimeEntries(true);
+    try {
+      const { data, error } = await supabase
+        .from('time_entries')
+        .select(`
+          *,
+          profiles:user_id (
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .eq('ticket_id', ticketId)
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      
+      setTimeEntries(data || []);
+    } catch (error) {
+      console.error('Error fetching time entries:', error);
+    } finally {
+      setIsLoadingTimeEntries(false);
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'new':
-        return 'bg-blue-100 text-blue-800';
-      case 'in-progress':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'blocked':
-        return 'bg-red-100 text-red-800';
-      case 'review':
-        return 'bg-purple-100 text-purple-800';
-      case 'done':
-        return 'bg-green-100 text-green-800';
-      case 'closed':
-        return 'bg-gray-100 text-gray-800';
+      case "new":
+        return "bg-blue-100 text-blue-800";
+      case "in-progress":
+        return "bg-yellow-100 text-yellow-800";
+      case "blocked":
+        return "bg-red-100 text-red-800";
+      case "review":
+        return "bg-purple-100 text-purple-800";
+      case "done":
+        return "bg-green-100 text-green-800";
+      case "closed":
+        return "bg-gray-100 text-gray-800";
       default:
-        return 'bg-blue-100 text-blue-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high':
-        return 'bg-red-100 text-red-800';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'low':
-        return 'bg-green-100 text-green-800';
+      case "low":
+        return "bg-blue-100 text-blue-800";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800";
+      case "high":
+        return "bg-red-100 text-red-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  // Render health indicator (from TicketList)
-  const renderHealthIndicator = (health: string) => {
-    const colors = {
-      red: 'bg-red-500',
-      amber: 'bg-yellow-500',
-      green: 'bg-green-500'
-    };
+  const formatDate = (date: string | null) => {
+    if (!date) return "Not set";
+    try {
+      return format(new Date(date), "PPP");
+    } catch (error) {
+      return "Invalid date";
+    }
+  };
+
+  const formatDateTime = (date: string | null) => {
+    if (!date) return "Not set";
+    try {
+      return format(new Date(date), "PPP p");
+    } catch (error) {
+      return "Invalid date";
+    }
+  };
+
+  const handleStatusChange = async (value: string) => {
+    await onTicketAction(ticket.id, "updateStatus", value);
+  };
+
+  const handlePriorityChange = async (value: string) => {
+    await onTicketAction(ticket.id, "updatePriority", value);
+  };
+
+  const handleDueDateChange = async (selectedDate: Date | undefined) => {
+    setDate(selectedDate);
+    if (selectedDate) {
+      await onTicketAction(ticket.id, "updateDueDate", selectedDate.toISOString().split('T')[0]);
+    }
+  };
+
+  const handleCompletionChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = Number(e.target.value);
+    setCompletionPercent(value);
+    await onTicketAction(ticket.id, "updateCompletionPercentage", value);
+  };
+
+  const handleAddNote = async () => {
+    if (!newNote.trim()) return;
     
-    return (
-      <span 
-        className={`inline-block w-3 h-3 rounded-full ${colors[health as keyof typeof colors] || 'bg-gray-500'}`} 
-        title={`Health: ${health}`}
-      />
-    );
+    await onTicketAction(ticket.id, "addNote", newNote);
+    setNewNote("");
   };
-
-  // Calculate equity earned
-  const calculateEquityEarned = () => {
-    if (ticket.equity_points !== undefined) {
-      if (ticket.estimated_hours && ticket.hours_logged_total) {
-        return (ticket.hours_logged_total / ticket.estimated_hours) * ticket.equity_points;
-      } else if (ticket.completion_percentage !== undefined) {
-        return (ticket.completion_percentage / 100) * ticket.equity_points;
-      }
-    }
-    return 0;
-  };
-
-  const equityEarned = calculateEquityEarned();
 
   return (
-    <Card className="border shadow-sm">
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-2">
-            {ticket.health && renderHealthIndicator(ticket.health)}
-            <CardTitle>{ticket.title}</CardTitle>
-          </div>
-          <div className="flex gap-2">
-            <Badge className={getStatusColor(ticket.status)}>
-              {getStatusIcon(ticket.status)}
-              <span className="ml-1">{ticket.status}</span>
-            </Badge>
-            <Badge className={getPriorityColor(ticket.priority)}>
-              {ticket.priority}
-            </Badge>
-          </div>
+    <div className="max-h-[80vh] overflow-y-auto">
+      <div className="flex justify-between items-start mb-4">
+        <h2 className="text-xl font-bold">{ticket.title}</h2>
+        <div>
+          <Button variant="outline" size="sm" onClick={onClose}>
+            Close
+          </Button>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="px-4 py-3">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2">
-          <TabsList className="mb-3">
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="conversation">Conversation</TabsTrigger>
-            <TabsTrigger value="activity">Activity Log</TabsTrigger>
-          </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="conversation">Conversation</TabsTrigger>
+          <TabsTrigger value="activity-log">Activity Log</TabsTrigger>
+          <TabsTrigger value="time-log">Time Log</TabsTrigger>
+        </TabsList>
 
-          <TabsContent value="details" className="space-y-4">
+        <TabsContent value="details" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <h3 className="text-sm font-medium mb-2">Description</h3>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {ticket.description || 'No description provided.'}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 pt-2">
-              <div>
-                <h3 className="text-sm font-medium mb-2">Ticket Information</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Status:</span>
-                    <Select
-                      value={ticket.status}
-                      onValueChange={onStatusChange}
-                    >
-                      <SelectTrigger className="w-32 h-7 text-xs">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {statusOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Priority:</span>
-                    <Select
-                      value={ticket.priority}
-                      onValueChange={onPriorityChange}
-                      disabled={!onPriorityChange}
-                    >
-                      <SelectTrigger className="w-32 h-7 text-xs">
-                        <SelectValue placeholder="Priority" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {priorityOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {onAssigneeChange && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Assigned to:</span>
-                      <Select
-                        value={ticket.assigned_to || "none"}
-                        onValueChange={onAssigneeChange}
-                      >
-                        <SelectTrigger className="w-32 h-7 text-xs">
-                          <SelectValue placeholder="Assignee" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Unassigned</SelectItem>
-                          {users.map(user => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.first_name} {user.last_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {ticket.health && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Health:</span>
-                      <div className="flex items-center gap-1">
-                        {renderHealthIndicator(ticket.health)}
-                        <span className="text-sm">{ticket.health}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Estimated hours - editable */}
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Estimated hours:</span>
-                    {isEditingHours ? (
-                      <div className="flex items-center gap-1">
-                        <Input 
-                          type="number" 
-                          value={estimatedHours} 
-                          onChange={(e) => setEstimatedHours(parseFloat(e.target.value) || 0)} 
-                          className="w-16 h-7 text-xs"
-                          min="0"
-                          step="0.5"
-                        />
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveHours}>
-                          <Save className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm">{ticket.estimated_hours || 0}h</span>
-                        {onUpdateEstimatedHours && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setIsEditingHours(true)}>
-                            <Edit className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Completion percentage - editable */}
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Completion:</span>
-                    {isEditingCompletion ? (
-                      <div className="flex items-center gap-1">
-                        <Input 
-                          type="number" 
-                          value={completionPercentage} 
-                          onChange={(e) => setCompletionPercentage(parseFloat(e.target.value) || 0)} 
-                          className="w-16 h-7 text-xs"
-                          min="0"
-                          max="100"
-                          step="5"
-                        />
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveCompletion}>
-                          <Save className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <ProgressCircle value={ticket.completion_percentage || 0} size="sm" strokeWidth={3} />
-                        <span className="text-sm">{ticket.completion_percentage || 0}%</span>
-                        {onUpdateCompletionPercentage && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setIsEditingCompletion(true)}>
-                            <Edit className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Hours logged */}
-                  {ticket.hours_logged_total !== undefined && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Hours logged:</span>
-                      <span className="text-sm">{ticket.hours_logged_total}h</span>
-                    </div>
-                  )}
-
-                  {/* Equity points and earned */}
-                  {ticket.equity_points !== undefined && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Equity allocated:</span>
-                      <span className="text-sm">{ticket.equity_points}%</span>
-                    </div>
-                  )}
-
-                  {ticket.equity_points !== undefined && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Equity earned:</span>
-                      <span className="text-sm">{equityEarned.toFixed(2)}%</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium mb-2">Related Information</h3>
-                <div className="space-y-2">
-                  {ticket.created_at && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Created:</span>
-                      <span className="text-sm">{formatDate(ticket.created_at)}</span>
-                    </div>
-                  )}
-                  
-                  {ticket.updated_at && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Updated:</span>
-                      <span className="text-sm">{formatDate(ticket.updated_at)}</span>
-                    </div>
-                  )}
-                  
-                  {ticket.due_date && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Due Date:</span>
-                      <span className="text-sm">{formatDate(ticket.due_date)}</span>
-                    </div>
-                  )}
-                  
-                  {ticket.project && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Project:</span>
-                      <span className="text-sm">{ticket.project.title}</span>
-                    </div>
-                  )}
-                  
-                  {ticket.task && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Task:</span>
-                      <span className="text-sm">{ticket.task.title}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="conversation">
-            {/* Message thread */}
-            <div className="space-y-4 mb-4">
-              {messages && messages.length > 0 ? (
-                messages.map((message, index) => (
-                  <div key={message.id || index} className="flex gap-3 pb-3 border-b border-gray-100">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback>
-                        {message.sender?.name?.charAt(0) || 'U'}
-                      </AvatarFallback>
-                      {message.sender?.avatar && (
-                        <AvatarImage src={message.sender.avatar} />
-                      )}
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-center">
-                        <p className="text-sm font-medium">
-                          {message.sender?.name || 'User'}
-                        </p>
-                        <span className="text-xs text-muted-foreground">
-                          {formatMessageDate(message.createdAt)}
-                        </span>
-                      </div>
-                      <p className="text-sm mt-1">{message.message || message.content}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">No messages yet.</p>
-              )}
-            </div>
-
-            {/* Reply form */}
-            <form onSubmit={handleSubmit} className="space-y-2 pt-2">
-              <Textarea
-                placeholder="Type your message here..."
-                value={newMessage}
-                onChange={e => setNewMessage(e.target.value)}
-                rows={3}
-                className="resize-none"
-              />
-              <div className="flex justify-end">
-                <Button 
-                  type="submit"
-                  disabled={isSubmitting || !newMessage.trim()}
-                >
-                  <MessageCircle className="h-4 w-4 mr-1" />
-                  {isSubmitting ? 'Sending...' : 'Send Reply'}
-                </Button>
-              </div>
-            </form>
-          </TabsContent>
-
-          <TabsContent value="activity">
-            <div className="max-h-80 overflow-y-auto">
-              {ticket.notes && Array.isArray(ticket.notes) && ticket.notes.length > 0 ? (
-                <div className="space-y-2">
-                  {ticket.notes.map((note: any, index: number) => (
-                    <div key={index} className="py-2 border-b border-gray-100">
-                      <div className="flex justify-between">
-                        <span className="font-medium text-sm">
-                          {note.type === 'status_change' ? 'Status changed' :
-                          note.type === 'priority_change' ? 'Priority changed' :
-                          note.type === 'assignee_change' ? 'Assignee changed' :
-                          note.action || note.type}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(note.timestamp).toLocaleString()}
-                        </span>
-                      </div>
-                      {note.from !== undefined && note.to !== undefined && (
-                        <div className="text-xs text-muted-foreground mt-1">
-                          From <span className="font-medium">{note.from || 'none'}</span> to <span className="font-medium">{note.to || 'none'}</span>
-                        </div>
-                      )}
-                      {(note.message || note.comment) && (
-                        <p className="mt-1 text-sm">{note.message || note.comment}</p>
-                      )}
-                      {note.user && (
-                        <p className="text-xs text-muted-foreground mt-1">By {note.user}</p>
-                      )}
-                    </div>
+              <label className="block text-sm font-medium mb-1">Status</label>
+              <Select
+                value={ticket.status}
+                disabled={!userCanEditStatus}
+                onValueChange={handleStatusChange}
+              >
+                <SelectTrigger className={getStatusColor(ticket.status)}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Priority</label>
+              <Select
+                value={ticket.priority}
+                disabled={!userCanEditStatus}
+                onValueChange={handlePriorityChange}
+              >
+                <SelectTrigger className={getPriorityColor(ticket.priority)}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {priorityOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Due Date</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !date && "text-muted-foreground"
+                    )}
+                    disabled={!userCanEditDates}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "PPP") : "No date selected"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={handleDueDateChange}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Completion</label>
+              <div className="flex items-center space-x-2">
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={completionPercent}
+                  onChange={handleCompletionChange}
+                  disabled={!userCanEditStatus}
+                  className="w-20"
+                />
+                <span>%</span>
+                <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500"
+                    style={{ width: `${completionPercent}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Description</label>
+            <div className="p-3 bg-gray-50 rounded-md border min-h-[100px] whitespace-pre-wrap">
+              {ticket.description || "No description provided."}
+            </div>
+          </div>
+
+          {onLogTime && (
+            <div className="pt-4">
+              <Button onClick={() => onLogTime(ticket.id)}>
+                <Clock className="h-4 w-4 mr-2" /> Log Time
+              </Button>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="conversation" className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-md border mb-4">
+            <p className="text-sm text-gray-500 mb-2">
+              Conversation is where you can discuss this ticket with other team members.
+              Chat history is saved and visible to all team members.
+            </p>
+          </div>
+          
+          <div className="min-h-[200px] max-h-[300px] overflow-y-auto border rounded-md p-4 space-y-4">
+            {ticket.notes && ticket.notes.length > 0 ? (
+              ticket.notes.map((note: any, index: number) => (
+                <div key={note.id || index} className="border-b pb-3">
+                  <div className="flex justify-between">
+                    <p className="font-medium">{note.user}</p>
+                    <p className="text-xs text-gray-500">
+                      {formatDateTime(note.timestamp)}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-sm">{note.comment}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-gray-500 py-8">
+                No conversation history yet.
+              </p>
+            )}
+          </div>
+
+          <div className="flex space-x-2">
+            <Textarea
+              placeholder="Add a note or comment..."
+              value={newNote}
+              onChange={(e) => setNewNote(e.target.value)}
+              className="flex-1"
+            />
+            <Button onClick={handleAddNote} disabled={!newNote.trim()}>
+              Add
+            </Button>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="activity-log" className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-md border mb-4">
+            <p className="text-sm text-gray-500 mb-2">
+              Activity Log shows a record of all changes and updates made to this ticket.
+              It's useful for tracking the history and progress.
+            </p>
+          </div>
+          
+          <div className="min-h-[200px] border rounded-md p-4">
+            <p className="text-center text-gray-500 py-8">
+              Activity log is being implemented.
+            </p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="time-log" className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-md border mb-4">
+            <p className="text-sm text-gray-500 mb-2">
+              Time Log shows all time entries recorded for this ticket.
+            </p>
+          </div>
+          
+          {isLoadingTimeEntries ? (
+            <div className="flex justify-center p-8">
+              <p>Loading time entries...</p>
+            </div>
+          ) : (
+            <div>
+              {timeEntries.length === 0 ? (
+                <div className="text-center text-gray-500 py-8 border rounded-md">
+                  <p>No time entries found for this ticket.</p>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No activity recorded.</p>
+                <div className="border rounded-md overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          User
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Hours
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Description
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {timeEntries.map((entry) => (
+                        <tr key={entry.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {entry.profiles ? 
+                              `${entry.profiles.first_name || ''} ${entry.profiles.last_name || ''}`.trim() : 
+                              'Unknown user'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {entry.hours_logged || 0} hrs
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {formatDate(entry.created_at)}
+                          </td>
+                          <td className="px-6 py-4 text-sm">
+                            {entry.description || 'No description'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              
+              {onLogTime && (
+                <div className="mt-4">
+                  <Button onClick={() => onLogTime(ticket.id)}>
+                    <Clock className="h-4 w-4 mr-2" /> Log Time
+                  </Button>
+                </div>
               )}
             </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };

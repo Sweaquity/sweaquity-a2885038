@@ -33,8 +33,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
   
   const { 
     isWithdrawDialogOpen, 
-    setIsWithdrawDialogOpen, 
-    isWithdrawing,
+    setIsWithdrawDialogOpen,
     handleWithdrawApplication 
   } = useWithdrawApplication(onApplicationUpdated);
   
@@ -128,7 +127,10 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
     <div className="border rounded-md overflow-hidden bg-card dashboard-card">
       {/* Application Header Section */}
       <ApplicationItemHeader
-        application={application}
+        title={application.task_title || 'Untitled Task'}
+        company={application.company_name || 'Company'}
+        project={application.project_title || 'Project'}
+        status={application.status}
         isExpanded={isExpanded}
         toggleExpand={toggleExpand}
         onStatusChange={handleStatusChange}
@@ -142,7 +144,10 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
       {/* Expanded Application Content */}
       {isExpanded && (
         <ApplicationItemContent
-          application={application}
+          description={application.description}
+          message={application.message}
+          discourse={application.task_discourse}
+          appliedAt={application.applied_at}
           onMessageClick={() => setIsCreateMessageOpen(true)}
           onWithdrawClick={() => setIsWithdrawDialogOpen(true)}
         />
@@ -161,7 +166,6 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
         isOpen={isWithdrawDialogOpen}
         onOpenChange={setIsWithdrawDialogOpen}
         onWithdraw={handleWithdraw}
-        isWithdrawing={isWithdrawing}
       />
       
       <StatusChangeDialog 

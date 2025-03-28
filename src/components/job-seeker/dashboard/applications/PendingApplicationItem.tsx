@@ -1,172 +1,143 @@
 
-import { Card } from "@/components/ui/card";
-import { JobApplication } from "@/types/jobSeeker";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { ExternalLink, ChevronDown, ChevronRight, FileText } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { WithdrawDialog } from "./WithdrawDialog";
-import { useWithdrawApplication } from "./hooks/useWithdrawApplication";
-import { formatDistanceToNow } from "date-fns";
-import { Link } from "react-router-dom";
-import { StatusBadge } from "./StatusBadge";
-import { previewApplicationCV } from "@/utils/setupStorage";
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { formatDistanceToNow } from 'date-fns';
+import { JobApplication } from '@/types/jobSeeker';
+import { Badge } from '@/components/ui/badge';
+import { Lightbulb } from 'lucide-react';
 
-interface PendingApplicationItemProps {
+export interface PendingApplicationItemProps {
   application: JobApplication;
+  onAccept?: (application: JobApplication) => Promise<void>;
+  onWithdraw?: (applicationId: string, reason?: string) => Promise<void>;
+  isWithdrawing?: boolean;
   getMatchedSkills: () => string[];
-  onApplicationUpdated?: () => void;
 }
 
-export const PendingApplicationItem = ({ 
-  application, 
-  getMatchedSkills,
-  onApplicationUpdated 
+export const PendingApplicationItem = ({
+  application,
+  onAccept,
+  onWithdraw,
+  isWithdrawing = false,
+  getMatchedSkills
 }: PendingApplicationItemProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const {
-    isWithdrawDialogOpen,
-    setIsWithdrawDialogOpen,
-    isWithdrawing,
-    handleWithdrawApplication
-  } = useWithdrawApplication(onApplicationUpdated);
-
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const applicationId = application.job_app_id || application.id || '';
+  const needsAcceptance = application.status === 'accepted' && application.accepted_business && !application.accepted_jobseeker;
   const matchedSkills = getMatchedSkills();
-  const appliedDate = new Date(application.applied_at);
-  const timeAgo = formatDistanceToNow(appliedDate, { addSuffix: true });
-
-  const onWithdraw = async (reason: string) => {
-    await handleWithdrawApplication(application.job_app_id, reason);
+  
+  const handleAccept = async () => {
+    if (!onAccept) return;
+    
+    try {
+      setIsAccepting(true);
+      await onAccept(application);
+    } catch (error) {
+      console.error("Error accepting application:", error);
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+  
+  const handleWithdraw = async () => {
+    if (!onWithdraw) return;
+    
+    try {
+      await onWithdraw(applicationId);
+    } catch (error) {
+      console.error("Error withdrawing application:", error);
+    }
+  };
+  
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Recently';
+    return formatDistanceToNow(new Date(dateString), { addSuffix: true });
   };
 
   return (
-    <Collapsible
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      className="border rounded-lg overflow-hidden"
-    >
-      <CollapsibleTrigger className="w-full">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-4 text-left hover:bg-muted/50 transition-colors">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h3 className="font-medium line-clamp-1">
-                {application.business_roles?.title || "Unknown Role"}
-              </h3>
-              {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            </div>
-            <p className="text-sm text-muted-foreground line-clamp-1">
-              {application.business_roles?.company_name || "Unknown Company"} • 
-              {application.business_roles?.project_title && ` ${application.business_roles.project_title}`}
+    <Card className="overflow-hidden">
+      <div className="p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
+          <div>
+            <h3 className="text-lg font-medium">{application.task_title || "Untitled Task"}</h3>
+            <p className="text-sm text-muted-foreground">
+              {application.company_name || 'Company'} • {application.project_title || 'Project'}
             </p>
-          </div>
-          
-          <div className="space-y-1">
-            <div className="flex flex-wrap gap-1">
-              {(application.business_roles?.skill_requirements || []).slice(0, 2).map((skill, index) => {
-                const skillName = typeof skill === 'string' ? skill : skill.skill;
-                return (
-                  <Badge 
-                    key={index} 
-                    variant={matchedSkills.includes(skillName) ? "default" : "outline"}
-                    className="text-xs"
-                  >
-                    {skillName}
-                  </Badge>
-                );
-              })}
-              {(application.business_roles?.skill_requirements || []).length > 2 && (
-                <span className="text-xs text-muted-foreground">
-                  +{(application.business_roles?.skill_requirements || []).length - 2} more
-                </span>
-              )}
-            </div>
             <p className="text-xs text-muted-foreground">
-              {application.business_roles?.timeframe && `${application.business_roles.timeframe} • `}
-              {application.business_roles?.equity_allocation !== undefined && 
-                `${application.business_roles.equity_allocation}% equity`}
+              Applied {formatDate(application.applied_at)}
             </p>
           </div>
           
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-muted-foreground">
-              Applied {timeAgo}
-            </div>
-            <StatusBadge status={application.status} />
+          <div className="flex space-x-2">
+            {needsAcceptance && (
+              <Button 
+                onClick={handleAccept} 
+                disabled={isAccepting}
+                size="sm"
+              >
+                {isAccepting ? 'Accepting...' : 'Accept Job'}
+              </Button>
+            )}
+            
+            <Button 
+              variant="destructive" 
+              onClick={handleWithdraw} 
+              disabled={isWithdrawing}
+              size="sm"
+            >
+              {isWithdrawing ? 'Withdrawing...' : 'Withdraw'}
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              onClick={() => setIsExpanded(!isExpanded)}
+              size="sm"
+            >
+              {isExpanded ? 'Collapse' : 'Expand'}
+            </Button>
           </div>
         </div>
-      </CollapsibleTrigger>
-      
-      <CollapsibleContent>
-        <div className="p-4 border-t bg-muted/10">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-medium mb-2">Project Description</h4>
-              <p className="text-sm">
-                {application.business_roles?.description || "No description provided."}
-              </p>
-              
-              <h4 className="font-medium mt-4 mb-2">Your Application Message</h4>
-              <p className="text-sm">
-                {application.message || "No message provided."}
-              </p>
-            </div>
-            
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-wrap gap-2">
-                {application.cv_url && (
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      previewApplicationCV(application.cv_url as string);
-                    }}
-                  >
-                    <FileText className="mr-2 h-4 w-4" /> View CV
-                  </Button>
-                )}
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.open(`/projects/${application.project_id}`, '_blank');
-                  }}
-                >
-                  <ExternalLink className="mr-2 h-4 w-4" /> View Project
-                </Button>
-                
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsWithdrawDialogOpen(true);
-                  }}
-                >
-                  Withdraw Application
-                </Button>
+        
+        {isExpanded && (
+          <div className="mt-4 space-y-3">
+            {matchedSkills.length > 0 && (
+              <div className="flex items-start space-x-2">
+                <Lightbulb className="h-4 w-4 text-yellow-500 mt-1" />
+                <div>
+                  <span className="text-sm font-medium">Matched Skills:</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {matchedSkills.map((skill, index) => (
+                      <Badge key={index} variant="secondary" className="text-xs">
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               </div>
-              
-              <div className="mt-auto space-y-2">
-                <h4 className="font-medium">Status Updates</h4>
-                <p className="text-sm text-muted-foreground">
-                  The business will review your application and update its status.
+            )}
+            
+            {application.message && (
+              <div>
+                <h4 className="text-sm font-medium mb-1">Your Message:</h4>
+                <p className="text-sm whitespace-pre-wrap bg-gray-50 p-2 rounded-md">
+                  {application.message}
                 </p>
               </div>
-            </div>
+            )}
+            
+            {needsAcceptance && (
+              <div className="bg-blue-50 p-3 rounded-md">
+                <p className="text-sm text-blue-700">
+                  <strong>Business has accepted your application!</strong> You can now accept this job to start working on it.
+                </p>
+              </div>
+            )}
           </div>
-        </div>
-      </CollapsibleContent>
-      
-      <WithdrawDialog
-        isOpen={isWithdrawDialogOpen}
-        onOpenChange={setIsWithdrawDialogOpen}
-        onWithdraw={onWithdraw}
-        isWithdrawing={isWithdrawing}
-      />
-    </Collapsible>
+        )}
+      </div>
+    </Card>
   );
 };

@@ -1,4 +1,3 @@
-// File: src/components/job-seeker/dashboard/tabs/ApplicationsTab.tsx
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
@@ -15,7 +14,17 @@ export const ApplicationsTab = ({
   onApplicationUpdated,
 }: ApplicationsTabProps) => {
   const [newMessagesCount, setNewMessagesCount] = useState(0);
+  const [newApplicationsCount, setNewApplicationsCount] = useState(0);
   const channelRef = useRef<any>(null);
+
+  // Calculate new applications that need attention (accepted jobs that need jobseeker acceptance)
+  useEffect(() => {
+    const pendingAcceptance = applications.filter(app => 
+      app.status === 'accepted' && app.accepted_business && !app.accepted_jobseeker
+    ).length;
+    
+    setNewApplicationsCount(pendingAcceptance);
+  }, [applications]);
 
   // Memoize the update function to prevent unnecessary re-renders
   const handleApplicationUpdated = useCallback(() => {

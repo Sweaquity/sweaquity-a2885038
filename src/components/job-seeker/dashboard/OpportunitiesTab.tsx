@@ -23,6 +23,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredProjects, setFilteredProjects] = useState<EquityProject[]>([]);
   const [filterSkill, setFilterSkill] = useState<string | null>(null);
+  const [newOpportunities, setNewOpportunities] = useState<number>(0);
 
   // Convert user skills to lowercase strings for comparison
   const userSkillStrings = useMemo(() => {
@@ -39,6 +40,21 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
     const filtered = filterProjects(projects, searchTerm, filterSkill);
     setFilteredProjects(filtered);
   }, [projects, searchTerm, filterSkill]);
+
+  // Calculate new opportunities
+  useEffect(() => {
+    // Count new opportunities based on recent creation date
+    const recentOpportunities = projects.filter(opp => {
+      const creationDate = opp.created_at || opp.start_date || null;
+      if (!creationDate) return false;
+      
+      // Consider opportunities created in the last 7 days as "new"
+      return new Date(creationDate) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    }).length;
+    
+    // Instead of showing 0, let's not show any notification
+    setNewOpportunities(recentOpportunities);
+  }, [projects]);
 
   const handleApply = async (project: EquityProject, task: SubTask) => {
     try {
@@ -86,6 +102,19 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
     setFilterSkill(null);
   };
 
+  const formatTimeSince = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays < 1) return "Today";
+    if (diffInDays === 1) return "Yesterday";
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
+    if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} months ago`;
+    return `${Math.floor(diffInDays / 365)} years ago`;
+  };
+
   return (
     <div className="space-y-4">
       <FilterSection
@@ -94,6 +123,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
         filterSkill={filterSkill}
         onSearchChange={setSearchTerm}
         onFilterSkillChange={setFilterSkill}
+        newOpportunities={newOpportunities > 0 ? newOpportunities : undefined}
       />
 
       {filteredProjects.length === 0 ? (

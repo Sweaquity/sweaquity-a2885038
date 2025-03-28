@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { EquityProject, SubTask } from '@/types/jobSeeker';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronRight } from 'lucide-react';
-import { TaskCard } from './TaskCard';
+
+import React, { useState } from "react";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { EquityProject, SubTask } from "@/types/jobSeeker";
+import { Building, ChevronDown, ChevronUp, Clock, CreditCard, Users } from "lucide-react";
 
 interface ProjectCardProps {
   project: EquityProject;
@@ -15,91 +13,169 @@ interface ProjectCardProps {
 }
 
 export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const navigate = useNavigate();
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded);
+  };
+  
+  const formatTimeframe = (timeframe: string | undefined) => {
+    if (!timeframe) return "Flexible";
+    return timeframe;
+  };
 
-  // Extract all skills from all tasks for this project
-  const allProjectSkills = project.sub_tasks?.flatMap(task => 
-    task.skill_requirements?.map(skill => 
-      typeof skill === 'string' ? skill : skill.skill
-    ) || []
-  ) || [];
+  const getSkillMatch = (task: SubTask) => {
+    if (!task.skill_requirements || !Array.isArray(task.skill_requirements) || task.skill_requirements.length === 0 || !userSkillStrings || userSkillStrings.length === 0) {
+      return { count: 0, total: 0, percentage: 0 };
+    }
+    
+    const taskSkills = task.skill_requirements.map(skill => {
+      if (typeof skill === 'string') return skill.toLowerCase();
+      return typeof skill.skill === 'string' ? skill.skill.toLowerCase() : '';
+    }).filter(Boolean);
+    
+    if (taskSkills.length === 0) {
+      return { count: 0, total: 0, percentage: 0 };
+    }
+    
+    const matchCount = userSkillStrings.filter(skill => 
+      taskSkills.includes(skill.toLowerCase())
+    ).length;
+    
+    return {
+      count: matchCount,
+      total: taskSkills.length,
+      percentage: Math.round((matchCount / taskSkills.length) * 100)
+    };
+  };
 
-  // Calculate how many of the user's skills match this project
-  const matchingSkills = allProjectSkills.filter(skill => 
-    userSkillStrings.includes(skill.toLowerCase())
-  );
-
-  // Calculate match percentage
-  const matchPercentage = allProjectSkills.length > 0
-    ? Math.round((matchingSkills.length / allProjectSkills.length) * 100)
-    : 0;
+  // Extract tasks from the project
+  const tasks = project.sub_tasks || [];
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="p-4 pb-0">
-        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
-            <div>
-              <h3 className="text-lg font-semibold">{project.title || "Untitled Project"}</h3>
-              <p className="text-sm text-muted-foreground">
-                {project.company_name || "Unknown Company"}
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <div className="text-sm">
-                <span className="font-medium">Skill Match: </span>
-                <Badge variant={matchPercentage > 70 ? "default" : "outline"}>
-                  {matchPercentage}%
-                </Badge>
-              </div>
-              
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  {isOpen ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                </Button>
-              </CollapsibleTrigger>
-            </div>
+      <CardHeader className="pb-2">
+        <div className="flex justify-between">
+          <CardTitle>{project.title || "Untitled Project"}</CardTitle>
+          <div className="flex items-center space-x-2">
+            <Button variant="ghost" size="sm" onClick={toggleExpand}>
+              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
           </div>
-          
-          <CollapsibleContent className="mt-4">
-            <div className="space-y-4">
-              {project.sub_tasks?.map(task => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  userSkillStrings={userSkillStrings}
-                  onApply={() => onApply(project, task)}
-                />
-              ))}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
+        </div>
+        <div className="flex items-center text-sm text-muted-foreground">
+          <Building className="mr-1 h-4 w-4" />
+          {project.business_roles?.company_name || "Unknown Company"}
+        </div>
       </CardHeader>
       
-      <CardContent className="p-4">
-        <div className="flex flex-wrap gap-1 mt-2">
-          {allProjectSkills.slice(0, 5).map((skill, index) => (
-            <Badge 
-              key={index} 
-              variant={userSkillStrings.includes(skill.toLowerCase()) ? "default" : "outline"}
-              className="text-xs"
-            >
-              {skill}
-            </Badge>
-          ))}
-          {allProjectSkills.length > 5 && (
-            <span className="text-xs text-muted-foreground">
-              +{allProjectSkills.length - 5} more
-            </span>
+      <CardContent className="pb-3">
+        <div className="mb-3">
+          <p className="text-sm text-muted-foreground line-clamp-2">
+            {project.business_roles?.description || "No description provided."}
+          </p>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
+          <div>
+            <div className="text-xs font-medium">Equity Available</div>
+            <div className="flex items-center">
+              <CreditCard className="mr-1 h-3 w-3 text-muted-foreground" />
+              <span>{project.equity_amount || 0}%</span>
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-medium">Timeframe</div>
+            <div className="flex items-center">
+              <Clock className="mr-1 h-3 w-3 text-muted-foreground" />
+              <span>{formatTimeframe(project.time_allocated)}</span>
+            </div>
+          </div>
+          {project.skill_match !== undefined && (
+            <div>
+              <div className="text-xs font-medium">Skill Match</div>
+              <div className="flex items-center">
+                <Users className="mr-1 h-3 w-3 text-muted-foreground" />
+                <span>{project.skill_match}%</span>
+              </div>
+            </div>
           )}
         </div>
+        
+        {isExpanded && tasks.length > 0 && (
+          <div className="space-y-4 mt-4">
+            <div className="text-sm font-medium">Available Roles</div>
+            {tasks.map((task) => {
+              const skillMatch = getSkillMatch(task);
+              
+              return (
+                <div key={task.id} className="p-3 border rounded-md">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="font-medium">{task.title}</div>
+                      <div className="text-sm text-muted-foreground line-clamp-2">
+                        {task.description || "No description provided."}
+                      </div>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      onClick={() => onApply(project, task)}
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-3">
+                    <div>
+                      <div className="text-xs font-medium">Equity</div>
+                      <div className="text-sm">{task.equity_allocation || 0}%</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-medium">Timeframe</div>
+                      <div className="text-sm">{formatTimeframe(task.timeframe)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-medium">Skill Match</div>
+                      <div className="text-sm">{skillMatch.percentage}% ({skillMatch.count}/{skillMatch.total})</div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-3">
+                    <div className="text-xs font-medium mb-1">Required Skills</div>
+                    <div className="flex flex-wrap gap-1">
+                      {Array.isArray(task.skill_requirements) && task.skill_requirements.map((skill, index) => {
+                        const skillName = typeof skill === 'string' ? skill : skill.skill;
+                        const skillLevel = typeof skill === 'string' ? 'Intermediate' : skill.level;
+                        const isMatched = userSkillStrings.includes(typeof skillName === 'string' ? skillName.toLowerCase() : '');
+                        
+                        return (
+                          <Badge 
+                            key={index} 
+                            variant={isMatched ? "default" : "outline"}
+                            className={isMatched ? "bg-green-500" : ""}
+                          >
+                            {skillName} {skillLevel ? `(${skillLevel})` : ''}
+                          </Badge>
+                        );
+                      })}
+                      {(!Array.isArray(task.skill_requirements) || task.skill_requirements.length === 0) && (
+                        <span className="text-sm text-muted-foreground">No specific skills required</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
+      
+      <CardFooter className="pt-0">
+        <Button variant="ghost" className="w-full justify-center" onClick={toggleExpand}>
+          {isExpanded ? "Show Less" : "Show Roles"}
+          {isExpanded ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
+        </Button>
+      </CardFooter>
     </Card>
   );
 };
