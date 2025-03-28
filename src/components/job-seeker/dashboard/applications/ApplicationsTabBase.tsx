@@ -1,7 +1,8 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { InfoIcon } from "lucide-react";
 import { JobApplication } from "@/types/jobSeeker";
 import { ApplicationsList } from "./ApplicationsList";
 import { PendingApplicationsList } from "./PendingApplicationsList";
@@ -50,6 +51,23 @@ export const ApplicationsTabBase = ({
     [applications]
   );
 
+  // New: Filter Equity Projects
+  const activeEquityProjects = useMemo(() => 
+    applications.filter(app => 
+      app.is_equity_project && 
+      (app.status === 'accepted' && app.accepted_business && app.accepted_jobseeker)
+    ), 
+    [applications]
+  );
+
+  const completedEquityProjects = useMemo(() => 
+    applications.filter(app => 
+      app.is_equity_project && 
+      (app.status === 'completed')
+    ), 
+    [applications]
+  );
+
   // Count notifications for tabs
   const pendingCount = pendingApplications.filter(app => 
     app.status === 'accepted' && app.accepted_business && !app.accepted_jobseeker
@@ -59,9 +77,10 @@ export const ApplicationsTabBase = ({
 
   useEffect(() => {
     if (pendingCount > 0 && activeTab !== "pending") {
-      //setActiveTab("pending");
+      // Uncomment if you want to force switch to pending tab
+      // setActiveTab("pending");
     }
-  }, [pendingCount]);
+  }, [pendingCount, activeTab]);
 
   if (applications.length === 0) {
     return (
@@ -102,6 +121,12 @@ export const ApplicationsTabBase = ({
       </TabsList>
 
       <TabsContent value="pending">
+        <Alert>
+          <InfoIcon className="h-4 w-4 mr-2" />
+          <AlertDescription>
+            This tab shows applications that are awaiting a response or require your acceptance.
+          </AlertDescription>
+        </Alert>
         <PendingApplicationsList 
           applications={pendingApplications}
           onWithdraw={handleWithdrawApplication}
@@ -111,6 +136,12 @@ export const ApplicationsTabBase = ({
       </TabsContent>
 
       <TabsContent value="current">
+        <Alert>
+          <InfoIcon className="h-4 w-4 mr-2" />
+          <AlertDescription>
+            This tab shows your active projects where both you and the business have accepted the work agreement.
+          </AlertDescription>
+        </Alert>
         <ApplicationsList 
           applications={currentApplications}
           onApplicationUpdated={onApplicationUpdated}
@@ -118,6 +149,12 @@ export const ApplicationsTabBase = ({
       </TabsContent>
 
       <TabsContent value="past">
+        <Alert>
+          <InfoIcon className="h-4 w-4 mr-2" />
+          <AlertDescription>
+            This tab shows your past applications, including rejected and withdrawn projects.
+          </AlertDescription>
+        </Alert>
         <PastApplicationsList 
           applications={pastApplications}
           onApplicationUpdated={onApplicationUpdated}
@@ -125,10 +162,43 @@ export const ApplicationsTabBase = ({
       </TabsContent>
 
       <TabsContent value="equity">
-        <EquityProjectsList 
-          applications={currentApplications}
-          onApplicationUpdated={onApplicationUpdated}
-        />
+        <Alert>
+          <InfoIcon className="h-4 w-4 mr-2" />
+          <AlertDescription>
+            This tab shows your equity-based projects, both active and completed.
+          </AlertDescription>
+        </Alert>
+        
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Active Equity Projects</h3>
+            <EquityProjectsList 
+              applications={currentApplications}
+              onApplicationUpdated={onApplicationUpdated}
+              isCompleted={false}
+
+            />
+          </div>
+          
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Completed Equity Projects</h3>
+            {completedEquityProjects.length > 0 ? (
+              <EquityProjectsList 
+                applications={currentApplications}
+                onApplicationUpdated={onApplicationUpdated}
+                isCompleted={true}
+              />
+            ) : (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center py-4">
+                    <p className="text-muted-foreground">No completed equity projects yet</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
       </TabsContent>
     </Tabs>
   );
