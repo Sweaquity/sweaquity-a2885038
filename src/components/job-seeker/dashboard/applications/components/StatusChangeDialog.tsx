@@ -1,69 +1,75 @@
 
-import { Button } from "@/components/ui/button";
-import {
+import { useState } from 'react';
+import { 
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 interface StatusChangeDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  selectedStatus: string;
-  onConfirm: () => Promise<void>;
-  isLoading: boolean;
+  onStatusChange: (note: string) => void;
+  title: string;
+  description: string;
+  confirmLabel: string;
+  isProcessing: boolean;
 }
 
-export function StatusChangeDialog({
+export const StatusChangeDialog = ({
   isOpen,
   onOpenChange,
-  selectedStatus,
-  onConfirm,
-  isLoading,
-}: StatusChangeDialogProps) {
-  // Ensure we never have an empty status - default to "pending" if empty
-  const safeStatus = selectedStatus || "pending";
-  
+  onStatusChange,
+  title,
+  description,
+  confirmLabel,
+  isProcessing
+}: StatusChangeDialogProps) => {
+  const [note, setNote] = useState('');
+
+  const handleConfirm = () => {
+    onStatusChange(note);
+    setNote('');
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirm Status Change</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            Are you sure you want to change the application status to {safeStatus}?
+            {description}
           </DialogDescription>
         </DialogHeader>
-
-        <RadioGroup defaultValue={safeStatus} className="gap-2">
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="negotiation" id="negotiation" />
-            <Label htmlFor="negotiation">Negotiation</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="accepted" id="accepted" />
-            <Label htmlFor="accepted">Accepted</Label>
-          </div>
-        </RadioGroup>
-
+        
+        <Textarea
+          placeholder="Provide additional information (optional)"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          className="min-h-[100px]"
+        />
+        
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            disabled={isProcessing}
+          >
             Cancel
           </Button>
           <Button 
-            onClick={onConfirm} 
-            disabled={isLoading}
+            onClick={handleConfirm}
+            disabled={isProcessing}
           >
-            {isLoading ? "Updating..." : "Confirm"}
+            {isProcessing ? 'Processing...' : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-}
-
-export default StatusChangeDialog;
+};

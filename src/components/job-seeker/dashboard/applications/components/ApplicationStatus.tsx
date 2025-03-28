@@ -1,31 +1,25 @@
 
+import React from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { StatusBadge } from '../StatusBadge';
-import { ChevronUp, ChevronDown } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface ApplicationStatusProps {
+  status: string;
   isExpanded: boolean;
   toggleExpand: () => void;
-  status: string;
-  onStatusChange: (status: string) => void;
-  isUpdatingStatus: boolean;
-  showAcceptButton: boolean;
-  onAcceptClick: () => void;
-  isAcceptingJob: boolean;
+  onStatusChange?: (status: string) => void;
+  isUpdatingStatus?: boolean;
+  showAcceptButton?: boolean;
+  onAcceptClick?: () => void;
+  isAcceptingJob?: boolean;
   compact?: boolean;
 }
 
 export const ApplicationStatus = ({
+  status,
   isExpanded,
   toggleExpand,
-  status,
   onStatusChange,
   isUpdatingStatus,
   showAcceptButton,
@@ -33,62 +27,55 @@ export const ApplicationStatus = ({
   isAcceptingJob,
   compact = false
 }: ApplicationStatusProps) => {
-  // Ensure we have a non-empty default value
-  const safeStatus = status || "pending";
-  
+  const getStatusColor = (status: string) => {
+    const statusLower = status.toLowerCase();
+    if (statusLower === 'accepted' || statusLower === 'completed') return 'bg-green-500';
+    if (statusLower === 'rejected') return 'bg-red-500';
+    if (statusLower === 'withdrawn') return 'bg-yellow-500';
+    if (statusLower === 'pending') return 'bg-blue-500';
+    return 'bg-gray-500';
+  };
+
   return (
-    <div className="flex items-center space-x-2 mt-2 sm:mt-0">
-      {compact ? (
-        <StatusBadge status={safeStatus} />
-      ) : (
-        <div className="flex flex-col items-end space-y-2">
-          <div className="flex flex-wrap gap-2 items-center justify-end">
-            <Select 
-              value={safeStatus} 
-              onValueChange={onStatusChange}
-              disabled={isUpdatingStatus}
-            >
-              <SelectTrigger className="w-[140px] bg-white">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent className="bg-white">
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="negotiation">Negotiation</SelectItem>
-                <SelectItem value="accepted">Accepted</SelectItem>
-                <SelectItem value="withdrawn">Withdraw</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            {showAcceptButton && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={onAcceptClick}
-                disabled={isAcceptingJob}
-              >
-                Accept Job
-              </Button>
-            )}
-          </div>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleExpand}
-            className="flex items-center"
-          >
-            {isExpanded ? (
-              <>
-                Less details <ChevronUp className="ml-1 h-4 w-4" />
-              </>
-            ) : (
-              <>
-                More details <ChevronDown className="ml-1 h-4 w-4" />
-              </>
-            )}
-          </Button>
-        </div>
+    <div className="flex items-center space-x-2">
+      <Badge className={`${getStatusColor(status)}`} variant="secondary">
+        {status}
+      </Badge>
+      
+      {showAcceptButton && (
+        <Button 
+          size="sm" 
+          variant="default"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onAcceptClick) onAcceptClick();
+          }}
+          disabled={isAcceptingJob}
+        >
+          {isAcceptingJob ? "Accepting..." : "Accept Job"}
+        </Button>
       )}
+      
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleExpand();
+        }}
+      >
+        {isExpanded ? (
+          <>
+            <ChevronUp className="h-4 w-4 mr-1" />
+            {!compact && "Collapse"}
+          </>
+        ) : (
+          <>
+            <ChevronDown className="h-4 w-4 mr-1" />
+            {!compact && "Expand"}
+          </>
+        )}
+      </Button>
     </div>
   );
 };

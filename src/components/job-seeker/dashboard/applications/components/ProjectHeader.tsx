@@ -1,62 +1,36 @@
 
+import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { format, formatDistanceToNow } from 'date-fns';
+import { JobApplication } from '@/types/jobSeeker';
+import { formatDistanceToNow } from 'date-fns';
 
 interface ProjectHeaderProps {
-  title?: string;
-  companyName?: string;
-  projectTitle?: string;
-  status: string;
-  appliedAt: string;
+  application: JobApplication;
 }
 
-export const ProjectHeader = ({ 
-  title, 
-  companyName, 
-  projectTitle,
-  status,
-  appliedAt
-}: ProjectHeaderProps) => {
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'negotiation':
-        return 'bg-amber-100 text-amber-800 border-amber-300';
-      case 'accepted':
-        return 'bg-green-100 text-green-800 border-green-300';
-      default:
-        return 'bg-blue-100 text-blue-800 border-blue-300';
-    }
-  };
-  
-  const formatDate = (dateString: string) => {
+export const ProjectHeader = ({ application }: ProjectHeaderProps) => {
+  const getTimeAgo = (dateString?: string) => {
+    if (!dateString) return "";
     try {
       return formatDistanceToNow(new Date(dateString), { addSuffix: true });
-    } catch (error) {
-      return "Unknown date";
+    } catch (e) {
+      return "";
     }
   };
 
   return (
-    <div className="flex flex-1 flex-col space-y-1.5">
-      <div className="flex flex-wrap items-center gap-2 mb-1">
-        <h3 className="text-md font-semibold line-clamp-1">
-          {title || "Untitled Role"}
-        </h3>
-        <Badge className={getStatusColor(status)}>
-          {status}
+    <div>
+      <div className="text-lg flex items-center font-medium">
+        {application.business_roles?.title || "Untitled Role"}
+        <Badge className="ml-2 bg-green-500" variant="secondary">
+          {application.status}
         </Badge>
       </div>
-      
-      <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-        <span className="inline-flex items-center">
-          {companyName || "Unknown company"}
-        </span>
-        <span className="inline-flex items-center">
-          Project: {projectTitle || "Untitled Project"}
-        </span>
-        <span className="inline-flex items-center">
-          Applied: {formatDate(appliedAt)}
-        </span>
+      <div className="text-sm text-muted-foreground mt-1">
+        {application.business_roles?.company_name || "Company"} | Project: {application.business_roles?.project_title || "Project"}
+      </div>
+      <div className="text-xs text-muted-foreground">
+        Applied: {getTimeAgo(application.applied_at)}
       </div>
     </div>
   );

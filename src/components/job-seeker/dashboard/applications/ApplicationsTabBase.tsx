@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -51,11 +52,16 @@ export const ApplicationsTabBase = ({
     [applications]
   );
 
-  // New: Filter Equity Projects
+  // New: Filter Equity Projects - Active vs Completed based on equity allocation
   const activeEquityProjects = useMemo(() => 
     applications.filter(app => 
       app.is_equity_project && 
-      (app.status === 'accepted' && app.accepted_business && app.accepted_jobseeker)
+      app.status === 'accepted' && 
+      app.accepted_business && 
+      app.accepted_jobseeker && 
+      (!app.accepted_jobs || 
+        (app.accepted_jobs && 
+         (app.accepted_jobs.equity_agreed > app.accepted_jobs.jobs_equity_allocated)))
     ), 
     [applications]
   );
@@ -63,7 +69,10 @@ export const ApplicationsTabBase = ({
   const completedEquityProjects = useMemo(() => 
     applications.filter(app => 
       app.is_equity_project && 
-      (app.status === 'completed')
+      ((app.status === 'completed') || 
+       (app.accepted_jobs && 
+        app.accepted_jobs.equity_agreed > 0 && 
+        app.accepted_jobs.equity_agreed === app.accepted_jobs.jobs_equity_allocated))
     ), 
     [applications]
   );
@@ -172,19 +181,24 @@ export const ApplicationsTabBase = ({
         <div className="space-y-6">
           <div>
             <h3 className="text-lg font-semibold mb-4">Active Equity Projects</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Projects where you have equity allocation that is still being earned.
+            </p>
             <EquityProjectsList 
-              applications={currentApplications}
+              applications={activeEquityProjects}
               onApplicationUpdated={onApplicationUpdated}
               isCompleted={false}
-
             />
           </div>
           
           <div>
             <h3 className="text-lg font-semibold mb-4">Completed Equity Projects</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Projects where 100% of your agreed equity has been allocated.
+            </p>
             {completedEquityProjects.length > 0 ? (
               <EquityProjectsList 
-                applications={currentApplications}
+                applications={completedEquityProjects}
                 onApplicationUpdated={onApplicationUpdated}
                 isCompleted={true}
               />

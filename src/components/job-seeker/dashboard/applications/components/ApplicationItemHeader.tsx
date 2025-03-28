@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { JobApplication } from '@/types/jobSeeker';
-import { StatusBadge } from '../StatusBadge';
+import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 
 export interface ApplicationItemHeaderProps {
@@ -58,7 +58,9 @@ export const ApplicationItemHeader = ({
               </p>
             )}
           </div>
-          <StatusBadge status={status} />
+          <Badge variant="secondary" className={status === 'accepted' ? 'bg-green-500' : status === 'rejected' ? 'bg-red-500' : status === 'withdrawn' ? 'bg-yellow-500' : 'bg-blue-500'}>
+            {status}
+          </Badge>
         </div>
       </div>
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   const [showGantt, setShowGantt] = useState(false);
   const [reviewTask, setReviewTask] = useState<any>(null);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [expandedTickets, setExpandedTickets] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (businessId) {
@@ -130,13 +132,25 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     setReviewTask(null);
     loadTicketsData();
   };
+  
+  const toggleTicketExpansion = (ticketId: string) => {
+    setExpandedTickets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(ticketId)) {
+        newSet.delete(ticketId);
+      } else {
+        newSet.add(ticketId);
+      }
+      return newSet;
+    });
+  };
 
   const renderTicketActions = (ticket: Ticket) => {
     if ((ticket.status === 'review' || ticket.status === 'in review') && 
         (ticket.completion_percentage === 100)) {
       return (
         <Button
-          variant="outline"
+          variant="default"
           size="sm"
           onClick={() => handleTicketAction(ticket.id, 'reviewCompletion', null)}
         >
@@ -185,6 +199,8 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         renderTicketActions={renderTicketActions}
         businessId={businessId}
         showTimeTracking={false}
+        expandedTickets={expandedTickets}
+        toggleTicketExpansion={toggleTicketExpansion}
       />
 
       <CreateTicketDialog
