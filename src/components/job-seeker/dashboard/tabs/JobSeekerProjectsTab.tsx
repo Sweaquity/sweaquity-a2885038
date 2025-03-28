@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,12 +20,17 @@ import { RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
 import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
 import { DragDropContext } from "react-beautiful-dnd";
 import { TimeLogDialog } from "../TimeLogDialog";
+import { useLocation, useSearchParams } from "react-router-dom";
 
 interface JobSeekerProjectsTabProps {
   userId?: string;
 }
 
 export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const selectedTicketId = searchParams.get('ticket');
+  
   const [activeTab, setActiveTab] = useState("all-tickets");
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +46,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const [showKanban, setShowKanban] = useState(false);
   const [showGantt, setShowGantt] = useState(false);
   const [isTimeLogDialogOpen, setIsTimeLogDialogOpen] = useState(false);
-  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [localSelectedTicketId, setLocalSelectedTicketId] = useState<string | null>(null);
 
   useEffect(() => {
     if (userId) {
@@ -54,6 +60,36 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       loadTickets();
     }
   }, [userId, selectedProject]);
+
+  // Handle URL parameter for selected ticket
+  useEffect(() => {
+    if (selectedTicketId) {
+      // If we have a specific ticket ID from the URL, we need to make sure
+      // we show the appropriate project for that ticket
+      const findProjectForTicket = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('tickets')
+            .select('project_id')
+            .eq('id', selectedTicketId)
+            .single();
+            
+          if (error) {
+            console.error("Error finding project for ticket:", error);
+            return;
+          }
+          
+          if (data && data.project_id) {
+            setSelectedProject(data.project_id);
+          }
+        } catch (err) {
+          console.error("Error in findProjectForTicket:", err);
+        }
+      };
+      
+      findProjectForTicket();
+    }
+  }, [selectedTicketId]);
 
   const fetchProjects = async () => {
     if (!userId) return;
@@ -103,12 +139,17 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       
       if (error) throw error;
       
+      // Filter out tickets where equity is fully allocated (only show tickets with equity still to earn)
       const filteredTickets = (data || []).filter(ticket => {
-        if (ticket.accepted_jobs && 
-            ticket.accepted_jobs.equity_agreed > 0 && 
+        // If the ticket has no accepted_jobs data, include it
+        if (!ticket.accepted_jobs) return true;
+        
+        // If equity is agreed and fully allocated, exclude the ticket
+        if (ticket.accepted_jobs.equity_agreed > 0 && 
             ticket.accepted_jobs.jobs_equity_allocated >= ticket.accepted_jobs.equity_agreed) {
           return false;
         }
+        
         return true;
       });
       
@@ -117,7 +158,9 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         ticket_type: ticket.ticket_type || "task",
         description: ticket.description || "",
         equity_agreed: ticket.accepted_jobs?.equity_agreed || 0,
-        equity_allocated: ticket.accepted_jobs?.jobs_equity_allocated || 0
+        equity_allocated: ticket.accepted_jobs?.jobs_equity_allocated || 0,
+        created_by: ticket.created_by || userId,
+        created_at: ticket.created_at
       }));
       
       setTickets(processedTickets);
@@ -276,7 +319,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       return;
     }
     
-    setSelectedTicketId(ticketId);
+    setLocalSelectedTicketId(ticketId);
     setIsTimeLogDialogOpen(true);
   };
 
@@ -310,7 +353,8 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         ticket_type: ticketData.ticket_type || "task",
         status: "todo",
         priority: ticketData.priority || "medium",
-        health: ticketData.health || "good"
+        health: ticketData.health || "good",
+        created_by: userId
       };
       
       const { data, error } = await supabase
@@ -363,7 +407,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
         <h2 className="text-2xl font-bold">My Projects</h2>
-        <p className="text-muted-foreground">View and manage your project tasks</p>
+        <p className="text-muted-foreground">View and manage your active project tasks</p>
       </div>
 
       <div className="flex items-center justify-between mb-4">
@@ -493,11 +537,11 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         projects={projects}
       />
 
-      {selectedTicketId && userId && (
+      {localSelectedTicketId && userId && (
         <TimeLogDialog
           open={isTimeLogDialogOpen}
           onClose={() => setIsTimeLogDialogOpen(false)}
-          ticketId={selectedTicketId}
+          ticketId={localSelectedTicketId}
           userId={userId}
           onTimeLogged={handleTimeLogged}
         />
