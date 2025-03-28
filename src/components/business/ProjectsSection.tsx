@@ -184,93 +184,43 @@ export const ProjectsSection = () => {
                   className="p-4 flex justify-between items-center border-b bg-gray-50 cursor-pointer"
                   onClick={() => toggleProjectExpanded(project.project_id)}
                 >
-                  <div>
-                    <h3 className="font-medium text-lg">{project.title}</h3>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-medium text-lg">{project.title}</h3>
+                      <div className="flex items-center">
+                        <Button variant="ghost" size="sm" className="mr-2">Edit</Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-red-500 hover:bg-red-50"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            showDeleteConfirmation(project.project_id);
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
                     <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mt-1">
                       <p className="text-sm text-muted-foreground">Status: {project.status}</p>
                       <p className="text-sm text-muted-foreground">Timeframe: {project.project_timeframe || 'Not specified'}</p>
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center">
-                          <span className="text-sm font-medium">Total Equity Offered:</span>
-                          <span className="text-sm ml-1">{project.equity_allocation || 0}%</span>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-4 w-4 ml-1 p-0">
-                                  <HelpCircle className="h-3 w-3" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="max-w-xs text-xs">
-                                  Total equity amount allocated to this project when it was created
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                        
-                        <div className="flex items-center">
-                          <span className="text-sm font-medium">Task Equity %:</span>
-                          <span className="text-sm ml-1">
-                            {equityStats[project.project_id]?.taskEquityTotal.toFixed(2) || 0}%
-                          </span>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-4 w-4 ml-1 p-0">
-                                  <HelpCircle className="h-3 w-3" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="max-w-xs text-xs">
-                                  Sum of equity allocations across all tasks in this project
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                        
-                        <div className="flex items-center">
-                          <span className="text-sm font-medium">Agreed Equity:</span>
-                          <span className="text-sm ml-1">
-                            {equityStats[project.project_id]?.agreedEquityTotal.toFixed(2) || 0}%
-                          </span>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-4 w-4 ml-1 p-0">
-                                  <HelpCircle className="h-3 w-3" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="max-w-xs text-xs">
-                                  Sum of all agreed equity amounts across accepted job applications
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                        
-                        <div className="flex items-center">
-                          <span className="text-sm font-medium">Equity Earned:</span>
-                          <span className="text-sm ml-1">
-                            {equityStats[project.project_id]?.earnedEquityTotal.toFixed(2) || 0}%
-                          </span>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-4 w-4 ml-1 p-0">
-                                  <HelpCircle className="h-3 w-3" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="max-w-xs text-xs">
-                                  Sum of all equity actually allocated to job seekers as they complete tasks
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium">Total Equity:</span>
+                        <span className="text-sm ml-1">{project.equity_allocation || 0}%</span>
+                      </div>
+                      <div className="flex items-center flex-wrap gap-1">
+                        <span className="text-sm font-medium">Required Skills:</span>
+                        {project.skills_required?.slice(0, 3).map((skill, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {skill}
+                          </Badge>
+                        ))}
+                        {project.skills_required && project.skills_required.length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{project.skills_required.length - 3} more
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -287,12 +237,36 @@ export const ProjectsSection = () => {
                 {expandedProjects.has(project.project_id) && (
                   <div className="p-4">
                     <div className="mb-4">
-                      <h4 className="font-medium mb-1">Description</h4>
+                      <h4 className="font-medium mb-1">Project Description</h4>
                       <p className="text-sm text-muted-foreground">{project.description || 'No description provided.'}</p>
                     </div>
                     
                     <div className="mb-4">
-                      <h4 className="font-medium mb-2">Tasks</h4>
+                      <h4 className="font-medium mb-2">Equity Breakdown</h4>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-xs font-medium">Task Equity %</p>
+                          <p className="text-sm">
+                            {equityStats[project.project_id]?.taskEquityTotal.toFixed(2) || 0}%
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium">Agreed Equity</p>
+                          <p className="text-sm">
+                            {equityStats[project.project_id]?.agreedEquityTotal.toFixed(2) || 0}%
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium">Earned Equity</p>
+                          <p className="text-sm">
+                            {equityStats[project.project_id]?.earnedEquityTotal.toFixed(2) || 0}%
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-medium mb-2">Project Tasks</h4>
                       {project.tasks.length === 0 ? (
                         <p className="text-sm text-muted-foreground">No tasks have been created for this project yet.</p>
                       ) : (
