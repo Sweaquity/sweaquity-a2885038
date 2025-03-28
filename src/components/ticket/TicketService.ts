@@ -106,8 +106,7 @@ export const TicketService = {
       
       return {
         id: data.id,
-        first_name: data.first_name || '',
-        last_name: data.last_name || '',
+        name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
         email: data.email || ''
       };
     } catch (error) {
@@ -126,8 +125,7 @@ export const TicketService = {
       
       return data.map(user => ({
         id: user.id,
-        first_name: user.first_name || '',
-        last_name: user.last_name || '',
+        name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
         email: user.email || ''
       }));
     } catch (error) {
@@ -145,12 +143,12 @@ export const TicketService = {
           user_id: userId,
           hours_logged: hours,
           description: description,
-          start_time: new Date().toISOString()
+          start_time: new Date().toISOString(),
+          end_time: new Date(new Date().getTime() + hours * 60 * 60 * 1000).toISOString()
         });
         
       if (error) throw error;
       
-      toast.success('Time logged successfully');
       return true;
     } catch (error) {
       console.error('Error logging time:', error);

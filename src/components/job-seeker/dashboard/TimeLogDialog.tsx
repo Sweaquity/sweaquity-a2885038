@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Clock } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { TicketService } from "@/components/ticket/TicketService";
 
 interface TimeLogDialogProps {
   open: boolean;
@@ -37,24 +38,18 @@ export const TimeLogDialog = ({
     try {
       setIsSubmitting(true);
       
-      const { error } = await supabase
-        .from('time_entries')
-        .insert({
-          ticket_id: ticketId,
-          user_id: userId,
-          description: description || "Work completed",
-          hours_logged: hours,
-          start_time: new Date().toISOString(),
-          end_time: new Date(new Date().getTime() + hours * 60 * 60 * 1000).toISOString()
-        });
-        
-      if (error) throw error;
+      // Use the TicketService to log time
+      const success = await TicketService.logTime(ticketId, userId, hours, description || "Work completed");
       
-      toast.success("Time logged successfully");
-      setHours(1);
-      setDescription("");
-      onTimeLogged();
-      onClose();
+      if (success) {
+        toast.success("Time logged successfully");
+        setHours(1);
+        setDescription("");
+        onTimeLogged();
+        onClose();
+      } else {
+        toast.error("Failed to log time");
+      }
     } catch (error) {
       console.error('Error logging time:', error);
       toast.error("Failed to log time");

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Ticket } from "@/types/types";
@@ -18,11 +17,9 @@ export const loadTickets = async (businessId: string, selectedProject: string) =
         )
       `);
     
-    // Filter by project if one is selected and it's not "all"
     if (selectedProject && selectedProject !== "all") {
       query = query.eq('project_id', selectedProject);
     } else {
-      // If "all" is selected, get tickets from all projects owned by this business
       const { data: businessProjects } = await supabase
         .from('business_projects')
         .select('project_id')
@@ -40,12 +37,10 @@ export const loadTickets = async (businessId: string, selectedProject: string) =
     
     console.log("Loaded tickets:", data);
     
-    // Convert data to the expected Ticket type format and include job_app_id/equity data
     return (data || []).map(ticket => ({
       ...ticket,
-      type: ticket.ticket_type || "task", // Map ticket_type to type for compatibility
-      description: ticket.description || "", // Ensure description exists
-      // Add equity information to the ticket
+      type: ticket.ticket_type || "task",
+      description: ticket.description || "",
       equity_agreed: ticket.accepted_jobs?.equity_agreed || 0,
       equity_allocated: ticket.accepted_jobs?.jobs_equity_allocated || 0
     }));
@@ -87,7 +82,6 @@ export const handleTicketAction = async (
   try {
     switch (action) {
       case 'updateStatus': {
-        // Update ticket status
         const { error } = await supabase
           .from('tickets')
           .update({ status: data })
@@ -95,7 +89,6 @@ export const handleTicketAction = async (
         
         if (error) throw error;
         
-        // Update local state
         setTickets(prevTickets => 
           prevTickets.map(t => t.id === ticketId ? { ...t, status: data } : t)
         );
@@ -220,7 +213,7 @@ export const handleLogTime = async (ticketId: string, hours: number, description
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       toast.error("You must be logged in to log time");
-      return;
+      return false;
     }
     
     const { error } = await supabase
@@ -251,8 +244,8 @@ export const createTicket = async (ticketData: any, businessId: string) => {
       ...ticketData,
       reporter: businessId,
       created_at: new Date().toISOString(),
-      ticket_type: ticketData.ticket_type || "task", // Using ticket_type instead of type
-      status: "todo", // Changed from "new" to match Kanban column ids
+      ticket_type: ticketData.ticket_type || "task",
+      status: "todo",
       priority: ticketData.priority || "medium",
       health: ticketData.health || "good"
     };

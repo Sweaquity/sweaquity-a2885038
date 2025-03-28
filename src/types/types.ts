@@ -6,35 +6,27 @@ export interface Ticket {
   description: string;
   status: string;
   priority: string;
+  health: string; // Make health required to match BetaTicket requirement
   assignee?: string;
-  created_by: string;
-  created_at: string;
+  created_by: string; // Make required to fix TypeScript error
+  created_at: string; // Make required to fix TypeScript error
   project_id: string;
   due_date?: string;
-  ticket_type?: string; // Add the missing ticket_type field
-  task_id?: string; // Add the missing task_id field
-  completion_percentage?: number; // Add completion_percentage
-  estimated_hours?: number; // Add estimated_hours
-  hours_logged?: number; // Add hours_logged
-  updated_at?: string; // Add updated_at
-  notes?: any[]; // Add notes field
-  type?: string; // Add type field
-  equity_points?: number; // Add equity_points
-  health?: string; // Add health field
+  ticket_type?: string;
+  task_id?: string;
+  completion_percentage?: number;
+  estimated_hours?: number;
+  hours_logged?: number;
+  updated_at?: string;
+  notes?: any[];
+  type?: string;
+  equity_points?: number;
 }
 
-// Add missing exported types
-export interface TicketStatistics {
-  totalTickets: number;
-  openTickets: number;
-  inProgressTickets: number;
-  completedTickets: number;
-  overdueTickets: number;
-}
-
+// Update UserData interface to include the required name field
 export interface UserData {
   id: string;
-  name: string;
+  name: string; // Required field
   email: string;
   avatar?: string;
 }
@@ -57,8 +49,20 @@ export interface TaskCompletionReviewProps {
   task: any;
   onReviewComplete: () => void;
   onClose: () => void;
+  open: boolean; // Add missing property
+  setOpen: React.Dispatch<React.SetStateAction<boolean>>; // Add missing property
+  businessId?: string; // Add missing property
+}
+
+export interface TicketStatistics {
+  totalTickets: number;
+  openTickets: number;
+  inProgressTickets: number;
+  completedTickets: number;
+  overdueTickets: number;
+  total?: number; // Add this property to fix errors
 }
 
 export interface BetaTicket extends Ticket {
-  health: string; // Required for BetaTicket
+  health: string; // Already required in Ticket now
 }

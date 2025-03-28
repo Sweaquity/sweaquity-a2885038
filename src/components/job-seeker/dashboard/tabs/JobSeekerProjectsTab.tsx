@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -271,7 +270,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     }
   };
 
-  const handleLogTime = async (ticketId: string) => {
+  const handleLogTime = (ticketId: string) => {
     if (!userId) {
       toast.error("User ID not found");
       return;
@@ -282,7 +281,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   };
 
   const handleTimeLogged = () => {
-    // Refresh tickets to show updated time
     loadTickets();
   };
 
