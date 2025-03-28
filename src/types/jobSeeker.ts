@@ -1,3 +1,4 @@
+
 export interface Skill {
   skill: string;
   level?: string;
@@ -72,6 +73,13 @@ export interface JobApplication {
     id: string;
     date_accepted: string;
   };
+  // Additional fields needed for UI components
+  task_title?: string;
+  company_name?: string;
+  project_title?: string;
+  description?: string;
+  skills_required?: (Skill | string)[];
+  applicant_skills?: (Skill | string)[];
 }
 
 // Add SkillRequirement for compatibility with existing code

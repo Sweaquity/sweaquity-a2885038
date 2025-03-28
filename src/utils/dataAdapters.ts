@@ -1,5 +1,5 @@
 
-import { JobApplication, Ticket, EquityProject } from '@/types/jobSeeker';
+import { JobApplication } from '@/types/jobSeeker';
 
 /**
  * Enhances Job Application data with related information from joined tables
@@ -40,7 +40,7 @@ export const enhanceJobApplication = (application: JobApplication): JobApplicati
 /**
  * Adapts Ticket data to ensure all required fields are present
  */
-export const enhanceTicket = (ticket: any): Ticket => {
+export const enhanceTicket = (ticket: any): any => {
   return {
     ...ticket,
     // Map type properly
@@ -59,7 +59,7 @@ export const enhanceTicket = (ticket: any): Ticket => {
 /**
  * Batch enhance multiple tickets
  */
-export const enhanceTickets = (tickets: any[]): Ticket[] => {
+export const enhanceTickets = (tickets: any[]): any[] => {
   return tickets.map(enhanceTicket);
 };
 
