@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,9 +6,8 @@ import { PlusCircle, Edit, Trash2, Link } from "lucide-react";
 import { toast } from "sonner";
 import { ProjectTabs } from "./projects/tabs/ProjectTabs";
 import { DeleteProjectDialog } from "./projects/dialogs/DeleteProjectDialog";
-import { ProjectEditDialog } from "./projects/dialogs/ProjectEditDialog"; // Assume this will be created
-import { TaskEditDialog } from "./projects/dialogs/TaskEditDialog"; // Assume this will be created
-import { loadProjects, deleteProject, updateProject } from "./projects/services/ProjectSectionService";
+import { TaskEditDialog } from "./projects/dialogs/TaskEditDialog";
+import { loadProjects, deleteProject, updateProject  } from "./projects/services/ProjectSectionService";
 
 interface SkillRequirement {
   skill: string;
@@ -34,7 +34,6 @@ interface Project {
   title: string;
   description: string;
   status: string;
-  project_link?: string;
   equity_allocation: number;
   equity_allocated: number;
   skills_required: string[];
@@ -47,7 +46,6 @@ export const ProjectsSection = () => {
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
-  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [taskToEdit, setTaskToEdit] = useState<{project: Project, task: Task} | null>(null);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
@@ -69,7 +67,6 @@ export const ProjectsSection = () => {
     setProjects(projects.map(project => 
       project.project_id === updatedProject.project_id ? updatedProject : project
     ));
-    setProjectToEdit(null);
   };
 
   const handleProjectDeleted = (projectId: string) => {
@@ -86,23 +83,10 @@ export const ProjectsSection = () => {
       const success = await deleteProject(projectToDelete, projects);
       if (success) {
         handleProjectDeleted(projectToDelete);
-        toast.success("Project deleted successfully");
       }
     }
     setDeleteDialogOpen(false);
     setProjectToDelete(null);
-  };
-
-  const toggleProjectExpanded = (projectId: string) => {
-    setExpandedProjects(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(projectId)) {
-        newSet.delete(projectId);
-      } else {
-        newSet.add(projectId);
-      }
-      return newSet;
-    });
   };
 
   return (
@@ -122,12 +106,6 @@ export const ProjectsSection = () => {
           handleProjectCreated={handleProjectCreated}
           handleProjectUpdated={handleProjectUpdated}
           handleProjectDeleted={showDeleteConfirmation}
-          
-          // New props for editing
-          onProjectEdit={(project) => setProjectToEdit(project)}
-          onTaskEdit={(project, task) => setTaskToEdit({project, task})}
-          expandedProjects={expandedProjects}
-          toggleProjectExpanded={toggleProjectExpanded}
         />
       </CardContent>
       
@@ -137,28 +115,6 @@ export const ProjectsSection = () => {
         onCancel={() => setProjectToDelete(null)}
         onConfirm={confirmDeleteProject}
       />
-
-      {projectToEdit && (
-        <ProjectEditDialog
-          project={projectToEdit}
-          isOpen={!!projectToEdit}
-          onOpenChange={() => setProjectToEdit(null)}
-          onProjectUpdated={handleProjectUpdated}
-        />
-      )}
-
-      {taskToEdit && (
-        <TaskEditDialog
-          project={taskToEdit.project}
-          task={taskToEdit.task}
-          isOpen={!!taskToEdit}
-          onOpenChange={() => setTaskToEdit(null)}
-          onTaskUpdated={(updatedProject) => {
-            handleProjectUpdated(updatedProject);
-            setTaskToEdit(null);
-          }}
-        />
-      )}
     </Card>
   );
 };
