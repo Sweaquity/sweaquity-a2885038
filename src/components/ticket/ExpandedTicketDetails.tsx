@@ -76,7 +76,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
     try {
       const { data, error } = await supabase
         .from('time_entries')
-        .select('*, profiles:user_id(first_name, last_name, email)')
+        .select('*, profiles(first_name, last_name, email)')
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: false });
         
