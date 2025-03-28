@@ -339,7 +339,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                     </TableCell>
                     {showTimeTracking && (
                       <TableCell>
-                        {ticket.estimated_hours || 0} / {ticket.hours_logged || 0} hrs
+                        {ticket.hours_logged || 0} / {ticket.estimated_hours || 0} hrs
                       </TableCell>
                     )}
                     <TableCell>{formatDate(ticket.due_date)}</TableCell>
