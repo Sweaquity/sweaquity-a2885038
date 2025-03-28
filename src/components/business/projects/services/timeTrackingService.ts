@@ -13,7 +13,8 @@ export const handleLogTime = async (ticketId: string, hours: number, description
       return false;
     }
     
-    const { error } = await supabase
+    // First create the time entry
+    const { error: timeEntryError } = await supabase
       .from('time_entries')
       .insert({
         ticket_id: ticketId,
@@ -24,7 +25,30 @@ export const handleLogTime = async (ticketId: string, hours: number, description
         end_time: new Date(new Date().getTime() + hours * 60 * 60 * 1000).toISOString()
       });
       
-    if (error) throw error;
+    if (timeEntryError) throw timeEntryError;
+    
+    // Get current hours logged in the ticket
+    const { data: ticketData, error: ticketFetchError } = await supabase
+      .from('tickets')
+      .select('hours_logged')
+      .eq('id', ticketId)
+      .single();
+      
+    if (ticketFetchError && ticketFetchError.code !== 'PGRST116') throw ticketFetchError;
+    
+    // Update the hours logged in the ticket
+    const currentHours = ticketData?.hours_logged || 0;
+    const newTotalHours = parseFloat(currentHours) + hours;
+    
+    const { error: ticketUpdateError } = await supabase
+      .from('tickets')
+      .update({ 
+        hours_logged: newTotalHours,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', ticketId);
+      
+    if (ticketUpdateError) throw ticketUpdateError;
     
     toast.success("Time logged successfully");
     return true;

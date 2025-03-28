@@ -87,13 +87,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     await handleTicketActionService(ticketId, action, data, businessId, tickets, setTickets);
   };
 
-  const handleLogTime = async (ticketId: string, hours: number, description: string) => {
-    const success = await handleLogTimeService(ticketId, hours, description);
-    if (success) {
-      loadTicketsData();
-    }
-  };
-
   const handleRefresh = () => {
     loadTicketsData();
   };
@@ -136,8 +129,9 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   };
 
   const renderTicketActions = (ticket: Ticket) => {
-    // Only show review action for business users and if the ticket is in review status
-    if (ticket.status === 'review' || ticket.status === 'in review') {
+    // Only show review action for business users if the ticket is in review status AND completion percentage is 100%
+    if ((ticket.status === 'review' || ticket.status === 'in review') && 
+        ticket.completion_percentage === 100) {
       return (
         <Button
           variant="outline"
@@ -185,9 +179,9 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         showGantt={showGantt}
         onRefresh={handleRefresh}
         onTicketAction={handleTicketAction}
-        onLogTime={handleLogTime}
         renderTicketActions={renderTicketActions}
         businessId={businessId}
+        showTimeTracking={false} // Business users should not see time tracking buttons
       />
 
       <CreateTicketDialog

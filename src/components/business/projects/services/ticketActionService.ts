@@ -49,6 +49,7 @@ export const handleTicketAction = async (
       }
       
       case 'updateDueDate': {
+        console.log("Updating due date:", data);
         const { error } = await supabase
           .from('tickets')
           .update({ due_date: data })
