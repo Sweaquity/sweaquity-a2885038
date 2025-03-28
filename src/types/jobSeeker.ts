@@ -1,4 +1,3 @@
-
 export interface Skill {
   skill: string;
   level?: string;
@@ -114,6 +113,7 @@ export interface EquityProject {
   skill_match?: number;
   sub_tasks?: SubTask[];
   business_roles?: BusinessRole;
+  updated_at?: string; // Add this property
 }
 
 export interface ProjectEquity {
