@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskCompletionReview } from "../../projects/TaskCompletionReview";
-import { BetaTestingTab as SharedBetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
+import { SharedBetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { toast } from "sonner";
 import { Ticket } from "@/types/types";
@@ -36,6 +36,7 @@ export const BetaTestingTab = () => {
     closed: 0,
     highPriority: 0
   });
+  const [openCompletionReview, setOpenCompletionReview] = useState(false);
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -84,7 +85,6 @@ export const BetaTestingTab = () => {
         .select('*')
         .or(`reporter.eq.${userId},assigned_to.eq.${userId}`);
       
-      // Filter by project if one is selected
       if (selectedProject) {
         query = query.eq('project_id', selectedProject);
       }
@@ -102,7 +102,6 @@ export const BetaTestingTab = () => {
       
       setTickets(processedTickets);
       
-      // Calculate ticket stats
       const stats = {
         total: processedTickets.length,
         open: processedTickets.filter(t => t.status !== 'done' && t.status !== 'closed').length,
@@ -188,7 +187,6 @@ export const BetaTestingTab = () => {
           console.warn("Unknown action:", action);
       }
       
-      // Reload tickets to get updated data
       if (userId) {
         await loadTickets(userId);
       }
@@ -212,7 +210,6 @@ export const BetaTestingTab = () => {
   };
 
   const handleCreateTicket = () => {
-    // This would open a dialog to create a new ticket
     toast.info("Create ticket functionality will be implemented soon");
   };
 
@@ -220,7 +217,6 @@ export const BetaTestingTab = () => {
     return <div>Loading...</div>;
   }
 
-  // Enhance tickets to ensure all required fields are present
   const enhancedTickets = enhanceTickets(tickets);
 
   return (
@@ -339,7 +335,7 @@ export const BetaTestingTab = () => {
           <TaskCompletionReview
             task={{}} // Provide at least an empty object as the task prop
             businessId={userId}
-            onClose={() => setOpenCompletionReview(false)} // Add the required onClose prop
+            onClose={() => setOpenCompletionReview(false)}
             open={openCompletionReview}
             setOpen={setOpenCompletionReview}
           />
@@ -373,5 +369,4 @@ export const BetaTestingTab = () => {
   );
 };
 
-// Adding an alias for BetaTestingTab to be LiveProjectsTab for clarity
 export { BetaTestingTab as LiveProjectsTab };

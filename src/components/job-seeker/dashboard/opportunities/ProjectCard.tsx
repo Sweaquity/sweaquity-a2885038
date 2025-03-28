@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Briefcase, Calendar, Clock, Users, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 
@@ -23,7 +23,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [skillMatch, setSkillMatch] = useState(0);
-  const router = useRouter();
+  const navigate = useNavigate();
 
   useEffect(() => {
     calculateSkillMatch();
@@ -64,7 +64,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   };
 
   const handleViewDetails = () => {
-    router.push(`/projects/${project.id}`);
+    navigate(`/projects/${project.id}`);
   };
 
   return (

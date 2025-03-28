@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useJobSeekerDashboard } from "@/hooks/useJobSeekerDashboard";
@@ -60,11 +61,11 @@ const JobSeekerDashboard = () => {
     getCurrentUser();
   }, []);
 
-  // Sort equity projects by updated_at or created_at
+  // Sort equity projects by updated_at or created_at with proper fallbacks
   const sortedEquityProjects = equityProjects.sort((a, b) => {
-    const dateA = a.updated_at || a.created_at || '';
-    const dateB = b.updated_at || b.created_at || '';
-    return new Date(dateB).getTime() - new Date(dateA).getTime();
+    const dateA = (a.updated_at || a.created_at || '').toString();
+    const dateB = (b.updated_at || b.created_at || '').toString();
+    return new Date(dateB || 0).getTime() - new Date(dateA || 0).getTime();
   });
 
   // Calculate notifications for tabs
@@ -81,7 +82,8 @@ const JobSeekerDashboard = () => {
     const recentOpportunities = availableOpportunities ? 
       availableOpportunities.filter(opp => {
         // Check for updated_at since created_at might not exist
-        const creationDate = opp.updated_at ? opp.updated_at : null;
+        const creationDate = opp.updated_at ? opp.updated_at.toString() : 
+                             opp.created_at ? opp.created_at.toString() : null;
         if (!creationDate) return false;
         return new Date(creationDate) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       }).length : 0;

@@ -24,6 +24,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
   const [filteredProjects, setFilteredProjects] = useState<EquityProject[]>([]);
   const [filterSkill, setFilterSkill] = useState<string | null>(null);
   const [newOpportunities, setNewOpportunities] = useState<number>(0);
+  const [isApplying, setIsApplying] = useState(false);
 
   // Convert user skills to lowercase strings for comparison
   const userSkillStrings = useMemo(() => {
@@ -56,13 +57,15 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
     setNewOpportunities(recentOpportunities);
   }, [projects]);
 
-  const handleApply = async (project: EquityProject, task: SubTask) => {
+  const handleApply = async (projectId: string) => {
     try {
-      // Verify project and task exist
+      setIsApplying(true);
+      
+      // Verify project exists
       const { data: projectData, error: projectError } = await supabase
         .from('business_projects')
         .select('*')
-        .eq('project_id', project.project_id)
+        .eq('project_id', projectId)
         .single();
         
       if (projectError || !projectData) {
@@ -70,30 +73,18 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
         toast.error("Project not found or no longer available");
         return;
       }
-      
-      const { data: taskData, error: taskError } = await supabase
-        .from('project_sub_tasks')
-        .select('*')
-        .eq('task_id', task.id)
-        .single();
         
-      if (taskError || !taskData) {
-        console.error("Task validation error:", taskError);
-        toast.error("This opportunity is no longer available");
-        return;
-      }
-        
-      navigate(`/projects/${project.project_id}/apply`, { 
+      navigate(`/projects/${projectId}/apply`, { 
         state: { 
-          taskId: task.id, 
-          projectId: project.project_id,
-          projectTitle: project.title || "Untitled Project",
-          taskTitle: task.title || "Untitled Task"
+          projectId: projectId,
+          projectTitle: projectData.title || "Untitled Project"
         } 
       });
     } catch (error) {
       console.error("Navigate error:", error);
       toast.error("Unable to apply for this role. Please try again.");
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -137,8 +128,9 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
             <ProjectCard
               key={project.id}
               project={project}
-              userSkillStrings={userSkillStrings}
+              userSkills={userSkillStrings || []}
               onApply={handleApply}
+              isApplying={isApplying}
             />
           ))}
         </div>

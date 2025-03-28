@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,7 @@ import { Ticket } from "@/types/types";
 import { RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
 import { KanbanBoard } from "@/components/ticket/KanbanBoard";
 import { DragDropContext } from "react-beautiful-dnd";
-import { TaskCompletionReview } from "@/components/business/tasks/TaskCompletionReview";
+import { TaskCompletionReview } from "@/components/business/projects/TaskCompletionReview";
 import { BetaTestingTab as SharedBetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
 import { ExpandedTicketDetails } from "@/components/ticket/ExpandedTicketDetails";
 

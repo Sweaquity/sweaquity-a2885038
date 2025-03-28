@@ -1,9 +1,10 @@
+
 // If this file doesn't exist, we'll create it with the necessary types
 
 export interface Ticket {
   id: string;
   title: string;
-  description: string;
+  description: string; // Required field
   status: string;
   priority: string;
   health: string;
@@ -80,4 +81,31 @@ export interface Task {
     progressColor?: string;
     progressSelectedColor?: string;
   };
+}
+
+export interface TicketMessage {
+  id: string;
+  user: string;
+  timestamp: string;
+  comment: string;
+}
+
+export interface PendingApplicationsListProps {
+  applications: JobApplication[];
+  onWithdraw?: (applicationId: string, reason?: string) => Promise<void>;
+  onAccept?: (application: JobApplication) => Promise<void>;
+  isWithdrawing?: boolean;
+}
+
+export interface ExpandedTicketDetailsProps {
+  ticket: Ticket;
+  onClose?: () => void;
+  onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
+  onLogTime?: (ticketId: string) => void;
+  userCanEditStatus?: boolean;
+  userCanEditDates?: boolean;
+  messages?: TicketMessage[];
+  onReply?: (message: string) => void;
+  onStatusChange?: (status: string) => void;
+  onPriorityChange?: (priority: string) => void;
 }
