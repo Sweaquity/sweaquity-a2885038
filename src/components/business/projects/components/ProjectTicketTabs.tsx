@@ -33,8 +33,8 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
   renderTicketActions,
   businessId,
   showTimeTracking = true, // Default to true for backward compatibility
-  expandedTickets = new Set<string>(),
-  toggleTicketExpansion = () => {}
+  expandedTickets,
+  toggleTicketExpansion
 }) => {
   const getActiveTickets = () => {
     if (!tickets) return [];
@@ -101,8 +101,6 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
             userId={businessId || ''}
             onLogTime={handleLogTime}
             renderTicketActions={renderTicketActions}
-            expandedTickets={expandedTickets}
-            toggleTicketExpansion={toggleTicketExpansion}
           />
         )}
       </TabsContent>

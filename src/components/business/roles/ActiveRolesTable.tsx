@@ -8,15 +8,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 
 interface SkillRequirement {
   skill: string;
@@ -43,13 +40,38 @@ interface Project {
   tasks: Task[];
 }
 
+interface TaskApplicationsCount {
+  taskId: string;
+  count: number;
+}
+
+interface ProjectApplicationsCount {
+  projectId: string;
+  count: number;
+}
+
 interface ActiveRolesTableProps {
   project: Project;
 }
 
 export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
   const [tasksWithEarnings, setTasksWithEarnings] = useState<Task[]>(project.tasks);
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [taskApplicationsCounts, setTaskApplicationsCounts] = useState<TaskApplicationsCount[]>([]);
+  const [projectApplicationsCount, setProjectApplicationsCount] = useState<number>(0);
   
+  const toggleTask = (taskId: string) => {
+    setExpandedTasks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId);
+      } else {
+        newSet.add(taskId);
+      }
+      return newSet;
+    });
+  };
+
   useEffect(() => {
     // Fetch earned equity data for each task
     const fetchTaskEarnings = async () => {
@@ -163,6 +185,28 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
         });
         
         setTasksWithEarnings(updatedTasks);
+
+        // Count applications for each task
+        const taskCounts: TaskApplicationsCount[] = [];
+        const appCountByTask = new Map<string, number>();
+        
+        applications.forEach(app => {
+          if (app.task_id) {
+            const currentCount = appCountByTask.get(app.task_id) || 0;
+            appCountByTask.set(app.task_id, currentCount + 1);
+          }
+        });
+        
+        taskIds.forEach(taskId => {
+          taskCounts.push({
+            taskId,
+            count: appCountByTask.get(taskId) || 0
+          });
+        });
+        
+        setTaskApplicationsCounts(taskCounts);
+        setProjectApplicationsCount(applications.length);
+        
       } catch (error) {
         console.error('Error fetching task earnings data:', error);
       }
@@ -174,6 +218,11 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
   const totalClaimedEquity = tasksWithEarnings.reduce((sum, task) => sum + (task.equity_allocation || 0), 0);
   const totalEarnedEquity = tasksWithEarnings.reduce((sum, task) => sum + (task.equity_earned || 0), 0);
   const remainingEquity = project.equity_allocation - totalClaimedEquity;
+
+  const getTaskApplicationCount = (taskId: string): number => {
+    const taskCount = taskApplicationsCounts.find(tc => tc.taskId === taskId);
+    return taskCount ? taskCount.count : 0;
+  };
 
   return (
     <div className="space-y-4">
@@ -187,6 +236,7 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
             <TableHead className="w-[10%]">Total Equity</TableHead>
             <TableHead className="w-[10%]">Equity Offered</TableHead>
             <TableHead className="w-[10%]">Equity Earned</TableHead>
+            <TableHead className="w-[10%]">Applications</TableHead>
             <TableHead className="w-[15%]">Remaining Equity</TableHead>
           </TableRow>
         </TableHeader>
@@ -213,6 +263,21 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
             <TableCell>{project.equity_allocation}%</TableCell>
             <TableCell>{totalClaimedEquity.toFixed(2)}%</TableCell>
             <TableCell>{totalEarnedEquity.toFixed(2)}%</TableCell>
+            <TableCell>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link 
+                    to={`/business/dashboard?tab=applications`}
+                    className="flex items-center text-blue-600 hover:underline hover:text-blue-800"
+                  >
+                    {projectApplicationsCount} <ExternalLink className="ml-1 h-3 w-3" />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">View all applications for this project</p>
+                </TooltipContent>
+              </Tooltip>
+            </TableCell>
             <TableCell>{remainingEquity.toFixed(2)}%</TableCell>
           </TableRow>
         </TableBody>
@@ -228,8 +293,8 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
               <TableHead className="w-[25%]">Required Skills</TableHead>
               <TableHead className="w-[10%]">Equity Offered</TableHead>
               <TableHead className="w-[10%]">Equity Earned</TableHead>
-              <TableHead className="w-[10%]">Timeframe</TableHead>
-              <TableHead className="w-[10%]">Status</TableHead>
+              <TableHead className="w-[10%]">Applications</TableHead>
+              <TableHead className="w-[10%]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -260,18 +325,33 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
                 </TableCell>
                 <TableCell>{task.equity_allocation}%</TableCell>
                 <TableCell>{(task.equity_earned || 0).toFixed(2)}%</TableCell>
-                <TableCell>{task.timeframe}</TableCell>
                 <TableCell>
-                  <Badge 
-                    variant="outline"
-                    className={
-                      task.status === 'allocated'
-                        ? 'bg-green-100 text-green-800 border-green-200'
-                        : 'bg-orange-100 text-orange-800 border-orange-200'
-                    }
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link 
+                        to={`/business/dashboard?tab=applications`}
+                        className="flex items-center text-blue-600 hover:underline hover:text-blue-800"
+                      >
+                        {getTaskApplicationCount(task.id)} <ExternalLink className="ml-1 h-3 w-3" />
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">View applications for this task</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TableCell>
+                <TableCell>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => toggleTask(task.id)}
                   >
-                    {task.status}
-                  </Badge>
+                    {expandedTasks.has(task.id) ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
