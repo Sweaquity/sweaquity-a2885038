@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { formatDistanceToNow } from 'date-fns';
-import { JobApplication } from '@/types/jobSeeker';
+import { JobApplication } from '@/types/applications';
 import { Badge } from '@/components/ui/badge';
 import { Lightbulb } from 'lucide-react';
 
@@ -13,6 +13,7 @@ export interface PendingApplicationItemProps {
   onWithdraw?: (applicationId: string, reason?: string) => Promise<void>;
   isWithdrawing?: boolean;
   getMatchedSkills: () => string[];
+  onApplicationUpdated?: () => void;
 }
 
 export const PendingApplicationItem = ({
@@ -20,7 +21,8 @@ export const PendingApplicationItem = ({
   onAccept,
   onWithdraw,
   isWithdrawing = false,
-  getMatchedSkills
+  getMatchedSkills,
+  onApplicationUpdated
 }: PendingApplicationItemProps) => {
   const [isAccepting, setIsAccepting] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -35,6 +37,7 @@ export const PendingApplicationItem = ({
     try {
       setIsAccepting(true);
       await onAccept(application);
+      if (onApplicationUpdated) onApplicationUpdated();
     } catch (error) {
       console.error("Error accepting application:", error);
     } finally {
@@ -47,6 +50,7 @@ export const PendingApplicationItem = ({
     
     try {
       await onWithdraw(applicationId);
+      if (onApplicationUpdated) onApplicationUpdated();
     } catch (error) {
       console.error("Error withdrawing application:", error);
     }
@@ -57,14 +61,24 @@ export const PendingApplicationItem = ({
     return formatDistanceToNow(new Date(dateString), { addSuffix: true });
   };
 
+  // Get title from either direct property or business_roles
+  const taskTitle = application.task_title || 
+                   (application.business_roles?.title || "Untitled Task");
+                   
+  const companyName = application.company_name || 
+                     (application.business_roles?.company_name || 'Company');
+                     
+  const projectTitle = application.project_title || 
+                      (application.business_roles?.project_title || 'Project');
+
   return (
     <Card className="overflow-hidden">
       <div className="p-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
           <div>
-            <h3 className="text-lg font-medium">{application.task_title || "Untitled Task"}</h3>
+            <h3 className="text-lg font-medium">{taskTitle}</h3>
             <p className="text-sm text-muted-foreground">
-              {application.company_name || 'Company'} • {application.project_title || 'Project'}
+              {companyName} • {projectTitle}
             </p>
             <p className="text-xs text-muted-foreground">
               Applied {formatDate(application.applied_at)}

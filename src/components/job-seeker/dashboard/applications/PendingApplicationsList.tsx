@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { PendingApplicationItem } from './PendingApplicationItem';
-import { JobApplication } from '@/types/jobSeeker';
+import { JobApplication } from '@/types/applications';
 
 export interface PendingApplicationsListProps {
   applications: JobApplication[];
@@ -14,14 +14,18 @@ export interface PendingApplicationsListProps {
 
 export const PendingApplicationsList = ({
   applications,
-  onApplicationUpdated,
+  onApplicationUpdated = () => {},
   onWithdraw,
   onAccept,
   isWithdrawing = false
 }: PendingApplicationsListProps) => {
   // Helper function to count matched skills
   const getMatchedSkills = (application: JobApplication) => {
-    const projectSkills = application.skills_required || [];
+    // Check if we have skill data directly on the application
+    const projectSkills = application.skills_required || 
+                          (application.business_roles?.skill_requirements?.map(s => 
+                            typeof s === 'string' ? s : s.skill) || []);
+    
     const applicantSkills = application.applicant_skills || [];
     
     if (!projectSkills.length || !applicantSkills.length) {
@@ -30,6 +34,7 @@ export const PendingApplicationsList = ({
     
     return projectSkills.filter(skill => 
       applicantSkills.some(applicantSkill => 
+        typeof applicantSkill === 'string' && typeof skill === 'string' &&
         applicantSkill.toLowerCase() === skill.toLowerCase()
       )
     );

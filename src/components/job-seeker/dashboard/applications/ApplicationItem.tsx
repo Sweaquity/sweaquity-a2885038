@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { JobApplication } from '@/types/jobSeeker';
+import { JobApplication } from '@/types/applications';
 import { CreateMessageDialog } from './CreateMessageDialog';
 import { WithdrawDialog } from './WithdrawDialog';
 import { useWithdrawApplication } from './hooks/useWithdrawApplication';
@@ -9,11 +9,94 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { useAcceptedJobs } from '@/hooks/useAcceptedJobs';
 import { AcceptJobDialog } from './AcceptJobDialog';
-import { 
-  StatusChangeDialog,
-  ApplicationItemHeader,
-  ApplicationItemContent
-} from './components';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
+import { StatusBadge } from './StatusBadge';
+import { formatDistanceToNow } from 'date-fns';
+import { ApplicationItemContentProps } from '@/types/dashboardProps';
+
+// Simple components for structure
+const ApplicationItemHeader = ({ 
+  title, 
+  company, 
+  project, 
+  status, 
+  isExpanded, 
+  toggleExpand,
+  onStatusChange,
+  isUpdatingStatus,
+  showAcceptButton,
+  onAcceptClick
+}: any) => (
+  <div className="p-4 flex justify-between items-center border-b">
+    <div className="flex-1">
+      <h3 className="font-medium text-base">{title}</h3>
+      <p className="text-sm text-muted-foreground">
+        {company}
+        {project && ` • ${project}`}
+      </p>
+    </div>
+    <div className="flex items-center gap-2">
+      <StatusBadge status={status} isUpdating={isUpdatingStatus} />
+      {showAcceptButton && (
+        <Button 
+          size="sm" 
+          onClick={(e) => {
+            e.stopPropagation();
+            onAcceptClick();
+          }}
+        >
+          Accept
+        </Button>
+      )}
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        className="p-1" 
+        onClick={toggleExpand}
+      >
+        {isExpanded ? <ChevronUp /> : <ChevronDown />}
+      </Button>
+    </div>
+  </div>
+);
+
+const ApplicationItemContent = ({ 
+  description, 
+  message, 
+  discourse, 
+  appliedAt
+}: ApplicationItemContentProps) => (
+  <div className="p-4 space-y-4">
+    {description && (
+      <div>
+        <h4 className="text-sm font-medium mb-1">Role Description</h4>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+    )}
+    
+    {message && (
+      <div>
+        <h4 className="text-sm font-medium mb-1">Your Message</h4>
+        <p className="text-sm text-muted-foreground">{message}</p>
+      </div>
+    )}
+    
+    {discourse && (
+      <div>
+        <h4 className="text-sm font-medium mb-1">Message History</h4>
+        <div className="bg-muted/30 p-3 rounded-md text-sm whitespace-pre-wrap">
+          {discourse}
+        </div>
+      </div>
+    )}
+    
+    <div className="text-xs text-muted-foreground">
+      Applied {formatDistanceToNow(new Date(appliedAt), { addSuffix: true })}
+    </div>
+  </div>
+);
 
 interface ApplicationItemProps {
   application: JobApplication;
@@ -123,13 +206,25 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
   
   const showAcceptButton = application.status === 'accepted' && !application.accepted_jobseeker;
 
+  // Get title from either direct property or business_roles
+  const taskTitle = application.task_title || 
+                   (application.business_roles?.title || "Untitled Task");
+                   
+  const companyName = application.company_name || 
+                     (application.business_roles?.company_name || 'Company');
+                     
+  const projectTitle = application.project_title || 
+                      (application.business_roles?.project_title || 'Project');
+  
+  const description = application.description || application.business_roles?.description || "";
+
   return (
     <div className="border rounded-md overflow-hidden bg-card dashboard-card">
       {/* Application Header Section */}
       <ApplicationItemHeader
-        title={application.task_title || 'Untitled Task'}
-        company={application.company_name || 'Company'}
-        project={application.project_title || 'Project'}
+        title={taskTitle}
+        company={companyName}
+        project={projectTitle}
         status={application.status}
         isExpanded={isExpanded}
         toggleExpand={toggleExpand}
@@ -137,43 +232,43 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
         isUpdatingStatus={isUpdatingStatus === applicationId}
         showAcceptButton={showAcceptButton}
         onAcceptClick={() => setIsAcceptJobDialogOpen(true)}
-        isAcceptingJob={isAcceptingJob}
-        compact={compact}
       />
-
-      {/* Expanded Application Content */}
+      
+      {/* Application Content Section - shown when expanded */}
       {isExpanded && (
         <ApplicationItemContent
-          description={application.description}
-          message={application.message}
-          discourse={application.task_discourse}
-          appliedAt={application.applied_at}
-          onMessageClick={() => setIsCreateMessageOpen(true)}
-          onWithdrawClick={() => setIsWithdrawDialogOpen(true)}
+          description={description}
+          message={application.message || ""}
+          discourse={application.task_discourse || ""}
+          appliedAt={application.applied_at || new Date().toISOString()}
         />
       )}
-
-      {/* Dialogs */}
+      
+      {/* Action Footer - always shown */}
+      <div className="p-3 flex justify-end border-t bg-muted/30">
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => setIsCreateMessageOpen(true)}
+          className="flex items-center gap-1"
+        >
+          <MessageSquare className="h-4 w-4" />
+          Send Message
+        </Button>
+      </div>
+      
+      {/* Dialog components */}
       <CreateMessageDialog
         isOpen={isCreateMessageOpen}
         onOpenChange={setIsCreateMessageOpen}
+        onSendMessage={handleMessageSubmit}
         applicationId={applicationId}
-        existingMessage={application.task_discourse}
-        onMessageSent={onApplicationUpdated}
       />
-
-      <WithdrawDialog
+      
+      <WithdrawDialog 
         isOpen={isWithdrawDialogOpen}
         onOpenChange={setIsWithdrawDialogOpen}
         onWithdraw={handleWithdraw}
-      />
-      
-      <StatusChangeDialog 
-        isOpen={statusDialogOpen}
-        onOpenChange={setStatusDialogOpen}
-        selectedStatus={selectedStatus}
-        onConfirm={confirmStatusChange}
-        isLoading={isUpdatingStatus === applicationId}
       />
       
       <AcceptJobDialog

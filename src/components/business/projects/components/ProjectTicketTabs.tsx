@@ -12,8 +12,8 @@ interface ProjectTicketTabsProps {
   showKanban: boolean;
   showGantt: boolean;
   onRefresh: () => void;
-  onTicketAction: (ticketId: string, action: string, data: any) => void;
-  onLogTime: (ticketId: string, hours: number, description: string) => void;
+  onTicketAction: (ticketId: string, action: string, data: any) => Promise<void>;
+  onLogTime: (ticketId: string) => void;
   renderTicketActions: (ticket: Ticket) => React.ReactNode;
   businessId: string;
 }
@@ -31,6 +31,8 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
   businessId
 }) => {
   const getActiveTickets = () => {
+    if (!tickets) return [];
+    
     switch (activeTab) {
       case "project-tasks":
         return tickets.filter(t => t.ticket_type === "task");
@@ -41,6 +43,16 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
       default:
         return tickets;
     }
+  };
+
+  // Wrapper for ticket action to convert to Promise
+  const handleTicketAction = async (ticketId: string, action: string, data: any) => {
+    return onTicketAction(ticketId, action, data);
+  };
+  
+  // Wrapper for log time to accept all required parameters
+  const handleLogTime = async (ticketId: string, hours: number, description: string) => {
+    onLogTime(ticketId);
   };
 
   return (
@@ -58,7 +70,7 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
             <KanbanBoard 
               tickets={getActiveTickets()}
               onStatusChange={(ticketId, newStatus) => 
-                onTicketAction(ticketId, 'updateStatus', newStatus)
+                handleTicketAction(ticketId, 'updateStatus', newStatus)
               }
               onTicketClick={(ticket) => {
                 console.log("Ticket clicked:", ticket.id);
@@ -76,10 +88,10 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
           <TicketDashboard 
             initialTickets={getActiveTickets()}
             onRefresh={onRefresh}
-            onTicketAction={onTicketAction}
+            onTicketAction={handleTicketAction}
             showTimeTracking={true}
             userId={businessId || ''}
-            onLogTime={onLogTime}
+            onLogTime={handleLogTime}
             renderTicketActions={renderTicketActions}
           />
         )}

@@ -1,7 +1,7 @@
 
 import { useCallback } from "react";
 import { supabase } from "@/lib/supabase";
-import { EquityProject, Skill } from "@/types/jobSeeker";
+import { EquityProject, Skill } from "@/types/equity";
 
 export const useOpportunitiesLoader = () => {
   const loadOpportunities = useCallback(async (userId: string, userSkills: Skill[] | null) => {
@@ -81,15 +81,17 @@ export const useOpportunitiesLoader = () => {
             task.skill_requirements = [];
           }
           
+          // Safely convert skill requirements to string array for comparisons
           const taskSkills = task.skill_requirements.map(s => {
-            if (typeof s === 'string') return s.toLowerCase(); 
+            if (typeof s === 'string') return s.toLowerCase();
             return typeof s === 'object' && s !== null && 'skill' in s && typeof s.skill === 'string'
               ? s.skill.toLowerCase()
               : '';
           }).filter(Boolean);
           
+          // Only compare strings with strings for safety
           const matchingSkills = formattedUserSkills.filter(skill => 
-            taskSkills.includes(skill)
+            typeof skill === 'string' && taskSkills.includes(skill)
           );
           
           const matchPercentage = taskSkills.length > 0 
