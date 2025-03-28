@@ -1,6 +1,5 @@
 
 // Consolidated type definitions for the entire application
-// Merges definitions from types.d.ts and types.ts
 
 export interface Ticket {
   id: string;
@@ -68,6 +67,14 @@ export interface JobApplication {
   message?: string;
   cv_url?: string;
   task_discourse?: string;
+  // Adding fields found in other JobApplication interfaces
+  job_app_id?: string;
+  task_title?: string;
+  company_name?: string;
+  project_title?: string;
+  description?: string;
+  skills_required?: string[];
+  applicant_skills?: string[];
   business_roles?: any;
 }
 
@@ -78,6 +85,24 @@ export interface PendingApplicationsListProps {
   isWithdrawing?: boolean;
 }
 
+export interface PendingApplicationItemProps {
+  application: JobApplication;
+  onAccept?: (application: JobApplication) => Promise<void>;
+  onWithdraw?: (applicationId: string, reason?: string) => Promise<void>;
+  isWithdrawing?: boolean;
+  getMatchedSkills?: () => any;
+  onApplicationUpdated?: () => void;
+}
+
+export interface ApplicationItemContentProps {
+  description: string;
+  message: string;
+  discourse: string;
+  appliedAt: string;
+  onMessageClick?: () => void;
+  onWithdrawClick?: () => void;
+}
+
 export interface ExpandedTicketDetailsProps {
   ticket: Ticket;
   onClose?: () => void;
@@ -85,6 +110,12 @@ export interface ExpandedTicketDetailsProps {
   onLogTime?: (ticketId: string) => void;
   userCanEditStatus?: boolean;
   userCanEditDates?: boolean;
+  messages?: any[]; // Adding missing prop seen in errors
+  onReply?: (message: any) => Promise<void>; // Adding missing prop
+  onStatusChange?: (status: any) => Promise<void>; // Adding missing prop
+  onPriorityChange?: (priority: any) => Promise<void>; // Adding missing prop
+  onAssigneeChange?: (userId: any) => Promise<void>; // Adding missing prop
+  users?: any[]; // Adding missing prop
 }
 
 export interface KanbanColumn {
@@ -137,6 +168,19 @@ export interface Task {
   };
 }
 
+export interface EquityProject {
+  id: string;
+  title: string;
+  description?: string;
+  status?: string;
+  completion_percentage?: number;
+  equity_allocation?: number;
+  equity_earned?: number;
+  tasks?: any[];
+  created_at?: string;
+  updated_at?: string; // Added missing field
+}
+
 export interface TicketDashboardProps {
   initialTickets: Ticket[];
   onRefresh: () => void;
@@ -144,7 +188,7 @@ export interface TicketDashboardProps {
   showTimeTracking?: boolean;
   showEstimatedHours?: boolean; // Added missing prop
   userId: string;
-  onLogTime?: (ticketId: string) => void;
+  onLogTime?: (ticketId: string, hours?: number, description?: string) => void; // Updated signature
   userCanEditDates?: boolean; // Added missing prop
   renderTicketActions?: (ticket: Ticket) => React.ReactNode;
 }

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Ticket } from "@/types/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RefreshCw, Plus } from "lucide-react";
+import { adaptTickets } from "@/utils/typeAdapters";
 
 interface BetaTestingTabProps {
   userType: 'business' | 'job_seeker';
@@ -318,7 +319,7 @@ export const BetaTestingTab = ({
         
         <TabsContent value="tickets">
           <TicketDashboard 
-            initialTickets={tickets}
+            initialTickets={adaptTickets(tickets)}
             onRefresh={handleRefresh}
             onTicketAction={handleTicketAction}
             showTimeTracking={userType === 'job_seeker'}
@@ -330,7 +331,9 @@ export const BetaTestingTab = ({
           <>
             <TabsContent value="project-tasks">
               <TicketDashboard 
-                initialTickets={tickets.filter(t => t.task_id)}
+                initialTickets={adaptTickets(tickets.filter(ticket => 
+                  ticket.task_id
+                ))}
                 onRefresh={handleRefresh}
                 onTicketAction={handleTicketAction}
                 showTimeTracking={userType === 'job_seeker'}
@@ -340,7 +343,9 @@ export const BetaTestingTab = ({
             
             <TabsContent value="project-tickets">
               <TicketDashboard 
-                initialTickets={tickets.filter(t => t.project_id && !t.task_id)}
+                initialTickets={adaptTickets(tickets.filter(ticket => 
+                  ticket.project_id && !ticket.task_id
+                ))}
                 onRefresh={handleRefresh}
                 onTicketAction={handleTicketAction}
                 showTimeTracking={userType === 'job_seeker'}

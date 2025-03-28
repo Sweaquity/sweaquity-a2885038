@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +18,7 @@ import { Ticket } from "@/types/types";
 import { RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
 import { KanbanBoard } from "@/components/ticket/KanbanBoard";
 import { TaskCompletionReview } from "./TaskCompletionReview";
+import { adaptTickets } from "@/utils/typeAdapters";
 
 interface LiveProjectsTabProps {
   businessId: string;
@@ -363,11 +363,11 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   const getActiveTickets = () => {
     switch (activeTab) {
       case "project-tasks":
-        return tickets.filter(t => t.ticket_type === "task");
+        return tickets.filter(t => t.type === "task" || t.ticket_type === "task");
       case "project-tickets":
-        return tickets.filter(t => t.ticket_type === "ticket");
+        return tickets.filter(t => t.type === "ticket" || t.ticket_type === "ticket");
       case "beta-testing":
-        return tickets.filter(t => t.ticket_type === "beta-test");
+        return tickets.filter(t => t.type === "beta-test" || t.ticket_type === "beta-test");
       default:
         return tickets;
     }
@@ -522,12 +522,12 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
             </div>
           ) : (
             <TicketDashboard 
-              initialTickets={getActiveTickets()}
+              initialTickets={adaptTickets(getActiveTickets())}
               onRefresh={handleRefresh}
               onTicketAction={handleTicketAction}
               showTimeTracking={true}
               userId={businessId || ''}
-              onLogTime={handleLogTime}
+              onLogTime={(ticketId, hours, description) => handleLogTime(ticketId, hours || 0, description || '')}
               renderTicketActions={renderTicketActions}
             />
           )}

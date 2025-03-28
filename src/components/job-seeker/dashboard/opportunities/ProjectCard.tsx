@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,6 +47,12 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
       percentage: Math.round((matchCount / taskSkills.length) * 100)
     };
   };
+
+  const matchedSkills = project.skills_required?.filter(
+    (skill: string) => userSkillStrings?.some(
+      (userSkill: string) => (userSkill || '').toLowerCase() === (skill || '').toLowerCase()
+    )
+  ) || [];
 
   // Extract tasks from the project
   const tasks = project.sub_tasks || [];

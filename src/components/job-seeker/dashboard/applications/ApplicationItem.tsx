@@ -1,188 +1,92 @@
-
-import { useState } from 'react';
-import { JobApplication } from '@/types/jobSeeker';
-import { CreateMessageDialog } from './CreateMessageDialog';
-import { WithdrawDialog } from './WithdrawDialog';
-import { useWithdrawApplication } from './hooks/useWithdrawApplication';
-import { useApplicationActions } from './hooks/useApplicationActions';
-import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
-import { useAcceptedJobs } from '@/hooks/useAcceptedJobs';
-import { AcceptJobDialog } from './AcceptJobDialog';
-import { 
-  StatusChangeDialog,
-  ApplicationItemHeader,
-  ApplicationItemContent
-} from './components';
+import React, { useState } from 'react';
+import { JobApplication } from '@/types/interfaces';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { CalendarIcon, MessageSquare } from "lucide-react";
+import { Collapsible } from "@/components/ui/collapsible"
+import { CollapsibleContent } from "@/components/ui/collapsible"
+import { ApplicationItemContent } from './ApplicationItemContent';
 
 interface ApplicationItemProps {
   application: JobApplication;
-  onApplicationUpdated?: () => void;
-  compact?: boolean;
+  onWithdraw?: (applicationId: string, reason?: string) => Promise<void>;
 }
 
-export const ApplicationItem = ({ application, onApplicationUpdated, compact = false }: ApplicationItemProps) => {
+const getStatusVariant = (status: string) => {
+  switch (status) {
+    case 'pending':
+      return "secondary";
+    case 'accepted':
+      return "default";
+    case 'rejected':
+      return "destructive";
+    case 'withdrawn':
+      return "outline";
+    default:
+      return "secondary";
+  }
+};
+
+const formatDate = (dateString: string) => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return 'N/A';
+  }
+};
+
+export const ApplicationItem: React.FC<ApplicationItemProps> = ({ application, onWithdraw }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isCreateMessageOpen, setIsCreateMessageOpen] = useState(false);
-  const [isAcceptJobDialogOpen, setIsAcceptJobDialogOpen] = useState(false);
-  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState(application.status);
-  
-  // Ensure we have a valid ID for our application
-  const applicationId = application.job_app_id || application.id || `app-${Math.random()}`;
-  
-  const { 
-    isWithdrawDialogOpen, 
-    setIsWithdrawDialogOpen,
-    handleWithdrawApplication 
-  } = useWithdrawApplication(onApplicationUpdated);
-  
-  const { 
-    isUpdatingStatus, 
-    updateApplicationStatus 
-  } = useApplicationActions(onApplicationUpdated);
-  
-  const {
-    acceptJobAsJobSeeker,
-    isLoading: isAcceptingJob
-  } = useAcceptedJobs(onApplicationUpdated);
-
-  const toggleExpand = () => {
-    setIsExpanded(!isExpanded);
-  };
-
-  const handleWithdraw = async (reason?: string) => {
-    await handleWithdrawApplication(applicationId, reason);
-    return Promise.resolve();
-  };
-  
-  const handleMessageSubmit = async (message: string) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("You must be logged in to send messages");
-        return;
-      }
-
-      // Get existing discourse
-      const { data: applicationData, error: fetchError } = await supabase
-        .from('job_applications')
-        .select('task_discourse')
-        .eq('job_app_id', applicationId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Format the message with timestamp and sender
-      const timestamp = new Date().toLocaleString();
-      const formattedMessage = `[${timestamp}] Job Seeker: ${message}`;
-
-      // Append to existing discourse or create new
-      const updatedDiscourse = applicationData?.task_discourse
-        ? `${applicationData.task_discourse}\n\n${formattedMessage}`
-        : formattedMessage;
-
-      // Update the application with the new discourse
-      const { error: updateError } = await supabase
-        .from('job_applications')
-        .update({ task_discourse: updatedDiscourse })
-        .eq('job_app_id', applicationId);
-
-      if (updateError) throw updateError;
-
-      toast.success("Message sent successfully");
-      
-      if (onApplicationUpdated) {
-        onApplicationUpdated();
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error("Failed to send message");
-    }
-  };
-  
-  const handleStatusChange = (status: string) => {
-    if (status === 'withdrawn') {
-      setIsWithdrawDialogOpen(true);
-      return;
-    }
-    
-    setSelectedStatus(status);
-    setStatusDialogOpen(true);
-  };
-  
-  const confirmStatusChange = async () => {
-    await updateApplicationStatus(applicationId, selectedStatus);
-    setStatusDialogOpen(false);
-  };
-  
-  const handleAcceptJob = async () => {
-    await acceptJobAsJobSeeker(application);
-    if (onApplicationUpdated) onApplicationUpdated();
-  };
-  
-  const showAcceptButton = application.status === 'accepted' && !application.accepted_jobseeker;
 
   return (
-    <div className="border rounded-md overflow-hidden bg-card dashboard-card">
-      {/* Application Header Section */}
-      <ApplicationItemHeader
-        title={application.task_title || 'Untitled Task'}
-        company={application.company_name || 'Company'}
-        project={application.project_title || 'Project'}
-        status={application.status}
-        isExpanded={isExpanded}
-        toggleExpand={toggleExpand}
-        onStatusChange={handleStatusChange}
-        isUpdatingStatus={isUpdatingStatus === applicationId}
-        showAcceptButton={showAcceptButton}
-        onAcceptClick={() => setIsAcceptJobDialogOpen(true)}
-        isAcceptingJob={isAcceptingJob}
-        compact={compact}
-      />
+    <div className="border rounded-md shadow-sm bg-card text-card-foreground">
+      <div className="flex items-center justify-between p-4">
+        <div className="flex flex-col gap-1">
+          <h3 className="font-medium text-lg">{application.task_title || 'Task'}</h3>
+          <p className="text-muted-foreground text-sm">{application.company_name || 'Company'} - {application.project_title || application.project_id || 'Project'}</p>
+          <div className="flex items-center gap-1 mt-1">
+            <Badge 
+              variant={getStatusVariant(application.status || '')}
+            >
+              {application.status}
+            </Badge>
+            <Badge variant="outline">
+              Applied: {formatDate(application.applied_at || '')}
+            </Badge>
+          </div>
+        </div>
 
-      {/* Expanded Application Content */}
-      {isExpanded && (
-        <ApplicationItemContent
-          description={application.description}
-          message={application.message}
-          discourse={application.task_discourse}
-          appliedAt={application.applied_at}
-          onMessageClick={() => setIsCreateMessageOpen(true)}
-          onWithdrawClick={() => setIsWithdrawDialogOpen(true)}
-        />
-      )}
+        <div className="flex items-center space-x-2">
+          <Button variant="ghost" size="sm">
+            <MessageSquare className="h-4 w-4 mr-2" />
+            Message
+          </Button>
+          <Button variant="ghost" size="sm">
+            <CalendarIcon className="h-4 w-4 mr-2" />
+            View Task
+          </Button>
+        </div>
+      </div>
 
-      {/* Dialogs */}
-      <CreateMessageDialog
-        isOpen={isCreateMessageOpen}
-        onOpenChange={setIsCreateMessageOpen}
-        applicationId={applicationId}
-        existingMessage={application.task_discourse}
-        onMessageSent={onApplicationUpdated}
-      />
-
-      <WithdrawDialog
-        isOpen={isWithdrawDialogOpen}
-        onOpenChange={setIsWithdrawDialogOpen}
-        onWithdraw={handleWithdraw}
-      />
-      
-      <StatusChangeDialog 
-        isOpen={statusDialogOpen}
-        onOpenChange={setStatusDialogOpen}
-        selectedStatus={selectedStatus}
-        onConfirm={confirmStatusChange}
-        isLoading={isUpdatingStatus === applicationId}
-      />
-      
-      <AcceptJobDialog
-        isOpen={isAcceptJobDialogOpen}
-        onOpenChange={setIsAcceptJobDialogOpen}
-        application={application}
-        onAccept={handleAcceptJob}
-        isLoading={isAcceptingJob}
-      />
+      <Collapsible
+        open={isExpanded}
+        onOpenChange={setIsExpanded}
+        className="w-full"
+      >
+        <CollapsibleContent className="px-4 pt-2 pb-4">
+          <ApplicationItemContent 
+            description={application.description || ''}
+            message={application.message || ''} 
+            discourse={application.task_discourse || ''} 
+            appliedAt={application.applied_at || ''}
+            onMessageClick={() => {}}
+            onWithdrawClick={() => onWithdraw?.(application.id || application.job_app_id || '', '')}
+          />
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 };

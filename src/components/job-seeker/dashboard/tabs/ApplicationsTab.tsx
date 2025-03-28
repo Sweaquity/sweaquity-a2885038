@@ -1,73 +1,92 @@
-
-import { useEffect, useState, useCallback, useRef } from "react";
-import { supabase } from "@/lib/supabase";
-import { JobApplication } from "@/types/jobSeeker";
-import { ApplicationsTabBase } from "@/components/job-seeker/dashboard/applications";
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { ApplicationsTabBase } from '../applications/ApplicationsTabBase';
+import { JobApplication } from '@/types/interfaces';
+import { adaptJobApplications } from '@/utils/typeAdapters';
 
 interface ApplicationsTabProps {
-  applications: JobApplication[];
-  onApplicationUpdated: () => void;
+  userId: string;
+  viewJobDetails: (jobAppId: string) => void;
 }
 
-export const ApplicationsTab = ({
-  applications,
-  onApplicationUpdated,
-}: ApplicationsTabProps) => {
-  const [newMessagesCount, setNewMessagesCount] = useState(0);
-  const [newApplicationsCount, setNewApplicationsCount] = useState(0);
-  const channelRef = useRef<any>(null);
-
-  // Calculate new applications that need attention (accepted jobs that need jobseeker acceptance)
-  useEffect(() => {
-    const pendingAcceptance = applications.filter(app => 
-      app.status === 'accepted' && app.accepted_business && !app.accepted_jobseeker
-    ).length;
-    
-    setNewApplicationsCount(pendingAcceptance);
-  }, [applications]);
-
-  // Memoize the update function to prevent unnecessary re-renders
-  const handleApplicationUpdated = useCallback(() => {
-    setNewMessagesCount(prev => prev + 1);
-    onApplicationUpdated();
-  }, [onApplicationUpdated]);
+export const ApplicationsTab: React.FC<ApplicationsTabProps> = ({ userId, viewJobDetails }) => {
+  const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   useEffect(() => {
-    // Only create the channel if it doesn't exist yet
-    if (!channelRef.current) {
-      channelRef.current = supabase
-        .channel("job-seeker-apps")
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "job_applications",
-            filter: "task_discourse=neq.null",
-          },
-          () => {
-            setNewMessagesCount(prev => prev + 1);
-            handleApplicationUpdated();
-          }
-        )
-        .subscribe();
-    }
+    fetchApplications();
+  }, [userId]);
 
-    // Cleanup function to remove the Supabase subscription
-    return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
+  const fetchApplications = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('job_applications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('applied_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching applications:', error);
+        return;
       }
-    };
-  }, []); // Empty dependency array to ensure this only runs once
+
+      setApplications(data || []);
+    } catch (error) {
+      console.error('Error fetching applications:', error);
+    }
+  };
+
+  const handleWithdrawApplication = async (applicationId: string, reason: string = '') => {
+    setIsWithdrawing(true);
+    try {
+      const { error } = await supabase
+        .from('job_applications')
+        .update({ status: 'withdrawn', message: reason })
+        .eq('id', applicationId);
+
+      if (error) {
+        console.error('Error withdrawing application:', error);
+        return;
+      }
+
+      fetchApplications();
+    } catch (error) {
+      console.error('Error withdrawing application:', error);
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+
+  const handleAcceptApplication = async (application: JobApplication) => {
+    try {
+      // Update the job application status to 'accepted'
+      const { data: updatedApplication, error: updateError } = await supabase
+        .from('job_applications')
+        .update({ status: 'accepted' })
+        .eq('id', application.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error("Error accepting application:", updateError);
+        return;
+      }
+
+      // Refresh applications
+      fetchApplications();
+    } catch (error) {
+      console.error("Error accepting application:", error);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      <ApplicationsTabBase 
-        applications={applications} 
-        onApplicationUpdated={handleApplicationUpdated}
-        newMessagesCount={newMessagesCount}
-      />
-    </div>
+    <ApplicationsTabBase
+      applications={adaptJobApplications(applications)}
+      onWithdrawApplication={handleWithdrawApplication}
+      onAcceptApplication={handleAcceptApplication}
+      viewJobDetails={viewJobDetails}
+      isWithdrawing={isWithdrawing}
+      onApplicationUpdated={fetchApplications}
+    />
   );
 };
