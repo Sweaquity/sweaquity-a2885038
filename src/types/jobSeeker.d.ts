@@ -93,10 +93,25 @@ export interface JobApplication {
   message?: string;
   cv_url?: string;
   task_discourse?: string;
-  business_roles?: BusinessRole;
+  business_roles?: {
+    title: string;
+    description: string;
+    company_name?: string;
+    project_title?: string;
+    status?: string;
+    task_status?: string;
+    completion_percentage?: number;
+    timeframe?: string;
+    skill_requirements?: any[];
+  };
   accepted_jobs?: AcceptedJob;
   is_equity_project?: boolean;
   applicant_skills?: string[];
+  // Adding additional fields for enhanced features
+  task_title?: string;
+  company_name?: string;
+  project_title?: string;
+  description?: string;
 }
 
 // Update AcceptedJob to match the database fields

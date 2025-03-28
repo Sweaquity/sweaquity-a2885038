@@ -8,6 +8,7 @@ import { ProjectTabs } from "./projects/tabs/ProjectTabs";
 import { DeleteProjectDialog } from "./projects/dialogs/DeleteProjectDialog";
 import { loadProjects, deleteProject } from "./projects/services/ProjectSectionService";
 
+// Define the types directly here to avoid conflicts
 interface SkillRequirement {
   skill: string;
   level: string;
@@ -18,13 +19,15 @@ interface Task {
   title: string;
   description: string;
   status: string;
-  hours_logged: number;
-  equity_earned: number;
+  hours_logged?: number;
+  equity_earned?: number;
   equity_allocation: number;
   timeframe: string;
   skills_required: string[];
   skill_requirements: SkillRequirement[];
   dependencies: string[];
+  task_status?: string;
+  completion_percentage?: number;
 }
 
 interface Project {
@@ -51,7 +54,7 @@ export const ProjectsSection = () => {
 
   const loadProjectsData = async () => {
     const projectsData = await loadProjects();
-    setProjects(projectsData as Project[]);
+    setProjects(projectsData as unknown as Project[]);
   };
 
   const handleProjectCreated = (newProject: Project) => {
@@ -79,7 +82,7 @@ export const ProjectsSection = () => {
 
   const confirmDeleteProject = async () => {
     if (projectToDelete) {
-      const success = await deleteProject(projectToDelete, projects);
+      const success = await deleteProject(projectToDelete, projects as any);
       if (success) {
         handleProjectDeleted(projectToDelete);
       }

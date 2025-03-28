@@ -1,23 +1,36 @@
 
-import React from 'react';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
 
-interface StatusBadgeProps {
+export interface StatusBadgeProps {
   status: string;
+  isUpdating?: boolean;  // Added isUpdating prop
 }
 
-export const StatusBadge = ({ status }: StatusBadgeProps) => {
-  const getStatusColor = (status: string) => {
-    const statusLower = status.toLowerCase();
-    if (statusLower === 'accepted' || statusLower === 'completed') return 'bg-green-500';
-    if (statusLower === 'rejected') return 'bg-red-500';
-    if (statusLower === 'withdrawn') return 'bg-yellow-500';
-    if (statusLower === 'pending') return 'bg-blue-500';
-    return 'bg-gray-500';
-  };
-
+export const StatusBadge = ({ status, isUpdating }: StatusBadgeProps) => {
+  // Determine variant based on status
+  let variant: "default" | "destructive" | "secondary" | "outline" = "default";
+  
+  switch (status.toLowerCase()) {
+    case "pending":
+      variant = "outline";
+      break;
+    case "accepted":
+      variant = "secondary";
+      break;
+    case "rejected":
+      variant = "destructive";
+      break;
+    case "withdrawn":
+      variant = "destructive";
+      break;
+    default:
+      variant = "default";
+  }
+  
   return (
-    <Badge className={`${getStatusColor(status)}`} variant="secondary">
+    <Badge variant={variant} className="flex items-center">
+      {isUpdating ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
       {status}
     </Badge>
   );

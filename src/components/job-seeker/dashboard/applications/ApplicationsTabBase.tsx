@@ -43,7 +43,7 @@ export const ApplicationsTabBase = ({
       try {
         const { data, error } = await supabase
           .from('accepted_jobs')
-          .select('job_app_id, equity_agreed, jobs_equity_allocated')
+          .select('job_app_id, equity_agreed, jobs_equity_allocated, date_accepted, id')
           .in('job_app_id', jobAppIds);
           
         if (error) {
@@ -55,7 +55,9 @@ export const ApplicationsTabBase = ({
         const equityDataMap = (data || []).reduce((map, item) => {
           map[item.job_app_id] = {
             equity_agreed: item.equity_agreed || 0,
-            jobs_equity_allocated: item.jobs_equity_allocated || 0
+            jobs_equity_allocated: item.jobs_equity_allocated || 0,
+            date_accepted: item.date_accepted,
+            id: item.id
           };
           return map;
         }, {} as Record<string, any>);
@@ -89,9 +91,15 @@ export const ApplicationsTabBase = ({
     [applicationsWithEquityData]
   );
 
+  // Current applications should not include ones where equity is fully earned
   const currentApplications = useMemo(() => 
     applicationsWithEquityData.filter(app => 
-      app.status === 'accepted' && app.accepted_business && app.accepted_jobseeker
+      app.status === 'accepted' && 
+      app.accepted_business && 
+      app.accepted_jobseeker && 
+      (!app.accepted_jobs || 
+       !app.accepted_jobs.equity_agreed || 
+       app.accepted_jobs.equity_agreed > app.accepted_jobs.jobs_equity_allocated)
     ), 
     [applicationsWithEquityData]
   );
@@ -103,7 +111,7 @@ export const ApplicationsTabBase = ({
     [applicationsWithEquityData]
   );
 
-  // New: Filter Equity Projects - Active vs Completed based on equity allocation
+  // Filter Equity Projects - Active vs Completed based on equity allocation
   const activeEquityProjects = useMemo(() => 
     applicationsWithEquityData.filter(app => 
       app.is_equity_project && 
@@ -116,13 +124,13 @@ export const ApplicationsTabBase = ({
     [applicationsWithEquityData]
   );
 
+  // Completed equity projects should be the ones where equity_agreed equals jobs_equity_allocated
   const completedEquityProjects = useMemo(() => 
     applicationsWithEquityData.filter(app => 
       app.is_equity_project && 
-      ((app.status === 'completed') || 
-       (app.accepted_jobs && 
-        app.accepted_jobs.equity_agreed > 0 && 
-        app.accepted_jobs.equity_agreed === app.accepted_jobs.jobs_equity_allocated))
+      app.accepted_jobs && 
+      app.accepted_jobs.equity_agreed > 0 && 
+      app.accepted_jobs.equity_agreed === app.accepted_jobs.jobs_equity_allocated
     ), 
     [applicationsWithEquityData]
   );

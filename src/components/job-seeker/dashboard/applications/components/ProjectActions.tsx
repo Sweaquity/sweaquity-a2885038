@@ -15,8 +15,13 @@ export const ProjectActions = ({ application, onSendMessage }: ProjectActionsPro
   const navigate = useNavigate();
   
   const handleViewProject = () => {
-    if (application.task_id) {
-      // Navigate to the project details page with the application as state
+    if (application.project_id) {
+      // Navigate to the project details page using project_id for consistency
+      navigate(`/projects/${application.project_id}`, { 
+        state: { application }
+      });
+    } else if (application.task_id) {
+      // Fallback to the task ID if project ID isn't available
       navigate(`/seeker/dashboard/project/${application.task_id}`, { 
         state: { application }
       });
