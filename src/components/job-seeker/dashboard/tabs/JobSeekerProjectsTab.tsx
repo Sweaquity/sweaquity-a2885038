@@ -14,7 +14,7 @@ import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
-import { Ticket } from "@/types/types";
+import { Ticket } from "@/types/interfaces";
 import { RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
 import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
 import { DragDropContext } from "react-beautiful-dnd";
@@ -111,7 +111,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       
       const processedTickets = filteredTickets.map(ticket => ({
         ...ticket,
-        ticket_type: ticket.ticket_type || "task",
+        type: ticket.type || "task",
         description: ticket.description || "",
         equity_agreed: ticket.accepted_jobs?.equity_agreed || 0,
         equity_allocated: ticket.accepted_jobs?.jobs_equity_allocated || 0
@@ -278,7 +278,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         ...ticketData,
         reporter: userId,
         created_at: new Date().toISOString(),
-        ticket_type: ticketData.ticket_type || "task",
+        type: ticketData.type || "task",
         status: "todo",
         priority: ticketData.priority || "medium",
         health: ticketData.health || "good"
@@ -306,11 +306,11 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const getActiveTickets = () => {
     switch (activeTab) {
       case "project-tasks":
-        return tickets.filter(t => t.ticket_type === "task");
+        return tickets.filter(t => t.type === "task" || t.ticket_type === "task");
       case "project-tickets":
-        return tickets.filter(t => t.ticket_type === "ticket");
+        return tickets.filter(t => t.type === "ticket" || t.ticket_type === "ticket");
       case "beta-testing":
-        return tickets.filter(t => t.ticket_type === "beta-test");
+        return tickets.filter(t => t.type === "beta-test" || t.ticket_type === "beta-test");
       default:
         return tickets;
     }
@@ -447,8 +447,10 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
               onRefresh={handleRefresh}
               onTicketAction={handleTicketAction}
               showTimeTracking={true}
+              showEstimatedHours={true}
               userId={userId || ''}
               onLogTime={handleLogTime}
+              userCanEditDates={true}
             />
           )}
         </TabsContent>

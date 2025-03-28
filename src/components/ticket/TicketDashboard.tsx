@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Table,
@@ -23,28 +22,20 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
-import { Ticket } from "@/types/types";
+import { Ticket, TicketDashboardProps } from "@/types/interfaces";
 import { AlertTriangle, CheckCircle2, Clock, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ExpandedTicketDetails } from "./ExpandedTicketDetails";
-
-interface TicketDashboardProps {
-  initialTickets: Ticket[];
-  onRefresh: () => void;
-  onTicketAction: (ticketId: string, action: string, data: any) => Promise<void>;
-  showTimeTracking?: boolean;
-  userId: string;
-  onLogTime?: (ticketId: string) => void;
-  renderTicketActions?: (ticket: Ticket) => React.ReactNode;
-}
 
 export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   initialTickets,
   onRefresh,
   onTicketAction,
   showTimeTracking = false,
+  showEstimatedHours = false,
   userId,
   onLogTime,
+  userCanEditDates = true,
   renderTicketActions
 }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -272,6 +263,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                   <TableHead>Priority</TableHead>
                   <TableHead>Type</TableHead>
                   {showTimeTracking && <TableHead>Hours</TableHead>}
+                  {showEstimatedHours && <TableHead>Estimated</TableHead>}
                   <TableHead>Due Date</TableHead>
                   <TableHead>Completion</TableHead>
                   <TableHead>Actions</TableHead>
@@ -334,12 +326,17 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {getTicketTypeLabel(ticket.type || "task")}
+                        {getTicketTypeLabel(ticket.type || ticket.ticket_type || "task")}
                       </Badge>
                     </TableCell>
                     {showTimeTracking && (
                       <TableCell>
-                        {ticket.estimated_hours || 0} / {ticket.hours_logged || 0} hrs
+                        {ticket.hours_logged || 0} hrs
+                      </TableCell>
+                    )}
+                    {showEstimatedHours && (
+                      <TableCell>
+                        {ticket.estimated_hours || 0} hrs
                       </TableCell>
                     )}
                     <TableCell>{formatDate(ticket.due_date)}</TableCell>
@@ -390,7 +387,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
               onTicketAction={onTicketAction}
               onLogTime={showTimeTracking && onLogTime ? onLogTime : undefined}
               userCanEditStatus={true}
-              userCanEditDates={true}
+              userCanEditDates={userCanEditDates}
             />
           )}
         </DialogContent>

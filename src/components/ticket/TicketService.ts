@@ -1,6 +1,6 @@
 
 import { supabase } from '@/lib/supabase';
-import { Ticket, UserData } from '@/types/types';
+import { Ticket, UserData } from '@/types/interfaces';
 import { toast } from 'sonner';
 
 export const TicketService = {

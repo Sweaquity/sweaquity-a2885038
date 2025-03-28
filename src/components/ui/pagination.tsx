@@ -1,12 +1,7 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-interface PaginationProps {
-  currentPage: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-}
+import { PaginationProps } from "@/types/interfaces";
 
 export function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
   const canGoPrevious = currentPage > 1;

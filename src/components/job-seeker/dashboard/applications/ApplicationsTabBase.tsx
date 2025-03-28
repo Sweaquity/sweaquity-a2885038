@@ -1,8 +1,7 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { JobApplication } from "@/types/jobSeeker";
+import { JobApplication } from "@/types/interfaces";
 import { ApplicationsList } from "./ApplicationsList";
 import { PendingApplicationsList } from "./PendingApplicationsList";
 import { PastApplicationsList } from "./PastApplicationsList";
