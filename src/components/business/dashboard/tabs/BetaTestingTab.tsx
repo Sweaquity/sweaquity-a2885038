@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskCompletionReview } from "../../projects/TaskCompletionReview";
-import { BetaTestingTab as SharedBetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
+import { SharedBetaTestingTab } from "@/components/shared/beta-testing/BetaTestingTab";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { toast } from "sonner";
 import { Ticket } from "@/types/types";
@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, RefreshCw } from "lucide-react";
 import { GanttChartView } from "../../testing/GanttChartView";
 import { KanbanBoard } from "@/components/ticket/KanbanBoard";
+import { enhanceTickets } from "@/utils/dataAdapters";
 
 export const BetaTestingTab = () => {
   // Rename this component to LiveProjectsTab to match naming in UI
@@ -192,9 +193,12 @@ export const BetaTestingTab = () => {
       if (userId) {
         await loadTickets(userId);
       }
+      
+      return Promise.resolve();
     } catch (error) {
       console.error("Error handling ticket action:", error);
       toast.error("Failed to update ticket");
+      return Promise.reject(error);
     }
   };
 
@@ -216,6 +220,9 @@ export const BetaTestingTab = () => {
   if (!userId) {
     return <div>Loading...</div>;
   }
+
+  // Enhance tickets to ensure all required fields are present
+  const enhancedTickets = enhanceTickets(tickets);
 
   return (
     <div className="space-y-6">
@@ -293,7 +300,7 @@ export const BetaTestingTab = () => {
         
         <TabsContent value="tickets">
           <TicketDashboard 
-            initialTickets={tickets}
+            initialTickets={enhancedTickets}
             onRefresh={handleRefresh}
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
@@ -303,7 +310,7 @@ export const BetaTestingTab = () => {
         
         <TabsContent value="project-tasks">
           <TicketDashboard 
-            initialTickets={tickets.filter(t => t.task_id)}
+            initialTickets={enhancedTickets.filter(t => t.task_id)}
             onRefresh={handleRefresh}
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
@@ -313,7 +320,7 @@ export const BetaTestingTab = () => {
         
         <TabsContent value="project-tickets">
           <TicketDashboard 
-            initialTickets={tickets.filter(t => t.project_id && !t.task_id)}
+            initialTickets={enhancedTickets.filter(t => t.project_id && !t.task_id)}
             onRefresh={handleRefresh}
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
@@ -336,7 +343,7 @@ export const BetaTestingTab = () => {
         <TabsContent value="kanban">
           {selectedProject ? (
             <KanbanBoard 
-              tickets={tickets}
+              tickets={enhancedTickets}
               onStatusChange={(ticketId, newStatus) => 
                 handleTicketAction(ticketId, 'updateStatus', newStatus)
               }

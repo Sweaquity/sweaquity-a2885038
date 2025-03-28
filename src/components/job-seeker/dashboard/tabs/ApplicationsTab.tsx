@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { JobApplication } from "@/types/jobSeeker";
 import { ApplicationsTabBase } from "@/components/job-seeker/dashboard/applications";
+import { enhanceJobApplications } from "@/utils/dataAdapters";
 
 interface ApplicationsTabProps {
   applications: JobApplication[];
@@ -61,10 +62,13 @@ export const ApplicationsTab = ({
     };
   }, []); // Empty dependency array to ensure this only runs once
 
+  // Enhance applications with related data
+  const enhancedApplications = enhanceJobApplications(applications);
+
   return (
     <div className="space-y-6">
       <ApplicationsTabBase 
-        applications={applications} 
+        applications={enhancedApplications} 
         onApplicationUpdated={handleApplicationUpdated}
         newMessagesCount={newMessagesCount}
       />

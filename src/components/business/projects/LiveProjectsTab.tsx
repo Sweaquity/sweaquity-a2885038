@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +18,7 @@ import { Ticket } from "@/types/types";
 import { RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
 import { KanbanBoard } from "@/components/ticket/KanbanBoard";
 import { TaskCompletionReview } from "./TaskCompletionReview";
+import { enhanceTickets } from "@/utils/dataAdapters";
 
 interface LiveProjectsTabProps {
   businessId: string;
@@ -95,11 +95,9 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           )
         `);
       
-      // Filter by project if one is selected and it's not "all"
       if (selectedProject && selectedProject !== "all") {
         query = query.eq('project_id', selectedProject);
       } else {
-        // If "all" is selected, get tickets from all projects owned by this business
         const { data: businessProjects } = await supabase
           .from('business_projects')
           .select('project_id')
@@ -117,19 +115,16 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       
       console.log("Loaded tickets:", data);
       
-      // Convert data to the expected Ticket type format and include job_app_id/equity data
       const processedTickets = (data || []).map(ticket => ({
         ...ticket,
-        type: ticket.ticket_type || "task", // Map ticket_type to type for compatibility
-        description: ticket.description || "", // Ensure description exists
-        // Add equity information to the ticket
+        type: ticket.ticket_type || "task",
+        description: ticket.description || "",
         equity_agreed: ticket.accepted_jobs?.equity_agreed || 0,
         equity_allocated: ticket.accepted_jobs?.jobs_equity_allocated || 0
       }));
       
       setTickets(processedTickets);
       
-      // Calculate ticket stats
       const stats = {
         total: processedTickets.length,
         open: processedTickets.filter(t => t.status !== 'done' && t.status !== 'closed').length,
@@ -150,7 +145,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     try {
       switch (action) {
         case 'updateStatus': {
-          // Update ticket status
           const { error } = await supabase
             .from('tickets')
             .update({ status: data })
@@ -158,7 +152,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           
           if (error) throw error;
           
-          // Update local state
           setTickets(prevTickets => 
             prevTickets.map(t => t.id === ticketId ? { ...t, status: data } : t)
           );
@@ -232,7 +225,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         }
         
         case 'reviewCompletion': {
-          // Find the ticket to review
           const ticket = tickets.find(t => t.id === ticketId);
           if (ticket) {
             setReviewTask(ticket);
@@ -335,8 +327,8 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         ...ticketData,
         reporter: businessId,
         created_at: new Date().toISOString(),
-        ticket_type: ticketData.ticket_type || "task", // Using ticket_type instead of type
-        status: "todo", // Changed from "new" to match Kanban column ids
+        ticket_type: ticketData.ticket_type || "task",
+        status: "todo",
         priority: ticketData.priority || "medium",
         health: ticketData.health || "good"
       };
@@ -361,15 +353,17 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   };
 
   const getActiveTickets = () => {
+    const enhancedTickets = enhanceTickets(tickets);
+    
     switch (activeTab) {
       case "project-tasks":
-        return tickets.filter(t => t.ticket_type === "task");
+        return enhancedTickets.filter(t => t.type === "task" || t.ticket_type === "task");
       case "project-tickets":
-        return tickets.filter(t => t.ticket_type === "ticket");
+        return enhancedTickets.filter(t => t.type === "ticket" || t.ticket_type === "ticket");
       case "beta-testing":
-        return tickets.filter(t => t.ticket_type === "beta-test");
+        return enhancedTickets.filter(t => t.type === "beta-test" || t.ticket_type === "beta-test");
       default:
-        return tickets;
+        return enhancedTickets;
     }
   };
 
@@ -390,12 +384,10 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   const handleReviewClose = () => {
     setIsReviewOpen(false);
     setReviewTask(null);
-    // Reload tickets to reflect changes
     loadTickets();
   };
 
   const renderTicketActions = (ticket: Ticket) => {
-    // Only show review action for business users and if the ticket is in review status
     if (ticket.status === 'review' || ticket.status === 'in review') {
       return (
         <Button
@@ -510,7 +502,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
                 }
                 onTicketClick={(ticket) => {
                   console.log("Ticket clicked:", ticket.id);
-                  // Here you could show a ticket detail dialog or navigate to a ticket details page
                 }}
               />
             </div>

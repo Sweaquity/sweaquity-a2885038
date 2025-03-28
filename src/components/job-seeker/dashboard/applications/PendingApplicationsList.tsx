@@ -28,11 +28,21 @@ export const PendingApplicationsList = ({
       return [];
     }
     
-    return projectSkills.filter(skill => 
-      applicantSkills.some(applicantSkill => 
-        applicantSkill.toLowerCase() === skill.toLowerCase()
-      )
-    );
+    return projectSkills.filter(skill => {
+      if (typeof skill === 'string') {
+        return applicantSkills.some(appSkill => 
+          typeof appSkill === 'string' && appSkill.toLowerCase() === skill.toLowerCase()
+        );
+      } 
+      else if (typeof skill === 'object' && skill !== null && 'skill' in skill) {
+        return applicantSkills.some(appSkill => 
+          (typeof appSkill === 'string' && appSkill.toLowerCase() === (skill as any).skill.toLowerCase()) ||
+          (typeof appSkill === 'object' && appSkill !== null && 'skill' in appSkill && 
+           (appSkill as any).skill.toLowerCase() === (skill as any).skill.toLowerCase())
+        );
+      }
+      return false;
+    }).map(skill => typeof skill === 'string' ? skill : (skill as any).skill);
   };
   
   if (applications.length === 0) {

@@ -13,6 +13,7 @@ export interface PendingApplicationItemProps {
   onWithdraw?: (applicationId: string, reason?: string) => Promise<void>;
   isWithdrawing?: boolean;
   getMatchedSkills: () => string[];
+  onApplicationUpdated?: () => void;
 }
 
 export const PendingApplicationItem = ({
@@ -20,7 +21,8 @@ export const PendingApplicationItem = ({
   onAccept,
   onWithdraw,
   isWithdrawing = false,
-  getMatchedSkills
+  getMatchedSkills,
+  onApplicationUpdated
 }: PendingApplicationItemProps) => {
   const [isAccepting, setIsAccepting] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
