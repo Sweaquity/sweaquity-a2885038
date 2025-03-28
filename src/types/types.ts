@@ -20,12 +20,6 @@ export interface Ticket {
   notes?: any[];
   type?: string;
   equity_points?: number;
-  accepted_jobs?: {
-    equity_agreed: number;
-    jobs_equity_allocated: number;
-    id: string;
-    date_accepted: string;
-  };
 }
 
 // Update UserData interface to include the required name field
@@ -65,15 +59,15 @@ export interface TicketStatistics {
   inProgressTickets: number;
   completedTickets: number;
   overdueTickets: number;
-  total?: number; // For backward compatibility
-  open?: number; // For backward compatibility
+  total?: number; // Add this property to fix errors
+  open?: number; // Add this property to fix errors
 }
 
 export interface BetaTicket extends Ticket {
   health: string; // Already required in Ticket now
 }
 
-// Update TicketDashboardProps to include userCanEditDates and userCanEditStatus
+// Add TicketDashboardProps to fix the error
 export interface TicketDashboardProps {
   initialTickets: Ticket[];
   onRefresh?: () => void;
