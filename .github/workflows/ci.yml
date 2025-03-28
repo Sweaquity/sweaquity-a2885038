@@ -1,0 +1,42 @@
+name: TypeScript CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout the repository
+    - uses: actions/checkout@v3
+
+    # Setup Node.js
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+
+    # Install dependencies
+    - name: Install dependencies
+      run: npm ci
+
+    # Lint the code
+    - name: Lint
+      run: npm run lint
+
+    # Run type checks
+    - name: Type Check
+      run: npm run typecheck
+
+    # Run tests
+    - name: Run Tests
+      run: npm run test
+
+    # Build the project
+    - name: Build
+      run: npm run build
