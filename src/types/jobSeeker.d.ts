@@ -1,3 +1,4 @@
+
 export interface Profile {
   id: string;
   first_name: string;
@@ -11,6 +12,7 @@ export interface Profile {
 export interface Skill {
   skill: string;
   level: 'Beginner' | 'Intermediate' | 'Expert';
+  name?: string; // Added for backward compatibility
 }
 
 export interface SubTask {

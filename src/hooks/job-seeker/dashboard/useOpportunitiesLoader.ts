@@ -1,11 +1,10 @@
-
 import { useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { EquityProject } from "@/types/equity";
 import { Skill } from "@/types/profile";
 
 export const useOpportunitiesLoader = () => {
-  const loadOpportunities = useCallback(async (userId: string, userSkills: Skill[] | null) => {
+  const loadOpportunities = useCallback(async (userId: string, userSkills?: any[]) => {
     try {
       const { data: userApplications, error: applicationsError } = await supabase
         .from('job_applications')
@@ -20,6 +19,19 @@ export const useOpportunitiesLoader = () => {
           .map(app => app.task_id) || []
       );
 
+      // Create an array of just skill names for easier matching
+      const userSkillStrings = (userSkills || []).map(skill => {
+        if (typeof skill === 'string') return skill.toLowerCase();
+        if (skill && typeof skill === 'object') {
+          return ('skill' in skill && skill.skill) 
+            ? skill.skill.toLowerCase() 
+            : ('name' in skill && skill.name)
+              ? skill.name.toLowerCase()
+              : '';
+        }
+        return '';
+      }).filter(Boolean);
+      
       const formattedUserSkills = Array.isArray(userSkills) 
         ? userSkills.map(s => {
             if (typeof s === 'string') return s.toLowerCase();

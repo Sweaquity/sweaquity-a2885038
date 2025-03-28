@@ -1,3 +1,4 @@
+
 // This file re-exports all job seeker related types for backward compatibility
 // New code should import from the specific type files
 
@@ -7,11 +8,12 @@ export * from './applications';
 export * from './equity';
 export * from './dashboardProps';
 
-// Skill interface
+// Legacy Skill interface (updated to match profile.ts)
 export interface Skill {
   id?: string;
-  name: string;
+  skill: string;
   level?: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+  name?: string; // Added for backward compatibility
 }
 
 // Legacy Profile interface (some code might still use this)

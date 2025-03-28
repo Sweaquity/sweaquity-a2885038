@@ -32,6 +32,8 @@ export const SkillBadge = ({
   } else if (skill && typeof skill === 'object') {
     if ('skill' in skill && skill.skill !== undefined) {
       skillName = String(skill.skill);
+    } else if ('name' in skill && skill.name !== undefined) {
+      skillName = String(skill.name);
     }
     
     if ('level' in skill && skill.level !== undefined) {

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -19,7 +18,8 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
   open,
   setOpen,
   onClose,
-  businessId
+  businessId,
+  onReviewComplete = () => {}
 }) => {
   const [completionPercentage, setCompletionPercentage] = useState<number>(task?.completion_percentage || 0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,10 +39,9 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
 
   useEffect(() => {
     if (jobAppData?.accepted_jobs?.equity_agreed) {
-      // Calculate equity to award based on completion percentage
       const equityAgreed = jobAppData.accepted_jobs.equity_agreed;
       const percentageToAward = completionPercentage / 100;
-      setEquityToAward(Math.round(equityAgreed * percentageToAward * 10) / 10); // Round to 1 decimal place
+      setEquityToAward(Math.round(equityAgreed * percentageToAward * 10) / 10);
     }
   }, [completionPercentage, jobAppData]);
 
@@ -66,7 +65,6 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
       setJobAppData(data);
       console.log("Job application data:", data);
       
-      // Set initial completion percentage from the task
       if (task?.completion_percentage) {
         setCompletionPercentage(task.completion_percentage);
       }
@@ -102,7 +100,6 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
         return;
       }
       
-      // Update the accepted_jobs table with the newly allocated equity
       const { error: updateError } = await supabase
         .from('accepted_jobs')
         .update({
@@ -112,7 +109,6 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
         
       if (updateError) throw updateError;
       
-      // Update the task status if it's 100% complete
       if (completionPercentage >= 100) {
         const { error: taskError } = await supabase
           .from('project_sub_tasks')
@@ -125,7 +121,6 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
         if (taskError) throw taskError;
       }
       
-      // Update the ticket completion percentage and status
       const { error: ticketError } = await supabase
         .from('tickets')
         .update({
@@ -136,7 +131,6 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
         
       if (ticketError) throw ticketError;
       
-      // Call the update_active_project function to update relevant tables
       const { error: functionError } = await supabase.rpc('update_active_project', {
         p_task_id: task.task_id,
         p_completion_percentage: completionPercentage,
@@ -145,14 +139,14 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
       
       if (functionError) {
         console.error("Error calling update_active_project function:", functionError);
-        // Don't throw here as we've already made the main updates
       }
       
       toast.success(`Task approved. ${equityToAward}% equity awarded.`);
       
-      // Close the dialog and refresh
       setOpen(false);
       if (onClose) onClose();
+      
+      if (onReviewComplete) onReviewComplete();
     } catch (error) {
       console.error("Error approving task:", error);
       toast.error("Failed to approve task");

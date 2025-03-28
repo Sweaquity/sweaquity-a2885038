@@ -86,12 +86,16 @@ export const LinkedInImportDialog = ({ isOpen, onClose }: LinkedInImportDialogPr
       
       // Create a map of existing skills to check for duplicates
       const existingSkillsMap = new Map(
-        existingSkills.map(skill => [skill.skill.toLowerCase(), skill])
+        existingSkills.map(skill => {
+          const skillName = 'skill' in skill ? skill.skill : 'name' in skill ? skill.name : '';
+          return [skillName.toLowerCase(), skill];
+        })
       );
       
       // Add only new skills
       formattedSkills.forEach(skill => {
-        if (!existingSkillsMap.has(skill.skill.toLowerCase())) {
+        const skillName = 'skill' in skill ? skill.skill : 'name' in skill ? skill.name : '';
+        if (!existingSkillsMap.has(skillName.toLowerCase())) {
           existingSkills.push(skill);
         }
       });

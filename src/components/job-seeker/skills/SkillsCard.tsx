@@ -25,26 +25,33 @@ export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
     }
 
     // Check if skill already exists
-    if (skills.some((s) => s.skill.toLowerCase() === newSkill.toLowerCase())) {
+    if (skills.some((s) => {
+      const skillName = 'skill' in s ? s.skill : 'name' in s ? s.name : '';
+      return skillName.toLowerCase() === newSkill.toLowerCase();
+    })) {
       toast.error("This skill already exists in your profile");
       return;
     }
 
     // Add the new skill
     const updatedSkills = [...skills, { skill: newSkill, level: skillLevel }];
-    onSkillsUpdate(updatedSkills);
+    onSkillsUpdate(updatedSkills as Skill[]);
     setNewSkill("");
   };
 
-  const removeSkill = (skillName: string) => {
-    const updatedSkills = skills.filter((s) => s.skill !== skillName);
+  const removeSkill = (skillToRemove: string) => {
+    const updatedSkills = skills.filter((s) => {
+      const skillName = 'skill' in s ? s.skill : 'name' in s ? s.name : '';
+      return skillName !== skillToRemove;
+    });
     onSkillsUpdate(updatedSkills);
   };
 
   const updateSkillLevel = (skillName: string, newLevel: "Beginner" | "Intermediate" | "Expert") => {
-    const updatedSkills = skills.map((s) =>
-      s.skill === skillName ? { ...s, level: newLevel } : s
-    );
+    const updatedSkills = skills.map((s) => {
+      const currentSkillName = 'skill' in s ? s.skill : 'name' in s ? s.name : '';
+      return currentSkillName === skillName ? { ...s, level: newLevel } : s;
+    });
     onSkillsUpdate(updatedSkills);
   };
 
@@ -56,14 +63,17 @@ export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
       <CardContent>
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2">
-            {skills.map((skill) => (
-              <SkillBadge
-                key={skill.skill}
-                skill={skill}
-                onRemove={() => removeSkill(skill.skill)}
-                onLevelChange={(level) => updateSkillLevel(skill.skill, level)}
-              />
-            ))}
+            {skills.map((skill) => {
+              const skillName = 'skill' in skill ? skill.skill : 'name' in skill ? skill.name : '';
+              return (
+                <SkillBadge
+                  key={skillName}
+                  skill={skill}
+                  onRemove={() => removeSkill(skillName)}
+                  onLevelChange={(level) => updateSkillLevel(skillName, level)}
+                />
+              );
+            })}
             {skills.length === 0 && (
               <p className="text-sm text-muted-foreground">No skills added yet.</p>
             )}

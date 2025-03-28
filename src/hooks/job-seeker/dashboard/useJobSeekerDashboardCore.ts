@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -63,7 +62,14 @@ export const useJobSeekerDashboardCore = (refreshTrigger = 0) => {
         loadUserTickets(session.user.id)
       ]);
 
-      const opportunities = await loadOpportunities(session.user.id, skills);
+      // Convert skills to the format expected by loadOpportunities if needed
+      const skillsForOpportunities = skills ? skills.map(s => {
+        if ('skill' in s) return { ...s }; 
+        if ('name' in s) return { skill: s.name, level: s.level };
+        return s;
+      }) : [];
+      
+      const opportunities = await loadOpportunities(session.user.id, skillsForOpportunities);
       setAvailableOpportunities(opportunities);
 
       const acceptedProjects = transformToEquityProjects(

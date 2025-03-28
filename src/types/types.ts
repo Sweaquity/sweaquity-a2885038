@@ -46,12 +46,12 @@ export interface Task {
 }
 
 export interface TaskCompletionReviewProps {
-  task: any;
-  onReviewComplete: () => void;
-  onClose: () => void;
-  open: boolean; // Add missing property
-  setOpen: React.Dispatch<React.SetStateAction<boolean>>; // Add missing property
-  businessId?: string; // Add missing property
+  task?: any;
+  onReviewComplete?: () => void;
+  onClose?: () => void;
+  open?: boolean; 
+  setOpen?: React.Dispatch<React.SetStateAction<boolean>>; 
+  businessId?: string;
 }
 
 export interface TicketStatistics {
@@ -61,8 +61,21 @@ export interface TicketStatistics {
   completedTickets: number;
   overdueTickets: number;
   total?: number; // Add this property to fix errors
+  open?: number; // Add this property to fix errors
 }
 
 export interface BetaTicket extends Ticket {
   health: string; // Already required in Ticket now
+}
+
+// Add TicketDashboardProps to fix the error
+export interface TicketDashboardProps {
+  initialTickets: Ticket[];
+  onRefresh?: () => void;
+  onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
+  showTimeTracking?: boolean;
+  userId?: string;
+  onLogTime?: (ticketId: string) => void;
+  userCanEditDates?: boolean;
+  userCanEditStatus?: boolean;
 }

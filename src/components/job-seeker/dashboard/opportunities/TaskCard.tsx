@@ -43,7 +43,7 @@ export const TaskCard = ({ project, task, userSkillStrings, onApply }: TaskCardP
               if (!skillName) return null;
               
               const skillLower = String(skillName).toLowerCase();
-              const isUserSkill = userSkillStrings.includes(skillLower);
+              const isUserSkill = userSkillStrings.map(s => s.toLowerCase()).includes(skillLower);
               
               // Create a Skill object for the SkillBadge
               const skillObject: Skill = { 

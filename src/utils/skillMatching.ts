@@ -1,4 +1,3 @@
-
 import { Skill, SkillRequirement, EquityProject, SubTask } from "@/types/jobSeeker";
 
 /**
@@ -324,3 +323,10 @@ export const rankProjectsByRelevance = (
   // Sort by match score descending
   return scoredProjects.sort((a, b) => (b.skillMatch || 0) - (a.skillMatch || 0));
 };
+
+// Update the mockSkills to use the correct skill property
+const mockSkills = [
+  { skill: "JavaScript", level: "Beginner" },
+  { skill: "React", level: "Beginner" },
+  { skill: "TypeScript", level: "Beginner" }
+];

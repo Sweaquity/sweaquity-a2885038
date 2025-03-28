@@ -1,4 +1,3 @@
-
 import { Skill } from "@/types/jobSeeker";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +16,14 @@ export const CareerHistoryDisplay = ({
 }: CareerHistoryDisplayProps) => {
   // Filter skills to business and project management categories
   const businessSkills = skills.filter(skill => {
-    const skillName = typeof skill === 'string' ? skill : skill.skill;
+    const skillName = typeof skill === 'string' 
+      ? skill 
+      : ('skill' in skill && skill.skill) 
+        ? skill.skill 
+        : ('name' in skill && skill.name) 
+          ? skill.name 
+          : '';
+    
     return (
       skillName.toLowerCase().includes('project') || 
       skillName.toLowerCase().includes('business') ||
@@ -80,14 +86,26 @@ export const CareerHistoryDisplay = ({
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {businessSkills.map((skill, index) => (
-                <Badge key={index} className="text-sm">
-                  {typeof skill === 'string' ? skill : skill.skill}
-                  {typeof skill !== 'string' && skill.level && 
-                    <span className="ml-1 opacity-70">({skill.level})</span>
-                  }
-                </Badge>
-              ))}
+              {businessSkills.map((skill, index) => {
+                const skillName = typeof skill === 'string' 
+                  ? skill 
+                  : ('skill' in skill && skill.skill) 
+                    ? skill.skill 
+                    : ('name' in skill && skill.name) 
+                      ? skill.name 
+                      : '';
+                
+                const skillLevel = typeof skill !== 'string' && 'level' in skill ? skill.level : null;
+                
+                return (
+                  <Badge key={index} className="text-sm">
+                    {skillName}
+                    {skillLevel && 
+                      <span className="ml-1 opacity-70">({skillLevel})</span>
+                    }
+                  </Badge>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
