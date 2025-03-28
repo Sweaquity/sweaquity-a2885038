@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { JobApplication } from "@/types/jobSeeker";
+import { ProjectActions } from "./components/ProjectActions";
 
 interface ApplicationsListProps {
   applications: JobApplication[];
@@ -57,14 +58,6 @@ export const ApplicationsList = ({
     }
   };
 
-  const handleViewProject = (application: JobApplication) => {
-    if (application.task_id) {
-      navigate(`/seeker/dashboard/project/${application.task_id}`, { state: { application }});
-    } else {
-      toast.error("Project details not available");
-    }
-  };
-  
   const handleSendMessage = () => {
     toast.info("The messaging feature is coming soon");
   };
@@ -116,7 +109,7 @@ export const ApplicationsList = ({
                   </div>
                   <div>
                     <div className="text-xs font-medium">Project Status</div>
-                    <div className="text-sm">{application.business_roles?.status || "active"}</div>
+                    <div className="text-sm">{application.business_roles?.project_status || "active"}</div>
                   </div>
                   <div>
                     <div className="text-xs font-medium">Completion</div>
@@ -201,16 +194,10 @@ export const ApplicationsList = ({
                       
                       <div>
                         <h4 className="font-medium mb-2">Actions</h4>
-                        <div className="flex flex-wrap gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleSendMessage()}>
-                            <MessageSquare className="h-4 w-4 mr-1" />
-                            Send Message
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleViewProject(application)}>
-                            <Eye className="h-4 w-4 mr-1" />
-                            View Project
-                          </Button>
-                        </div>
+                        <ProjectActions 
+                          application={application} 
+                          onSendMessage={handleSendMessage}
+                        />
                       </div>
                     </div>
                   </div>

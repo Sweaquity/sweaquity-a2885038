@@ -68,7 +68,7 @@ export const ApplicationsTabBase = ({
           
           return {
             ...app,
-            is_equity_project: !!equityData,
+            hasEquityData: !!equityData,
             accepted_jobs: equityData
           };
         });
@@ -114,7 +114,7 @@ export const ApplicationsTabBase = ({
   // Filter Equity Projects - Active vs Completed based on equity allocation
   const activeEquityProjects = useMemo(() => 
     applicationsWithEquityData.filter(app => 
-      app.is_equity_project && 
+      app.hasEquityData && 
       app.status === 'accepted' && 
       app.accepted_business && 
       app.accepted_jobseeker && 
@@ -127,7 +127,7 @@ export const ApplicationsTabBase = ({
   // Completed equity projects should be the ones where equity_agreed equals jobs_equity_allocated
   const completedEquityProjects = useMemo(() => 
     applicationsWithEquityData.filter(app => 
-      app.is_equity_project && 
+      app.hasEquityData && 
       app.accepted_jobs && 
       app.accepted_jobs.equity_agreed > 0 && 
       app.accepted_jobs.equity_agreed === app.accepted_jobs.jobs_equity_allocated

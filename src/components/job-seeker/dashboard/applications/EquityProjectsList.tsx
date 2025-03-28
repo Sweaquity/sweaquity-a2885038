@@ -56,12 +56,12 @@ export const EquityProjectsList = ({
         }
         
         // Mark as completed equity project if all equity has been allocated
-        const isCompleted = jobData.jobs_equity_allocated > 0 && 
+        const isEquityCompleted = jobData.jobs_equity_allocated > 0 && 
                           jobData.equity_agreed > 0 && 
                           jobData.jobs_equity_allocated >= jobData.equity_agreed;
                           
         // Only include in the completed list if it matches the isCompleted prop value
-        if (isCompleted === isCompleted) {
+        if (isEquityCompleted === isCompleted) {
           return {
             ...app,
             is_equity_project: true,
