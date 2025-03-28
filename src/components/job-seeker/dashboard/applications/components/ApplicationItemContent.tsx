@@ -1,8 +1,8 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Mail, ExternalLink } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { Eye, Mail, ExternalLink } from 'lucide-react';
+import { ApplicationContent } from '../ApplicationContent';
 
 interface ApplicationItemContentProps {
   description?: string;
@@ -25,40 +25,14 @@ export const ApplicationItemContent = ({
   onWithdrawClick,
   onViewProject
 }: ApplicationItemContentProps) => {
-  const formattedDate = appliedAt 
-    ? formatDistanceToNow(new Date(appliedAt), { addSuffix: true })
-    : undefined;
-    
   return (
-    <div className="p-4 space-y-4">
-      {description && (
-        <div>
-          <h4 className="text-sm font-medium mb-1">Role Description</h4>
-          <p className="text-sm text-muted-foreground">{description}</p>
-        </div>
-      )}
-      
-      {message && (
-        <div>
-          <h4 className="text-sm font-medium mb-1">Your Message</h4>
-          <p className="text-sm text-muted-foreground">{message}</p>
-        </div>
-      )}
-      
-      {discourse && (
-        <div>
-          <h4 className="text-sm font-medium mb-1">Message History</h4>
-          <div className="bg-muted/30 p-3 rounded-md text-sm whitespace-pre-wrap">
-            {discourse}
-          </div>
-        </div>
-      )}
-      
-      {formattedDate && (
-        <div className="text-xs text-muted-foreground">
-          Applied {formattedDate}
-        </div>
-      )}
+    <div className="space-y-4">
+      <ApplicationContent 
+        description={description}
+        message={message}
+        appliedAt={appliedAt}
+        discourse={discourse}
+      />
       
       <div className="flex justify-end space-x-2">
         {onWithdrawClick && (
@@ -80,6 +54,7 @@ export const ApplicationItemContent = ({
         )}
         {onViewDetails && (
           <Button variant="outline" size="sm" onClick={onViewDetails}>
+            <Eye className="h-4 w-4 mr-1" />
             View Details
           </Button>
         )}

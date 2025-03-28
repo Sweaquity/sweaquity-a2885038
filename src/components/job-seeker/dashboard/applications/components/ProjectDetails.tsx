@@ -1,58 +1,30 @@
 
-import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-
 interface ProjectDetailsProps {
   description?: string;
-  status?: string;
-  equity?: number | string;
-  timeframe?: string;
+  taskDiscourse?: string;
 }
 
-export const ProjectDetails = ({ description, status, equity, timeframe }: ProjectDetailsProps) => {
+export const ProjectDetails = ({ 
+  description, 
+  taskDiscourse 
+}: ProjectDetailsProps) => {
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="space-y-2">
-          {description && (
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">Description</span>
-              <span className="text-sm">{description}</span>
-            </div>
-          )}
-          
-          {status && (
-            <>
-              <Separator className="my-2" />
-              <div className="flex flex-col">
-                <span className="text-sm font-medium">Status</span>
-                <span className="text-sm">{status}</span>
-              </div>
-            </>
-          )}
-          
-          {equity !== undefined && (
-            <>
-              <Separator className="my-2" />
-              <div className="flex flex-col">
-                <span className="text-sm font-medium">Equity Allocation</span>
-                <span className="text-sm">{typeof equity === 'number' ? `${equity}%` : equity}</span>
-              </div>
-            </>
-          )}
-          
-          {timeframe && (
-            <>
-              <Separator className="my-2" />
-              <div className="flex flex-col">
-                <span className="text-sm font-medium">Timeframe</span>
-                <span className="text-sm">{timeframe}</span>
-              </div>
-            </>
-          )}
+    <div className="space-y-4">
+      <div>
+        <h4 className="font-medium mb-1">Project Description</h4>
+        <p className="text-sm text-muted-foreground whitespace-pre-line">
+          {description || "No description provided."}
+        </p>
+      </div>
+      
+      {taskDiscourse && (
+        <div className="mt-3 p-3 bg-slate-50 rounded-md border">
+          <h4 className="font-medium mb-2">Message History</h4>
+          <pre className="text-sm whitespace-pre-wrap font-sans">
+            {taskDiscourse}
+          </pre>
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 };

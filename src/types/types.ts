@@ -1,9 +1,8 @@
-
 // We only need to add the missing fields to the Ticket interface
 export interface Ticket {
   id: string;
   title: string;
-  description: string;  // This must be required to match the requirement
+  description: string;
   status: string;
   priority: string;
   health: string; // Make health required to match BetaTicket requirement

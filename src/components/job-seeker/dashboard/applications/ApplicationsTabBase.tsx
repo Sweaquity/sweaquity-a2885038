@@ -10,9 +10,6 @@ import { EquityProjectsList } from "./EquityProjectsList";
 import { useApplicationActions } from "./hooks/useApplicationActions";
 import { useWithdrawApplication } from "./hooks/useWithdrawApplication";
 import { useAcceptedJobs } from "@/hooks/useAcceptedJobs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { InfoIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface ApplicationsTabBaseProps {
   applications: JobApplication[];
@@ -51,24 +48,6 @@ export const ApplicationsTabBase = ({
       app.status === 'rejected' || app.status === 'withdrawn' || app.status === 'completed'
     ), 
     [applications]
-  );
-
-  // For equity tab, split into active and completed projects
-  const activeEquityProjects = useMemo(() => 
-    currentApplications.filter(app => 
-      app.accepted_jobs && 
-      app.accepted_jobs.equity_agreed > app.accepted_jobs.jobs_equity_allocated
-    ),
-    [currentApplications]
-  );
-
-  const completedEquityProjects = useMemo(() => 
-    currentApplications.filter(app => 
-      app.accepted_jobs && 
-      app.accepted_jobs.equity_agreed === app.accepted_jobs.jobs_equity_allocated && 
-      app.accepted_jobs.equity_agreed > 0
-    ),
-    [currentApplications]
   );
 
   // Count notifications for tabs
@@ -123,12 +102,6 @@ export const ApplicationsTabBase = ({
       </TabsList>
 
       <TabsContent value="pending">
-        <Alert>
-          <InfoIcon className="h-4 w-4 mr-2" />
-          <AlertDescription>
-            This tab shows applications that are awaiting a response or require your acceptance.
-          </AlertDescription>
-        </Alert>
         <PendingApplicationsList 
           applications={pendingApplications}
           onWithdraw={handleWithdrawApplication}
@@ -138,12 +111,6 @@ export const ApplicationsTabBase = ({
       </TabsContent>
 
       <TabsContent value="current">
-        <Alert>
-          <InfoIcon className="h-4 w-4 mr-2" />
-          <AlertDescription>
-            This tab shows your active projects where both you and the business have accepted the work agreement.
-          </AlertDescription>
-        </Alert>
         <ApplicationsList 
           applications={currentApplications}
           onApplicationUpdated={onApplicationUpdated}
@@ -151,12 +118,6 @@ export const ApplicationsTabBase = ({
       </TabsContent>
 
       <TabsContent value="past">
-        <Alert>
-          <InfoIcon className="h-4 w-4 mr-2" />
-          <AlertDescription>
-            This tab shows applications that were rejected, withdrawn, or completed.
-          </AlertDescription>
-        </Alert>
         <PastApplicationsList 
           applications={pastApplications}
           onApplicationUpdated={onApplicationUpdated}
@@ -164,41 +125,10 @@ export const ApplicationsTabBase = ({
       </TabsContent>
 
       <TabsContent value="equity">
-        <Alert>
-          <InfoIcon className="h-4 w-4 mr-2" />
-          <AlertDescription>
-            This tab shows your equity-based projects, both active and completed.
-          </AlertDescription>
-        </Alert>
-        
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Active Equity Projects</h3>
-            <EquityProjectsList 
-              applications={activeEquityProjects}
-              onApplicationUpdated={onApplicationUpdated}
-            />
-          </div>
-          
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Completed Equity Projects</h3>
-            {completedEquityProjects.length > 0 ? (
-              <EquityProjectsList 
-                applications={completedEquityProjects}
-                onApplicationUpdated={onApplicationUpdated}
-                isCompleted={true}
-              />
-            ) : (
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center py-4">
-                    <p className="text-muted-foreground">No completed equity projects yet</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
+        <EquityProjectsList 
+          applications={currentApplications}
+          onApplicationUpdated={onApplicationUpdated}
+        />
       </TabsContent>
     </Tabs>
   );

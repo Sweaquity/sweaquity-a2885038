@@ -1,76 +1,39 @@
 
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
-import { JobApplication } from "@/types/jobSeeker";
-import { PastApplicationItem } from "./PastApplicationItem";
+import React from 'react';
+import { JobApplication } from '@/types/jobSeeker';
+import { PastApplicationItem } from './PastApplicationItem';
 
-interface PastApplicationsListProps {
+export interface PastApplicationsListProps {
   applications: JobApplication[];
-  onApplicationUpdated?: () => void;
+  onApplicationUpdated: () => void;
 }
 
 export const PastApplicationsList = ({ 
-  applications = [], 
-  onApplicationUpdated = () => {} 
+  applications,
+  onApplicationUpdated 
 }: PastApplicationsListProps) => {
-  const [searchTerm, setSearchTerm] = useState("");
+  // Filter past applications (rejected, withdrawn, etc.)
+  const pastApplications = applications.filter(
+    app => app.status === 'withdrawn' || app.status === 'rejected'
+  );
 
-  const filteredApplications = applications.filter((application) => {
-    if (!searchTerm) return true;
-    
-    const term = searchTerm.toLowerCase();
-    
-    // Check project title
-    if (application.business_roles?.project_title && 
-        String(application.business_roles.project_title).toLowerCase().includes(term)) {
-      return true;
-    }
-    
-    // Check company name
-    if (application.business_roles?.company_name && 
-        String(application.business_roles.company_name).toLowerCase().includes(term)) {
-      return true;
-    }
-    
-    // Check role title
-    if (application.business_roles?.title && 
-        String(application.business_roles.title).toLowerCase().includes(term)) {
-      return true;
-    }
-    
-    return false;
-  });
-
-  if (applications.length === 0) {
+  if (pastApplications.length === 0) {
     return (
-      <div className="text-center p-6">
-        <p className="text-muted-foreground">No past applications found</p>
+      <div className="text-center py-12">
+        <p className="text-gray-500">No past applications found.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search past applications..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-9"
+      {pastApplications.map((application) => (
+        <PastApplicationItem
+          key={application.id}
+          application={application}
+          onApplicationUpdated={onApplicationUpdated}
         />
-      </div>
-
-      <div className="space-y-4">
-        {filteredApplications.map((application) => (
-          <PastApplicationItem
-            key={application.job_app_id || application.id}
-            application={application}
-            onApplicationUpdated={onApplicationUpdated}
-          />
-        ))}
-      </div>
+      ))}
     </div>
   );
 };

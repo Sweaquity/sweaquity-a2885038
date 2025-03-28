@@ -133,6 +133,7 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
         `)
         .eq('project_id', selectedProject);
       
+      // Apply filters
       if (statusFilter && statusFilter !== 'all') {
         query = query.eq('status', statusFilter);
       }
@@ -141,6 +142,7 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
         query = query.eq('priority', priorityFilter);
       }
       
+      // Filter by tab type
       if (activeTab === 'project-tasks') {
         query = query.eq('ticket_type', 'task');
       } else if (activeTab === 'project-tickets') {
@@ -153,13 +155,17 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
       
       if (error) throw error;
       
+      // Process the tickets to add metadata
       const processedTickets = await Promise.all((data || []).map(async (ticket) => {
+        // Calculate hours logged
         const hoursLogged = ticket.time_entries?.reduce((total: number, entry: any) => {
           return total + (entry.hours_logged || 0);
         }, 0) || 0;
         
+        // Calculate equity earned
         const equityEarned = ticket.equity_points * (ticket.completion_percentage / 100);
         
+        // Get assignee details
         let assigneeDetails = null;
         if (ticket.assigned_to) {
           const { data: userData } = await supabase
@@ -251,6 +257,7 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
         type: 'beta-test'
       });
       
+      // Refresh tickets
       loadTickets();
     } catch (error) {
       console.error("Error creating ticket:", error);
@@ -260,7 +267,9 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
 
   const handleStatusChange = async (ticketId: string, newStatus: string) => {
     try {
+      // Check if status is being changed to "review"
       if (newStatus === 'review') {
+        // Get the ticket to review
         const ticketToReview = tickets.find(t => t.id === ticketId);
         if (ticketToReview) {
           setSelectedTask(ticketToReview);
@@ -269,6 +278,7 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
         }
       }
       
+      // Update ticket status in Supabase
       const { error } = await supabase
         .from('tickets')
         .update({ status: newStatus })
@@ -276,12 +286,14 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
       
       if (error) throw error;
       
+      // Update local state
       setTickets(prev => prev.map(ticket => 
         ticket.id === ticketId ? { ...ticket, status: newStatus } : ticket
       ));
       
       toast.success(`Ticket status updated to ${newStatus}`);
       
+      // Refresh tickets to update status counters
       loadTickets();
     } catch (error) {
       console.error("Error updating ticket status:", error);
@@ -291,6 +303,7 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
 
   const handlePriorityChange = async (ticketId: string, newPriority: string) => {
     try {
+      // Update ticket priority in Supabase
       const { error } = await supabase
         .from('tickets')
         .update({ priority: newPriority })
@@ -298,6 +311,7 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
       
       if (error) throw error;
       
+      // Update local state
       setTickets(prev => prev.map(ticket => 
         ticket.id === ticketId ? { ...ticket, priority: newPriority } : ticket
       ));
@@ -311,6 +325,7 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
 
   const handleAssigneeChange = async (ticketId: string, userId: string) => {
     try {
+      // Update ticket assignee in Supabase
       const { error } = await supabase
         .from('tickets')
         .update({ assigned_to: userId || null })
@@ -318,6 +333,7 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
       
       if (error) throw error;
       
+      // Update local state
       setTickets(prev => prev.map(ticket => 
         ticket.id === ticketId ? { ...ticket, assigned_to: userId || null } : ticket
       ));
@@ -331,6 +347,7 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
 
   const handleTicketReply = async (ticketId: string, message: string) => {
     try {
+      // Get the current ticket to update its replies
       const ticket = tickets.find(t => t.id === ticketId);
       if (!ticket) return;
       
@@ -341,10 +358,11 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
         createdAt: new Date().toISOString(),
         sender: {
           id: businessId,
-          name: "You"
+          name: "You" // Could fetch actual business name here
         }
       };
       
+      // Update ticket replies in Supabase
       const { error } = await supabase
         .from('tickets')
         .update({ 
@@ -355,6 +373,7 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
       
       if (error) throw error;
       
+      // Update local state
       setTickets(prev => prev.map(ticket => 
         ticket.id === ticketId 
           ? { ...ticket, replies: [...(ticket.replies || []), newReply] } 
@@ -368,78 +387,9 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
     }
   };
 
-  const handleRefresh = () => {
-    loadTickets();
-  };
-
-  const handleCloseTicketDetails = () => {
-    setExpandedTicket(null);
-  };
-
-  const handleTicketAction = async (ticketId: string, action: string, data: any) => {
-    try {
-      if (action === 'updateStatus') {
-        const { error } = await supabase
-          .from('tickets')
-          .update({ status: data.status })
-          .eq('id', ticketId);
-          
-        if (error) throw error;
-        
-        toast.success("Status updated");
-        loadTickets();
-      } else if (action === 'updatePriority') {
-        const { error } = await supabase
-          .from('tickets')
-          .update({ priority: data.priority })
-          .eq('id', ticketId);
-          
-        if (error) throw error;
-        
-        toast.success("Priority updated");
-        loadTickets();
-      } else if (action === 'addNote') {
-        const { data: ticketData } = await supabase
-          .from('tickets')
-          .select('notes')
-          .eq('id', ticketId)
-          .single();
-        
-        const { data: profileData } = await supabase
-          .from('businesses')
-          .select('company_name')
-          .eq('businesses_id', businessId)
-          .single();
-        
-        const userName = profileData ? profileData.company_name : 'Business';
-        
-        const newNote = {
-          id: Date.now().toString(),
-          user: userName,
-          timestamp: new Date().toISOString(),
-          comment: data
-        };
-        
-        const currentNotes = ticketData?.notes || [];
-        const updatedNotes = [...currentNotes, newNote];
-        
-        await supabase
-          .from('tickets')
-          .update({ notes: updatedNotes })
-          .eq('id', ticketId);
-        
-        toast.success("Note added");
-        loadTickets();
-      }
-    } catch (error) {
-      console.error("Error handling ticket action:", error);
-      toast.error("Failed to update ticket");
-    }
-  };
-
-  const handleLogTime = (ticketId: string) => {
-    toast.info("Time logging feature will be implemented here");
-    loadTickets();
+  const toggleTicketExpansion = (ticketId: string) => {
+    console.info("Toggle ticket:", ticketId, "expanded:", expandedTicket === ticketId ? "false" : "true");
+    setExpandedTicket(prev => prev === ticketId ? null : ticketId);
   };
 
   const getStatusIcon = (status: string) => {
@@ -475,6 +425,10 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
       default:
         return 'bg-blue-100 text-blue-800';
     }
+  };
+
+  const handleRefresh = () => {
+    loadTickets();
   };
 
   return (

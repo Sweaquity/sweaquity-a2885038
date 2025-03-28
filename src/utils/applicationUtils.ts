@@ -1,6 +1,6 @@
 
 import { Application } from "@/types/business";
-import { JobApplication, Skill, SkillRequirement } from "@/types/jobSeeker";
+import { JobApplication } from "@/types/jobSeeker";
 
 /**
  * Converts an Application object to a JobApplication object
@@ -13,24 +13,6 @@ import { JobApplication, Skill, SkillRequirement } from "@/types/jobSeeker";
  * - business_roles.id: References the task_id (the specific role being applied for)
  */
 export function convertApplicationToJobApplication(application: Application): JobApplication {
-  // Convert skill requirements to the correct format that satisfies both interfaces
-  const convertedSkillRequirements: Skill[] = Array.isArray(application.business_roles?.skill_requirements) 
-    ? application.business_roles.skill_requirements.map(req => {
-        if (typeof req === 'string') {
-          return { skill: req, level: "Intermediate" } as Skill;
-        }
-        // Handle SkillRequirement -> Skill conversion
-        if (typeof req === 'object' && 'skill' in req) {
-          return { 
-            skill: req.skill,
-            level: req.level || "Intermediate",
-            name: req.skill // Add name property for backward compatibility
-          } as Skill;
-        }
-        return req as Skill;
-      }) 
-    : [];
-
   return {
     job_app_id: application.job_app_id,
     user_id: application.user_id,
@@ -52,7 +34,14 @@ export function convertApplicationToJobApplication(application: Application): Jo
       description: application.business_roles?.description || "",
       project_title: application.business_roles?.project?.title || "",
       timeframe: application.business_roles?.timeframe,
-      skill_requirements: convertedSkillRequirements,
+      skill_requirements: Array.isArray(application.business_roles?.skill_requirements) 
+        ? application.business_roles.skill_requirements.map(req => {
+            if (typeof req === 'string') {
+              return { skill: req, level: "Intermediate" };
+            }
+            return req;
+          }) 
+        : [],
       equity_allocation: application.business_roles?.equity_allocation
     }
   };

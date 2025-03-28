@@ -1,39 +1,94 @@
 
-import React from 'react';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { StatusBadge } from '../StatusBadge';
+import { ChevronUp, ChevronDown } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface ApplicationStatusProps {
+  isExpanded: boolean;
+  toggleExpand: () => void;
   status: string;
-  highlightPending?: boolean;
+  onStatusChange: (status: string) => void;
+  isUpdatingStatus: boolean;
+  showAcceptButton: boolean;
+  onAcceptClick: () => void;
+  isAcceptingJob: boolean;
+  compact?: boolean;
 }
 
-export const ApplicationStatus = ({ status, highlightPending = false }: ApplicationStatusProps) => {
-  let variant: "default" | "secondary" | "destructive" | "outline" = "default";
-  let statusText = status.charAt(0).toUpperCase() + status.slice(1);
-  
-  switch (status.toLowerCase()) {
-    case 'pending':
-      variant = highlightPending ? "default" : "secondary";
-      break;
-    case 'accepted':
-      variant = "default"; // primary color
-      break;
-    case 'rejected':
-      variant = "destructive";
-      break;
-    case 'withdrawn':
-      variant = "outline";
-      break;
-    case 'completed':
-      variant = "secondary";
-      break;
-    default:
-      variant = "secondary";
-  }
+export const ApplicationStatus = ({
+  isExpanded,
+  toggleExpand,
+  status,
+  onStatusChange,
+  isUpdatingStatus,
+  showAcceptButton,
+  onAcceptClick,
+  isAcceptingJob,
+  compact = false
+}: ApplicationStatusProps) => {
+  // Ensure we have a non-empty default value
+  const safeStatus = status || "pending";
   
   return (
-    <Badge variant={variant} className="text-xs font-medium">
-      {statusText}
-    </Badge>
+    <div className="flex items-center space-x-2 mt-2 sm:mt-0">
+      {compact ? (
+        <StatusBadge status={safeStatus} />
+      ) : (
+        <div className="flex flex-col items-end space-y-2">
+          <div className="flex flex-wrap gap-2 items-center justify-end">
+            <Select 
+              value={safeStatus} 
+              onValueChange={onStatusChange}
+              disabled={isUpdatingStatus}
+            >
+              <SelectTrigger className="w-[140px] bg-white">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="negotiation">Negotiation</SelectItem>
+                <SelectItem value="accepted">Accepted</SelectItem>
+                <SelectItem value="withdrawn">Withdraw</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {showAcceptButton && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={onAcceptClick}
+                disabled={isAcceptingJob}
+              >
+                Accept Job
+              </Button>
+            )}
+          </div>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleExpand}
+            className="flex items-center"
+          >
+            {isExpanded ? (
+              <>
+                Less details <ChevronUp className="ml-1 h-4 w-4" />
+              </>
+            ) : (
+              <>
+                More details <ChevronDown className="ml-1 h-4 w-4" />
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 };
