@@ -197,7 +197,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           open={isReviewOpen}
           setOpen={setIsReviewOpen}
           onClose={handleReviewClose}
-          onReviewComplete={() => loadTicketsData()}
+          onReviewComplete={handleReviewClose}
           businessId={businessId}
         />
       )}

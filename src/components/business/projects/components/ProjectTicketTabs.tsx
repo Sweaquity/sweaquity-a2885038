@@ -74,11 +74,10 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
           <KanbanBoard 
             tickets={filteredTickets}
             onStatusChange={handleTicketStatusChange}
-            renderTicketActions={renderTicketActions}
           />
         ) : showGantt ? (
           <GanttChartView 
-            tickets={filteredTickets}
+            data={filteredTickets}
             onRefresh={onRefresh}
           />
         ) : (
