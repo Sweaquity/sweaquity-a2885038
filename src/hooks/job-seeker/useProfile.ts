@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -32,8 +31,27 @@ export const useProfile = (): UseProfileReturn => {
         
       if (error) throw error;
       
-      setProfile(data);
-      setSkills(data.skills || []);
+      // Ensure all properties have default values if not present
+      const profileData: Profile = {
+        id: data.id,
+        first_name: data.first_name || '',
+        last_name: data.last_name || '',
+        email: data.email || '',
+        title: data.title || '',
+        bio: data.bio || '',
+        phone: data.phone || '',
+        address: data.address || '',
+        location: data.location || '',
+        availability: data.availability || '',
+        social_links: data.social_links || {},
+        marketing_consent: data.marketing_consent ?? false,
+        project_updates_consent: data.project_updates_consent ?? false,
+        terms_accepted: data.terms_accepted ?? false,
+        skills: data.skills || []
+      };
+      
+      setProfile(profileData);
+      setSkills(profileData.skills || []);
     } catch (error) {
       console.error('Error loading profile:', error);
       toast.error('Failed to load profile data');
@@ -89,7 +107,7 @@ export const useProfile = (): UseProfileReturn => {
       if (error) throw error;
       
       // Update local state
-      setProfile({...profile, ...profileUpdate});
+      setProfile(prev => prev ? {...prev, ...profileUpdate} : null);
       toast.success('Profile updated successfully');
     } catch (error) {
       console.error('Error updating profile:', error);
