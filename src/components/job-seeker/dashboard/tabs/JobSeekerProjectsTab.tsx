@@ -480,6 +480,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
               onLogTime={handleLogTime}
               userCanEditDates={true}
               userCanEditStatus={true}
+              renderTicketActions={(ticket) => null}
             />
           )}
         </TabsContent>

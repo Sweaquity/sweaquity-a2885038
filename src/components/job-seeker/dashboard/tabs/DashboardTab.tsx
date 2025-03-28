@@ -48,6 +48,8 @@ interface Ticket {
   project_id?: string;
   description?: string;
   job_app_id?: string;
+  created_by?: string;
+  created_at?: string;
 }
 
 interface TicketStats {

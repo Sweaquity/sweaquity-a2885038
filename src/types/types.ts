@@ -1,4 +1,3 @@
-
 // We only need to add the missing fields to the Ticket interface
 export interface Ticket {
   id: string;
@@ -78,4 +77,5 @@ export interface TicketDashboardProps {
   onLogTime?: (ticketId: string) => void;
   userCanEditDates?: boolean;
   userCanEditStatus?: boolean;
+  renderTicketActions?: (ticket: Ticket) => React.ReactNode;
 }

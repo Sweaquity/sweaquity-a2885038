@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,7 +51,35 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
     };
   };
 
-  // Extract tasks from the project
+  const formatSkills = (skills: any) => {
+    if (!skills) return [];
+    
+    if (typeof skills === 'string') {
+      return [skills];
+    }
+    
+    if (Array.isArray(skills)) {
+      return skills.map(skill => {
+        if (typeof skill === 'string') {
+          return skill;
+        } else if (skill && (skill.name || skill.skill)) {
+          return skill.name || skill.skill;
+        }
+        return '';
+      }).filter(Boolean);
+    }
+    
+    return [];
+  };
+
+  const matchedSkills = formatSkills(project.skills_required).filter(skill => 
+    userSkillStrings.some(userSkill => 
+      (typeof userSkill === 'string' ? userSkill.toLowerCase() : 
+       (userSkill.name || userSkill.skill || '').toLowerCase())
+       .includes(skill.toLowerCase())
+    )
+  );
+
   const tasks = project.sub_tasks || [];
 
   return (

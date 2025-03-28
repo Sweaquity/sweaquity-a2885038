@@ -1,7 +1,8 @@
-
 export interface Skill {
-  skill: string;
-  level?: string;
+  id?: string;
+  name: string;
+  skill?: string; // For backward compatibility
+  level?: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
 }
 
 export interface Profile {

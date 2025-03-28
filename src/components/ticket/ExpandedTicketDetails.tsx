@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -19,12 +20,28 @@ import { Ticket } from "@/types/types";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 
+const statusOptions = [
+  { value: "new", label: "New" },
+  { value: "in-progress", label: "In Progress" },
+  { value: "blocked", label: "Blocked" },
+  { value: "review", label: "Review" },
+  { value: "done", label: "Done" },
+  { value: "closed", label: "Closed" },
+];
+
+const priorityOptions = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+];
+
 interface TimeEntry {
   id: string;
   ticket_id: string;
   hours_logged: number;
   description?: string;
   created_at: string;
+  user_id?: string;
   profiles?: {
     first_name?: string;
     last_name?: string;
@@ -40,21 +57,6 @@ interface ExpandedTicketDetailsProps {
   userCanEditStatus?: boolean;
   userCanEditDates?: boolean;
 }
-
-const statusOptions = [
-  { value: "new", label: "New" },
-  { value: "in-progress", label: "In Progress" },
-  { value: "blocked", label: "Blocked" },
-  { value: "review", label: "Review" },
-  { value: "done", label: "Done" },
-  { value: "closed", label: "Closed" },
-];
-
-const priorityOptions = [
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-];
 
 export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   ticket,
@@ -89,15 +91,33 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
     setIsLoadingTimeEntries(true);
     setTimeEntriesError(null);
     try {
+      // First, get time entries for this ticket
       const { data, error } = await supabase
         .from('time_entries')
-        .select('*, profiles(first_name, last_name, email)')
+        .select('*')
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: false });
         
       if (error) throw error;
       
-      setTimeEntries(data || []);
+      // Now get user details for each entry
+      const entriesWithUserDetails = await Promise.all((data || []).map(async (entry) => {
+        if (entry.user_id) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, email')
+            .eq('id', entry.user_id)
+            .single();
+            
+          return {
+            ...entry,
+            profiles: profileData
+          };
+        }
+        return entry;
+      }));
+      
+      setTimeEntries(entriesWithUserDetails);
     } catch (error) {
       console.error('Error fetching time entries:', error);
       setTimeEntriesError('Failed to load time entries. Please try again.');
@@ -276,7 +296,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
                     selected={date}
                     onSelect={handleDueDateChange}
                     initialFocus
-                    disabled={(date) => date < new Date()}
+                    className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
@@ -385,7 +405,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
                         <tr key={entry.id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             {entry.profiles ? 
-                              `${entry.profiles.first_name || ''} ${entry.profiles.last_name || ''}`.trim() : 
+                              `${entry.profiles.first_name || ''} ${entry.profiles.last_name || ''}`.trim() || entry.profiles.email : 
                               'Unknown user'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
