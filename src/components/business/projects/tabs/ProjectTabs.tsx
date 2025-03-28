@@ -3,18 +3,29 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProjectList } from "../ProjectList";
 import { ProjectForm } from "../ProjectForm";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, Edit, Trash2, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import Link from "next/link";
+
+interface SkillRequirement {
+  skill: string;
+  level: string;
+}
 
 interface Task {
   id: string;
   title: string;
   description: string;
   status: string;
-  skills_required: string[];
-  timeframe: string;
+  hours_logged: number;
+  equity_earned: number;
   equity_allocation: number;
+  timeframe: string;
+  due_date?: string;
+  skills_required: string[];
+  skill_requirements: SkillRequirement[];
+  dependencies: string[];
 }
 
 interface Project {
@@ -156,7 +167,7 @@ export const ProjectTabs = ({
     );
   };
 
-  const renderTaskDetails = (tasks: Task[]) => {
+  const renderTaskDetails = (project: Project, tasks: Task[]) => {
     if (tasks.length === 0) {
       return <p className="text-sm text-muted-foreground">No tasks have been created for this project yet.</p>;
     }
@@ -166,13 +177,23 @@ export const ProjectTabs = ({
         {tasks.map(task => (
           <div key={task.id} className="border p-3 rounded-md">
             <div className="flex justify-between items-start">
-              <div>
-                <h5 className="font-medium">{task.title}</h5>
+              <div className="flex-grow">
+                <div className="flex justify-between items-center">
+                  <h5 className="font-medium">{task.title}</h5>
+                  <div className="flex items-center space-x-2">
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                </div>
                 <p className="text-sm text-muted-foreground">{task.description || 'No description'}</p>
               </div>
               <Badge>{task.status}</Badge>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
               <div>
                 <p className="text-xs font-medium">Equity</p>
                 <p className="text-sm">{task.equity_allocation || 0}%</p>
@@ -181,21 +202,25 @@ export const ProjectTabs = ({
                 <p className="text-xs font-medium">Timeframe</p>
                 <p className="text-sm">{task.timeframe || 'Not specified'}</p>
               </div>
-              <div className="col-span-2">
-                <p className="text-xs font-medium">Skills Required</p>
+              <div>
+                <p className="text-xs font-medium">Due Date</p>
+                <p className="text-sm">{task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Not set'}</p>
+              </div>
+              <div className="col-span-2 md:col-span-3">
+                <p className="text-xs font-medium">Skill Requirements</p>
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {task.skills_required && task.skills_required.length > 0 ? (
-                    task.skills_required.slice(0, 3).map((skill, index) => (
+                  {task.skill_requirements && task.skill_requirements.length > 0 ? (
+                    task.skill_requirements.slice(0, 3).map((req, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
-                        {skill}
+                        {req.skill} - {req.level}
                       </Badge>
                     ))
                   ) : (
-                    <span className="text-xs text-muted-foreground">None</span>
+                    <span className="text-xs text-muted-foreground">No specific skills required</span>
                   )}
-                  {task.skills_required && task.skills_required.length > 3 && (
+                  {task.skill_requirements && task.skill_requirements.length > 3 && (
                     <Badge variant="outline" className="text-xs">
-                      +{task.skills_required.length - 3} more
+                      +{task.skill_requirements.length - 3} more
                     </Badge>
                   )}
                 </div>
@@ -232,44 +257,91 @@ export const ProjectTabs = ({
             ) : (
               projects.map(project => (
                 <div key={project.project_id} className="border rounded-lg overflow-hidden">
-                  <div 
-                    className="p-4 flex justify-between items-center border-b bg-gray-50 cursor-pointer"
-                    onClick={() => toggleProjectExpanded(project.project_id)}
-                  >
-                    <div className="flex-grow">
-                      <h3 className="font-medium text-lg">{project.title}</h3>
-                      <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mt-1">
-                        <p className="text-sm text-muted-foreground">
-                          Status: {project.status}
+                  <div className="p-4 border-b bg-gray-50">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-grow">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Link href={`/projects/${project.project_id}`}>
+                            <a className="flex items-center">
+                              <h3 className="font-medium text-lg mr-2">{project.title}</h3>
+                              <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                            </a>
+                          </Link>
+                          <div className="flex items-center space-x-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8"
+                              onClick={() => {/* Edit Project Logic */}}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8"
+                              onClick={() => handleProjectDeleted(project.project_id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {project.description || 'No description provided.'}
                         </p>
-                        <p className="text-sm text-muted-foreground">
-                          Timeframe: {project.project_timeframe || 'Not specified'}
-                        </p>
+                        
+                        <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mb-2">
+                          <p className="text-sm text-muted-foreground">
+                            Status: {project.status}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Timeframe: {project.project_timeframe || 'Not specified'}
+                          </p>
+                        </div>
+                        
+                        {renderEquityBreakdown(project)}
                       </div>
-                      {renderEquityBreakdown(project)}
+                      
+                      <Button 
+                        variant="ghost" 
+                        onClick={() => toggleProjectExpanded(project.project_id)}
+                      >
+                        {expandedProjects.has(project.project_id) ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
                     </div>
-                    
-                    <Button variant="ghost">
-                      {expandedProjects.has(project.project_id) ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </Button>
                   </div>
                   
                   {expandedProjects.has(project.project_id) && (
                     <div className="p-4">
                       <div className="mb-4">
-                        <h4 className="font-medium mb-1">Description</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {project.description || 'No description provided.'}
-                        </p>
+                        <h4 className="font-medium mb-2">Required Skills</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {project.skills_required && project.skills_required.length > 0 ? (
+                            project.skills_required.map((skill, index) => (
+                              <Badge key={index} variant="secondary">
+                                {skill}
+                              </Badge>
+                            ))
+                          ) : (
+                            <p className="text-sm text-muted-foreground">No specific skills required</p>
+                          )}
+                        </div>
                       </div>
                       
                       <div>
-                        <h4 className="font-medium mb-2">Tasks</h4>
-                        {renderTaskDetails(project.tasks)}
+                        <div className="flex justify-between items-center mb-2">
+                          <h4 className="font-medium">Tasks</h4>
+                          <Button size="sm" variant="outline">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Task
+                          </Button>
+                        </div>
+                        {renderTaskDetails(project, project.tasks)}
                       </div>
                     </div>
                   )}
