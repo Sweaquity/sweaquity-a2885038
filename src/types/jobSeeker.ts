@@ -8,12 +8,18 @@ export * from './applications';
 export * from './equity';
 export * from './dashboardProps';
 
-// Legacy Skill interface (updated to match profile.ts)
+// Comprehensive Skill interface that supports both 'skill' and 'name' properties for backward compatibility
 export interface Skill {
   id?: string;
+  skill: string;  // Primary property - make this required
+  level?: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+  name?: string;  // Alias for backward compatibility
+}
+
+// SkillRequirement interface that more clearly connects with Skill interface
+export interface SkillRequirement {
   skill: string;
   level?: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
-  name?: string; // Added for backward compatibility
 }
 
 // Legacy Profile interface (some code might still use this)
@@ -74,4 +80,5 @@ export interface EquityProject {
   created_at?: string;
   skill_match?: number;
   updated_at?: string;
+  skills_required?: string[]; // Adding this for ProjectCard.tsx
 }

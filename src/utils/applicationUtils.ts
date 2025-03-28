@@ -1,6 +1,6 @@
 
 import { Application } from "@/types/business";
-import { JobApplication } from "@/types/jobSeeker";
+import { JobApplication, Skill, SkillRequirement } from "@/types/jobSeeker";
 
 /**
  * Converts an Application object to a JobApplication object
@@ -13,6 +13,16 @@ import { JobApplication } from "@/types/jobSeeker";
  * - business_roles.id: References the task_id (the specific role being applied for)
  */
 export function convertApplicationToJobApplication(application: Application): JobApplication {
+  // Convert skill requirements to the correct format that satisfies both interfaces
+  const convertedSkillRequirements = Array.isArray(application.business_roles?.skill_requirements) 
+    ? application.business_roles.skill_requirements.map(req => {
+        if (typeof req === 'string') {
+          return { skill: req, level: "Intermediate" } as Skill;
+        }
+        return req as Skill;
+      }) 
+    : [];
+
   return {
     job_app_id: application.job_app_id,
     user_id: application.user_id,
@@ -34,14 +44,7 @@ export function convertApplicationToJobApplication(application: Application): Jo
       description: application.business_roles?.description || "",
       project_title: application.business_roles?.project?.title || "",
       timeframe: application.business_roles?.timeframe,
-      skill_requirements: Array.isArray(application.business_roles?.skill_requirements) 
-        ? application.business_roles.skill_requirements.map(req => {
-            if (typeof req === 'string') {
-              return { skill: req, level: "Intermediate" };
-            }
-            return req;
-          }) 
-        : [],
+      skill_requirements: convertedSkillRequirements,
       equity_allocation: application.business_roles?.equity_allocation
     }
   };

@@ -81,8 +81,9 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       // Filter applications where equity is not fully allocated
       const nonFullyAllocatedApplications = applicationsData.filter(app => 
         app.accepted_jobs && 
-        app.accepted_jobs.equity_agreed > 0 &&
-        app.accepted_jobs.equity_agreed > app.accepted_jobs.jobs_equity_allocated
+        app.accepted_jobs.length > 0 &&
+        app.accepted_jobs[0].equity_agreed > 0 &&
+        app.accepted_jobs[0].equity_agreed > app.accepted_jobs[0].jobs_equity_allocated
       );
 
       if (nonFullyAllocatedApplications.length === 0) {
@@ -218,7 +219,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         (ticket.completion_percentage === 100)) {
       return (
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           onClick={() => handleTicketAction(ticket.id, 'reviewCompletion', null)}
         >

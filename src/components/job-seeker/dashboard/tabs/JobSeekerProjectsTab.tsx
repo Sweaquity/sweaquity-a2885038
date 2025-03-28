@@ -2,11 +2,11 @@
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ProjectTicketFilters } from "./components/ProjectTicketFilters";
-import { ProjectStatsSummary } from "./components/ProjectStatsSummary";
-import { ProjectTicketTabs } from "./components/ProjectTicketTabs";
+import { ProjectTicketFilters } from "@/components/business/projects/components/ProjectTicketFilters";
+import { ProjectStatsSummary } from "@/components/business/projects/components/ProjectStatsSummary";
+import { ProjectTicketTabs } from "@/components/business/projects/components/ProjectTicketTabs";
 import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
-import { TaskCompletionReview } from "./TaskCompletionReview";
+import { TaskCompletionReview } from "@/components/business/projects/TaskCompletionReview";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Ticket } from "@/types/types";
@@ -144,8 +144,9 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       const nonFullyAllocatedTickets = ticketsData.filter(ticket => {
         const jobApp = ticket.job_applications?.[0];
         return jobApp?.accepted_jobs && 
-               jobApp.accepted_jobs.equity_agreed > 0 &&
-               jobApp.accepted_jobs.equity_agreed > jobApp.accepted_jobs.jobs_equity_allocated;
+               jobApp.accepted_jobs.length > 0 &&
+               jobApp.accepted_jobs[0].equity_agreed > 0 &&
+               jobApp.accepted_jobs[0].equity_agreed > jobApp.accepted_jobs[0].jobs_equity_allocated;
       });
 
       // If a specific task is selected in the URL, make sure it's included even if fully allocated

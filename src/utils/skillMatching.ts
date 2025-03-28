@@ -325,7 +325,7 @@ export const rankProjectsByRelevance = (
 };
 
 // Update the mockSkills to use the correct skill property
-const mockSkills = [
+const mockSkills: Skill[] = [
   { skill: "JavaScript", level: "Beginner" },
   { skill: "React", level: "Beginner" },
   { skill: "TypeScript", level: "Beginner" }
