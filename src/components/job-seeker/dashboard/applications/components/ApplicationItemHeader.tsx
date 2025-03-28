@@ -38,6 +38,8 @@ export const ApplicationItemHeader = ({
   compact = false,
   date
 }: ApplicationItemHeaderProps) => {
+  const formattedDate = date ? formatDistanceToNow(new Date(date), { addSuffix: true }) : undefined;
+  
   return (
     <div
       className={`p-4 flex items-center justify-between cursor-pointer ${compact ? 'sm:text-sm' : ''}`}
@@ -52,9 +54,9 @@ export const ApplicationItemHeader = ({
             <p className={`text-muted-foreground ${compact ? 'text-xs' : 'text-sm'}`}>
               {company || 'Company'} • {project || 'Project'}
             </p>
-            {date && (
+            {formattedDate && (
               <p className="text-xs text-muted-foreground">
-                Applied {date}
+                Applied {formattedDate}
               </p>
             )}
           </div>

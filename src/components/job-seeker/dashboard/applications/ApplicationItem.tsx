@@ -10,93 +10,9 @@ import { toast } from 'sonner';
 import { useAcceptedJobs } from '@/hooks/useAcceptedJobs';
 import { AcceptJobDialog } from './AcceptJobDialog';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
-import { StatusBadge } from './StatusBadge';
-import { formatDistanceToNow } from 'date-fns';
-import { ApplicationItemContentProps } from '@/types/dashboardProps';
-
-// Simple components for structure
-const ApplicationItemHeader = ({ 
-  title, 
-  company, 
-  project, 
-  status, 
-  isExpanded, 
-  toggleExpand,
-  onStatusChange,
-  isUpdatingStatus,
-  showAcceptButton,
-  onAcceptClick
-}: any) => (
-  <div className="p-4 flex justify-between items-center border-b">
-    <div className="flex-1">
-      <h3 className="font-medium text-base">{title}</h3>
-      <p className="text-sm text-muted-foreground">
-        {company}
-        {project && ` • ${project}`}
-      </p>
-    </div>
-    <div className="flex items-center gap-2">
-      <StatusBadge status={status} isUpdating={isUpdatingStatus} />
-      {showAcceptButton && (
-        <Button 
-          size="sm" 
-          onClick={(e) => {
-            e.stopPropagation();
-            onAcceptClick();
-          }}
-        >
-          Accept
-        </Button>
-      )}
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        className="p-1" 
-        onClick={toggleExpand}
-      >
-        {isExpanded ? <ChevronUp /> : <ChevronDown />}
-      </Button>
-    </div>
-  </div>
-);
-
-const ApplicationItemContent = ({ 
-  description, 
-  message, 
-  discourse, 
-  appliedAt
-}: ApplicationItemContentProps) => (
-  <div className="p-4 space-y-4">
-    {description && (
-      <div>
-        <h4 className="text-sm font-medium mb-1">Role Description</h4>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </div>
-    )}
-    
-    {message && (
-      <div>
-        <h4 className="text-sm font-medium mb-1">Your Message</h4>
-        <p className="text-sm text-muted-foreground">{message}</p>
-      </div>
-    )}
-    
-    {discourse && (
-      <div>
-        <h4 className="text-sm font-medium mb-1">Message History</h4>
-        <div className="bg-muted/30 p-3 rounded-md text-sm whitespace-pre-wrap">
-          {discourse}
-        </div>
-      </div>
-    )}
-    
-    <div className="text-xs text-muted-foreground">
-      Applied {formatDistanceToNow(new Date(appliedAt), { addSuffix: true })}
-    </div>
-  </div>
-);
+import { useNavigate } from "react-router-dom";
+import { ApplicationItemHeader } from './components/ApplicationItemHeader';
+import { ApplicationItemContent } from './components/ApplicationItemContent';
 
 interface ApplicationItemProps {
   application: JobApplication;
@@ -110,6 +26,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
   const [isAcceptJobDialogOpen, setIsAcceptJobDialogOpen] = useState(false);
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(application.status);
+  const navigate = useNavigate();
   
   // Ensure we have a valid ID for our application
   const applicationId = application.job_app_id || application.id || `app-${Math.random()}`;
@@ -203,6 +120,12 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
     await acceptJobAsJobSeeker(application);
     if (onApplicationUpdated) onApplicationUpdated();
   };
+
+  const handleViewProject = () => {
+    if (application.project_id && application.task_id) {
+      navigate(`/seeker/dashboard?tab=live-projects&project=${application.project_id}&task=${application.task_id}`);
+    }
+  };
   
   const showAcceptButton = application.status === 'accepted' && !application.accepted_jobseeker;
 
@@ -219,8 +142,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
   const description = application.description || application.business_roles?.description || "";
 
   return (
-    <div className="border rounded-md overflow-hidden bg-card dashboard-card">
-      {/* Application Header Section */}
+    <Card>
       <ApplicationItemHeader
         title={taskTitle}
         company={companyName}
@@ -232,32 +154,23 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
         isUpdatingStatus={isUpdatingStatus === applicationId}
         showAcceptButton={showAcceptButton}
         onAcceptClick={() => setIsAcceptJobDialogOpen(true)}
+        isAcceptingJob={isAcceptingJob}
+        compact={compact}
+        date={application.applied_at}
       />
       
-      {/* Application Content Section - shown when expanded */}
       {isExpanded && (
         <ApplicationItemContent
           description={description}
           message={application.message || ""}
           discourse={application.task_discourse || ""}
           appliedAt={application.applied_at || new Date().toISOString()}
+          onViewProject={handleViewProject}
+          onSendMessage={() => setIsCreateMessageOpen(true)}
+          onWithdrawClick={showAcceptButton ? undefined : () => setIsWithdrawDialogOpen(true)}
         />
       )}
       
-      {/* Action Footer - always shown */}
-      <div className="p-3 flex justify-end border-t bg-muted/30">
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => setIsCreateMessageOpen(true)}
-          className="flex items-center gap-1"
-        >
-          <MessageSquare className="h-4 w-4" />
-          Send Message
-        </Button>
-      </div>
-      
-      {/* Dialog components */}
       <CreateMessageDialog
         isOpen={isCreateMessageOpen}
         onOpenChange={setIsCreateMessageOpen}
@@ -278,6 +191,6 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
         onAccept={handleAcceptJob}
         isLoading={isAcceptingJob}
       />
-    </div>
+    </Card>
   );
 };
