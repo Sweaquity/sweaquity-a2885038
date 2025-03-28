@@ -1,4 +1,3 @@
-
 // This file re-exports all job seeker related types for backward compatibility
 // New code should import from the specific type files
 
@@ -8,8 +7,12 @@ export * from './applications';
 export * from './equity';
 export * from './dashboardProps';
 
-// Add any legacy types that are not covered by the new files
-// but are needed for backward compatibility below:
+// Skill interface
+export interface Skill {
+  id?: string;
+  name: string;
+  level?: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+}
 
 // Legacy Profile interface (some code might still use this)
 export interface Profile {
@@ -20,6 +23,20 @@ export interface Profile {
   email: string;
   location: string;
   skills: Skill[];
+
+  // Adding the missing properties from previous errors
+  bio: string;
+  phone: string;
+  address: string;
+  availability: string;
+  social_links: {
+    linkedin?: string;
+    github?: string;
+    portfolio?: string;
+  };
+  marketing_consent: boolean;
+  project_updates_consent: boolean;
+  terms_accepted: boolean;
 }
 
 // Override the EquityProject interface for backward compatibility
@@ -52,6 +69,7 @@ export interface EquityProject {
     };
   };
   created_by?: string;
+  created_at?: string;
   skill_match?: number;
   updated_at?: string;
 }
