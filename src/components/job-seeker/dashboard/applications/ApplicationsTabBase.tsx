@@ -1,72 +1,133 @@
-import React, { useState, useCallback } from 'react';
+
+import { useState, useEffect, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PendingApplicationsList } from './PendingApplicationsList';
-import { AcceptedApplicationsList } from './AcceptedApplicationsList';
-import { RejectedApplicationsList } from './RejectedApplicationsList';
-import { WithdrawnApplicationsList } from './WithdrawnApplicationsList';
-import { JobApplication } from '@/types/interfaces';
-import { adaptJobApplications } from "@/utils/typeAdapters";
+import { Card, CardContent } from "@/components/ui/card";
+import { JobApplication } from "@/types/jobSeeker";
+import { ApplicationsList } from "./ApplicationsList";
+import { PendingApplicationsList } from "./PendingApplicationsList";
+import { PastApplicationsList } from "./PastApplicationsList";
+import { EquityProjectsList } from "./EquityProjectsList";
+import { useApplicationActions } from "./hooks/useApplicationActions";
+import { useWithdrawApplication } from "./hooks/useWithdrawApplication";
+import { useAcceptedJobs } from "@/hooks/useAcceptedJobs";
 
 interface ApplicationsTabBaseProps {
   applications: JobApplication[];
-  onWithdrawApplication: (applicationId: string, reason?: string) => Promise<void>;
-  onAcceptApplication: (application: JobApplication) => Promise<void>;
-  viewJobDetails: (application: JobApplication) => void;
-  isWithdrawing: boolean;
   onApplicationUpdated: () => void;
+  newMessagesCount?: number;
 }
 
-export const ApplicationsTabBase: React.FC<ApplicationsTabBaseProps> = ({
+export const ApplicationsTabBase = ({
   applications,
-  onWithdrawApplication,
-  onAcceptApplication,
-  viewJobDetails,
-  isWithdrawing,
-  onApplicationUpdated
-}) => {
-  const [activeTab, setActiveTab] = useState("pending");
+  onApplicationUpdated,
+  newMessagesCount
+}: ApplicationsTabBaseProps) => {
+  const [activeTab, setActiveTab] = useState<string>("pending");
+  const { isUpdatingStatus, updateApplicationStatus } = useApplicationActions(onApplicationUpdated);
+  const { isWithdrawing, handleWithdrawApplication } = useWithdrawApplication(onApplicationUpdated);
+  const { acceptJobAsJobSeeker, isLoading: isAcceptingJob } = useAcceptedJobs(onApplicationUpdated);
 
-  const pendingApplications = applications.filter(app => app.status === 'pending');
-  const acceptedApplications = applications.filter(app => app.status === 'accepted');
-  const rejectedApplications = applications.filter(app => app.status === 'rejected');
-  const withdrawnApplications = applications.filter(app => app.status === 'withdrawn');
+  // Filter applications by status type
+  const pendingApplications = useMemo(() => 
+    applications.filter(app => 
+      app.status === 'pending' || 
+      (app.status === 'accepted' && app.accepted_business && !app.accepted_jobseeker)
+    ), 
+    [applications]
+  );
+
+  const currentApplications = useMemo(() => 
+    applications.filter(app => 
+      app.status === 'accepted' && app.accepted_business && app.accepted_jobseeker
+    ), 
+    [applications]
+  );
+
+  const pastApplications = useMemo(() => 
+    applications.filter(app => 
+      app.status === 'rejected' || app.status === 'withdrawn' || app.status === 'completed'
+    ), 
+    [applications]
+  );
+
+  // Count notifications for tabs
+  const pendingCount = pendingApplications.filter(app => 
+    app.status === 'accepted' && app.accepted_business && !app.accepted_jobseeker
+  ).length;
+
+  const messagesCount = newMessagesCount || 0;
+
+  useEffect(() => {
+    if (pendingCount > 0 && activeTab !== "pending") {
+      //setActiveTab("pending");
+    }
+  }, [pendingCount]);
+
+  if (applications.length === 0) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center py-6">
+            <h3 className="text-lg font-medium">No Applications Yet</h3>
+            <p className="text-muted-foreground mt-2">
+              You haven't applied to any projects yet. Check out the Opportunities tab to find projects to apply for.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
-      <TabsList>
-        <TabsTrigger value="pending">Pending</TabsTrigger>
-        <TabsTrigger value="accepted">Accepted</TabsTrigger>
-        <TabsTrigger value="rejected">Rejected</TabsTrigger>
-        <TabsTrigger value="withdrawn">Withdrawn</TabsTrigger>
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <TabsList className="grid grid-cols-4">
+        <TabsTrigger value="pending" className="relative">
+          Pending
+          {pendingCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-full text-xs">
+              {pendingCount}
+            </span>
+          )}
+        </TabsTrigger>
+        <TabsTrigger value="current" className="relative">
+          Current
+          {messagesCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-full text-xs">
+              {messagesCount}
+            </span>
+          )}
+        </TabsTrigger>
+        <TabsTrigger value="past">Past</TabsTrigger>
+        <TabsTrigger value="equity">Equity</TabsTrigger>
       </TabsList>
 
       <TabsContent value="pending">
         <PendingApplicationsList 
-          applications={adaptJobApplications(pendingApplications)} 
-          onWithdraw={onWithdrawApplication}
-          onAccept={onAcceptApplication}
+          applications={pendingApplications}
+          onWithdraw={handleWithdrawApplication}
+          onAccept={acceptJobAsJobSeeker}
           isWithdrawing={isWithdrawing}
         />
       </TabsContent>
-      
-      <TabsContent value="accepted">
-        <AcceptedApplicationsList
-          applications={adaptJobApplications(acceptedApplications)}
-          onViewDetails={viewJobDetails}
+
+      <TabsContent value="current">
+        <ApplicationsList 
+          applications={currentApplications}
+          onApplicationUpdated={onApplicationUpdated}
         />
       </TabsContent>
-      
-      <TabsContent value="rejected">
-        <RejectedApplicationsList
-          applications={adaptJobApplications(rejectedApplications)}
-          onViewDetails={viewJobDetails}
+
+      <TabsContent value="past">
+        <PastApplicationsList 
+          applications={pastApplications}
+          onApplicationUpdated={onApplicationUpdated}
         />
       </TabsContent>
-      
-      <TabsContent value="withdrawn">
-        <WithdrawnApplicationsList
-          applications={adaptJobApplications(withdrawnApplications)}
-          onViewDetails={viewJobDetails}
+
+      <TabsContent value="equity">
+        <EquityProjectsList 
+          applications={currentApplications}
+          onApplicationUpdated={onApplicationUpdated}
         />
       </TabsContent>
     </Tabs>

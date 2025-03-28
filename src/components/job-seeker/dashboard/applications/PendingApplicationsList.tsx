@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { PendingApplicationItem } from './PendingApplicationItem';
@@ -20,14 +21,16 @@ export const PendingApplicationsList = ({
 }: PendingApplicationsListProps) => {
   // Helper function to count matched skills
   const getMatchedSkills = (application: JobApplication) => {
-    const taskSkills = application.skills_required || [];
-    const userSkills = application.applicant_skills || [];
+    const projectSkills = application.skills_required || [];
+    const applicantSkills = application.applicant_skills || [];
     
-    if (!taskSkills.length || !userSkills.length) return [];
+    if (!projectSkills.length || !applicantSkills.length) {
+      return [];
+    }
     
-    return taskSkills.filter(skill => 
-      userSkills.some(userSkill => 
-        userSkill.toLowerCase() === skill.toLowerCase()
+    return projectSkills.filter(skill => 
+      applicantSkills.some(applicantSkill => 
+        applicantSkill.toLowerCase() === skill.toLowerCase()
       )
     );
   };
@@ -65,9 +68,9 @@ export const PendingApplicationsList = ({
 
   return (
     <div className="space-y-4">
-      {sortedApplications.map((application, index) => (
+      {sortedApplications.map(application => (
         <PendingApplicationItem
-          key={application.id || application.job_app_id || index}
+          key={application.job_app_id || application.id || `app-${Math.random()}`}
           application={application}
           onAccept={onAccept}
           onWithdraw={onWithdraw}

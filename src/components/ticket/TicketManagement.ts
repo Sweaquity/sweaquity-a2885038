@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { Ticket, TicketStatistics } from '@/types/interfaces';
+import { Ticket, TicketStatistics } from '@/types/types';
 import { supabase } from '@/lib/supabase';
 
 export const useTicketManagement = (initialTickets: Ticket[]) => {
@@ -65,9 +66,7 @@ export const useTicketManagement = (initialTickets: Ticket[]) => {
     
     // Apply type filter
     if (typeFilter) {
-      filtered = filtered.filter(ticket => 
-        ticket.type === typeFilter || ticket.ticket_type === typeFilter
-      );
+      filtered = filtered.filter(ticket => ticket.ticket_type === typeFilter);
     }
     
     setFilteredTickets(filtered);

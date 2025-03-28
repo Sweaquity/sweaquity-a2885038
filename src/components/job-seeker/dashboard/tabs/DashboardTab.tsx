@@ -25,7 +25,6 @@ import {
 import { FileText, Clock, CheckCircle, AlertTriangle, Info } from "lucide-react";
 import React from "react";
 import { useAcceptedJobsCore } from "@/hooks/jobs/useAcceptedJobsCore";
-import { adaptTicket } from "@/utils/typeAdapters";
 
 // Components imports for the ticket UI
 import { KanbanBoard, BetaTicket } from "@/components/shared/beta-testing/KanbanBoard";

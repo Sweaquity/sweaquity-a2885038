@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -60,16 +61,14 @@ export const PendingApplicationItem = ({
     <Card className="overflow-hidden">
       <div className="p-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
-          <div className="flex-1">
-            <h3 className="font-medium">{application.task_title || 'Unknown Task'}</h3>
+          <div>
+            <h3 className="text-lg font-medium">{application.task_title || "Untitled Task"}</h3>
             <p className="text-sm text-muted-foreground">
-              {application.company_name || 'Unknown Company'} - {application.project_title || application.project_id || 'Unknown Project'}
+              {application.company_name || 'Company'} • {application.project_title || 'Project'}
             </p>
-            <div className="flex items-center gap-1 mt-1">
-              <Badge variant="outline">
-                Applied: {formatDate(application.applied_at || '')}
-              </Badge>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Applied {formatDate(application.applied_at)}
+            </p>
           </div>
           
           <div className="flex space-x-2">
