@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Link } from "lucide-react";
 import { toast } from "sonner";
 import { ProjectTabs } from "./projects/tabs/ProjectTabs";
 import { DeleteProjectDialog } from "./projects/dialogs/DeleteProjectDialog";
-import { loadProjects, deleteProject } from "./projects/services/ProjectSectionService";
-import { supabase } from "@/lib/supabase";
+import { ProjectEditDialog } from "./projects/dialogs/ProjectEditDialog"; // Assume this will be created
+import { TaskEditDialog } from "./projects/dialogs/TaskEditDialog"; // Assume this will be created
+import { loadProjects, deleteProject, updateProject } from "./projects/services/ProjectSectionService";
 
 interface SkillRequirement {
   skill: string;
@@ -22,6 +23,7 @@ interface Task {
   equity_earned: number;
   equity_allocation: number;
   timeframe: string;
+  due_date?: string;
   skills_required: string[];
   skill_requirements: SkillRequirement[];
   dependencies: string[];
@@ -32,6 +34,7 @@ interface Project {
   title: string;
   description: string;
   status: string;
+  project_link?: string;
   equity_allocation: number;
   equity_allocated: number;
   skills_required: string[];
@@ -39,74 +42,22 @@ interface Project {
   tasks: Task[];
 }
 
-interface EquityStats {
-  taskEquityTotal: number;
-  agreedEquityTotal: number;
-  earnedEquityTotal: number;
-}
-
 export const ProjectsSection = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
-  const [equityStats, setEquityStats] = useState<Record<string, EquityStats>>({});
+  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+  const [taskToEdit, setTaskToEdit] = useState<{project: Project, task: Task} | null>(null);
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadProjectsData();
   }, []);
 
   const loadProjectsData = async () => {
-    try {
-      const projectsData = await loadProjects();
-      setProjects(projectsData);
-      
-      // Calculate equity statistics for each project
-      const stats: Record<string, EquityStats> = {};
-      
-      for (const project of projectsData) {
-        try {
-          // Sum task equity
-          const taskEquityTotal = project.tasks.reduce(
-            (sum, task) => sum + (task.equity_allocation || 0), 0
-          );
-          
-          // Get accepted jobs data for this project
-          const { data: acceptedJobs, error } = await supabase
-            .from('accepted_jobs')
-            .select('job_app_id, equity_agreed, jobs_equity_allocated')
-            .eq('project_id', project.project_id);
-            
-          if (error) {
-            console.error(`Error fetching equity data for project ${project.project_id}:`, error);
-            continue;
-          }
-            
-          // Sum agreed and earned equity
-          const agreedEquityTotal = acceptedJobs?.reduce(
-            (sum, job) => sum + (job.equity_agreed || 0), 0
-          ) || 0;
-          
-          const earnedEquityTotal = acceptedJobs?.reduce(
-            (sum, job) => sum + (job.jobs_equity_allocated || 0), 0
-          ) || 0;
-          
-          stats[project.project_id] = {
-            taskEquityTotal,
-            agreedEquityTotal,
-            earnedEquityTotal
-          };
-        } catch (error) {
-          console.error(`Error calculating equity stats for project ${project.project_id}:`, error);
-        }
-      }
-      
-      setEquityStats(stats);
-    } catch (error) {
-      toast.error("Failed to load projects", {
-        description: "There was an error retrieving project data."
-      });
-    }
+    const projectsData = await loadProjects();
+    setProjects(projectsData);
   };
 
   const handleProjectCreated = (newProject: Project) => {
@@ -118,20 +69,11 @@ export const ProjectsSection = () => {
     setProjects(projects.map(project => 
       project.project_id === updatedProject.project_id ? updatedProject : project
     ));
-    
-    // Recalculate equity stats for the updated project
-    loadProjectsData();
+    setProjectToEdit(null);
   };
 
   const handleProjectDeleted = (projectId: string) => {
     setProjects(projects.filter(project => project.project_id !== projectId));
-    
-    // Remove equity stats for the deleted project
-    setEquityStats(prev => {
-      const newStats = {...prev};
-      delete newStats[projectId];
-      return newStats;
-    });
   };
 
   const showDeleteConfirmation = (projectId: string) => {
@@ -144,10 +86,23 @@ export const ProjectsSection = () => {
       const success = await deleteProject(projectToDelete, projects);
       if (success) {
         handleProjectDeleted(projectToDelete);
+        toast.success("Project deleted successfully");
       }
     }
     setDeleteDialogOpen(false);
     setProjectToDelete(null);
+  };
+
+  const toggleProjectExpanded = (projectId: string) => {
+    setExpandedProjects(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(projectId)) {
+        newSet.delete(projectId);
+      } else {
+        newSet.add(projectId);
+      }
+      return newSet;
+    });
   };
 
   return (
@@ -162,12 +117,17 @@ export const ProjectsSection = () => {
       <CardContent>
         <ProjectTabs
           projects={projects}
-          equityStats={equityStats}
           showProjectForm={showProjectForm}
           setShowProjectForm={setShowProjectForm}
           handleProjectCreated={handleProjectCreated}
           handleProjectUpdated={handleProjectUpdated}
           handleProjectDeleted={showDeleteConfirmation}
+          
+          // New props for editing
+          onProjectEdit={(project) => setProjectToEdit(project)}
+          onTaskEdit={(project, task) => setTaskToEdit({project, task})}
+          expandedProjects={expandedProjects}
+          toggleProjectExpanded={toggleProjectExpanded}
         />
       </CardContent>
       
@@ -177,6 +137,28 @@ export const ProjectsSection = () => {
         onCancel={() => setProjectToDelete(null)}
         onConfirm={confirmDeleteProject}
       />
+
+      {projectToEdit && (
+        <ProjectEditDialog
+          project={projectToEdit}
+          isOpen={!!projectToEdit}
+          onOpenChange={() => setProjectToEdit(null)}
+          onProjectUpdated={handleProjectUpdated}
+        />
+      )}
+
+      {taskToEdit && (
+        <TaskEditDialog
+          project={taskToEdit.project}
+          task={taskToEdit.task}
+          isOpen={!!taskToEdit}
+          onOpenChange={() => setTaskToEdit(null)}
+          onTaskUpdated={(updatedProject) => {
+            handleProjectUpdated(updatedProject);
+            setTaskToEdit(null);
+          }}
+        />
+      )}
     </Card>
   );
 };
