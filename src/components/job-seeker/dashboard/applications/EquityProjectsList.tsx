@@ -1,11 +1,12 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { JobApplication } from "@/types/jobSeeker";
 import { useUserSkills } from "./hooks/useUserSkills";
 import { EquityProjectItem } from "./EquityProjectItem";
+import { supabase } from "@/lib/supabase";
 
 interface EquityProjectsListProps {
   applications: JobApplication[];
@@ -20,8 +21,52 @@ export const EquityProjectsList = ({
 }: EquityProjectsListProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const { userSkills, getMatchedSkills } = useUserSkills();
+  const [processedApplications, setProcessedApplications] = useState<JobApplication[]>([]);
 
-  const filteredApplications = applications.filter((application) => {
+  useEffect(() => {
+    // Process applications to determine if they are equity projects
+    const processApplications = async () => {
+      const processed = await Promise.all(applications.map(async (app) => {
+        if (app.accepted_jobs) {
+          // It's already marked as an equity project with accepted_jobs data
+          return { ...app, is_equity_project: true };
+        }
+        
+        // Check if there's an accepted_jobs entry for this application
+        try {
+          const { data, error } = await supabase
+            .from('accepted_jobs')
+            .select('equity_agreed, jobs_equity_allocated')
+            .eq('job_app_id', app.job_app_id)
+            .single();
+            
+          if (error) {
+            console.error("Error checking for equity data:", error);
+            return { ...app, is_equity_project: false };
+          }
+          
+          return { 
+            ...app, 
+            is_equity_project: true,
+            accepted_jobs: data
+          };
+        } catch (err) {
+          console.error("Error processing application:", err);
+          return { ...app, is_equity_project: false };
+        }
+      }));
+      
+      setProcessedApplications(processed);
+    };
+    
+    if (applications.length > 0) {
+      processApplications();
+    } else {
+      setProcessedApplications([]);
+    }
+  }, [applications]);
+
+  const filteredApplications = processedApplications.filter((application) => {
     if (!searchTerm) return true;
     
     const term = searchTerm.toLowerCase();
@@ -47,7 +92,7 @@ export const EquityProjectsList = ({
     return false;
   });
 
-  if (applications.length === 0) {
+  if (processedApplications.length === 0) {
     return (
       <Card>
         <CardContent className="pt-6">
