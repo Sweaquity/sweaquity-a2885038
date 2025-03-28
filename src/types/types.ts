@@ -66,23 +66,3 @@ export interface TicketStatistics {
 export interface BetaTicket extends Ticket {
   health: string; // Already required in Ticket now
 }
-
-export interface ExpandedTicketDetailsProps {
-  ticket: Ticket;
-  onClose?: () => void;
-  onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
-  onLogTime?: (ticketId: string) => void;
-  userCanEditStatus?: boolean;
-  userCanEditDates?: boolean;
-}
-
-export interface TicketDashboardProps {
-  initialTickets: Ticket[];
-  onRefresh: () => void;
-  onTicketAction: (ticketId: string, action: string, data: any) => Promise<void>;
-  userId?: string;
-  onLogTime?: (ticketId: string) => void;
-  showTimeTracking?: boolean;
-  userCanEditDates?: boolean;
-  userCanEditStatus?: boolean;
-}

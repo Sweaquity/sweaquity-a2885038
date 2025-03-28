@@ -1,10 +1,9 @@
 
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { KanbanBoard } from "@/components/ticket/KanbanBoard";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { Ticket } from "@/types/types";
-import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
-import { GanttChartView } from "@/components/business/testing/GanttChartView";
 
 interface ProjectTicketTabsProps {
   activeTab: string;
@@ -14,10 +13,9 @@ interface ProjectTicketTabsProps {
   showGantt: boolean;
   onRefresh: () => void;
   onTicketAction: (ticketId: string, action: string, data: any) => Promise<void>;
-  onLogTime?: (ticketId: string, hours: number, description: string) => Promise<void>;
-  renderTicketActions?: (ticket: Ticket) => React.ReactNode;
+  onLogTime: (ticketId: string, hours: number, description: string) => Promise<void>;
+  renderTicketActions: (ticket: Ticket) => React.ReactNode;
   businessId: string;
-  showTimeTracking?: boolean; // Add this prop
 }
 
 export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
@@ -30,10 +28,11 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
   onTicketAction,
   onLogTime,
   renderTicketActions,
-  businessId,
-  showTimeTracking = true // Default to true for backward compatibility
+  businessId
 }) => {
-  const getFilteredTickets = () => {
+  const getActiveTickets = () => {
+    if (!tickets) return [];
+    
     switch (activeTab) {
       case "project-tasks":
         return tickets.filter(t => t.ticket_type === "task");
@@ -46,19 +45,17 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
     }
   };
 
-  const handleTicketStatusChange = async (ticketId: string, newStatus: string) => {
-    await onTicketAction(ticketId, 'updateStatus', newStatus);
+  // Wrapper for ticket action to convert to Promise
+  const handleTicketAction = async (ticketId: string, action: string, data: any) => {
+    return onTicketAction(ticketId, action, data);
   };
-
-  const handleLogTimeForTicket = (ticketId: string) => {
-    // This just triggers the dialog to open, the actual logging happens in the parent
-    if (onLogTime) {
-      // The parameters will be collected in the log time dialog
-      onLogTime(ticketId, 0, "");
-    }
+  
+  // Adapt the handler to match the expected interface
+  const handleLogTime = (ticketId: string) => {
+    // This is just a stub that will call the actual onLogTime with default values
+    // The actual time logging UI will collect hours and description from the user
+    onLogTime(ticketId, 0, "");
   };
-
-  const filteredTickets = getFilteredTickets();
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -66,30 +63,38 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
         <TabsTrigger value="all-tickets">All Tickets</TabsTrigger>
         <TabsTrigger value="project-tasks">Project Tasks</TabsTrigger>
         <TabsTrigger value="project-tickets">Project Tickets</TabsTrigger>
-        <TabsTrigger value="beta-testing">Beta Testing</TabsTrigger>
+        <TabsTrigger value="beta-testing">Beta Testing Tickets</TabsTrigger>
       </TabsList>
       
       <TabsContent value={activeTab}>
         {showKanban ? (
-          <KanbanBoard 
-            tickets={filteredTickets}
-            onStatusChange={handleTicketStatusChange}
-          />
+          <div className="mb-6">
+            <KanbanBoard 
+              tickets={getActiveTickets()}
+              onStatusChange={(ticketId, newStatus) => 
+                handleTicketAction(ticketId, 'updateStatus', newStatus)
+              }
+              onTicketClick={(ticket) => {
+                console.log("Ticket clicked:", ticket.id);
+                // Here you could show a ticket detail dialog or navigate to a ticket details page
+              }}
+            />
+          </div>
         ) : showGantt ? (
-          <GanttChartView 
-            data={filteredTickets}
-            onRefresh={onRefresh}
-          />
+          <div className="mb-6">
+            <div className="text-center py-8">
+              <p>Gantt view is being implemented. Please check back later.</p>
+            </div>
+          </div>
         ) : (
           <TicketDashboard 
-            initialTickets={filteredTickets}
+            initialTickets={getActiveTickets()}
             onRefresh={onRefresh}
-            onTicketAction={onTicketAction}
-            showTimeTracking={showTimeTracking} // Pass down the showTimeTracking prop
-            userId={businessId}
-            onLogTime={handleLogTimeForTicket}
-            userCanEditDates={true} // Business can edit dates
-            userCanEditStatus={true} // Business can edit status
+            onTicketAction={handleTicketAction}
+            showTimeTracking={true}
+            userId={businessId || ''}
+            onLogTime={handleLogTime}
+            renderTicketActions={renderTicketActions}
           />
         )}
       </TabsContent>

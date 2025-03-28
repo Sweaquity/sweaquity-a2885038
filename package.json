@@ -9,7 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"No tests configured\" && exit 0",
+    "test": "echo \"No tests configured\" && exit 0"
     "preview": "vite preview"
   },
   "dependencies": {
