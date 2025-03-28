@@ -1,71 +1,77 @@
 
 import React, { useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { XCircle, Loader2 } from 'lucide-react';
 
-export interface WithdrawDialogProps {
+interface WithdrawDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onWithdraw: (reason?: string) => Promise<void>;
-  isWithdrawing?: boolean;
+  isWithdrawing: boolean;
 }
 
-export const WithdrawDialog = ({
-  isOpen,
-  onOpenChange,
-  onWithdraw,
-  isWithdrawing = false
+export const WithdrawDialog = ({ 
+  isOpen, 
+  onOpenChange, 
+  onWithdraw, 
+  isWithdrawing 
 }: WithdrawDialogProps) => {
   const [reason, setReason] = useState('');
-  
-  const handleSubmit = async () => {
-    await onWithdraw(reason);
+
+  const handleWithdraw = async () => {
+    await onWithdraw(reason || undefined);
+    setReason('');
+    onOpenChange(false);
   };
-  
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Withdraw Application</DialogTitle>
           <DialogDescription>
-            Are you sure you want to withdraw your application? This action cannot be undone.
+            Are you sure you want to withdraw this application? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
         
         <div className="py-4">
-          <label className="block text-sm font-medium mb-2">
-            Reason for withdrawing (optional)
-          </label>
           <Textarea
+            placeholder="Optional: Provide a reason for withdrawing"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Please provide a reason for withdrawing your application"
             rows={4}
           />
         </div>
         
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isWithdrawing}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            variant="destructive"
-            onClick={handleSubmit}
+          <Button 
+            variant="destructive" 
+            onClick={handleWithdraw} 
             disabled={isWithdrawing}
           >
-            {isWithdrawing ? 'Withdrawing...' : 'Withdraw Application'}
+            {isWithdrawing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Withdrawing...
+              </>
+            ) : (
+              <>
+                <XCircle className="mr-2 h-4 w-4" />
+                Withdraw Application
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

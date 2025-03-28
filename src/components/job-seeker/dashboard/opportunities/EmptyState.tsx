@@ -1,39 +1,28 @@
 
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import { FileSearch } from 'lucide-react';
+import { Briefcase } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 interface EmptyStateProps {
   hasFilters: boolean;
   onClearFilters: () => void;
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({
-  hasFilters,
-  onClearFilters
-}) => {
+export const EmptyState = ({ hasFilters, onClearFilters }: EmptyStateProps) => {
   return (
-    <div className="flex flex-col items-center justify-center p-12 bg-muted/20 rounded-lg border border-dashed">
-      <FileSearch className="h-12 w-12 text-muted-foreground mb-4" />
-      
-      {hasFilters ? (
-        <>
-          <h3 className="text-lg font-medium">No matching opportunities</h3>
-          <p className="text-muted-foreground text-center max-w-md mt-2 mb-4">
-            We couldn't find any projects matching your current filters. Try adjusting your search criteria.
-          </p>
-          <Button onClick={onClearFilters} variant="outline">
+    <Card>
+      <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+        <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
+        <h3 className="text-xl font-semibold mb-2">No Matching Opportunities</h3>
+        <p className="text-muted-foreground mb-4">
+          We couldn't find any opportunities matching your criteria. Try adjusting your search or check back later.
+        </p>
+        {hasFilters ? (
+          <Button variant="outline" onClick={onClearFilters}>
             Clear Filters
           </Button>
-        </>
-      ) : (
-        <>
-          <h3 className="text-lg font-medium">No opportunities available</h3>
-          <p className="text-muted-foreground text-center max-w-md mt-2">
-            There are currently no projects available for you to apply. Check back later for new opportunities.
-          </p>
-        </>
-      )}
-    </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 };

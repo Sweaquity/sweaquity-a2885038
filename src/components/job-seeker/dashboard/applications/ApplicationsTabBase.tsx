@@ -1,127 +1,144 @@
 
-import React, { useState } from 'react';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { PendingApplicationsList } from './PendingApplicationsList';
-import { AcceptedApplicationsList } from './AcceptedApplicationsList';
-import { RejectedApplicationsList } from './RejectedApplicationsList';
-import { WithdrawnApplicationsList } from './WithdrawnApplicationsList';
-import { JobApplication } from '@/types/jobSeeker';
-import { Badge } from '@/components/ui/badge';
-import { useApplicationActions } from './hooks/useApplicationActions';
-import { useAcceptedJobs } from '@/hooks/useAcceptedJobs';
+// File: src/components/job-seeker/dashboard/applications/ApplicationsTabBase.tsx
 
-export interface ApplicationsTabBaseProps {
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { JobApplication } from "@/types/jobSeeker";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { ApplicationsList } from "./ApplicationsList";
+import { PendingApplicationsList } from "./PendingApplicationsList";
+import { EquityProjectsList } from "./EquityProjectsList";
+import { PastApplicationsList } from "./PastApplicationsList";
+import { useState, useEffect } from "react";
+
+interface ApplicationsTabBaseProps {
   applications: JobApplication[];
   onApplicationUpdated: () => void;
   newMessagesCount?: number;
 }
 
-export const ApplicationsTabBase = ({
-  applications,
+export const ApplicationsTabBase = ({ 
+  applications, 
   onApplicationUpdated,
   newMessagesCount = 0
 }: ApplicationsTabBaseProps) => {
-  const [activeTab, setActiveTab] = useState('pending');
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [localMessagesCount, setLocalMessagesCount] = useState(newMessagesCount);
   
-  const { handleWithdrawApplication } = useApplicationActions(onApplicationUpdated);
-  const { acceptJobAsJobSeeker, isLoading } = useAcceptedJobs(onApplicationUpdated);
+  // Update local state when prop changes
+  useEffect(() => {
+    setLocalMessagesCount(newMessagesCount);
+  }, [newMessagesCount]);
   
-  const pendingApplications = applications.filter(app => 
-    app.status === 'pending' || (app.status === 'accepted' && !app.accepted_jobseeker)
-  );
+  // Safely normalize status to lowercase for case-insensitive comparison
+  const normalizeStatus = (status: string | null | undefined): string => {
+    return (status || "").toString().toLowerCase().trim();
+  };
   
-  const acceptedApplications = applications.filter(app => 
-    app.status === 'accepted' && app.accepted_jobseeker
-  );
+  // Filter applications by status - using the normalized status comparison
+  const pendingApplications = applications.filter(app => {
+    const status = normalizeStatus(app.status);
+    return status === 'pending' || status === 'in review';
+  });
   
-  const rejectedApplications = applications.filter(app => 
-    app.status === 'rejected'
-  );
+  const equityProjects = applications.filter(app => {
+    const status = normalizeStatus(app.status);
+    return status === 'negotiation' || status === 'accepted';
+  });
   
-  const withdrawnApplications = applications.filter(app => 
-    app.status === 'withdrawn'
-  );
+  // Specifically filter for withdrawn applications
+  const withdrawnApplications = applications.filter(app => {
+    const status = normalizeStatus(app.status);
+    return status === 'withdrawn';
+  });
   
-  const handleWithdraw = async (applicationId: string, reason?: string) => {
-    setIsWithdrawing(true);
-    try {
-      await handleWithdrawApplication(applicationId, reason);
-    } finally {
-      setIsWithdrawing(false);
+  // Filter for rejected applications
+  const rejectedApplications = applications.filter(app => {
+    const status = normalizeStatus(app.status);
+    return status === 'rejected';
+  });
+  
+  // Reset notification counter when viewing the relevant tab
+  const handleTabChange = (value: string) => {
+    if (value === 'equity') {
+      setLocalMessagesCount(0);
     }
   };
 
   return (
-    <Tabs defaultValue="pending" value={activeTab} onValueChange={setActiveTab}>
-      <TabsList className="grid grid-cols-4 mb-4">
-        <TabsTrigger value="pending" className="relative">
-          Pending
-          {pendingApplications.length > 0 && (
-            <Badge className="ml-1 px-1 text-xs" variant="secondary">
-              {pendingApplications.length}
-            </Badge>
-          )}
-          {newMessagesCount > 0 && (
-            <Badge className="absolute -top-1 -right-1 px-1 text-xs h-4 min-w-4" variant="destructive">
-              {newMessagesCount}
-            </Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="accepted">
-          Accepted
-          {acceptedApplications.length > 0 && (
-            <Badge className="ml-1 px-1 text-xs" variant="secondary">
-              {acceptedApplications.length}
-            </Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="rejected">
-          Rejected
-          {rejectedApplications.length > 0 && (
-            <Badge className="ml-1 px-1 text-xs" variant="secondary">
-              {rejectedApplications.length}
-            </Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="withdrawn">
-          Withdrawn
-          {withdrawnApplications.length > 0 && (
-            <Badge className="ml-1 px-1 text-xs" variant="secondary">
-              {withdrawnApplications.length}
-            </Badge>
-          )}
-        </TabsTrigger>
-      </TabsList>
-      
-      <TabsContent value="pending">
-        <PendingApplicationsList 
-          applications={pendingApplications}
-          onWithdraw={handleWithdraw}
-          onAccept={acceptJobAsJobSeeker}
-          isWithdrawing={isWithdrawing}
-          onApplicationUpdated={onApplicationUpdated}
-        />
-      </TabsContent>
-      
-      <TabsContent value="accepted">
-        <AcceptedApplicationsList 
-          applications={acceptedApplications}
-          onApplicationUpdated={onApplicationUpdated}
-        />
-      </TabsContent>
-      
-      <TabsContent value="rejected">
-        <RejectedApplicationsList 
-          applications={rejectedApplications}
-        />
-      </TabsContent>
-      
-      <TabsContent value="withdrawn">
-        <WithdrawnApplicationsList 
-          applications={withdrawnApplications}
-        />
-      </TabsContent>
-    </Tabs>
+    <Card className="dashboard-card">
+      <CardHeader>
+        <h2 className="text-lg font-semibold">Projects that you've applied for</h2>
+        <p className="text-muted-foreground text-sm">View and manage your applications</p>
+      </CardHeader>
+      <CardContent className="overflow-container">
+        <Tabs defaultValue="pending" className="space-y-4" onValueChange={handleTabChange}>
+          <div className="overflow-x-hidden">
+            <TabsList className="responsive-tabs h-auto p-1 w-full grid grid-cols-2 md:grid-cols-4 gap-1">
+              <TabsTrigger value="pending" className="px-3 py-1.5">
+                Pending ({pendingApplications.length})
+              </TabsTrigger>
+              <TabsTrigger value="equity" className="px-3 py-1.5 relative">
+                Current Equity ({equityProjects.length})
+                {localMessagesCount > 0 && (
+                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
+                    {localMessagesCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="withdrawn" className="px-3 py-1.5">
+                Withdrawn ({withdrawnApplications.length})
+              </TabsTrigger>
+              <TabsTrigger value="rejected" className="px-3 py-1.5">
+                Rejected ({rejectedApplications.length})
+              </TabsTrigger>
+            </TabsList>
+          </div>
+          
+          <TabsContent value="pending" className="space-y-4 mt-4">
+            {pendingApplications.length === 0 ? (
+              <p className="text-muted-foreground text-center p-4">No pending applications found.</p>
+            ) : (
+              <PendingApplicationsList 
+                applications={pendingApplications} 
+                onApplicationUpdated={onApplicationUpdated} 
+              />
+            )}
+          </TabsContent>
+          
+          <TabsContent value="equity" className="space-y-4 mt-4">
+            {equityProjects.length === 0 ? (
+              <p className="text-muted-foreground text-center p-4">No equity projects found.</p>
+            ) : (
+              <EquityProjectsList 
+                applications={equityProjects} 
+                onApplicationUpdated={onApplicationUpdated} 
+              />
+            )}
+          </TabsContent>
+          
+          <TabsContent value="withdrawn" className="space-y-4 mt-4">
+            {withdrawnApplications.length === 0 ? (
+              <p className="text-muted-foreground text-center p-4">No withdrawn applications found.</p>
+            ) : (
+              <PastApplicationsList 
+                applications={withdrawnApplications}
+                onApplicationUpdated={onApplicationUpdated}
+              />
+            )}
+          </TabsContent>
+          
+          <TabsContent value="rejected" className="space-y-4 mt-4">
+            {rejectedApplications.length === 0 ? (
+              <p className="text-muted-foreground text-center p-4">No rejected applications found.</p>
+            ) : (
+              <PastApplicationsList 
+                applications={rejectedApplications}
+                onApplicationUpdated={onApplicationUpdated}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
   );
 };

@@ -1,9 +1,9 @@
+// File: src/components/job-seeker/dashboard/tabs/ApplicationsTab.tsx
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { JobApplication } from "@/types/jobSeeker";
 import { ApplicationsTabBase } from "@/components/job-seeker/dashboard/applications";
-import { enhanceJobApplications } from "@/utils/dataAdapters";
 
 interface ApplicationsTabProps {
   applications: JobApplication[];
@@ -15,17 +15,7 @@ export const ApplicationsTab = ({
   onApplicationUpdated,
 }: ApplicationsTabProps) => {
   const [newMessagesCount, setNewMessagesCount] = useState(0);
-  const [newApplicationsCount, setNewApplicationsCount] = useState(0);
   const channelRef = useRef<any>(null);
-
-  // Calculate new applications that need attention (accepted jobs that need jobseeker acceptance)
-  useEffect(() => {
-    const pendingAcceptance = applications.filter(app => 
-      app.status === 'accepted' && app.accepted_business && !app.accepted_jobseeker
-    ).length;
-    
-    setNewApplicationsCount(pendingAcceptance);
-  }, [applications]);
 
   // Memoize the update function to prevent unnecessary re-renders
   const handleApplicationUpdated = useCallback(() => {
@@ -62,13 +52,10 @@ export const ApplicationsTab = ({
     };
   }, []); // Empty dependency array to ensure this only runs once
 
-  // Enhance applications with related data
-  const enhancedApplications = enhanceJobApplications(applications);
-
   return (
     <div className="space-y-6">
       <ApplicationsTabBase 
-        applications={enhancedApplications} 
+        applications={applications} 
         onApplicationUpdated={handleApplicationUpdated}
         newMessagesCount={newMessagesCount}
       />

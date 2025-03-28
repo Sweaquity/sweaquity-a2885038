@@ -298,7 +298,7 @@ export function BetaTestingButton() {
                 </SelectTrigger>
                 <SelectContent>
                   {projectSubTasks.length === 0 && !isLoadingSubTasks ? (
-                    <SelectItem value="no-subtasks">No sub-tasks available</SelectItem>
+                    <SelectItem value="none" disabled>No sub-tasks available</SelectItem>
                   ) : (
                     projectSubTasks.map(task => (
                       <SelectItem key={task.id} value={task.id}>

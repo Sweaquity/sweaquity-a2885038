@@ -13,7 +13,7 @@ interface EquityProjectsListProps {
 
 export const EquityProjectsList = ({ 
   applications = [],
-  onApplicationUpdated = () => {}
+  onApplicationUpdated
 }: EquityProjectsListProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const { userSkills, getMatchedSkills } = useUserSkills();

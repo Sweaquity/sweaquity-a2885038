@@ -2,10 +2,10 @@
 import React from 'react';
 
 export interface ApplicationHeaderProps {
-  title?: string;
-  company?: string;
-  project?: string;
-  status?: string;
+  title: string;
+  company: string;
+  project: string;
+  status: string;
 }
 
 export const ApplicationHeader = ({ title, company, project, status }: ApplicationHeaderProps) => {

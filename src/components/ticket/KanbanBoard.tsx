@@ -1,193 +1,155 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
-import { Eye, Clock, AlertTriangle, CheckCircle2, ArrowUpRight } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import React from "react";
+import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
 import { Ticket } from "@/types/types";
-import { enhanceTicket } from "@/utils/dataAdapters";
+import { Button } from "@/components/ui/button";
+import { Clock, MoreHorizontal, CheckCircle } from "lucide-react";
 
-interface KanbanBoardProps {
+export interface KanbanBoardProps {
   tickets: Ticket[];
   onStatusChange: (ticketId: string, newStatus: string) => void;
-  onTicketClick: (ticket: Ticket) => void;
+  onTicketClick?: (ticket: Ticket) => void;  // Made this prop optional
 }
 
-export const KanbanBoard: React.FC<KanbanBoardProps> = ({
-  tickets,
-  onStatusChange,
-  onTicketClick
-}) => {
-  const [columns, setColumns] = useState<{[key: string]: any}>({
-    todo: { id: 'todo', title: 'To Do', ticketIds: [] },
-    in_progress: { id: 'in_progress', title: 'In Progress', ticketIds: [] },
-    in_review: { id: 'in_review', title: 'In Review', ticketIds: [] },
-    done: { id: 'done', title: 'Done', ticketIds: [] }
-  });
-  
-  const [ticketsMap, setTicketsMap] = useState<{[key: string]: Ticket}>({});
-  
-  useEffect(() => {
-    // Process tickets to ensure they have all required fields
-    const processedTickets = tickets.map(ticket => enhanceTicket(ticket));
-    
-    // Group tickets by status
-    const todoIds: string[] = [];
-    const inProgressIds: string[] = [];
-    const inReviewIds: string[] = [];
-    const doneIds: string[] = [];
-    
-    const ticketsObj: {[key: string]: Ticket} = {};
-    
-    processedTickets.forEach(ticket => {
-      // Add to appropriate status column
-      if (ticket.status === 'todo' || ticket.status === 'new' || ticket.status === 'open') {
-        todoIds.push(ticket.id);
-      } else if (ticket.status === 'in_progress' || ticket.status === 'progress') {
-        inProgressIds.push(ticket.id);
-      } else if (ticket.status === 'in_review' || ticket.status === 'review') {
-        inReviewIds.push(ticket.id);
-      } else if (ticket.status === 'done' || ticket.status === 'closed') {
-        doneIds.push(ticket.id);
-      } else {
-        // Default to todo
-        todoIds.push(ticket.id);
+export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChange, onTicketClick }) => {
+  const columns = [
+    { id: 'todo', title: 'To Do' },
+    { id: 'in-progress', title: 'In Progress' },
+    { id: 'review', title: 'Review' },
+    { id: 'done', title: 'Done' },
+    { id: 'closed', title: 'Closed' }
+  ];
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'No due date';
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  // Function to get ticket count for a specific status
+  const getTicketCount = (status: string) => {
+    return tickets.filter(ticket => ticket.status === status).length;
+  };
+
+  // Function to determine priority badge color
+  const getPriorityColor = (priority: string) => {
+    if (priority === 'high') return 'bg-red-100 text-red-800';
+    if (priority === 'medium') return 'bg-yellow-100 text-yellow-800';
+    return 'bg-green-100 text-green-800';
+  };
+
+  // Determine if a ticket is overdue
+  const isOverdue = (ticket: Ticket) => {
+    if (!ticket.due_date) return false;
+    const dueDate = new Date(ticket.due_date);
+    const today = new Date();
+    return dueDate < today;
+  };
+
+  // Sort tickets based on priority and due date
+  const sortTickets = (tickets: Ticket[]) => {
+    return [...tickets].sort((a, b) => {
+      // First sort by priority
+      const priorityOrder = { high: 0, medium: 1, low: 2 };
+      const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] || 999;
+      const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] || 999;
+      
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
       }
       
-      // Add to tickets map
-      ticketsObj[ticket.id] = ticket;
+      // Then sort by due date if available
+      if (a.due_date && b.due_date) {
+        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+      }
+      
+      // If no due date, tickets with due dates come first
+      if (a.due_date && !b.due_date) return -1;
+      if (!a.due_date && b.due_date) return 1;
+      
+      // Finally sort by creation date
+      if (a.created_at && b.created_at) {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+      
+      return 0;
     });
-    
-    // Update columns
-    setColumns({
-      todo: { id: 'todo', title: 'To Do', ticketIds: todoIds },
-      in_progress: { id: 'in_progress', title: 'In Progress', ticketIds: inProgressIds },
-      in_review: { id: 'in_review', title: 'In Review', ticketIds: inReviewIds },
-      done: { id: 'done', title: 'Done', ticketIds: doneIds }
-    });
-    
-    // Update tickets map
-    setTicketsMap(ticketsObj);
-  }, [tickets]);
-
-  // Determine badge color based on ticket type
-  const getTypeColor = (ticket: Ticket) => {
-    // Use either type or ticket_type, whichever is available
-    const ticketType = ticket.type || ticket.ticket_type;
-    const isTask = ticket.isTaskTicket || ticketType === 'task';
-    const isProject = ticket.isProjectTicket || ticketType === 'project';
-    
-    if (isTask) {
-      return 'bg-blue-100 text-blue-800';
-    } else if (isProject) {
-      return 'bg-purple-100 text-purple-800';
-    } else if (ticketType === 'bug') {
-      return 'bg-red-100 text-red-800';
-    } else if (ticketType === 'beta-test') {
-      return 'bg-green-100 text-green-800';
-    }
-    return 'bg-gray-100 text-gray-800';
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority.toLowerCase()) {
-      case "high":
-        return "bg-red-100 text-red-800";
-      case "medium":
-        return "bg-orange-100 text-orange-800";
-      case "low":
-        return "bg-green-100 text-green-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getHealthColor = (health: string) => {
-    switch (health.toLowerCase()) {
-      case "green":
-        return "bg-green-100 text-green-800";
-      case "yellow":
-        return "bg-yellow-100 text-yellow-800";
-      case "red":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
-  };
-
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, ticketId: string) => {
-    e.dataTransfer.setData("text/plain", ticketId);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, columnId: string) => {
-    e.preventDefault();
-    const ticketId = e.dataTransfer.getData("text/plain");
-    if (ticketId) {
-      onStatusChange(ticketId, columnId);
-    }
   };
 
   return (
-    <div className="overflow-x-auto">
-      <div className="flex space-x-4 min-w-fit">
-        {Object.values(columns).map(column => (
-          <div 
-            key={column.id} 
-            className="w-64 bg-gray-50 rounded-md p-2"
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, column.id)}
-          >
-            <h3 className="font-medium mb-2">{column.title} ({column.ticketIds.length})</h3>
-            <div className="space-y-2">
-              {column.ticketIds.map((ticketId) => {
-                const ticket = ticketsMap[ticketId];
-                if (!ticket) return null;
+    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      {columns.map(column => {
+        const columnTickets = tickets.filter(ticket => ticket.status === column.id);
+        
+        return (
+          <Droppable key={column.id} droppableId={column.id}>
+            {(provided) => (
+              <div 
+                {...provided.droppableProps}
+                ref={provided.innerRef}
+                className="bg-gray-50 p-3 rounded-lg min-h-[300px]"
+              >
+                <h3 className="font-medium text-sm mb-3">{column.title} ({getTicketCount(column.id)})</h3>
                 
-                return (
-                  <Card 
-                    key={ticketId} 
-                    className={`
-                      p-2 cursor-pointer
-                      ${ticket.priority === 'high' ? 'border-l-4 border-l-red-500' : 
-                        ticket.priority === 'medium' ? 'border-l-4 border-l-yellow-500' :
-                        'border-l-4 border-l-blue-500'}
-                    `}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, ticketId)}
-                    onClick={() => onTicketClick(ticket)}
-                  >
-                    <div className="text-sm font-medium">{ticket.title}</div>
-                    <div className="text-xs text-gray-500 truncate">{ticket.description}</div>
-                    <div className="flex justify-between mt-1">
-                      <div className="text-xs">{ticket.due_date ? formatDate(ticket.due_date) : 'No due date'}</div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-xs px-2"
+                {sortTickets(columnTickets).map((ticket, index) => (
+                  <Draggable key={ticket.id} draggableId={ticket.id} index={index}>
+                    {(provided) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                        className="bg-white mb-2 p-3 rounded-md shadow-sm border border-gray-100"
                         onClick={() => onTicketClick(ticket)}
                       >
-                        View
-                      </Button>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
+                        <div className="flex justify-between items-start">
+                          <h4 className="font-medium">{ticket.title}</h4>
+                          <div className={`text-xs font-medium px-2 py-1 rounded-full ${
+                            getPriorityColor(ticket.priority)
+                          }`}>
+                            {ticket.priority}
+                          </div>
+                        </div>
+                        
+                        <p className="text-xs text-gray-500 line-clamp-2 mt-1">{ticket.description}</p>
+                        
+                        {ticket.isTaskTicket && (
+                          <div className="mt-2 flex items-center text-xs text-blue-600">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            <span>Task Ticket</span>
+                            {ticket.equity_points !== undefined && ticket.equity_points > 0 && (
+                              <span className="ml-1">(Equity: {ticket.equity_points}%)</span>
+                            )}
+                          </div>
+                        )}
+                        
+                        {ticket.due_date && (
+                          <div className="mt-2 flex items-center text-xs text-gray-500">
+                            <Clock className="h-3 w-3 mr-1" />
+                            <span>Due: {formatDate(ticket.due_date)}</span>
+                          </div>
+                        )}
+                        
+                        <div className="mt-2 flex justify-end">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-5 w-5 p-0" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTicketClick(ticket);
+                            }}
+                          >
+                            <MoreHorizontal className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        );
+      })}
     </div>
   );
 };
