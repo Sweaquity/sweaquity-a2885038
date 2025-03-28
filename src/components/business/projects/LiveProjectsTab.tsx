@@ -199,11 +199,12 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
 
       {reviewTask && (
         <TaskCompletionReview
-          businessId={businessId}
           task={reviewTask}
           open={isReviewOpen}
           setOpen={setIsReviewOpen}
           onClose={handleReviewClose}
+          onReviewComplete={() => loadTicketsData()}
+          businessId={businessId}
         />
       )}
     </div>

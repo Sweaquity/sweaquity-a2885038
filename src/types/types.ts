@@ -7,7 +7,7 @@ export interface Ticket {
   status: string;
   priority: string;
   health: string; // Make health required to match BetaTicket requirement
-  assignee?: string;
+  assigned_to?: string;
   created_by: string; // Make required to fix TypeScript error
   created_at: string; // Make required to fix TypeScript error
   project_id: string;

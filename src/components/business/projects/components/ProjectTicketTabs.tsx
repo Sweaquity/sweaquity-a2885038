@@ -13,7 +13,7 @@ interface ProjectTicketTabsProps {
   showGantt: boolean;
   onRefresh: () => void;
   onTicketAction: (ticketId: string, action: string, data: any) => Promise<void>;
-  onLogTime: (ticketId: string) => void;
+  onLogTime: (ticketId: string, hours: number, description: string) => Promise<void>;
   renderTicketActions: (ticket: Ticket) => React.ReactNode;
   businessId: string;
 }
@@ -50,9 +50,11 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
     return onTicketAction(ticketId, action, data);
   };
   
-  // Wrapper for log time to accept all required parameters
-  const handleLogTime = async (ticketId: string, hours: number, description: string) => {
-    onLogTime(ticketId);
+  // Adapt the handler to match the expected interface
+  const handleLogTime = (ticketId: string) => {
+    // This is just a stub that will call the actual onLogTime with default values
+    // The actual time logging UI will collect hours and description from the user
+    onLogTime(ticketId, 0, "");
   };
 
   return (
