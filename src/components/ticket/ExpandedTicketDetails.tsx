@@ -61,8 +61,8 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   onClose,
   onTicketAction = async () => {},
   onLogTime,
-  userCanEditStatus = false,
-  userCanEditDates = false
+  userCanEditStatus = true,
+  userCanEditDates = true
 }) => {
   const [activeTab, setActiveTab] = useState("details");
   const [newNote, setNewNote] = useState("");
