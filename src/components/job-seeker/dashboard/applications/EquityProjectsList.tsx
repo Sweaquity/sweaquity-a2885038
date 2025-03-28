@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,48 +23,68 @@ export const EquityProjectsList = ({
   const { userSkills, getMatchedSkills } = useUserSkills();
   const [processedApplications, setProcessedApplications] = useState<JobApplication[]>([]);
 
-  useEffect(() => {
-    // Process applications to determine if they are equity projects
-    const processApplications = async () => {
-      const processed = await Promise.all(applications.map(async (app) => {
-        if (app.accepted_jobs) {
-          // It's already marked as an equity project with accepted_jobs data
-          return { ...app, is_equity_project: true };
-        }
+  // Process applications to determine if they are equity projects
+  const processApplications = useCallback(async () => {
+    if (applications.length === 0) {
+      setProcessedApplications([]);
+      return;
+    }
+    
+    try {
+      // Get application IDs for querying
+      const appIds = applications.map(app => app.job_app_id);
+      
+      // Fetch equity data from accepted_jobs
+      const { data: acceptedJobsData, error } = await supabase
+        .from('accepted_jobs')
+        .select('job_app_id, equity_agreed, jobs_equity_allocated')
+        .in('job_app_id', appIds);
+      
+      if (error) {
+        console.error("Error fetching equity data:", error);
+        setProcessedApplications([]);
+        return;
+      }
+      
+      // Process each application
+      const processed = applications.map(app => {
+        // Find the matching accepted job data
+        const jobData = acceptedJobsData?.find(job => job.job_app_id === app.job_app_id);
         
-        // Check if there's an accepted_jobs entry for this application
-        try {
-          const { data, error } = await supabase
-            .from('accepted_jobs')
-            .select('equity_agreed, jobs_equity_allocated')
-            .eq('job_app_id', app.job_app_id)
-            .single();
-            
-          if (error) {
-            console.error("Error checking for equity data:", error);
-            return { ...app, is_equity_project: false };
-          }
-          
-          return { 
-            ...app, 
-            is_equity_project: true,
-            accepted_jobs: data
-          };
-        } catch (err) {
-          console.error("Error processing application:", err);
+        if (!jobData) {
           return { ...app, is_equity_project: false };
         }
-      }));
+        
+        // Mark as completed equity project if all equity has been allocated
+        const isCompleted = jobData.jobs_equity_allocated > 0 && 
+                          jobData.equity_agreed > 0 && 
+                          jobData.jobs_equity_allocated >= jobData.equity_agreed;
+                          
+        // Only include in the completed list if it matches the isCompleted prop value
+        if (isCompleted === isCompleted) {
+          return {
+            ...app,
+            is_equity_project: true,
+            accepted_jobs: {
+              equity_agreed: jobData.equity_agreed || 0,
+              jobs_equity_allocated: jobData.jobs_equity_allocated || 0
+            }
+          };
+        }
+        
+        return { ...app, is_equity_project: false };
+      });
       
-      setProcessedApplications(processed);
-    };
-    
-    if (applications.length > 0) {
-      processApplications();
-    } else {
+      setProcessedApplications(processed.filter(app => app.is_equity_project));
+    } catch (err) {
+      console.error("Error processing applications:", err);
       setProcessedApplications([]);
     }
-  }, [applications]);
+  }, [applications, isCompleted]);
+
+  useEffect(() => {
+    processApplications();
+  }, [applications, processApplications]);
 
   const filteredApplications = processedApplications.filter((application) => {
     if (!searchTerm) return true;

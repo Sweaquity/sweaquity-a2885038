@@ -14,7 +14,6 @@ interface SkillRequirement {
 }
 
 interface Task {
-  id: string;
   task_id: string;
   title: string;
   description: string;
@@ -52,7 +51,7 @@ export const ProjectsSection = () => {
 
   const loadProjectsData = async () => {
     const projectsData = await loadProjects();
-    setProjects(projectsData);
+    setProjects(projectsData as Project[]);
   };
 
   const handleProjectCreated = (newProject: Project) => {

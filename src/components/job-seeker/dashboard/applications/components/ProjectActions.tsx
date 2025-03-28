@@ -16,7 +16,10 @@ export const ProjectActions = ({ application, onSendMessage }: ProjectActionsPro
   
   const handleViewProject = () => {
     if (application.task_id) {
-      navigate(`/seeker/dashboard/project/${application.task_id}`, { state: { application }});
+      // Navigate to the project details page with the application as state
+      navigate(`/seeker/dashboard/project/${application.task_id}`, { 
+        state: { application }
+      });
     } else {
       toast.error("Project details not available");
     }
