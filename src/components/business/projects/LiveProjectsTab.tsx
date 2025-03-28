@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     const ticketsData = await loadTickets(businessId, selectedProject);
     setTickets(ticketsData);
     
+    // Calculate ticket stats
     const stats = {
       total: ticketsData.length,
       open: ticketsData.filter(t => t.status !== 'done' && t.status !== 'closed').length,
@@ -73,6 +75,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
 
   const handleTicketAction = async (ticketId: string, action: string, data: any) => {
     if (action === 'reviewCompletion') {
+      // Find the ticket to review
       const ticket = tickets.find(t => t.id === ticketId);
       if (ticket) {
         setReviewTask(ticket);
@@ -128,12 +131,13 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   const handleReviewClose = () => {
     setIsReviewOpen(false);
     setReviewTask(null);
+    // Reload tickets to reflect changes
     loadTicketsData();
   };
 
   const renderTicketActions = (ticket: Ticket) => {
-    if ((ticket.status === 'review' || ticket.status === 'in review') && 
-        ticket.completion_percentage === 100) {
+    // Only show review action for business users and if the ticket is in review status
+    if (ticket.status === 'review' || ticket.status === 'in review') {
       return (
         <Button
           variant="outline"
@@ -184,7 +188,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         onLogTime={handleLogTime}
         renderTicketActions={renderTicketActions}
         businessId={businessId}
-        showTimeTracking={false}
       />
 
       <CreateTicketDialog

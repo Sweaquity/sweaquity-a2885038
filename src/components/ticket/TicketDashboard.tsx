@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Table,
@@ -35,8 +36,6 @@ interface TicketDashboardProps {
   userId: string;
   onLogTime?: (ticketId: string) => void;
   renderTicketActions?: (ticket: Ticket) => React.ReactNode;
-  userCanEditDates?: boolean;
-  userCanEditStatus?: boolean;
 }
 
 export const TicketDashboard: React.FC<TicketDashboardProps> = ({
@@ -46,9 +45,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   showTimeTracking = false,
   userId,
   onLogTime,
-  renderTicketActions,
-  userCanEditDates = false,
-  userCanEditStatus = false
+  renderTicketActions
 }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
@@ -189,23 +186,6 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         return "Beta Test";
       default:
         return type.charAt(0).toUpperCase() + type.slice(1);
-    }
-  };
-
-  const renderHours = (ticket: Ticket) => {
-    const logged = ticket.hours_logged || 0;
-    const estimated = ticket.estimated_hours || 0;
-    
-    return (
-      <div className="text-xs text-gray-500">
-        <span className="font-medium">{logged.toFixed(1)}</span> / <span>{estimated.toFixed(1)}</span> hrs
-      </div>
-    );
-  };
-
-  const openTimeLogDialog = (ticketId: string) => {
-    if (onLogTime) {
-      onLogTime(ticketId);
     }
   };
 
@@ -359,7 +339,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                     </TableCell>
                     {showTimeTracking && (
                       <TableCell>
-                        {renderHours(ticket)}
+                        {ticket.estimated_hours || 0} / {ticket.hours_logged || 0} hrs
                       </TableCell>
                     )}
                     <TableCell>{formatDate(ticket.due_date)}</TableCell>
@@ -377,7 +357,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => openTimeLogDialog(ticket.id)}
+                            onClick={() => onLogTime(ticket.id)}
                           >
                             Log Time
                           </Button>
@@ -404,18 +384,14 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-4xl">
           {selectedTicket && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-auto p-6">
-                <ExpandedTicketDetails
-                  ticket={selectedTicket}
-                  onClose={() => setSelectedTicket(null)}
-                  onTicketAction={handleTicketAction}
-                  onLogTime={showTimeTracking ? openTimeLogDialog : undefined}
-                  userCanEditStatus={userCanEditStatus}
-                  userCanEditDates={userCanEditDates}
-                />
-              </div>
-            </div>
+            <ExpandedTicketDetails
+              ticket={selectedTicket}
+              onClose={() => setIsDialogOpen(false)}
+              onTicketAction={onTicketAction}
+              onLogTime={showTimeTracking && onLogTime ? onLogTime : undefined}
+              userCanEditStatus={true}
+              userCanEditDates={true}
+            />
           )}
         </DialogContent>
       </Dialog>

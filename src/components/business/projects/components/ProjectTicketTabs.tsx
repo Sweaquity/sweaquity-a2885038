@@ -16,7 +16,6 @@ interface ProjectTicketTabsProps {
   onLogTime: (ticketId: string, hours: number, description: string) => Promise<void>;
   renderTicketActions: (ticket: Ticket) => React.ReactNode;
   businessId: string;
-  showTimeTracking?: boolean;
 }
 
 export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
@@ -29,8 +28,7 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
   onTicketAction,
   onLogTime,
   renderTicketActions,
-  businessId,
-  showTimeTracking = true
+  businessId
 }) => {
   const getActiveTickets = () => {
     if (!tickets) return [];
@@ -93,12 +91,10 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
             initialTickets={getActiveTickets()}
             onRefresh={onRefresh}
             onTicketAction={handleTicketAction}
-            showTimeTracking={showTimeTracking}
+            showTimeTracking={true}
             userId={businessId || ''}
             onLogTime={handleLogTime}
             renderTicketActions={renderTicketActions}
-            userCanEditDates={true}
-            userCanEditStatus={true}
           />
         )}
       </TabsContent>
