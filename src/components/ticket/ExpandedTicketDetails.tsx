@@ -41,6 +41,21 @@ interface ExpandedTicketDetailsProps {
   userCanEditDates?: boolean;
 }
 
+const statusOptions = [
+  { value: "new", label: "New" },
+  { value: "in-progress", label: "In Progress" },
+  { value: "blocked", label: "Blocked" },
+  { value: "review", label: "Review" },
+  { value: "done", label: "Done" },
+  { value: "closed", label: "Closed" },
+];
+
+const priorityOptions = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+];
+
 export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   ticket,
   onClose,
@@ -64,8 +79,6 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   const [isLoadingTimeEntries, setIsLoadingTimeEntries] = useState(false);
   const [timeEntriesError, setTimeEntriesError] = useState<string | null>(null);
 
-  // Status and priority options remain the same as in the original code
-
   useEffect(() => {
     if (ticket.id) {
       fetchTimeEntries(ticket.id);
@@ -78,7 +91,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
     try {
       const { data, error } = await supabase
         .from('time_entries')
-        .select('*, profiles:user_id(first_name, last_name, email)')
+        .select('*, profiles(first_name, last_name, email)')
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: false });
         
@@ -376,7 +389,6 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
           </div>
         </TabsContent>
 
-        // Modify the Time Log TabsContent section
         <TabsContent value="time-log" className="space-y-4">
           <div className="bg-gray-50 p-4 rounded-md border mb-4">
             <p className="text-sm text-gray-500 mb-2">
