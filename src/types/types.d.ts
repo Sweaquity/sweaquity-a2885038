@@ -1,7 +1,7 @@
 export interface Ticket {
   id: string;
   title: string;
-  description: string;
+  description: string; // Required field
   status: string;
   priority: string;
   reporter?: string;
@@ -32,8 +32,10 @@ export interface Ticket {
   completion_percentage?: number;
   estimated_hours?: number;
   hours_logged?: number;
-  type?: string;
+  type?: string; // Added type property
+  // Legacy property to ensure backward compatibility:
   ticket_type?: string;
+  // Add attachments property:
   attachments?: string[];
 }
 

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -770,67 +771,6 @@ const SweaquityDashboard = () => {
           </div>
         </div>
         
-        
-          
-            
-              
-            
-              
-                
-              
-                
-                  
-                
-                  
-                
-              
-            
-          
-          
-            
-              
-                
-              
-                
-              
-            
-          
-          
-            
-              
-                
-              
-                
-              
-            
-          
-        
-        
-          
-            
-              
-                
-              
-                
-                  
-                
-              
-            
-          
-        
-        
-          
-            
-              
-                
-              
-                
-                  
-                
-              
-            
-          
-        
         <div className="border-t pt-4 flex flex-wrap gap-4">
           <div>
             <Label htmlFor={`status-${ticket.id}`} className="text-xs block mb-1">Update Status</Label>
@@ -919,11 +859,8 @@ const SweaquityDashboard = () => {
     );
   };
 
-  
-
   return (
     <div className="p-6 max-w-7xl mx-auto min-h-screen">
-      
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">Sweaquity Admin Dashboard</h1>
@@ -935,7 +872,6 @@ const SweaquityDashboard = () => {
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
-        
         <TabsList className="mb-4">
           <TabsTrigger value="overview">Platform Overview</TabsTrigger>
           <TabsTrigger value="tickets">Beta Testing</TabsTrigger>
@@ -947,4 +883,278 @@ const SweaquityDashboard = () => {
             <StatCard 
               title="Total Users" 
               value={appStats.totalUsers} 
-              icon={<Users className="h-8 w-8 text-blue-500" />}
+              icon={<Users className="h-8 w-8 text-blue-500" />} 
+              isLoading={isLoading}
+            />
+            <StatCard 
+              title="Total Businesses" 
+              value={appStats.totalBusinesses} 
+              icon={<Building className="h-8 w-8 text-purple-500" />} 
+              isLoading={isLoading}
+            />
+            <StatCard 
+              title="Total Projects" 
+              value={appStats.totalProjects} 
+              icon={<Briefcase className="h-8 w-8 text-green-500" />} 
+              isLoading={isLoading}
+            />
+            <StatCard 
+              title="Total Applications" 
+              value={appStats.totalApplications} 
+              icon={<FileText className="h-8 w-8 text-amber-500" />} 
+              isLoading={isLoading}
+            />
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Application Status</CardTitle>
+                <CardDescription>Current distribution of job applications</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={[
+                    { name: 'Pending', value: appStats.pendingApplications },
+                    { name: 'Accepted', value: appStats.acceptedApplications },
+                    { name: 'Withdrawn', value: appStats.withdrawnApplications },
+                    { name: 'Rejected', value: appStats.rejectedApplications }
+                  ]}>
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <RechartsTooltip />
+                    <Bar dataKey="value" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Task Completion</CardTitle>
+                <CardDescription>Progress on project tasks</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={[
+                    { name: 'Open Tasks', value: appStats.openTasks },
+                    { name: 'Completed Tasks', value: appStats.completedTasks }
+                  ]}>
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <RechartsTooltip />
+                    <Bar dataKey="value" fill="#82ca9d" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="tickets">
+          <Card className="mb-6">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>Beta Testing Tickets</CardTitle>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowKanban(!showKanban)}
+                  >
+                    {showKanban ? "Hide" : "Show"} Kanban Board
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowGantt(!showGantt)}
+                  >
+                    {showGantt ? "Hide" : "Show"} Gantt Chart
+                  </Button>
+                </div>
+              </div>
+              <CardDescription>Manage beta testing feedback and issues</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-xs font-medium text-blue-600">Total Tickets</p>
+                      <p className="text-2xl font-bold">{ticketStats.totalTickets}</p>
+                    </div>
+                    <div className="p-1.5 bg-blue-100 rounded-full">
+                      <FileText className="h-5 w-5 text-blue-500" />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-amber-50 p-4 rounded-lg">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-xs font-medium text-amber-600">Open Tickets</p>
+                      <p className="text-2xl font-bold">{ticketStats.openTickets}</p>
+                    </div>
+                    <div className="p-1.5 bg-amber-100 rounded-full">
+                      <Clock className="h-5 w-5 text-amber-500" />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-xs font-medium text-green-600">Closed Tickets</p>
+                      <p className="text-2xl font-bold">{ticketStats.closedTickets}</p>
+                    </div>
+                    <div className="p-1.5 bg-green-100 rounded-full">
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-red-50 p-4 rounded-lg">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-xs font-medium text-red-600">High Priority</p>
+                      <p className="text-2xl font-bold">{ticketStats.highPriorityTickets}</p>
+                    </div>
+                    <div className="p-1.5 bg-red-100 rounded-full">
+                      <AlertTriangle className="h-5 w-5 text-red-500" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {showKanban && (
+                <div className="mb-8">
+                  <h3 className="text-lg font-medium mb-4">Ticket Board</h3>
+                  <div className="border rounded-lg overflow-hidden">
+                    <DragDropContext onDragEnd={(result) => {
+                      const kanban = KanbanBoard();
+                      return kanban.props.onDragEnd(result);
+                    }}>
+                      <KanbanBoard />
+                    </DragDropContext>
+                  </div>
+                </div>
+              )}
+              
+              {showGantt && (
+                <div className="mb-8">
+                  <h3 className="text-lg font-medium mb-4">Timeline</h3>
+                  <div className="border rounded-lg overflow-hidden p-4">
+                    <GanttChartView tasks={getGanttTasks()} />
+                  </div>
+                </div>
+              )}
+              
+              <div>
+                <h3 className="text-lg font-medium mb-4">All Tickets</h3>
+                <Table className="w-full">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[250px]">Title</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Due Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {betaTickets.map(ticket => (
+                      <React.Fragment key={ticket.id}>
+                        <TableRow className="group">
+                          <TableCell className="font-medium">{ticket.title}</TableCell>
+                          <TableCell>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              ticket.status === 'new' ? 'bg-blue-100 text-blue-800' :
+                              ticket.status === 'in-progress' ? 'bg-purple-100 text-purple-800' :
+                              ticket.status === 'blocked' ? 'bg-red-100 text-red-800' :
+                              ticket.status === 'review' ? 'bg-yellow-100 text-yellow-800' :
+                              ticket.status === 'done' ? 'bg-green-100 text-green-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {ticket.status}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              ticket.priority === 'high' ? 'bg-red-100 text-red-800' :
+                              ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {ticket.priority}
+                            </span>
+                          </TableCell>
+                          <TableCell>{formatDate(ticket.created_at)}</TableCell>
+                          <TableCell>{ticket.due_date ? formatDate(ticket.due_date) : '-'}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleTicketExpanded(ticket.id)}
+                            >
+                              {ticket.expanded ? 'Collapse' : 'Expand'}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {ticket.expanded && (
+                          <TableRow>
+                            <TableCell colSpan={6} className="p-0 border-t-0">
+                              <ExpandedTicketDetails ticket={ticket} />
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <AdminTicketManager />
+        </TabsContent>
+        
+        <TabsContent value="applications">
+          <Card>
+            <CardHeader>
+              <CardTitle>Application Management</CardTitle>
+              <CardDescription>Manage job applications across the platform</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground mb-8">This section is under development.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+      
+      <Dialog open={replyDialogOpen} onOpenChange={setReplyDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Reply to Reporter</DialogTitle>
+            <DialogDescription>
+              Your message will be sent to the user who reported this issue.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <Textarea
+              placeholder="Write your reply here..."
+              value={replyMessage}
+              onChange={(e) => setReplyMessage(e.target.value)}
+              className="min-h-[150px]"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReplyDialogOpen(false)}>Cancel</Button>
+            <Button onClick={sendReplyToReporter}>Send Reply</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default SweaquityDashboard;
