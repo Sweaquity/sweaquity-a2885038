@@ -9,6 +9,8 @@ import { useApplicationActions } from "@/components/job-seeker/dashboard/applica
 import { RejectApplicationDialog } from "./applications/RejectApplicationDialog";
 import { AcceptJobDialog } from "./applications/AcceptJobDialog";
 import { useAcceptedJobs } from "@/hooks/useAcceptedJobs";
+import { ApplicationsTable } from "./applications/ApplicationsTable";
+import { ActiveProjectsTable } from "./applications/ActiveProjectsTable";
 import { PendingApplicationsTable } from "./applications/tables/PendingApplicationsTable";
 import { ActiveApplicationsTable } from "./applications/tables/ActiveApplicationsTable";
 import { WithdrawnApplicationsTable } from "./applications/tables/WithdrawnApplicationsTable";
@@ -27,12 +29,17 @@ export const ProjectApplicationsSection = () => {
   const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
   const [acceptJobDialogOpen, setAcceptJobDialogOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
+  const [activeTab, setActiveTab] = useState("pending");
   const { isUpdatingStatus, updateApplicationStatus } = useApplicationActions(() => {
     loadProjectsWithApplications();
   });
   const { acceptJobAsBusiness, isLoading: isAcceptingJobLoading } = useAcceptedJobs(() => {
     window.location.reload();
   });
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+  };
 
   useEffect(() => {
     loadProjectsWithApplications();
@@ -470,15 +477,18 @@ export const ProjectApplicationsSection = () => {
     <Card>
       <CardHeader>
         <h2 className="text-lg font-semibold">Project Applications</h2>
+        <p className="text-muted-foreground">
+          Applications received for your projects. Review applications, negotiate between parties, agree accepted terms.
+        </p>
       </CardHeader>
       <CardContent>
         {projects.length === 0 ? (
           <p className="text-muted-foreground text-center p-4">No projects found.</p>
         ) : (
-          <Tabs defaultValue="pending" className="space-y-4">
-            <TabsList className="grid grid-cols-4 gap-2">
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
+            <TabsList>
               <TabsTrigger value="pending" className="relative">
-                Pending Applications ({pendingApplications.length})
+                Pending
                 {newApplicationsCount > 0 && (
                   <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
                     {newApplicationsCount}
@@ -486,54 +496,64 @@ export const ProjectApplicationsSection = () => {
                 )}
               </TabsTrigger>
               <TabsTrigger value="active" className="relative">
-                Active Projects ({activeApplications.length})
+                Active Projects
                 {newMessagesCount > 0 && (
                   <Badge className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 rounded-full">
                     {newMessagesCount}
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="withdrawn">
-                Withdrawn ({withdrawnApplications.length})
-              </TabsTrigger>
-              <TabsTrigger value="rejected">
-                Rejected ({rejectedApplications.length})
-              </TabsTrigger>
+              <TabsTrigger value="completed">Completed</TabsTrigger>
+              <TabsTrigger value="withdrawn">Withdrawn</TabsTrigger>
+              <TabsTrigger value="rejected">Rejected</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="pending" className="space-y-4">
+            <TabsContent value="pending" className="py-4">
               {pendingApplications.length === 0 ? (
                 <p className="text-muted-foreground text-center p-4">No pending applications found.</p>
               ) : (
-                <PendingApplicationsTable 
-                  applications={pendingApplications}
-                  expandedApplications={expandedApplications}
-                  toggleApplicationExpanded={toggleApplicationExpanded}
-                  handleStatusChange={handleStatusChange}
-                  isUpdatingStatus={isUpdatingStatus}
-                />
+                <>
+                  <ApplicationsTable status="pending" />
+                  <PendingApplicationsTable 
+                    applications={pendingApplications}
+                    expandedApplications={expandedApplications}
+                    toggleApplicationExpanded={toggleApplicationExpanded}
+                    handleStatusChange={handleStatusChange}
+                    isUpdatingStatus={isUpdatingStatus}
+                  />
+                </>
               )}
             </TabsContent>
 
-            <TabsContent value="active" className="space-y-4">
+            <TabsContent value="active" className="py-4">
               {activeApplications.length === 0 ? (
                 <p className="text-muted-foreground text-center p-4">No active projects found.</p>
               ) : (
-                <ActiveApplicationsTable 
-                  applications={activeApplications}
-                  expandedApplications={expandedApplications}
-                  toggleApplicationExpanded={toggleApplicationExpanded}
-                  handleStatusChange={handleStatusChange}
-                  isUpdatingStatus={isUpdatingStatus}
-                  onApplicationUpdate={() => loadProjectsWithApplications()}
-                  openAcceptJobDialog={openAcceptJobDialog}
-                  handleAcceptJob={handleAcceptJob}
-                  isAcceptingJobLoading={isAcceptingJobLoading}
-                />
+                <>
+                  <p className="text-muted-foreground mb-4">
+                    When both users (jobseeker and business) agree on the terms both are required to 'accept terms' which will then allow the user to work on the tasks and as the tasks are completed the equity allocation is reviewed in the Live Projects tab.
+                  </p>
+                  <ActiveProjectsTable status="active" />
+                  <ActiveApplicationsTable 
+                    applications={activeApplications}
+                    expandedApplications={expandedApplications}
+                    toggleApplicationExpanded={toggleApplicationExpanded}
+                    handleStatusChange={handleStatusChange}
+                    isUpdatingStatus={isUpdatingStatus}
+                    onApplicationUpdate={() => loadProjectsWithApplications()}
+                    openAcceptJobDialog={openAcceptJobDialog}
+                    handleAcceptJob={handleAcceptJob}
+                    isAcceptingJobLoading={isAcceptingJobLoading}
+                  />
+                </>
               )}
             </TabsContent>
 
-            <TabsContent value="withdrawn" className="space-y-4">
+            <TabsContent value="completed" className="py-4">
+              <ApplicationsTable status="completed" />
+            </TabsContent>
+
+            <TabsContent value="withdrawn" className="py-4">
               {withdrawnApplications.length === 0 ? (
                 <p className="text-muted-foreground text-center p-4">No withdrawn applications found.</p>
               ) : (
@@ -547,7 +567,7 @@ export const ProjectApplicationsSection = () => {
               )}
             </TabsContent>
 
-            <TabsContent value="rejected" className="space-y-4">
+            <TabsContent value="rejected" className="py-4">
               {rejectedApplications.length === 0 ? (
                 <p className="text-muted-foreground text-center p-4">No rejected applications found.</p>
               ) : (
