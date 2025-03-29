@@ -1,4 +1,3 @@
-
 import { Application } from "@/types/business";
 import { JobApplication } from "@/types/jobSeeker";
 
@@ -46,3 +45,26 @@ export function convertApplicationToJobApplication(application: Application): Jo
     }
   };
 }
+
+export const resolveApplicationForDisplay = (application: any): JobApplication => {
+  const result = convertApplicationToJobApplication(application);
+
+  // Update this part to handle skill requirements properly
+  if (application.business_roles && application.business_roles.skill_requirements) {
+    const reqSkills = application.business_roles.skill_requirements;
+    
+    if (Array.isArray(reqSkills)) {
+      // Convert all skill requirements to strings for consistency
+      const skillStrings = reqSkills.map(skill => {
+        if (typeof skill === 'string') return skill;
+        if (skill && typeof skill === 'object' && 'skill' in skill) return skill.skill;
+        if (skill && typeof skill === 'object' && 'name' in skill) return skill.name;
+        return '';
+      }).filter(Boolean);
+      
+      result.business_roles.skill_requirements = skillStrings;
+    }
+  }
+  
+  return result as JobApplication;
+};

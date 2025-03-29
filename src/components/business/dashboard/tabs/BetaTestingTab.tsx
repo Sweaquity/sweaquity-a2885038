@@ -34,6 +34,7 @@ export const BetaTestingTab = () => {
   });
   const [reviewTask, setReviewTask] = useState<any>(null);
   const [isCompletionReviewOpen, setIsCompletionReviewOpen] = useState(false);
+  const [expandedTickets, setExpandedTickets] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -207,6 +208,13 @@ export const BetaTestingTab = () => {
     toast.info("Create ticket functionality will be implemented soon");
   };
 
+  const toggleTicketExpansion = (ticketId: string) => {
+    setExpandedTickets(prev => ({
+      ...prev,
+      [ticketId]: !prev[ticketId]
+    }));
+  };
+
   if (!userId) {
     return <div>Loading...</div>;
   }
@@ -295,7 +303,9 @@ export const BetaTestingTab = () => {
             onRefresh={handleRefresh}
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
-            userId={userId}
+            userId={userId || ''}
+            expandedTickets={expandedTickets}
+            toggleTicketExpansion={toggleTicketExpansion}
           />
         </TabsContent>
         
@@ -305,7 +315,9 @@ export const BetaTestingTab = () => {
             onRefresh={handleRefresh}
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
-            userId={userId}
+            userId={userId || ''}
+            expandedTickets={expandedTickets}
+            toggleTicketExpansion={toggleTicketExpansion}
           />
         </TabsContent>
         
@@ -315,7 +327,9 @@ export const BetaTestingTab = () => {
             onRefresh={handleRefresh}
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
-            userId={userId}
+            userId={userId || ''}
+            expandedTickets={expandedTickets}
+            toggleTicketExpansion={toggleTicketExpansion}
           />
         </TabsContent>
         

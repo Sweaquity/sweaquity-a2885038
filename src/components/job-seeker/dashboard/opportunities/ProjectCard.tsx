@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,7 +54,7 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
     }
     
     const matchCount = userSkillStrings.filter(skill => 
-      taskSkills.includes(skill.toLowerCase())
+      typeof skill === 'string' && taskSkills.includes(skill.toLowerCase())
     ).length;
     
     return {
@@ -91,9 +90,8 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
   
   const matchedSkills = projectSkills.filter(skill => 
     userSkillStrings.some(userSkill => 
-      (typeof userSkill === 'string' ? userSkill.toLowerCase() : 
-       (userSkill.name || userSkill.skill || '').toLowerCase())
-       .includes(skill.toLowerCase())
+      typeof userSkill === 'string' && typeof skill === 'string' && 
+      userSkill.toLowerCase().includes(skill.toLowerCase())
     )
   );
 

@@ -1,120 +1,78 @@
-
-import { useState } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Skill } from "@/types/jobSeeker";
-import { toast } from "sonner";
-import { PlusCircle } from "lucide-react";
-import { SkillBadge } from "@/components/job-seeker/dashboard/SkillBadge";
 
 interface SkillsCardProps {
-  skills: Skill[];
-  onSkillsUpdate: (skills: Skill[]) => void;
+  skills: Skill[] | string[];
+  maxSkills?: number;
+  viewAll?: boolean;
+  onEdit?: () => void;
+  onViewAllSkills?: () => void;
+  title?: string;
 }
 
-export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
-  const [newSkill, setNewSkill] = useState("");
-  const [skillLevel, setSkillLevel] = useState<"Beginner" | "Intermediate" | "Expert">("Intermediate");
-
-  const addSkill = () => {
-    if (newSkill.trim() === "") {
-      toast.error("Please enter a skill name");
-      return;
+export const SkillsCard = ({ skills, maxSkills = 4, viewAll = false, onEdit, title = "Skills" }: SkillsCardProps) => {
+  const displayedSkills = viewAll ? skills : skills.slice(0, maxSkills);
+  const hasMoreSkills = !viewAll && skills.length > maxSkills;
+  
+  const getSkillText = (skill: any) => {
+    if (typeof skill === 'string') return skill;
+    if (skill && typeof skill === 'object') {
+      return skill.skill || skill.name || '';
     }
-
-    // Check if skill already exists
-    if (skills.some((s) => {
-      const skillName = 'skill' in s ? s.skill : 'name' in s ? s.name : '';
-      return skillName.toLowerCase() === newSkill.toLowerCase();
-    })) {
-      toast.error("This skill already exists in your profile");
-      return;
+    return '';
+  };
+  
+  const getSkillLevel = (skill: any) => {
+    if (typeof skill === 'object' && skill !== null) {
+      return skill.level || '';
     }
-
-    // Add the new skill
-    const updatedSkills = [...skills, { skill: newSkill, level: skillLevel }];
-    onSkillsUpdate(updatedSkills as Skill[]);
-    setNewSkill("");
-  };
-
-  const removeSkill = (skillToRemove: string) => {
-    const updatedSkills = skills.filter((s) => {
-      const skillName = 'skill' in s ? s.skill : 'name' in s ? s.name : '';
-      return skillName !== skillToRemove;
-    });
-    onSkillsUpdate(updatedSkills);
-  };
-
-  const updateSkillLevel = (skillName: string, newLevel: "Beginner" | "Intermediate" | "Expert") => {
-    const updatedSkills = skills.map((s) => {
-      const currentSkillName = 'skill' in s ? s.skill : 'name' in s ? s.name : '';
-      return currentSkillName === skillName ? { ...s, level: newLevel } : s;
-    });
-    onSkillsUpdate(updatedSkills);
+    return '';
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Skills</CardTitle>
+    <Card className="h-full">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-xl">{title}</CardTitle>
+        {onEdit && (
+          <Button variant="outline" size="sm" onClick={onEdit}>
+            Edit
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {skills.map((skill) => {
-              const skillName = 'skill' in skill ? skill.skill : 'name' in skill ? skill.name : '';
-              return (
-                <SkillBadge
-                  key={skillName}
-                  skill={skill}
-                  onRemove={() => removeSkill(skillName)}
-                  onLevelChange={(level) => updateSkillLevel(skillName, level)}
-                />
-              );
-            })}
-            {skills.length === 0 && (
-              <p className="text-sm text-muted-foreground">No skills added yet.</p>
-            )}
+        {skills.length === 0 ? (
+          <div className="text-center py-4 text-muted-foreground">
+            <p>No skills added yet</p>
           </div>
-
-          {/* Single form for adding new skills */}
-          <div className="grid grid-cols-12 gap-2">
-            <div className="col-span-12 sm:col-span-5">
-              <Input
-                placeholder="Add a new skill"
-                value={newSkill}
-                onChange={(e) => setNewSkill(e.target.value)}
-                className="w-full"
-              />
+        ) : (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {displayedSkills.map((skill, index) => (
+                <Badge 
+                  key={index} 
+                  variant="secondary"
+                  className="px-2 py-1 text-sm bg-primary-50 text-primary-700 hover:bg-primary-100"
+                >
+                  {getSkillText(skill)} {getSkillLevel(skill) && `(${getSkillLevel(skill)})`}
+                </Badge>
+              ))}
             </div>
-            <div className="col-span-8 sm:col-span-4">
-              <Select
-                value={skillLevel}
-                onValueChange={(value) => setSkillLevel(value as "Beginner" | "Intermediate" | "Expert")}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Skill level" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Beginner">Beginner</SelectItem>
-                  <SelectItem value="Intermediate">Intermediate</SelectItem>
-                  <SelectItem value="Expert">Expert</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="col-span-4 sm:col-span-3">
+            
+            {hasMoreSkills && (
               <Button 
-                onClick={addSkill} 
-                type="button" 
-                className="w-full"
+                variant="ghost" 
+                size="sm" 
+                className="mt-2 text-muted-foreground"
+                onClick={() => onViewAllSkills && onViewAllSkills()}
               >
-                <PlusCircle className="h-4 w-4 mr-1" /> Add
+                +{skills.length - maxSkills} more
               </Button>
-            </div>
-          </div>
-        </div>
+            )}
+          </>
+        )}
       </CardContent>
     </Card>
   );
