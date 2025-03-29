@@ -41,7 +41,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const [showGantt, setShowGantt] = useState(false);
   const [isTimeLogDialogOpen, setIsTimeLogDialogOpen] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
-  const [expandedTickets, setExpandedTickets] = useState<Set<string>>(new Set());
+  const [expandedTickets, setExpandedTickets] = useState<string[]>([]);
 
   useEffect(() => {
     if (userId) {
@@ -366,13 +366,11 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
 
   const toggleTicketExpansion = (ticketId: string) => {
     setExpandedTickets(prevExpandedTickets => {
-      const newSet = new Set(prevExpandedTickets);
-      if (newSet.has(ticketId)) {
-        newSet.delete(ticketId);
+      if (prevExpandedTickets.includes(ticketId)) {
+        return prevExpandedTickets.filter(id => id !== ticketId);
       } else {
-        newSet.add(ticketId);
+        return [...prevExpandedTickets, ticketId];
       }
-      return newSet;
     });
   };
 
