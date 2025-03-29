@@ -491,22 +491,24 @@ const SweaquityDashboard = () => {
           if (attachments.length > 0) {
             console.log("Ticket attachments found:", attachments);
             
-            if (!attachments[0].startsWith('http')) {
-              attachments = attachments.map((url: string) => {
-                let filePath = url;
-                if (url.includes('ticket-attachments/')) {
-                  filePath = url.split('ticket-attachments/')[1];
-                }
+            attachments = attachments.map((url: string) => {
+              if (url.startsWith('http')) {
+                return url;
+              }
+              
+              let filePath = url;
+              if (url.includes('ticket-attachments/')) {
+                filePath = url.split('ticket-attachments/')[1];
+              }
+              
+              const { data: { publicUrl } } = supabase
+                .storage
+                .from('ticket-attachments')
+                .getPublicUrl(filePath);
                 
-                const { data: { publicUrl } } = supabase
-                  .storage
-                  .from('ticket-attachments')
-                  .getPublicUrl(filePath);
-                  
-                console.log(`Converting ${url} to ${publicUrl}`);
-                return publicUrl;
-              });
-            }
+              console.log(`Converting ${url} to ${publicUrl}`);
+              return publicUrl;
+            });
           }
           
           return {
@@ -738,14 +740,9 @@ const SweaquityDashboard = () => {
             )}
           </div>
           
-          {(ticket.ticket_type === 'beta_testing' || ticket.attachments) && (
+          {ticket.attachments && ticket.attachments.length > 0 && (
             <div>
-              <TicketAttachment 
-                attachments={ticket.attachments || []} 
-                ticketId={ticket.id}
-                projectId={ticket.project_id}
-                businessId={ticket.reporter}
-              />
+              <TicketAttachment attachments={ticket.attachments} />
             </div>
           )}
         </div>
@@ -1010,7 +1007,7 @@ const SweaquityDashboard = () => {
                   <p className="text-sm font-medium text-gray-500">High Priority</p>
                   <p className="text-3xl font-bold text-red-500">{ticketStats.highPriorityTickets}</p>
                 </div>
-              </Card>
+              </CardContent>
             </Card>
           </div>
           
