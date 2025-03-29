@@ -116,20 +116,9 @@ export function BetaTestingButton() {
     setScreenshotPreviews(screenshotPreviews.filter((_, i) => i !== index));
   };
 
-  const captureScreenshot = async () => {
-    try {
-      toast.info("Taking screenshot... Please use the file upload for now.");
-      setIsOpen(false);
-      setTimeout(() => {
-        setIsOpen(true);
-        toast.info("Please use the file upload to attach screenshots for now.");
-      }, 500);
-    } catch (error) {
-      console.error("Error capturing screenshot:", error);
-      toast.error("Failed to capture screenshot");
-    }
-  };
-
+  // Remove screen capture function as it's not implemented correctly
+  // We'll just hide the button for now
+  
   const handleSubmit = async () => {
     if (!description.trim()) {
       toast.error("Please describe the error you encountered");
@@ -161,7 +150,8 @@ export function BetaTestingButton() {
           ticket_type: 'beta_testing',
           notes: [],
           replies: [],
-          task_id: selectedSubTaskId || null // Use task_id instead of project_sub_tasks or project_sub_task_id
+          task_id: selectedSubTaskId || null,
+          project_id: '1ec133ba-26d6-4112-8e44-f0b67ddc8fb4'  // Set the Sweaquity project ID
         })
         .select('id')
         .single();
@@ -175,7 +165,7 @@ export function BetaTestingButton() {
         const uploadPromises = screenshots.map(async (file, index) => {
           const fileExt = file.name.split('.').pop();
           const fileName = `${ticketData.id}_${index}.${fileExt}`;
-          const filePath = `beta-screenshots/${fileName}`;
+          const filePath = `${fileName}`;
           
           const { error: uploadError } = await supabase
             .storage
@@ -212,7 +202,7 @@ export function BetaTestingButton() {
         }
       }
       
-      toast.success("Thank you for reporting this issue! Your feedback helps us improve.");
+      toast.success("Thank you for reporting this issue! Your feedback helps us improve the platform and earns you equity.");
       setDescription('');
       setErrorLocation('');
       setSeverity('medium');
@@ -244,7 +234,7 @@ export function BetaTestingButton() {
             </Button>
           </TooltipTrigger>
           <TooltipContent className="max-w-xs">
-            <p>By reporting errors you can earn equity in Sweaquity (if they then get fixed)</p>
+            <p>Reporting Beta Issues earns equity in the Sweaquity project. Take a screenshot before reporting the issue.</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -255,7 +245,7 @@ export function BetaTestingButton() {
             <DialogTitle>Report Beta Testing Issue</DialogTitle>
             <DialogDescription>
               Reporting beta testing errors will earn you equity in Sweaquity. 
-              Your feedback is valuable for improving our platform.
+              Please attach a screenshot of the issue if possible.
             </DialogDescription>
           </DialogHeader>
           
@@ -333,15 +323,7 @@ export function BetaTestingButton() {
                   <Upload className="mr-2 h-4 w-4" />
                   Upload Files
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  onClick={captureScreenshot}
-                >
-                  <Camera className="mr-2 h-4 w-4" />
-                  Capture Screen
-                </Button>
+                {/* Removed Capture Screen button as it's not implemented correctly */}
                 <input
                   ref={fileInputRef}
                   type="file"
