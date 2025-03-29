@@ -201,7 +201,6 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         showTimeTracking={false}
         expandedTickets={expandedTickets}
         toggleTicketExpansion={toggleTicketExpansion}
-        hideTaskEditButtons={true} // Add this prop to hide task edit/delete buttons
       />
 
       <CreateTicketDialog

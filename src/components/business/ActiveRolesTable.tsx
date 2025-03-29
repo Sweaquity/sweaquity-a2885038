@@ -10,12 +10,10 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Edit, Trash, ExternalLink, Users } from "lucide-react";
+import { ChevronDown, ChevronUp, Edit, Trash, ExternalLink } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Link } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
-import { useEffect } from "react";
 
 interface ActiveRolesTableProps {
   project: any;
@@ -24,8 +22,6 @@ interface ActiveRolesTableProps {
 export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
-  const [projectApplicationsCount, setProjectApplicationsCount] = useState<number>(0);
-  const [taskApplicationsCounts, setTaskApplicationsCounts] = useState<Record<string, number>>({});
 
   const toggleProject = (projectId: string) => {
     setExpandedProjects(prev => {
@@ -51,87 +47,19 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
     });
   };
 
-  // Fetch project applications count
-  useEffect(() => {
-    const fetchProjectApplicationsCount = async () => {
-      if (!project.project_id) return;
-      
-      try {
-        const { count, error } = await supabase
-          .from('job_applications')
-          .select('*', { count: 'exact', head: true })
-          .eq('project_id', project.project_id || project.id);
-          
-        if (error) throw error;
-        setProjectApplicationsCount(count || 0);
-      } catch (error) {
-        console.error('Error fetching project applications count:', error);
-      }
-    };
-    
-    fetchProjectApplicationsCount();
-  }, [project.project_id, project.id]);
-
-  // Fetch task applications counts
-  useEffect(() => {
-    const fetchTaskApplicationsCounts = async () => {
-      if (!project.tasks || !project.tasks.length) return;
-      
-      try {
-        const taskIds = project.tasks.map((task: any) => task.id || task.task_id).filter(Boolean);
-        const counts: Record<string, number> = {};
-        
-        for (const taskId of taskIds) {
-          const { count, error } = await supabase
-            .from('job_applications')
-            .select('*', { count: 'exact', head: true })
-            .eq('task_id', taskId);
-            
-          if (error) throw error;
-          counts[taskId] = count || 0;
-        }
-        
-        setTaskApplicationsCounts(counts);
-      } catch (error) {
-        console.error('Error fetching task applications counts:', error);
-      }
-    };
-    
-    fetchTaskApplicationsCounts();
-  }, [project.tasks]);
-
   return (
     <div className="space-y-4">
       <Card className="border rounded-lg overflow-hidden">
         <div className="border-b cursor-pointer" onClick={() => toggleProject(project.project_id || project.id)}>
           <div className="p-4 flex flex-col md:flex-row justify-between">
             <div className="flex-1">
-              <div className="flex items-center">
-                <Link 
-                  to={`/projects/${project.project_id || project.id}`}
-                  className="text-blue-600 hover:underline text-lg font-medium"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {project.title}
-                </Link>
-                
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link 
-                      to={`/business/dashboard?tab=applications&project=${project.project_id || project.id}`}
-                      className="ml-2 flex items-center text-blue-600"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Users className="h-4 w-4 mr-1" />
-                      <span className="text-sm">{projectApplicationsCount}</span>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>View all applications for this project</p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-              
+              <Link 
+                to={`/projects/${project.project_id || project.id}`}
+                className="text-blue-600 hover:underline text-lg font-medium"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {project.title}
+              </Link>
               <div className="flex items-center flex-wrap text-muted-foreground text-sm mt-1">
                 <span className="mr-4">Status: {project.status || "Active"}</span>
                 <span>Timeframe: {project.project_timeframe || project.timeframe || 'Not specified'}</span>
@@ -262,46 +190,52 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
                     <div className="border-b cursor-pointer" onClick={() => toggleTask(task.id || task.task_id)}>
                       <div className="p-3 flex justify-between items-start">
                         <div>
-                          <div className="flex items-center">
-                            <div className="font-medium">{task.title}</div>
-                            
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Link 
-                                  to={`/business/dashboard?tab=applications&task=${task.id || task.task_id}`}
-                                  className="ml-2 flex items-center text-blue-600"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Users className="h-4 w-4 mr-1" />
-                                  <span className="text-sm">{taskApplicationsCounts[task.id || task.task_id] || 0}</span>
-                                </Link>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>View all applications for this task</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </div>
-                          
+                          <div className="font-medium">{task.title}</div>
                           <div className="flex items-center text-xs text-muted-foreground mt-1">
                             <Badge variant="outline" className="mr-2">{task.status}</Badge>
                             <span>Timeframe: {task.timeframe || 'Not specified'}</span>
                           </div>
                         </div>
                         
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleTask(task.id || task.task_id);
-                          }}
-                        >
-                          {expandedTasks.has(task.id || task.task_id) ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
-                        </Button>
+                        <div className="flex items-center space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Edit task logic would go here
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Delete task logic would go here
+                            }}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                          
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleTask(task.id || task.task_id);
+                            }}
+                          >
+                            {expandedTasks.has(task.id || task.task_id) ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     </div>
                     

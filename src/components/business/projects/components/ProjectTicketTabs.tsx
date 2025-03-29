@@ -19,7 +19,6 @@ interface ProjectTicketTabsProps {
   showTimeTracking?: boolean;
   expandedTickets?: Set<string>;
   toggleTicketExpansion?: (ticketId: string) => void;
-  hideTaskEditButtons?: boolean;
 }
 
 export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
@@ -35,8 +34,7 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
   businessId,
   showTimeTracking = true, // Default to true for backward compatibility
   expandedTickets = new Set<string>(),
-  toggleTicketExpansion = () => {},
-  hideTaskEditButtons = false // New prop to hide edit/delete buttons for tasks
+  toggleTicketExpansion = () => {}
 }) => {
   const getActiveTickets = () => {
     if (!tickets) return [];
@@ -105,7 +103,6 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
             renderTicketActions={renderTicketActions}
             expandedTickets={expandedTickets}
             toggleTicketExpansion={toggleTicketExpansion}
-            hideTaskEditButtons={hideTaskEditButtons}
           />
         )}
       </TabsContent>

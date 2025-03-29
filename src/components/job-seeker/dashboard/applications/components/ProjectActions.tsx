@@ -16,14 +16,15 @@ export const ProjectActions = ({ application, onSendMessage }: ProjectActionsPro
   
   const handleViewProject = () => {
     if (application.project_id) {
-      // Navigate to the project details page using project_id
-      navigate(`/projects/${application.project_id}`);
-    } else if (application.business_roles?.project_id) {
-      // Try to get project ID from business_roles if available
-      navigate(`/projects/${application.business_roles.project_id}`);
+      // Navigate to the main project details page using project_id
+      navigate(`/projects/${application.project_id}`, { 
+        state: { application }
+      });
     } else if (application.task_id) {
       // Fallback to the task ID if project ID isn't available
-      navigate(`/projects/${application.task_id}`);
+      navigate(`/projects/${application.task_id}`, { 
+        state: { application }
+      });
     } else {
       toast.error("Project details not available");
     }
