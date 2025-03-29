@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { Ticket } from "@/types/types";
+import { Ticket, TicketMessage } from "@/types/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -152,14 +152,10 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
         </div>
       </div>
 
-      {/* Show ticket attachments if available */}
-      {(ticket.ticket_type === 'beta_testing' || ticket.attachments) && (
+      {/* Show ticket attachments if this is a beta testing ticket */}
+      {ticket.ticket_type === 'beta_testing' && ticket.attachments && ticket.attachments.length > 0 && (
         <div className="mt-4 border-t pt-4">
-          <TicketAttachment 
-            attachments={ticket.attachments || []} 
-            ticketId={ticket.id}
-            projectId={ticket.project_id}
-          />
+          <TicketAttachment attachments={ticket.attachments} />
         </div>
       )}
 
@@ -167,7 +163,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
         <div className="border-t pt-4">
           <h3 className="text-lg font-medium mb-3">Notes</h3>
           <div className="space-y-3">
-            {ticket.notes.map((note, index) => (
+            {ticket.notes.map((note: TicketMessage, index: number) => (
               <div key={index} className="bg-gray-50 p-3 rounded-md">
                 <div className="flex justify-between items-start mb-1">
                   <span className="font-medium">{note.user}</span>

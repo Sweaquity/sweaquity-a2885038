@@ -23,7 +23,6 @@ import { Input } from "@/components/ui/input";
 import { AdminTicketManager } from "@/components/admin/tickets/AdminTicketManager";
 import { Task, TaskType, KanbanColumn, DragResult, ApplicationStats } from "@/types/dashboard";
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { TicketAttachment } from "@/components/ticket/TicketAttachment";
 
 interface BetaTicket {
   id: string;
@@ -250,11 +249,13 @@ const SweaquityDashboard = () => {
         ? `${userData.first_name} ${userData.last_name || ''}`
         : userData?.email || user.email || 'Unknown User';
       
+      // Create the user_messages table if it doesn't exist
       const { error: tableCheckError } = await supabase
         .from('user_messages')
         .select('id', { count: 'exact', head: true });
       
       if (tableCheckError) {
+        // Create the user_messages table if it doesn't exist
         const { error: createTableError } = await supabase.rpc('create_messages_table_if_not_exists');
         if (createTableError) {
           console.error("Error creating messages table:", createTableError);
@@ -263,6 +264,7 @@ const SweaquityDashboard = () => {
         }
       }
       
+      // Send a message to the reporter
       const { error: messageError } = await supabase
         .from('user_messages')
         .insert({
@@ -281,6 +283,7 @@ const SweaquityDashboard = () => {
         toast.success("Reply sent to reporter's dashboard");
       }
       
+      // Also update the ticket notes for history tracking
       const { data: ticketData, error: fetchError } = await supabase
         .from('tickets')
         .select('notes')
@@ -487,36 +490,11 @@ const SweaquityDashboard = () => {
             reporterEmail = profileData?.email;
           }
           
-          let attachments = ticket.attachments || [];
-          if (attachments.length > 0) {
-            console.log("Ticket attachments found:", attachments);
-            
-            attachments = attachments.map((url: string) => {
-              if (url.startsWith('http')) {
-                return url;
-              }
-              
-              let filePath = url;
-              if (url.includes('ticket-attachments/')) {
-                filePath = url.split('ticket-attachments/')[1];
-              }
-              
-              const { data: { publicUrl } } = supabase
-                .storage
-                .from('ticket-attachments')
-                .getPublicUrl(filePath);
-                
-              console.log(`Converting ${url} to ${publicUrl}`);
-              return publicUrl;
-            });
-          }
-          
           return {
             ...ticket,
             reporter_email: reporterEmail,
             expanded: false,
-            newNote: '',
-            attachments: attachments
+            newNote: ''
           };
         })
       );
@@ -742,7 +720,28 @@ const SweaquityDashboard = () => {
           
           {ticket.attachments && ticket.attachments.length > 0 && (
             <div>
-              <TicketAttachment attachments={ticket.attachments} />
+              <p className="text-sm font-medium mb-2">Screenshots ({ticket.attachments.length})</p>
+              <div className="grid grid-cols-2 gap-2">
+                {ticket.attachments.map((url, i) => (
+                  <div key={i} className="relative group border rounded overflow-hidden h-36">
+                    <img 
+                      src={url} 
+                      alt={`Screenshot ${i+1}`} 
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-white"
+                        onClick={() => window.open(url, '_blank')}
+                      >
+                        View Full
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -770,6 +769,67 @@ const SweaquityDashboard = () => {
             )}
           </div>
         </div>
+        
+        
+          
+            
+              
+            
+              
+                
+              
+                
+                  
+                
+                  
+                
+              
+            
+          
+          
+            
+              
+                
+              
+                
+              
+            
+          
+          
+            
+              
+                
+              
+                
+              
+            
+          
+        
+        
+          
+            
+              
+                
+              
+                
+                  
+                
+              
+            
+          
+        
+        
+          
+            
+              
+                
+              
+                
+                  
+                
+              
+            
+          
         
         <div className="border-t pt-4 flex flex-wrap gap-4">
           <div>
@@ -859,6 +919,8 @@ const SweaquityDashboard = () => {
     );
   };
 
+  
+
   return (
     <div className="p-6 max-w-7xl mx-auto min-h-screen">
       
@@ -886,319 +948,3 @@ const SweaquityDashboard = () => {
               title="Total Users" 
               value={appStats.totalUsers} 
               icon={<Users className="h-8 w-8 text-blue-500" />}
-              isLoading={isLoading}
-            />
-            <StatCard 
-              title="Total Businesses" 
-              value={appStats.totalBusinesses} 
-              icon={<Building className="h-8 w-8 text-green-500" />}
-              isLoading={isLoading}
-            />
-            <StatCard 
-              title="Total Projects" 
-              value={appStats.totalProjects} 
-              icon={<FileText className="h-8 w-8 text-purple-500" />}
-              isLoading={isLoading}
-            />
-            <StatCard 
-              title="Total Applications" 
-              value={appStats.totalApplications}
-              icon={<Briefcase className="h-8 w-8 text-yellow-500" />}
-              isLoading={isLoading}
-            />
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Application Statistics</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={[
-                        {
-                          name: 'Applications',
-                          pending: appStats.pendingApplications,
-                          accepted: appStats.acceptedApplications,
-                          rejected: appStats.rejectedApplications,
-                          withdrawn: appStats.withdrawnApplications
-                        }
-                      ]}
-                      layout="vertical"
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <XAxis type="number" />
-                      <YAxis type="category" dataKey="name" />
-                      <RechartsTooltip />
-                      <Legend />
-                      <Bar dataKey="pending" name="Pending" fill="#f59e0b" />
-                      <Bar dataKey="accepted" name="Accepted" fill="#10b981" />
-                      <Bar dataKey="rejected" name="Rejected" fill="#ef4444" />
-                      <Bar dataKey="withdrawn" name="Withdrawn" fill="#6b7280" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Task Statistics</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={[
-                        {
-                          name: 'Tasks',
-                          open: appStats.openTasks,
-                          completed: appStats.completedTasks
-                        }
-                      ]}
-                      layout="vertical"
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <XAxis type="number" />
-                      <YAxis type="category" dataKey="name" />
-                      <RechartsTooltip />
-                      <Legend />
-                      <Bar dataKey="open" name="Open" fill="#3b82f6" />
-                      <Bar dataKey="completed" name="Completed" fill="#10b981" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="tickets">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex flex-col items-center">
-                  <p className="text-sm font-medium text-gray-500">Total Tickets</p>
-                  <p className="text-3xl font-bold">{ticketStats.totalTickets}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex flex-col items-center">
-                  <p className="text-sm font-medium text-gray-500">Open Tickets</p>
-                  <p className="text-3xl font-bold text-blue-500">{ticketStats.openTickets}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex flex-col items-center">
-                  <p className="text-sm font-medium text-gray-500">Closed Tickets</p>
-                  <p className="text-3xl font-bold text-green-500">{ticketStats.closedTickets}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex flex-col items-center">
-                  <p className="text-sm font-medium text-gray-500">High Priority</p>
-                  <p className="text-3xl font-bold text-red-500">{ticketStats.highPriorityTickets}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="flex gap-2 mb-4">
-            <Button
-              variant={showKanban ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowKanban(!showKanban)}
-            >
-              {showKanban ? "Hide" : "Show"} Kanban Board
-            </Button>
-            <Button
-              variant={showGantt ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowGantt(!showGantt)}
-            >
-              {showGantt ? "Hide" : "Show"} Gantt Chart
-            </Button>
-          </div>
-          
-          {showKanban && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>Kanban Board</CardTitle>
-                <CardDescription>Drag and drop tickets to change their status</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {betaTickets.length > 0 ? (
-                  <KanbanBoard />
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">No beta testing tickets available</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-          
-          {showGantt && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>Gantt Chart</CardTitle>
-                <CardDescription>Visualize ticket timelines</CardDescription>
-              </CardHeader>
-              <CardContent className="h-[400px]">
-                {betaTickets.length > 0 ? (
-                  <GanttChartView tasks={getGanttTasks()} />
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">No beta testing tickets available</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Beta Testing Tickets</CardTitle>
-                <CardDescription>Manage and respond to beta testing tickets</CardDescription>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleRefreshData}
-                disabled={isLoading}
-              >
-                {isLoading ? "Loading..." : "Refresh"}
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {betaTickets.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Reported</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {betaTickets.map(ticket => (
-                      <React.Fragment key={ticket.id}>
-                        <TableRow>
-                          <TableCell>
-                            <div className="font-medium">{ticket.title}</div>
-                            <div className="text-sm text-muted-foreground truncate max-w-[400px]">
-                              {ticket.description?.substring(0, 100)}
-                              {ticket.description?.length > 100 ? '...' : ''}
-                            </div>
-                            {ticket.attachments && ticket.attachments.length > 0 && (
-                              <div className="mt-1">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                  {ticket.attachments.length} attachment{ticket.attachments.length !== 1 ? 's' : ''}
-                                </span>
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                              ${
-                                ticket.status === 'new' ? 'bg-blue-100 text-blue-800' :
-                                ticket.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
-                                ticket.status === 'blocked' ? 'bg-red-100 text-red-800' :
-                                ticket.status === 'review' ? 'bg-purple-100 text-purple-800' :
-                                ticket.status === 'done' || ticket.status === 'closed' ? 'bg-green-100 text-green-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`
-                            }>
-                              {ticket.status}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                              ${
-                                ticket.priority === 'high' ? 'bg-red-100 text-red-800' :
-                                ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-blue-100 text-blue-800'
-                              }`
-                            }>
-                              {ticket.priority}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {formatDate(ticket.created_at)}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toggleTicketExpanded(ticket.id)}
-                            >
-                              {ticket.expanded ? 'Hide Details' : 'View Details'}
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                        {ticket.expanded && (
-                          <TableRow>
-                            <TableCell colSpan={5}>
-                              <ExpandedTicketDetails ticket={ticket} />
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="text-center py-8">
-                  <AlertTriangle className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No beta testing tickets found</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="applications">
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">Application management will be implemented soon.</p>
-          </div>
-        </TabsContent>
-      </Tabs>
-      
-      <Dialog open={replyDialogOpen} onOpenChange={setReplyDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reply to Reporter</DialogTitle>
-            <DialogDescription>
-              Your message will be sent to the reporter's dashboard and recorded in the ticket history.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <Textarea
-            placeholder="Enter your reply message..."
-            className="min-h-[150px]"
-            value={replyMessage}
-            onChange={(e) => setReplyMessage(e.target.value)}
-          />
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReplyDialogOpen(false)}>Cancel</Button>
-            <Button onClick={sendReplyToReporter}>Send Reply</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
-
-export default SweaquityDashboard;
