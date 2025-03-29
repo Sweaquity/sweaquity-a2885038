@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -251,13 +250,11 @@ const SweaquityDashboard = () => {
         ? `${userData.first_name} ${userData.last_name || ''}`
         : userData?.email || user.email || 'Unknown User';
       
-      // Create the user_messages table if it doesn't exist
       const { error: tableCheckError } = await supabase
         .from('user_messages')
         .select('id', { count: 'exact', head: true });
       
       if (tableCheckError) {
-        // Create the user_messages table if it doesn't exist
         const { error: createTableError } = await supabase.rpc('create_messages_table_if_not_exists');
         if (createTableError) {
           console.error("Error creating messages table:", createTableError);
@@ -266,7 +263,6 @@ const SweaquityDashboard = () => {
         }
       }
       
-      // Send a message to the reporter
       const { error: messageError } = await supabase
         .from('user_messages')
         .insert({
@@ -285,7 +281,6 @@ const SweaquityDashboard = () => {
         toast.success("Reply sent to reporter's dashboard");
       }
       
-      // Also update the ticket notes for history tracking
       const { data: ticketData, error: fetchError } = await supabase
         .from('tickets')
         .select('notes')
@@ -492,11 +487,36 @@ const SweaquityDashboard = () => {
             reporterEmail = profileData?.email;
           }
           
+          let attachments = ticket.attachments || [];
+          if (attachments.length > 0) {
+            console.log("Ticket attachments found:", attachments);
+            
+            attachments = attachments.map((url: string) => {
+              if (url.startsWith('http')) {
+                return url;
+              }
+              
+              let filePath = url;
+              if (url.includes('ticket-attachments/')) {
+                filePath = url.split('ticket-attachments/')[1];
+              }
+              
+              const { data: { publicUrl } } = supabase
+                .storage
+                .from('ticket-attachments')
+                .getPublicUrl(filePath);
+                
+              console.log(`Converting ${url} to ${publicUrl}`);
+              return publicUrl;
+            });
+          }
+          
           return {
             ...ticket,
             reporter_email: reporterEmail,
             expanded: false,
-            newNote: ''
+            newNote: '',
+            attachments: attachments
           };
         })
       );
@@ -1034,7 +1054,7 @@ const SweaquityDashboard = () => {
               </CardHeader>
               <CardContent className="h-[400px]">
                 {betaTickets.length > 0 ? (
-                  <GanttChartView tasks={getGanttTasks()} height={350} />
+                  <GanttChartView tasks={getGanttTasks()} />
                 ) : (
                   <div className="text-center py-8">
                     <p className="text-muted-foreground">No beta testing tickets available</p>
@@ -1074,13 +1094,20 @@ const SweaquityDashboard = () => {
                   <TableBody>
                     {betaTickets.map(ticket => (
                       <React.Fragment key={ticket.id}>
-                        <TableRow isExpanded={ticket.expanded}>
+                        <TableRow>
                           <TableCell>
                             <div className="font-medium">{ticket.title}</div>
                             <div className="text-sm text-muted-foreground truncate max-w-[400px]">
                               {ticket.description?.substring(0, 100)}
                               {ticket.description?.length > 100 ? '...' : ''}
                             </div>
+                            {ticket.attachments && ticket.attachments.length > 0 && (
+                              <div className="mt-1">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                  {ticket.attachments.length} attachment{ticket.attachments.length !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
