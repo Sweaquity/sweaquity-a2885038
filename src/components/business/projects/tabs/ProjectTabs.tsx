@@ -1,15 +1,12 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, ChevronDown, ChevronUp, HelpCircle, Edit, Trash } from "lucide-react";
+import { ChevronDown, ChevronUp, Edit, Trash } from "lucide-react";
 import { ProjectForm } from "../ProjectForm";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import { Link } from "react-router-dom";
-import { CardContent } from "@/components/ui/card";
-import { ProjectEditDialog } from "../ProjectEditDialog";
 import { DeleteProjectDialog } from "../../projects/dialogs/DeleteProjectDialog";
 
 interface SkillRequirement {
@@ -68,18 +65,17 @@ export const ProjectTabs = ({
     taskEquityTotal: number,
     agreedEquityTotal: number,
     earnedEquityTotal: number
-  }>>({});
-  
+  }>({});
+
   const [taskEquityStats, setTaskEquityStats] = useState<Record<string, {
     agreedEquity: number,
     earnedEquity: number
-  }>>({});
-  
+  }>({});
+
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
 
-  // Fetch equity statistics for each project
   useEffect(() => {
     const loadEquityStats = async () => {
       const stats: Record<string, {
@@ -95,15 +91,12 @@ export const ProjectTabs = ({
       
       for (const project of projects) {
         try {
-          // Sum task equity
           const taskEquityTotal = project.tasks.reduce(
             (sum, task) => sum + (task.equity_allocation || 0), 0
           );
           
-          // Get job applications for this project - first fetch all tasks
           const taskIds = project.tasks.map(task => task.task_id);
           
-          // Exit early if no tasks
           if (taskIds.length === 0) {
             stats[project.project_id] = {
               taskEquityTotal,
@@ -113,7 +106,6 @@ export const ProjectTabs = ({
             continue;
           }
           
-          // Get all applications for this project's tasks
           const { data: jobApplications, error: appError } = await supabase
             .from('job_applications')
             .select('job_app_id, task_id')
@@ -131,7 +123,6 @@ export const ProjectTabs = ({
               earnedEquityTotal: 0
             };
             
-            // Initialize stats for each task
             for (const task of project.tasks) {
               taskStats[task.task_id] = {
                 agreedEquity: 0,
@@ -142,7 +133,6 @@ export const ProjectTabs = ({
             continue;
           }
           
-          // Create a map of task_id to job_app_ids
           const taskToAppsMap: Record<string, string[]> = {};
           for (const app of jobApplications) {
             if (!taskToAppsMap[app.task_id]) {
@@ -153,7 +143,6 @@ export const ProjectTabs = ({
           
           const jobAppIds = jobApplications.map(app => app.job_app_id);
           
-          // Get accepted jobs data for these applications
           const { data: acceptedJobs, error } = await supabase
             .from('accepted_jobs')
             .select('job_app_id, equity_agreed, jobs_equity_allocated')
@@ -164,7 +153,6 @@ export const ProjectTabs = ({
             continue;
           }
           
-          // Create a map of job_app_id to equity data
           const jobAppToEquityMap: Record<string, { 
             equity_agreed: number, 
             jobs_equity_allocated: number 
@@ -177,28 +165,23 @@ export const ProjectTabs = ({
             };
           }
           
-          // Calculate project level stats
           let projectAgreedEquity = 0;
           let projectEarnedEquity = 0;
-          
-          // Initialize task stats
+
           for (const task of project.tasks) {
             taskStats[task.task_id] = {
               agreedEquity: 0,
               earnedEquity: 0
             };
             
-            // Get applications for this task
             const taskAppIds = taskToAppsMap[task.task_id] || [];
             
-            // Calculate task level stats
             for (const appId of taskAppIds) {
               const equityData = jobAppToEquityMap[appId];
               if (equityData) {
                 taskStats[task.task_id].agreedEquity += equityData.equity_agreed;
                 taskStats[task.task_id].earnedEquity += equityData.jobs_equity_allocated;
                 
-                // Also add to project totals
                 projectAgreedEquity += equityData.equity_agreed;
                 projectEarnedEquity += equityData.jobs_equity_allocated;
               }
@@ -447,31 +430,6 @@ export const ProjectTabs = ({
                                         
                                         <div className="flex items-center space-x-2">
                                           <Button 
-                                            variant="outline" 
-                                            size="sm" 
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              // Edit task functionality
-                                              // This would need to be implemented
-                                            }}
-                                          >
-                                            <Edit className="h-4 w-4" />
-                                          </Button>
-                                          
-                                          <Button 
-                                            variant="outline" 
-                                            size="sm" 
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              // Delete task functionality
-                                              // This would need to be implemented
-                                            }}
-                                            className="text-destructive hover:text-destructive"
-                                          >
-                                            <Trash className="h-4 w-4" />
-                                          </Button>
-                                          
-                                          <Button 
                                             variant="ghost" 
                                             size="sm" 
                                             onClick={(e) => toggleTaskExpanded(task.task_id, e)}
@@ -574,7 +532,7 @@ export const ProjectTabs = ({
           <p className="text-muted-foreground">No completed projects found.</p>
         </TabsContent>
       </Tabs>
-      
+
       {editingProject && (
         <ProjectEditDialog
           project={editingProject}

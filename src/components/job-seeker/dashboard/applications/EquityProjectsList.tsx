@@ -52,7 +52,7 @@ export const EquityProjectsList = ({
         const jobData = acceptedJobsData?.find(job => job.job_app_id === app.job_app_id);
         
         if (!jobData) {
-          return { ...app, is_equity_project: false };
+          return { ...app, is_equity_project: false } as JobApplication;
         }
         
         // Mark as completed equity project if all equity has been allocated
@@ -66,16 +66,20 @@ export const EquityProjectsList = ({
             ...app,
             is_equity_project: true,
             accepted_jobs: {
+              id: app.job_app_id, // Use job_app_id as fallback for id
               equity_agreed: jobData.equity_agreed || 0,
-              jobs_equity_allocated: jobData.jobs_equity_allocated || 0
+              jobs_equity_allocated: jobData.jobs_equity_allocated || 0,
+              date_accepted: "n/a" // Add a fallback for date_accepted
             }
-          };
+          } as JobApplication;
         }
         
-        return { ...app, is_equity_project: false };
+        return { ...app, is_equity_project: false } as JobApplication;
       });
       
-      setProcessedApplications(processed.filter(app => app.is_equity_project));
+      // Filter and cast to JobApplication[]
+      const filteredProcessed = processed.filter(app => app.is_equity_project) as JobApplication[];
+      setProcessedApplications(filteredProcessed);
     } catch (err) {
       console.error("Error processing applications:", err);
       setProcessedApplications([]);
