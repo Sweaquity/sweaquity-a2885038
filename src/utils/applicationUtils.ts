@@ -13,6 +13,26 @@ import { JobApplication } from "@/types/jobSeeker";
  * - business_roles.id: References the task_id (the specific role being applied for)
  */
 export function convertApplicationToJobApplication(application: Application): JobApplication {
+  // Helper function to normalize skill requirements to a consistent format
+  const normalizeSkillRequirements = (skillReqs: any) => {
+    if (!skillReqs) return [];
+    
+    if (Array.isArray(skillReqs)) {
+      return skillReqs.map(req => {
+        if (typeof req === 'string') {
+          return { skill: req, level: "Intermediate" };
+        }
+        // Ensure required properties exist
+        return {
+          skill: req.skill || (req.name || ""),
+          level: req.level || "Intermediate"
+        };
+      });
+    }
+    
+    return [];
+  };
+
   return {
     job_app_id: application.job_app_id,
     user_id: application.user_id,
@@ -27,6 +47,7 @@ export function convertApplicationToJobApplication(application: Application): Jo
     id: application.job_app_id, // Ensure id matches job_app_id for consistency
     accepted_jobseeker: application.accepted_jobseeker || false,
     accepted_business: application.accepted_business || false,
+    // Use helper function to ensure consistent skill requirement format
     business_roles: {
       // The ID here should reference the task_id - this is the specific role/task the applicant is applying for
       id: application.task_id || "",
@@ -34,15 +55,11 @@ export function convertApplicationToJobApplication(application: Application): Jo
       description: application.business_roles?.description || "",
       project_title: application.business_roles?.project?.title || "",
       timeframe: application.business_roles?.timeframe,
-      skill_requirements: Array.isArray(application.business_roles?.skill_requirements) 
-        ? application.business_roles.skill_requirements.map(req => {
-            if (typeof req === 'string') {
-              return { skill: req, level: "Intermediate" };
-            }
-            return req;
-          }) 
-        : [],
+      skill_requirements: normalizeSkillRequirements(application.business_roles?.skill_requirements),
       equity_allocation: application.business_roles?.equity_allocation
-    }
+    },
+    // Add hasEquityData property for type compatibility
+    hasEquityData: Boolean(application.accepted_jobs),
+    accepted_jobs: application.accepted_jobs || null
   };
 }
