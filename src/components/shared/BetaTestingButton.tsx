@@ -202,7 +202,7 @@ export function BetaTestingButton() {
           
           const { error: uploadError } = await supabase
             .storage
-            .from('beta-testing')
+            .from('ticket-attachments')
             .upload(filePath, file);
             
           if (uploadError) {
@@ -212,7 +212,7 @@ export function BetaTestingButton() {
           
           const { data: { publicUrl } } = supabase
             .storage
-            .from('beta-testing')
+            .from('ticket-attachments')
             .getPublicUrl(filePath);
             
           return publicUrl;
