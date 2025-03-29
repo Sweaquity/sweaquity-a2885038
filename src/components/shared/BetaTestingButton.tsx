@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Camera, Upload, X } from "lucide-react";
@@ -196,12 +197,12 @@ export function BetaTestingButton() {
         const uploadPromises = screenshots.map(async (file, index) => {
           const fileExt = file.name.split('.').pop();
           const fileName = `${ticketData.id}_${index}.${fileExt}`;
-          // Updated to use the correct bucket path
+          // Use beta-testing bucket instead of ticket-attachments
           const filePath = `${user.id}/${ticketData.id}/${fileName}`;
           
           const { error: uploadError } = await supabase
             .storage
-            .from('ticket-attachments')
+            .from('beta-testing')
             .upload(filePath, file);
             
           if (uploadError) {
@@ -211,7 +212,7 @@ export function BetaTestingButton() {
           
           const { data: { publicUrl } } = supabase
             .storage
-            .from('ticket-attachments')
+            .from('beta-testing')
             .getPublicUrl(filePath);
             
           return publicUrl;
