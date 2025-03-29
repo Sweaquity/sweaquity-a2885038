@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -339,6 +340,8 @@ export const BetaTestingTab = ({
                 onTicketAction={handleTicketAction}
                 showTimeTracking={userType === 'job_seeker'}
                 userId={userId}
+                expandedTickets={expandedTickets}
+                toggleTicketExpansion={handleToggleTicket}
               />
             </TabsContent>
             
@@ -349,6 +352,8 @@ export const BetaTestingTab = ({
                 onTicketAction={handleTicketAction}
                 showTimeTracking={userType === 'job_seeker'}
                 userId={userId}
+                expandedTickets={expandedTickets}
+                toggleTicketExpansion={handleToggleTicket}
               />
             </TabsContent>
           </>
