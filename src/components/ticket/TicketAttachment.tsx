@@ -1,8 +1,5 @@
-
-import React, { useState } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { X } from "lucide-react";
 
 interface TicketAttachmentProps {
   attachments: string[];
@@ -13,21 +10,9 @@ export const TicketAttachment: React.FC<TicketAttachmentProps> = ({
   attachments,
   onViewAttachment
 }) => {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-
   if (!attachments || attachments.length === 0) {
     return null;
   }
-
-  const handleViewAttachment = (url: string) => {
-    if (onViewAttachment) {
-      onViewAttachment(url);
-    } else {
-      setSelectedImage(url);
-      setIsDialogOpen(true);
-    }
-  };
 
   return (
     <div>
@@ -45,7 +30,7 @@ export const TicketAttachment: React.FC<TicketAttachmentProps> = ({
                 variant="ghost" 
                 size="sm" 
                 className="text-white"
-                onClick={() => handleViewAttachment(url)}
+                onClick={() => onViewAttachment ? onViewAttachment(url) : window.open(url, '_blank')}
               >
                 View Full
               </Button>
@@ -53,30 +38,6 @@ export const TicketAttachment: React.FC<TicketAttachmentProps> = ({
           </div>
         ))}
       </div>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-          <DialogHeader className="flex justify-between items-center">
-            <DialogTitle>Screenshot Preview</DialogTitle>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setIsDialogOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogHeader>
-          {selectedImage && (
-            <div className="flex justify-center items-center">
-              <img 
-                src={selectedImage} 
-                alt="Full screenshot" 
-                className="max-w-full max-h-[70vh]"
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

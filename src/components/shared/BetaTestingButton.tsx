@@ -115,38 +115,40 @@ export function BetaTestingButton() {
     setScreenshotPreviews(screenshotPreviews.filter((_, i) => i !== index));
   };
 
-  // Improved screenshot capture function
+  // Capture screenshot function - simplified to avoid issues
   const captureScreenshot = async () => {
     try {
       setIsCapturingScreenshot(true);
       setIsOpen(false);
       
-      // Wait a bit for the dialog to close
+      // Give UI time to update
       await new Promise(resolve => setTimeout(resolve, 200));
       
-      // Capture the screen
-      const canvas = await html2canvas(document.body);
-      const dataUrl = canvas.toDataURL('image/png');
-      
-      // Convert to File object
-      const blobBin = atob(dataUrl.split(',')[1]);
-      const array = [];
-      for (let i = 0; i < blobBin.length; i++) {
-        array.push(blobBin.charCodeAt(i));
+      try {
+        // Capture the screen
+        const canvas = await html2canvas(document.body);
+        const dataUrl = canvas.toDataURL('image/png');
+        
+        // Convert to File object
+        const blobBin = atob(dataUrl.split(',')[1]);
+        const array = [];
+        for (let i = 0; i < blobBin.length; i++) {
+          array.push(blobBin.charCodeAt(i));
+        }
+        const file = new File([new Uint8Array(array)], 'screenshot.png', {type: 'image/png'});
+        
+        // Add the new screenshot
+        setScreenshots(prev => [...prev, file]);
+        setScreenshotPreviews(prev => [...prev, dataUrl]);
+        
+        // Reopen the dialog
+        setIsOpen(true);
+        toast.success("Screenshot captured successfully!");
+      } catch (error) {
+        console.error("Error capturing screenshot:", error);
+        toast.error("Failed to capture screenshot. Try uploading an image instead.");
+        setIsOpen(true);
       }
-      const file = new File([new Uint8Array(array)], 'screenshot.png', {type: 'image/png'});
-      
-      // Add the new screenshot
-      setScreenshots(prev => [...prev, file]);
-      setScreenshotPreviews(prev => [...prev, dataUrl]);
-      
-      // Reopen the dialog
-      setIsOpen(true);
-      toast.success("Screenshot captured successfully!");
-    } catch (error) {
-      console.error("Error capturing screenshot:", error);
-      toast.error("Failed to capture screenshot");
-      setIsOpen(true);
     } finally {
       setIsCapturingScreenshot(false);
     }
@@ -165,6 +167,15 @@ export function BetaTestingButton() {
       
       if (!user) {
         toast.error("You must be logged in to report errors");
+        return;
+      }
+      
+      // Check if the ticket-attachments bucket exists
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const bucketExists = buckets?.some(bucket => bucket.name === 'ticket-attachments');
+      
+      if (!bucketExists) {
+        toast.error("Storage bucket for attachments is not configured. Please contact support.");
         return;
       }
       
@@ -197,7 +208,6 @@ export function BetaTestingButton() {
         const uploadPromises = screenshots.map(async (file, index) => {
           const fileExt = file.name.split('.').pop();
           const fileName = `${ticketData.id}_${index}.${fileExt}`;
-          // Use beta-testing bucket instead of ticket-attachments
           const filePath = `${user.id}/${ticketData.id}/${fileName}`;
           
           const { error: uploadError } = await supabase
