@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Ticket } from '@/types/types';
 
@@ -202,6 +201,10 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     }
   };
 
+  const hasAttachments = (ticket: Ticket) => {
+    return ticket.attachments && ticket.attachments.length > 0;
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row justify-between gap-4">
@@ -373,6 +376,15 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                             onClick={() => onLogTime(ticket.id)}
                           >
                             Log Time
+                          </Button>
+                        )}
+                        {hasAttachments(ticket) && ticket.ticket_type === 'beta_testing' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openTicketDetails(ticket)}
+                          >
+                            View Attachments
                           </Button>
                         )}
                         {renderTicketActions && renderTicketActions(ticket)}
