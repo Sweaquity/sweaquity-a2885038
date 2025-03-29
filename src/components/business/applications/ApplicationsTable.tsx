@@ -9,7 +9,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { supabase } from '@/lib/supabase';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 
 interface ApplicationsTableProps {
@@ -17,10 +17,12 @@ interface ApplicationsTableProps {
 }
 
 export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [projectFilter, setProjectFilter] = useState<string | null>(searchParams.get('project') || null);
   const [projects, setProjects] = useState<any[]>([]);
   const [applicationCount, setApplicationCount] = useState<number>(0);
+  const [pendingActionCount, setPendingActionCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Fetch available projects for filtering
@@ -53,7 +55,7 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
         // Base query builder
         let query = supabase
           .from('job_applications')
-          .select('job_app_id', { count: 'exact' })
+          .select('job_app_id, status, accepted_business, accepted_jobseeker', { count: 'exact' })
           .eq('status', status);
           
         // Add project filter if selected
@@ -62,7 +64,7 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
         }
         
         // Execute the query
-        const { count, error } = await query;
+        const { data, count, error } = await query;
         
         if (error) {
           console.error('Error fetching application count:', error);
@@ -70,6 +72,17 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
         }
         
         setApplicationCount(count || 0);
+        
+        // Count applications that need business action - they are accepted but business hasn't accepted yet
+        if (status === 'accepted') {
+          const pendingAction = data?.filter(app => 
+            !app.accepted_business && app.accepted_jobseeker
+          ).length || 0;
+          
+          setPendingActionCount(pendingAction);
+        } else {
+          setPendingActionCount(0);
+        }
       } catch (error) {
         console.error('Error counting applications:', error);
       } finally {
@@ -92,6 +105,15 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
     }
     setSearchParams(searchParams);
   };
+  
+  // Navigate to applications list with filter
+  const handleViewApplications = () => {
+    let url = `/business/dashboard?tab=applications&status=${status}`;
+    if (projectFilter) {
+      url += `&project=${projectFilter}`;
+    }
+    navigate(url);
+  };
 
   return (
     <Card>
@@ -103,7 +125,12 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
               : status === 'active' 
                 ? 'Active Applications' 
                 : 'Completed Applications'}
-            <Badge variant="secondary" className="ml-2">{applicationCount}</Badge>
+            <Badge variant="secondary" className="ml-2">
+              {applicationCount}
+              {pendingActionCount > 0 && (
+                <span className="ml-1 text-red-500 font-bold">(+{pendingActionCount} need attention)</span>
+              )}
+            </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
             {status === 'pending' 
@@ -151,7 +178,13 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
         ) : (
           <div className="text-center py-4">
             <p className="text-muted-foreground">
-              Applications will appear here
+              <button 
+                onClick={handleViewApplications}
+                className="text-blue-600 hover:underline"
+              >
+                View {applicationCount} {status} application{applicationCount !== 1 ? 's' : ''}
+                {pendingActionCount > 0 && ` (${pendingActionCount} need attention)`}
+              </button>
             </p>
           </div>
         )}

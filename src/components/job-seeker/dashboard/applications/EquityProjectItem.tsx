@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,8 +9,8 @@ import { Clock, Eye, MessageSquare } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { TooltipProvider } from '@radix-ui/react-tooltip';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
+import { useNavigate } from 'react-router-dom';
 
 export interface EquityProjectItemProps {
   application: JobApplication;
@@ -20,6 +21,7 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
   application, 
   onApplicationUpdated 
 }) => {
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
   const [isWithdrawing, setIsWithdrawing] = useState(false);
@@ -144,9 +146,9 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
   
   const handleViewProject = () => {
     if (application.project_id) {
-      window.location.href = `/projects/${application.project_id}`;
+      navigate(`/projects/${application.project_id}`);
     } else if (application.business_roles?.project_id) {
-      window.location.href = `/projects/${application.business_roles.project_id}`;
+      navigate(`/projects/${application.business_roles.project_id}`);
     } else {
       toast.error("Project details not available");
     }

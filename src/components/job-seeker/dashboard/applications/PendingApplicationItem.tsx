@@ -1,11 +1,13 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { formatDistanceToNow } from 'date-fns';
 import { JobApplication } from '@/types/applications';
 import { Badge } from '@/components/ui/badge';
-import { Lightbulb } from 'lucide-react';
-import { Eye } from 'lucide-react';
+import { Lightbulb, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export interface PendingApplicationItemProps {
   application: JobApplication;
@@ -24,6 +26,7 @@ export const PendingApplicationItem = ({
   getMatchedSkills,
   onApplicationUpdated
 }: PendingApplicationItemProps) => {
+  const navigate = useNavigate();
   const [isAccepting, setIsAccepting] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   
@@ -61,9 +64,9 @@ export const PendingApplicationItem = ({
                      (application.business_roles?.project_id);
     
     if (projectId) {
-      window.location.href = `/projects/${projectId}`;
+      navigate(`/projects/${projectId}`);
     } else {
-      console.error("No project ID available for this application");
+      toast.error("No project ID available for this application");
     }
   };
 
