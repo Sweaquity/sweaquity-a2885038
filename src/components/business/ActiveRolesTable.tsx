@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Edit, Trash, ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronUp, Edit, Trash, ExternalLink, Users } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Link } from "react-router-dom";
@@ -47,19 +47,48 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
     });
   };
 
+  // Mock function for application counts - in a real app, this would fetch from the database
+  const getApplicationCount = (id: string, type: 'project' | 'task') => {
+    // For demonstration purposes, just return a random number between 0 and 5
+    return Math.floor(Math.random() * 6);
+  };
+
   return (
     <div className="space-y-4">
+      <div className="mb-4 text-sm text-muted-foreground">
+        These are the projects with active applications on live projects, and the progress of completion of the projects.
+      </div>
+      
       <Card className="border rounded-lg overflow-hidden">
         <div className="border-b cursor-pointer" onClick={() => toggleProject(project.project_id || project.id)}>
           <div className="p-4 flex flex-col md:flex-row justify-between">
             <div className="flex-1">
-              <Link 
-                to={`/projects/${project.project_id || project.id}`}
-                className="text-blue-600 hover:underline text-lg font-medium"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {project.title}
-              </Link>
+              <div className="flex items-center">
+                <Link 
+                  to={`/projects/${project.project_id || project.id}`}
+                  className="text-blue-600 hover:underline text-lg font-medium"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {project.title}
+                </Link>
+                
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link 
+                      to={`/business/applications?project=${project.project_id || project.id}`}
+                      className="ml-2 flex items-center text-sm text-blue-500 hover:text-blue-700"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Users className="h-4 w-4 mr-1" />
+                      {getApplicationCount(project.project_id || project.id, 'project')}
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">View applications for this project</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              
               <div className="flex items-center flex-wrap text-muted-foreground text-sm mt-1">
                 <span className="mr-4">Status: {project.status || "Active"}</span>
                 <span>Timeframe: {project.project_timeframe || project.timeframe || 'Not specified'}</span>
@@ -190,7 +219,25 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
                     <div className="border-b cursor-pointer" onClick={() => toggleTask(task.id || task.task_id)}>
                       <div className="p-3 flex justify-between items-start">
                         <div>
-                          <div className="font-medium">{task.title}</div>
+                          <div className="flex items-center">
+                            <div className="font-medium">{task.title}</div>
+                            
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Link 
+                                  to={`/business/applications?task=${task.id || task.task_id}`}
+                                  className="ml-2 flex items-center text-sm text-blue-500 hover:text-blue-700"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Users className="h-4 w-4 mr-1" />
+                                  {getApplicationCount(task.id || task.task_id, 'task')}
+                                </Link>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs">View applications for this task</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
                           <div className="flex items-center text-xs text-muted-foreground mt-1">
                             <Badge variant="outline" className="mr-2">{task.status}</Badge>
                             <span>Timeframe: {task.timeframe || 'Not specified'}</span>
@@ -198,29 +245,6 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
                         </div>
                         
                         <div className="flex items-center space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Edit task logic would go here
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Delete task logic would go here
-                            }}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                          
                           <Button 
                             variant="ghost" 
                             size="sm" 
