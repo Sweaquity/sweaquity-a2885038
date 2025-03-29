@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -6,6 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { JobApplication } from '@/types/applications';
 import { Badge } from '@/components/ui/badge';
 import { Lightbulb } from 'lucide-react';
+import { Eye } from 'lucide-react';
 
 export interface PendingApplicationItemProps {
   application: JobApplication;
@@ -56,12 +56,22 @@ export const PendingApplicationItem = ({
     }
   };
   
+  const handleViewProject = () => {
+    const projectId = application.project_id || 
+                     (application.business_roles?.project_id);
+    
+    if (projectId) {
+      window.location.href = `/projects/${projectId}`;
+    } else {
+      console.error("No project ID available for this application");
+    }
+  };
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Recently';
     return formatDistanceToNow(new Date(dateString), { addSuffix: true });
   };
 
-  // Get title from either direct property or business_roles
   const taskTitle = application.task_title || 
                    (application.business_roles?.title || "Untitled Task");
                    
@@ -149,6 +159,17 @@ export const PendingApplicationItem = ({
                 </p>
               </div>
             )}
+            
+            <div className="flex justify-end space-x-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleViewProject}
+              >
+                <Eye className="h-4 w-4 mr-1" />
+                View Project
+              </Button>
+            </div>
           </div>
         )}
       </div>

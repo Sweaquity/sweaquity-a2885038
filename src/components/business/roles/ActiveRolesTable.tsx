@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Edit, Trash, ExternalLink, Users } from "lucide-react";
+import { ChevronDown, ChevronUp, Users } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Link } from "react-router-dom";
@@ -277,10 +277,6 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
 
   return (
     <div className="space-y-4">
-      <div className="mb-4 text-sm text-muted-foreground">
-        These are the projects with active applications on live projects, and the progress of completion of the projects.
-      </div>
-      
       <Card className="border rounded-lg overflow-hidden">
         <div className="border-b cursor-pointer" onClick={() => toggleProject(project.project_id || project.id || '')}>
           <div className="p-4 flex flex-col md:flex-row justify-between">
@@ -384,29 +380,6 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
             </div>
             
             <div className="flex items-start space-x-2 mt-4 md:mt-0">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // Edit project logic would go here
-                }}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // Delete project logic would go here 
-                }}
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash className="h-4 w-4" />
-              </Button>
-              
               <Button 
                 variant="ghost" 
                 size="sm" 

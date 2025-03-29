@@ -341,6 +341,9 @@ const BusinessDashboard = () => {
             <Card>
               <CardHeader>
                 <h2 className="text-lg font-semibold">Active Project Roles</h2>
+                <div className="text-sm text-muted-foreground">
+                  These are the projects with active applications on live projects, and the progress of completion of the projects.
+                </div>
               </CardHeader>
               <CardContent>
                 {projects.length === 0 ? (

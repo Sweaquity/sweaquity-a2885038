@@ -18,6 +18,9 @@ export const ProjectActions = ({ application, onSendMessage }: ProjectActionsPro
     if (application.project_id) {
       // Navigate to the project details page using project_id
       navigate(`/projects/${application.project_id}`);
+    } else if (application.business_roles?.project_id) {
+      // Try to get project_id from business_roles
+      navigate(`/projects/${application.business_roles.project_id}`);
     } else if (application.task_id) {
       // Fallback to the task ID if project ID isn't available
       navigate(`/projects/${application.task_id}`);

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,8 @@ import { Clock, Eye, MessageSquare } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@radix-ui/react-tooltip';
 
 export interface EquityProjectItemProps {
   application: JobApplication;
@@ -32,11 +33,9 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
     estimatedHours: 0
   });
   
-  // Fetch equity and hours data
   useEffect(() => {
     const fetchEquityData = async () => {
       try {
-        // Get equity data from accepted_jobs using job_app_id
         const { data: acceptedJobsData, error: acceptedJobsError } = await supabase
           .from('accepted_jobs')
           .select('equity_agreed, jobs_equity_allocated')
@@ -52,7 +51,6 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
           });
         }
         
-        // Get ticket data using task_id
         const { data: ticketData, error: ticketError } = await supabase
           .from('tickets')
           .select('id, estimated_hours')
@@ -62,7 +60,6 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
         if (ticketError) {
           console.error("Error fetching ticket data:", ticketError);
         } else if (ticketData) {
-          // Get hours logged data from time_entries
           const { data: timeEntries, error: timeEntriesError } = await supabase
             .from('time_entries')
             .select('hours_logged')
@@ -146,15 +143,19 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
   };
   
   const handleViewProject = () => {
-    toast.info("Project view feature is coming soon");
+    if (application.project_id) {
+      window.location.href = `/projects/${application.project_id}`;
+    } else if (application.business_roles?.project_id) {
+      window.location.href = `/projects/${application.business_roles.project_id}`;
+    } else {
+      toast.error("Project details not available");
+    }
   };
   
-  // Calculate percentage of equity earned vs agreed
   const percentageEarned = equityData.equityAgreed > 0 
     ? ((equityData.equityAllocated / equityData.equityAgreed) * 100).toFixed(1) 
     : "0.0";
   
-  // Format for display, showing earned/total
   const equityDisplay = `${equityData.equityAllocated}%/${equityData.equityAgreed}%`;
   const hoursDisplay = `${hoursData.hoursLogged}h/${hoursData.estimatedHours}h`;
   const completionPercentage = application.business_roles?.completion_percentage || 0;
@@ -191,8 +192,19 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
                 <div className="text-sm">{formatTimeframe(application.business_roles?.timeframe)}</div>
               </div>
               <div>
-                <div className="text-xs font-medium">Equity Allocation/Earned</div>
-                <div className="text-sm">{equityDisplay}</div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <div className="text-xs font-medium">Equity Allocated</div>
+                        <div className="text-sm">{equityData.equityAllocated}%</div>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">Equity earned for this task</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
               <div>
                 <div className="text-xs font-medium">Hours Logged/Estimated</div>
@@ -357,4 +369,3 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
     </Card>
   );
 };
-

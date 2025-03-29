@@ -3,7 +3,9 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EquityProject, SubTask } from "@/types/jobSeeker";
-import { Building, ChevronDown, ChevronUp, Clock, CreditCard, Users } from "lucide-react";
+import { Building, ChevronDown, ChevronUp, Clock, CreditCard, Eye, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface ProjectCardProps {
   project: EquityProject;
@@ -13,9 +15,20 @@ interface ProjectCardProps {
 
 export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const navigate = useNavigate();
   
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
+  };
+  
+  const handleViewProject = () => {
+    if (project.project_id) {
+      navigate(`/projects/${project.project_id}`);
+    } else if (project.id) {
+      navigate(`/projects/${project.id}`);
+    } else {
+      toast.error("Project details not available");
+    }
   };
   
   const formatTimeframe = (timeframe: string | undefined) => {
@@ -134,7 +147,13 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
         
         {isExpanded && tasks.length > 0 && (
           <div className="space-y-4 mt-4">
-            <div className="text-sm font-medium">Available Roles</div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-medium">Available Roles</div>
+              <Button variant="outline" size="sm" onClick={handleViewProject}>
+                <Eye className="h-4 w-4 mr-1" />
+                View Project
+              </Button>
+            </div>
             {tasks.map((task) => {
               const skillMatch = getSkillMatch(task);
               
