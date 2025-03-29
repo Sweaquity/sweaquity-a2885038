@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Table,
   TableBody,
@@ -8,10 +8,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Edit, Trash, ExternalLink, Users } from "lucide-react";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 
@@ -21,29 +17,25 @@ interface SkillRequirement {
 }
 
 interface Task {
-  id?: string;
-  task_id?: string;
+  id: string;
   title: string;
-  description?: string;
+  description: string;
   status: string;
   equity_allocation: number;
   equity_earned?: number;
-  equity_agreed?: number;
-  timeframe?: string;
+  timeframe: string;
   skill_requirements: SkillRequirement[];
 }
 
 interface Project {
-  id?: string;
-  project_id?: string;
+  id: string;
   title: string;
-  description?: string;
-  status?: string;
+  description: string;
   equity_allocation: number;
-  project_timeframe?: string;
-  timeframe?: string;
   skills_required: string[];
   tasks: Task[];
+  status?: string;
+  timeframe?: string;
 }
 
 interface ActiveRolesTableProps {
@@ -51,90 +43,12 @@ interface ActiveRolesTableProps {
 }
 
 export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
-  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [tasksWithEarnings, setTasksWithEarnings] = useState<Task[]>(project.tasks);
-  const [applicationCounts, setApplicationCounts] = useState<Record<string, number>>({});
-  const [totalAgreedEquity, setTotalAgreedEquity] = useState<number>(0);
-  const [totalEarnedEquity, setTotalEarnedEquity] = useState<number>(0);
-
-  const toggleProject = (projectId: string) => {
-    setExpandedProjects(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(projectId)) {
-        newSet.delete(projectId);
-      } else {
-        newSet.add(projectId);
-      }
-      return newSet;
-    });
-  };
-
-  const toggleTask = (taskId: string) => {
-    setExpandedTasks(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(taskId)) {
-        newSet.delete(taskId);
-      } else {
-        newSet.add(taskId);
-      }
-      return newSet;
-    });
-  };
-
-  // Fetch application counts from the database
+  
   useEffect(() => {
-    const fetchApplicationCounts = async () => {
-      const projectId = project.project_id || project.id;
-      if (!projectId) return;
-      
-      try {
-        // Fetch project application count
-        const { data: projectApps, error: projectError } = await supabase
-          .from('job_applications')
-          .select('job_app_id')
-          .eq('project_id', projectId);
-          
-        if (projectError) {
-          console.error('Error fetching project applications:', projectError);
-        } else {
-          setApplicationCounts(prev => ({ 
-            ...prev, 
-            [projectId]: projectApps?.length || 0 
-          }));
-        }
-        
-        // Fetch task application counts
-        for (const task of project.tasks) {
-          const taskId = task.id || task.task_id;
-          if (!taskId) continue;
-          
-          const { data: taskApps, error: taskError } = await supabase
-            .from('job_applications')
-            .select('job_app_id')
-            .eq('task_id', taskId);
-            
-          if (taskError) {
-            console.error(`Error fetching applications for task ${taskId}:`, taskError);
-          } else {
-            setApplicationCounts(prev => ({ 
-              ...prev, 
-              [taskId]: taskApps?.length || 0 
-            }));
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching application counts:', error);
-      }
-    };
-    
-    fetchApplicationCounts();
-  }, [project]);
-
-  // Fetch task earnings data from Supabase
-  useEffect(() => {
+    // Fetch earned equity data for each task
     const fetchTaskEarnings = async () => {
-      const taskIds = project.tasks.map(task => task.id || task.task_id).filter(Boolean);
+      const taskIds = project.tasks.map(task => task.id);
       if (taskIds.length === 0) return;
       
       try {
@@ -185,20 +99,13 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
         
         // Join accepted jobs with applications to get task-to-equity mapping
         const taskEquityMap = new Map<string, number>();
-        let totalAgreed = 0;
-        
         applications.forEach(app => {
           const acceptedJob = acceptedJobs?.find(job => job.job_app_id === app.job_app_id);
           if (acceptedJob && app.task_id) {
             // Get tasks with task completion from project_sub_tasks
-            const previousValue = taskEquityMap.get(app.task_id) || 0;
-            const newValue = previousValue + acceptedJob.equity_agreed;
-            taskEquityMap.set(app.task_id, newValue);
-            totalAgreed += acceptedJob.equity_agreed;
+            taskEquityMap.set(app.task_id, acceptedJob.equity_agreed);
           }
         });
-        
-        setTotalAgreedEquity(totalAgreed);
         
         // Get completion percentage for each task
         const { data: subTasks, error: tasksError } = await supabase
@@ -212,18 +119,14 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
         }
         
         // Calculate earned equity based on multiple methods
-        let totalEarned = 0;
         const updatedTasks = project.tasks.map(task => {
-          const taskId = task.id || task.task_id;
-          if (!taskId) return task;
-          
-          const acceptedEquity = taskEquityMap.get(taskId) || 0;
-          const taskData = subTasks?.find(t => t.task_id === taskId);
+          const acceptedEquity = taskEquityMap.get(task.id) || 0;
+          const taskData = subTasks?.find(t => t.task_id === task.id);
           const taskStatus = taskData?.task_status || '';
           const completionPercentage = taskData?.completion_percentage || 0;
           
           // Get relevant ticket for this task
-          const taskTicket = tickets?.find(t => t.task_id === taskId);
+          const taskTicket = tickets?.find(t => t.task_id === task.id);
           const estimatedHours = taskTicket?.estimated_hours || 0;
           
           // Get time entries for this task's ticket
@@ -248,16 +151,12 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
             earnedEquity = acceptedEquity * (completionPercentage / 100);
           }
           
-          totalEarned += earnedEquity;
-          
           return {
             ...task,
-            equity_earned: earnedEquity,
-            equity_agreed: acceptedEquity
+            equity_earned: earnedEquity
           };
         });
         
-        setTotalEarnedEquity(totalEarned);
         setTasksWithEarnings(updatedTasks);
       } catch (error) {
         console.error('Error fetching task earnings data:', error);
@@ -266,14 +165,10 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
     
     fetchTaskEarnings();
   }, [project.tasks]);
-
-  const getApplicationCount = (id: string) => {
-    return applicationCounts[id] || 0;
-  };
-
-  // Calculate totals
-  const totalTaskEquity = project.tasks.reduce((sum, task) => 
-    sum + (task.equity_allocation || 0), 0);
+  
+  const totalClaimedEquity = tasksWithEarnings.reduce((sum, task) => sum + (task.equity_allocation || 0), 0);
+  const totalEarnedEquity = tasksWithEarnings.reduce((sum, task) => sum + (task.equity_earned || 0), 0);
+  const remainingEquity = project.equity_allocation - totalClaimedEquity;
 
   return (
     <div className="space-y-4">
@@ -281,300 +176,126 @@ export const ActiveRolesTable = ({ project }: ActiveRolesTableProps) => {
         These are the projects with active applications on live projects, and the progress of completion of the projects.
       </div>
       
-      <Card className="border rounded-lg overflow-hidden">
-        <div className="border-b cursor-pointer" onClick={() => toggleProject(project.project_id || project.id || '')}>
-          <div className="p-4 flex flex-col md:flex-row justify-between">
-            <div className="flex-1">
-              <div className="flex items-center">
+      {/* Project Level Information */}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[20%]">Project</TableHead>
+            <TableHead className="w-[10%]">Number of Tasks</TableHead>
+            <TableHead className="w-[25%]">Required Skills</TableHead>
+            <TableHead className="w-[10%]">Total Equity</TableHead>
+            <TableHead className="w-[10%]">Equity Offered</TableHead>
+            <TableHead className="w-[10%]">Equity Earned</TableHead>
+            <TableHead className="w-[15%]">Remaining Equity</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell className="font-medium">
+              <div>
                 <Link 
-                  to={`/projects/${project.project_id || project.id}`}
-                  className="text-blue-600 hover:underline text-lg font-medium"
-                  onClick={(e) => e.stopPropagation()}
+                  to={`/projects/${project.id}`}
+                  className="text-blue-600 hover:underline hover:text-blue-800"
                 >
                   {project.title}
                 </Link>
-                
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link 
-                      to={`/business/applications?project=${project.project_id || project.id}`}
-                      className="ml-2 flex items-center text-sm text-blue-500 hover:text-blue-700"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Users className="h-4 w-4 mr-1" />
-                      {getApplicationCount(project.project_id || project.id || '')}
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs">View applications for this project</p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-              
-              <div className="flex items-center flex-wrap text-muted-foreground text-sm mt-1">
-                <span className="mr-4">Status: {project.status || "Active"}</span>
-                <span>Timeframe: {project.project_timeframe || project.timeframe || 'Not specified'}</span>
-              </div>
-              
-              <TooltipProvider>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <div className="text-xs font-medium">Total Equity Offered</div>
-                        <div className="text-sm">{project.equity_allocation}%</div>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="text-xs">Total equity allocation for this project</p>
-                    </TooltipContent>
-                  </Tooltip>
-                  
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <div className="text-xs font-medium">Task Equity</div>
-                        <div className="text-sm">{totalTaskEquity.toFixed(2)}%</div>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="text-xs">Sum of equity allocated to all tasks</p>
-                    </TooltipContent>
-                  </Tooltip>
-                  
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <div className="text-xs font-medium">Agreed Equity</div>
-                        <div className="text-sm">{totalAgreedEquity.toFixed(2)}%</div>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="text-xs">Total equity agreed with job seekers</p>
-                    </TooltipContent>
-                  </Tooltip>
-                  
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <div className="text-xs font-medium">Equity Earned</div>
-                        <div className="text-sm">{totalEarnedEquity.toFixed(2)}%</div>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="text-xs">Equity already earned by job seekers</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </TooltipProvider>
-
-              <div className="mt-2">
-                <div className="text-xs font-medium">Required Skills</div>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {Array.isArray(project.skills_required) && project.skills_required.map((skill: string, index: number) => (
-                    <Badge key={index} variant="outline" className="text-xs">
-                      {skill}
-                    </Badge>
-                  ))}
-                  {(!Array.isArray(project.skills_required) || project.skills_required.length === 0) && (
-                    <span className="text-muted-foreground text-xs">No skills specified</span>
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-start space-x-2 mt-4 md:mt-0">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // Edit project logic would go here
-                }}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // Delete project logic would go here 
-                }}
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash className="h-4 w-4" />
-              </Button>
-              
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleProject(project.project_id || project.id || '');
-                }}
-              >
-                {expandedProjects.has(project.project_id || project.id || '') ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
+                {project.status && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Status: {project.status}
+                  </div>
                 )}
-              </Button>
-            </div>
-          </div>
-        </div>
-        
-        {expandedProjects.has(project.project_id || project.id || '') && (
-          <div className="p-4">
-            <h3 className="text-sm font-medium mb-3">Project Tasks</h3>
-            
-            {tasksWithEarnings.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No tasks available for this project.</p>
-            ) : (
-              <div className="space-y-4">
-                {tasksWithEarnings.map((task: Task) => (
-                  <Card key={task.id || task.task_id} className="overflow-hidden">
-                    <div className="border-b cursor-pointer" onClick={() => toggleTask(task.id || task.task_id || '')}>
-                      <div className="p-3 flex justify-between items-start">
-                        <div>
-                          <div className="flex items-center">
-                            <div className="font-medium">{task.title}</div>
-                            
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Link 
-                                  to={`/business/applications?task=${task.id || task.task_id}`}
-                                  className="ml-2 flex items-center text-sm text-blue-500 hover:text-blue-700"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Users className="h-4 w-4 mr-1" />
-                                  {getApplicationCount(task.id || task.task_id || '')}
-                                </Link>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="text-xs">View applications for this task</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </div>
-                          <div className="flex items-center text-xs text-muted-foreground mt-1">
-                            <Badge 
-                              variant="outline" 
-                              className={
-                                task.status === 'allocated'
-                                  ? 'bg-green-100 text-green-800 border-green-200 mr-2'
-                                  : 'bg-orange-100 text-orange-800 border-orange-200 mr-2'
-                              }
-                            >
-                              {task.status}
-                            </Badge>
-                            <span>Timeframe: {task.timeframe || 'Not specified'}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center space-x-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleTask(task.id || task.task_id || '');
-                            }}
-                          >
-                            {expandedTasks.has(task.id || task.task_id || '') ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {expandedTasks.has(task.id || task.task_id || '') && (
-                      <div className="p-3 bg-gray-50 border-t">
-                        <div className="space-y-3">
-                          <div>
-                            <div className="text-xs font-medium mb-1">Description</div>
-                            <p className="text-sm">{task.description || 'No description provided.'}</p>
-                          </div>
-                          
-                          <TooltipProvider>
-                            <div className="grid grid-cols-3 gap-4">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div>
-                                    <div className="text-xs font-medium">Task Equity</div>
-                                    <div className="text-sm">{task.equity_allocation || 0}%</div>
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="text-xs">Equity allocated to this task</p>
-                                </TooltipContent>
-                              </Tooltip>
-                              
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div>
-                                    <div className="text-xs font-medium">Agreed Equity</div>
-                                    <div className="text-sm">{(task.equity_agreed || 0).toFixed(2)}%</div>
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="text-xs">Equity agreed for this task</p>
-                                </TooltipContent>
-                              </Tooltip>
-                              
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div>
-                                    <div className="text-xs font-medium">Equity Earned</div>
-                                    <div className="text-sm">{(task.equity_earned || 0).toFixed(2)}%</div>
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="text-xs">Equity earned for this task</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </div>
-                          </TooltipProvider>
-                          
-                          <div>
-                            <div className="text-xs font-medium mb-1">Skills Required</div>
-                            <div className="flex flex-wrap gap-1">
-                              {Array.isArray(task.skill_requirements) && task.skill_requirements.length > 0 ? 
-                                task.skill_requirements.map((skill: any, index: number) => {
-                                  const skillName = typeof skill === 'string' ? skill : (skill.skill || '');
-                                  const level = typeof skill === 'string' ? 'Intermediate' : (skill.level || '');
-                                  
-                                  return (
-                                    <Badge 
-                                      key={index} 
-                                      variant="outline" 
-                                      className={
-                                        task.status === 'allocated' 
-                                          ? 'bg-green-100 text-green-800 border-green-200 text-xs'
-                                          : 'bg-orange-100 text-orange-800 border-orange-200 text-xs'
-                                      }
-                                    >
-                                      {skillName} {level && <span className="ml-1 opacity-70">({level})</span>}
-                                    </Badge>
-                                  );
-                                }) : 
-                                <span className="text-sm text-muted-foreground">No specific skills required</span>
-                              }
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </Card>
+                {project.timeframe && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Timeframe: {project.timeframe}
+                  </div>
+                )}
+              </div>
+            </TableCell>
+            <TableCell>{project.tasks.length}</TableCell>
+            <TableCell>
+              <div className="flex flex-wrap gap-1">
+                {project.skills_required.map((skill, index) => (
+                  <Badge key={index} variant="secondary">
+                    {skill}
+                  </Badge>
                 ))}
               </div>
+            </TableCell>
+            <TableCell>{project.equity_allocation}%</TableCell>
+            <TableCell>{totalClaimedEquity.toFixed(2)}%</TableCell>
+            <TableCell>{totalEarnedEquity.toFixed(2)}%</TableCell>
+            <TableCell>{remainingEquity.toFixed(2)}%</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+
+      {/* Tasks Table */}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[20%]">Task</TableHead>
+              <TableHead className="w-[25%]">Description</TableHead>
+              <TableHead className="w-[25%]">Required Skills</TableHead>
+              <TableHead className="w-[10%]">Equity Offered</TableHead>
+              <TableHead className="w-[10%]">Equity Earned</TableHead>
+              <TableHead className="w-[10%]">Timeframe</TableHead>
+              <TableHead className="w-[10%]">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {tasksWithEarnings.map((task) => (
+              <TableRow key={task.id}>
+                <TableCell className="font-medium">{task.title}</TableCell>
+                <TableCell>
+                  <div className="line-clamp-2">
+                    {task.description}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {task.skill_requirements.map((skillReq, index) => (
+                      <Badge 
+                        key={index} 
+                        variant="secondary"
+                        className={
+                          task.status === 'allocated' 
+                            ? 'bg-green-100 text-green-800 border-green-200'
+                            : 'bg-orange-100 text-orange-800 border-orange-200'
+                        }
+                      >
+                        {skillReq.skill} - {skillReq.level}
+                      </Badge>
+                    ))}
+                  </div>
+                </TableCell>
+                <TableCell>{task.equity_allocation}%</TableCell>
+                <TableCell>{(task.equity_earned || 0).toFixed(2)}%</TableCell>
+                <TableCell>{task.timeframe}</TableCell>
+                <TableCell>
+                  <Badge 
+                    variant="outline"
+                    className={
+                      task.status === 'allocated'
+                        ? 'bg-green-100 text-green-800 border-green-200'
+                        : 'bg-orange-100 text-orange-800 border-orange-200'
+                    }
+                  >
+                    {task.status}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+            {tasksWithEarnings.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
+                  No tasks available for this project.
+                </TableCell>
+              </TableRow>
             )}
-          </div>
-        )}
-      </Card>
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };
