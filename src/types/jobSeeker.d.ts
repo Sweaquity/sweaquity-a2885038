@@ -76,6 +76,9 @@ export interface EquityProject {
   updated_at?: string;
   skills_required?: string[];
   is_equity_project?: boolean;
+  timeframe?: string;
+  equity_allocation?: number;
+  description?: string;
 }
 
 // Add JobApplication interface properties needed for compatibility
@@ -103,6 +106,7 @@ export interface JobApplication {
     completion_percentage?: number;
     timeframe?: string;
     skill_requirements?: any[];
+    project_status?: string;
   };
   accepted_jobs?: AcceptedJob;
   is_equity_project?: boolean;
@@ -112,6 +116,7 @@ export interface JobApplication {
   company_name?: string;
   project_title?: string;
   description?: string;
+  hasEquityData?: boolean;
 }
 
 // Update AcceptedJob to match the database fields

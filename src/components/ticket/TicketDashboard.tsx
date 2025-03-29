@@ -1,5 +1,7 @@
+import React, { useState, useEffect } from 'react';
+import { TicketDashboardProps } from '@/types/ticket';
+import { Ticket } from '@/types/types';
 
-import React, { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -23,7 +25,6 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
-import { Ticket } from "@/types/types";
 import { AlertTriangle, CheckCircle2, Clock, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ExpandedTicketDetails } from "./ExpandedTicketDetails";
@@ -36,6 +37,11 @@ interface TicketDashboardProps {
   userId: string;
   onLogTime?: (ticketId: string) => void;
   renderTicketActions?: (ticket: Ticket) => React.ReactNode;
+  expandedTickets: Set<string>;
+  toggleTicketExpansion: (ticketId: string) => void;
+  userCanEditDates?: boolean;
+  userCanEditStatus?: boolean;
+  loading?: boolean;
 }
 
 export const TicketDashboard: React.FC<TicketDashboardProps> = ({
@@ -45,7 +51,12 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   showTimeTracking = false,
   userId,
   onLogTime,
-  renderTicketActions
+  renderTicketActions,
+  expandedTickets,
+  toggleTicketExpansion,
+  userCanEditDates = false,
+  userCanEditStatus = false,
+  loading = false
 }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
@@ -389,8 +400,8 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
               onClose={() => setIsDialogOpen(false)}
               onTicketAction={onTicketAction}
               onLogTime={showTimeTracking && onLogTime ? onLogTime : undefined}
-              userCanEditStatus={true}
-              userCanEditDates={true}
+              userCanEditStatus={userCanEditStatus}
+              userCanEditDates={userCanEditDates}
             />
           )}
         </DialogContent>

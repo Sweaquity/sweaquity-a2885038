@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -85,7 +86,10 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
     return [];
   };
 
-  const matchedSkills = formatSkills(project.skills_required).filter(skill => 
+  // Get project skills - handle both skills_required and any other property that might contain skills
+  const projectSkills = formatSkills(project.skills_required || []);
+  
+  const matchedSkills = projectSkills.filter(skill => 
     userSkillStrings.some(userSkill => 
       (typeof userSkill === 'string' ? userSkill.toLowerCase() : 
        (userSkill.name || userSkill.skill || '').toLowerCase())
