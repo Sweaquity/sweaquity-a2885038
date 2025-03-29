@@ -3,20 +3,94 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { X, Image } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 interface TicketAttachmentProps {
-  attachments: string[];
+  attachments?: string[];
+  ticketId?: string;
+  projectId?: string;
+  businessId?: string;
   onViewAttachment?: (url: string) => void;
 }
 
 export const TicketAttachment: React.FC<TicketAttachmentProps> = ({
   attachments,
+  ticketId,
+  projectId,
+  businessId,
   onViewAttachment
 }) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [processedAttachments, setProcessedAttachments] = useState<string[]>(attachments || []);
 
-  if (!attachments || attachments.length === 0) {
+  React.useEffect(() => {
+    // If attachments are already full URLs, use them directly
+    if (attachments && attachments.length > 0 && attachments[0].startsWith('http')) {
+      setProcessedAttachments(attachments);
+      return;
+    }
+
+    // If we have a ticketId and no attachments, try to find them
+    const fetchAttachments = async () => {
+      if (ticketId && (!attachments || attachments.length === 0)) {
+        try {
+          // Try to fetch ticket to get its attachments
+          const { data: ticketData, error: ticketError } = await supabase
+            .from('tickets')
+            .select('attachments, project_id, reporter')
+            .eq('id', ticketId)
+            .single();
+
+          if (ticketError) {
+            console.error("Error fetching ticket:", ticketError);
+            return;
+          }
+
+          if (ticketData?.attachments && ticketData.attachments.length > 0) {
+            // If attachments are already full URLs, use them directly
+            if (ticketData.attachments[0].startsWith('http')) {
+              setProcessedAttachments(ticketData.attachments);
+              return;
+            }
+          }
+          
+          // If we have a reporter ID (business ID), try to list files from storage
+          if (ticketData?.reporter && ticketData?.project_id) {
+            const path = `${ticketData.reporter}/${ticketId}`;
+            const { data: files, error: storageError } = await supabase
+              .storage
+              .from('ticket-attachments')
+              .list(path);
+              
+            if (storageError) {
+              console.error("Error listing files:", storageError);
+              return;
+            }
+            
+            if (files && files.length > 0) {
+              const urls = files.map(file => {
+                const { data } = supabase
+                  .storage
+                  .from('ticket-attachments')
+                  .getPublicUrl(`${path}/${file.name}`);
+                  
+                return data.publicUrl;
+              });
+              
+              setProcessedAttachments(urls);
+            }
+          }
+        } catch (error) {
+          console.error("Error in fetchAttachments:", error);
+        }
+      }
+    };
+    
+    fetchAttachments();
+  }, [attachments, ticketId]);
+
+  if (!processedAttachments || processedAttachments.length === 0) {
     return null;
   }
 
@@ -31,9 +105,9 @@ export const TicketAttachment: React.FC<TicketAttachmentProps> = ({
 
   return (
     <div>
-      <p className="text-sm font-medium mb-2">Screenshots ({attachments.length})</p>
+      <p className="text-sm font-medium mb-2">Screenshots ({processedAttachments.length})</p>
       <div className="grid grid-cols-2 gap-2">
-        {attachments.map((url, i) => (
+        {processedAttachments.map((url, i) => (
           <div key={i} className="relative group border rounded overflow-hidden h-36">
             <img 
               src={url} 

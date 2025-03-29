@@ -34,6 +34,19 @@ export const BetaTestingTab = () => {
   });
   const [reviewTask, setReviewTask] = useState<any>(null);
   const [isCompletionReviewOpen, setIsCompletionReviewOpen] = useState(false);
+  const [expandedTickets, setExpandedTickets] = useState<Set<string>>(new Set());
+
+  const toggleTicketExpansion = (ticketId: string) => {
+    setExpandedTickets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(ticketId)) {
+        newSet.delete(ticketId);
+      } else {
+        newSet.add(ticketId);
+      }
+      return newSet;
+    });
+  };
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -270,7 +283,7 @@ export const BetaTestingTab = () => {
           <CardContent className="p-4 text-center">
             <div className="text-sm font-medium text-muted-foreground">High Priority</div>
             <div className="text-2xl font-bold mt-1">{taskStats.highPriority}</div>
-          </CardContent>
+          </Card>
         </Card>
       </div>
       
@@ -296,6 +309,8 @@ export const BetaTestingTab = () => {
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
             userId={userId}
+            expandedTickets={expandedTickets}
+            toggleTicketExpansion={toggleTicketExpansion}
           />
         </TabsContent>
         
@@ -306,6 +321,8 @@ export const BetaTestingTab = () => {
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
             userId={userId}
+            expandedTickets={expandedTickets}
+            toggleTicketExpansion={toggleTicketExpansion}
           />
         </TabsContent>
         
@@ -316,6 +333,8 @@ export const BetaTestingTab = () => {
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
             userId={userId}
+            expandedTickets={expandedTickets}
+            toggleTicketExpansion={toggleTicketExpansion}
           />
         </TabsContent>
         

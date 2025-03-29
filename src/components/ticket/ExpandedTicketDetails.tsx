@@ -152,10 +152,14 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
         </div>
       </div>
 
-      {/* Show ticket attachments if this is a beta testing ticket */}
-      {(ticket.ticket_type === 'beta_testing' || ticket.attachments) && ticket.attachments && ticket.attachments.length > 0 && (
+      {/* Show ticket attachments if available */}
+      {(ticket.ticket_type === 'beta_testing' || ticket.attachments) && (
         <div className="mt-4 border-t pt-4">
-          <TicketAttachment attachments={ticket.attachments} />
+          <TicketAttachment 
+            attachments={ticket.attachments || []} 
+            ticketId={ticket.id}
+            projectId={ticket.project_id}
+          />
         </div>
       )}
 
