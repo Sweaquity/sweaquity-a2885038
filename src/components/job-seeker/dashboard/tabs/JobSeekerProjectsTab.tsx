@@ -41,7 +41,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const [showGantt, setShowGantt] = useState(false);
   const [isTimeLogDialogOpen, setIsTimeLogDialogOpen] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
-  const [expandedTickets, setExpandedTickets] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (userId) {
@@ -360,13 +359,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     }
   };
 
-  const toggleTicketExpansion = (ticketId: string) => {
-    setExpandedTickets(prev => ({
-      ...prev,
-      [ticketId]: !prev[ticketId]
-    }));
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
@@ -489,8 +481,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
               userCanEditDates={true}
               userCanEditStatus={true}
               renderTicketActions={(ticket) => null}
-              expandedTickets={expandedTickets}
-              toggleTicketExpansion={toggleTicketExpansion}
             />
           )}
         </TabsContent>

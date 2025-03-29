@@ -52,8 +52,8 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   userId,
   onLogTime,
   renderTicketActions,
-  expandedTickets = new Set<string>(),
-  toggleTicketExpansion = () => {},
+  expandedTickets,
+  toggleTicketExpansion,
   userCanEditDates = false,
   userCanEditStatus = false,
   loading = false

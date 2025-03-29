@@ -237,13 +237,6 @@ export const BetaTestingTab = ({
     toast.info("Create ticket functionality will be implemented soon");
   };
 
-  const toggleTicketExpansion = (ticketId: string) => {
-    setExpandedTickets(prev => ({
-      ...prev,
-      [ticketId]: !prev[ticketId]
-    }));
-  };
-
   if (!userId) {
     return <div>Please log in to view tickets.</div>;
   }
@@ -329,9 +322,7 @@ export const BetaTestingTab = ({
             onRefresh={handleRefresh}
             onTicketAction={handleTicketAction}
             showTimeTracking={userType === 'job_seeker'}
-            userId={userId || ''}
-            expandedTickets={expandedTickets}
-            toggleTicketExpansion={toggleTicketExpansion}
+            userId={userId}
           />
         </TabsContent>
         
@@ -343,9 +334,7 @@ export const BetaTestingTab = ({
                 onRefresh={handleRefresh}
                 onTicketAction={handleTicketAction}
                 showTimeTracking={userType === 'job_seeker'}
-                userId={userId || ''}
-                expandedTickets={expandedTickets}
-                toggleTicketExpansion={toggleTicketExpansion}
+                userId={userId}
               />
             </TabsContent>
             
@@ -355,9 +344,7 @@ export const BetaTestingTab = ({
                 onRefresh={handleRefresh}
                 onTicketAction={handleTicketAction}
                 showTimeTracking={userType === 'job_seeker'}
-                userId={userId || ''}
-                expandedTickets={expandedTickets}
-                toggleTicketExpansion={toggleTicketExpansion}
+                userId={userId}
               />
             </TabsContent>
           </>
