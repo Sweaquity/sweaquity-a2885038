@@ -45,7 +45,11 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
       case "project-tickets":
         return tickets.filter(t => t.ticket_type === "ticket");
       case "beta-testing":
-        return tickets.filter(t => t.ticket_type === "beta-test");
+        return tickets.filter(t => 
+          t.ticket_type === "beta_testing" || 
+          t.ticket_type === "beta-test" || 
+          t.ticket_type === "beta-testing"
+        );
       default:
         return tickets;
     }

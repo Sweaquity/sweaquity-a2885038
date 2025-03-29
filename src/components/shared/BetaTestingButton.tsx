@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Camera, Upload, X } from "lucide-react";
@@ -38,7 +37,6 @@ export function BetaTestingButton() {
   const [isLoadingSubTasks, setIsLoadingSubTasks] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch project sub-tasks when dialog opens
   useEffect(() => {
     if (isOpen) {
       fetchProjectSubTasks();
@@ -75,14 +73,12 @@ export function BetaTestingButton() {
       }
       
       if (data) {
-        // Map to the correct interface
         const mappedData = data.map(task => ({
           id: task.task_id,
           title: task.title
         }));
         
         setProjectSubTasks(mappedData);
-        // Set default selected sub-task if available
         if (mappedData.length > 0) {
           setSelectedSubTaskId(mappedData[0].id);
         }
@@ -116,9 +112,6 @@ export function BetaTestingButton() {
     setScreenshotPreviews(screenshotPreviews.filter((_, i) => i !== index));
   };
 
-  // Remove screen capture function as it's not implemented correctly
-  // We'll just hide the button for now
-  
   const handleSubmit = async () => {
     if (!description.trim()) {
       toast.error("Please describe the error you encountered");
@@ -135,7 +128,6 @@ export function BetaTestingButton() {
         return;
       }
       
-      // Create the ticket in the database - note that we're using only fields that exist in the schema
       const { data: ticketData, error: ticketError } = await supabase
         .from('tickets')
         .insert({
@@ -151,7 +143,7 @@ export function BetaTestingButton() {
           notes: [],
           replies: [],
           task_id: selectedSubTaskId || null,
-          project_id: '1ec133ba-26d6-4112-8e44-f0b67ddc8fb4'  // Set the Sweaquity project ID
+          project_id: '1ec133ba-26d6-4112-8e44-f0b67ddc8fb4'
         })
         .select('id')
         .single();
@@ -323,7 +315,6 @@ export function BetaTestingButton() {
                   <Upload className="mr-2 h-4 w-4" />
                   Upload Files
                 </Button>
-                {/* Removed Capture Screen button as it's not implemented correctly */}
                 <input
                   ref={fileInputRef}
                   type="file"

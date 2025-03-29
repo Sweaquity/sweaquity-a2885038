@@ -1,5 +1,5 @@
+
 import React, { useState, useEffect } from 'react';
-import { TicketDashboardProps } from '@/types/ticket';
 import { Ticket } from '@/types/types';
 
 import {
@@ -52,8 +52,8 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   userId,
   onLogTime,
   renderTicketActions,
-  expandedTickets,
-  toggleTicketExpansion,
+  expandedTickets = new Set<string>(),
+  toggleTicketExpansion = () => {},
   userCanEditDates = false,
   userCanEditStatus = false,
   loading = false
@@ -193,7 +193,9 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         return "Task";
       case "ticket":
         return "Ticket";
+      case "beta_testing":
       case "beta-test":
+      case "beta-testing":
         return "Beta Test";
       default:
         return type.charAt(0).toUpperCase() + type.slice(1);

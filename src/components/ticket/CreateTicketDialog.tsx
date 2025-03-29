@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   Dialog,
@@ -19,7 +18,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Explicitly define the props interface since it's missing from types
 interface CreateTicketDialogProps {
   open: boolean;
   onClose: () => void;
@@ -56,10 +54,9 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
         priority,
         project_id: projectId === "no-project" ? null : projectId,
         health: "good",
-        ticket_type: ticketType // Using ticket_type instead of type
+        ticket_type: ticketType
       });
       
-      // Reset form
       setTitle("");
       setDescription("");
       setPriority("medium");
@@ -136,7 +133,7 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
                   <SelectItem value="task">Task</SelectItem>
                   <SelectItem value="bug">Bug</SelectItem>
                   <SelectItem value="feature">Feature</SelectItem>
-                  <SelectItem value="beta-test">Beta Test</SelectItem>
+                  <SelectItem value="beta_testing">Beta Test</SelectItem>
                 </SelectContent>
               </Select>
             </div>

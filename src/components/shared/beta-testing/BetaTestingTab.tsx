@@ -23,7 +23,7 @@ export const BetaTestingTab = ({
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("tickets");
-  const [expandedTickets, setExpandedTickets] = useState<Record<string, boolean>>({});
+  const [expandedTickets, setExpandedTickets] = useState<Set<string>>(new Set());
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [taskStats, setTaskStats] = useState({
@@ -113,7 +113,7 @@ export const BetaTestingTab = ({
       
       const processedTickets = (data || []).map(ticket => ({
         ...ticket,
-        expanded: !!expandedTickets[ticket.id],
+        expanded: !!expandedTickets.has(ticket.id),
         description: ticket.description || ""
       }));
       
@@ -219,18 +219,16 @@ export const BetaTestingTab = ({
     }
   };
 
-  const handleToggleTicket = (ticketId: string, isExpanded: boolean) => {
-    console.log("Toggle ticket:", ticketId, "expanded:", isExpanded);
-    setExpandedTickets(prev => ({
-      ...prev,
-      [ticketId]: isExpanded
-    }));
-    
-    setTickets(prev => 
-      prev.map(ticket => 
-        ticket.id === ticketId ? { ...ticket, expanded: isExpanded } : ticket
-      )
-    );
+  const handleToggleTicket = (ticketId: string) => {
+    setExpandedTickets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(ticketId)) {
+        newSet.delete(ticketId);
+      } else {
+        newSet.add(ticketId);
+      }
+      return newSet;
+    });
   };
 
   const handleCreateTicket = () => {
@@ -318,11 +316,17 @@ export const BetaTestingTab = ({
         
         <TabsContent value="tickets">
           <TicketDashboard 
-            initialTickets={tickets}
+            initialTickets={tickets.filter(t => 
+              t.ticket_type === "beta_testing" || 
+              t.ticket_type === "beta-test" || 
+              t.ticket_type === "beta-testing"
+            )}
             onRefresh={handleRefresh}
             onTicketAction={handleTicketAction}
             showTimeTracking={userType === 'job_seeker'}
             userId={userId}
+            expandedTickets={expandedTickets}
+            toggleTicketExpansion={handleToggleTicket}
           />
         </TabsContent>
         

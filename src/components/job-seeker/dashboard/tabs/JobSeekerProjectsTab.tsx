@@ -41,6 +41,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const [showGantt, setShowGantt] = useState(false);
   const [isTimeLogDialogOpen, setIsTimeLogDialogOpen] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [expandedTickets, setExpandedTickets] = useState<string[]>([]);
 
   useEffect(() => {
     if (userId) {
@@ -339,7 +340,11 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       case "project-tickets":
         return tickets.filter(t => t.ticket_type === "ticket");
       case "beta-testing":
-        return tickets.filter(t => t.ticket_type === "beta-test");
+        return tickets.filter(t => 
+          t.ticket_type === "beta_testing" || 
+          t.ticket_type === "beta-test" || 
+          t.ticket_type === "beta-testing"
+        );
       default:
         return tickets;
     }
@@ -357,6 +362,16 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     if (showGantt) {
       setShowKanban(false);
     }
+  };
+
+  const toggleTicketExpansion = (ticketId: string) => {
+    setExpandedTickets(prevExpandedTickets => {
+      if (prevExpandedTickets.includes(ticketId)) {
+        return prevExpandedTickets.filter(id => id !== ticketId);
+      } else {
+        return [...prevExpandedTickets, ticketId];
+      }
+    });
   };
 
   return (
@@ -481,6 +496,8 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
               userCanEditDates={true}
               userCanEditStatus={true}
               renderTicketActions={(ticket) => null}
+              expandedTickets={expandedTickets}
+              toggleTicketExpansion={toggleTicketExpansion}
             />
           )}
         </TabsContent>
