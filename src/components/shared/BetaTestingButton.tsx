@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Camera, Upload, X } from "lucide-react";
@@ -39,6 +38,8 @@ export function BetaTestingButton() {
   const [isLoadingSubTasks, setIsLoadingSubTasks] = useState(false);
   const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Store project ID in state to make it easily configurable and reusable
+  const [projectId, setProjectId] = useState('1ec133ba-26d6-4112-8e44-f0b67ddc8fb4');
 
   useEffect(() => {
     if (isOpen) {
@@ -68,7 +69,7 @@ export function BetaTestingButton() {
       const { data, error } = await supabase
         .from('project_sub_tasks')
         .select('task_id, title')
-        .eq('project_id', '1ec133ba-26d6-4112-8e44-f0b67ddc8fb4');
+        .eq('project_id', projectId);
       
       if (error) {
         console.error("Error fetching project sub-tasks:", error);
@@ -183,7 +184,7 @@ export function BetaTestingButton() {
           notes: [],
           replies: [],
           task_id: selectedSubTaskId || null,
-          project_id: '1ec133ba-26d6-4112-8e44-f0b67ddc8fb4'
+          project_id: projectId
         })
         .select('id')
         .single();
@@ -197,8 +198,8 @@ export function BetaTestingButton() {
         const uploadPromises = screenshots.map(async (file, index) => {
           const fileExt = file.name.split('.').pop();
           const fileName = `${ticketData.id}_${index}.${fileExt}`;
-          // Use beta-testing bucket instead of ticket-attachments
-          const filePath = `${user.id}/${ticketData.id}/${fileName}`;
+          // Changed from user.id to projectId for the file path
+          const filePath = `${projectId}/${ticketData.id}/${fileName}`;
           
           const { error: uploadError } = await supabase
             .storage
