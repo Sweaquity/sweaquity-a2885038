@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import html2canvas from 'html2canvas';
 
 interface SystemLogInfo {
   url: string;
@@ -36,6 +37,7 @@ export function BetaTestingButton() {
   const [projectSubTasks, setProjectSubTasks] = useState<ProjectSubTask[]>([]);
   const [selectedSubTaskId, setSelectedSubTaskId] = useState<string>('');
   const [isLoadingSubTasks, setIsLoadingSubTasks] = useState(false);
+  const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -113,18 +115,40 @@ export function BetaTestingButton() {
     setScreenshotPreviews(screenshotPreviews.filter((_, i) => i !== index));
   };
 
-  // Adding the captureScreenshot function from BetaTestingButton(2)
+  // Improved screenshot capture function
   const captureScreenshot = async () => {
     try {
-      toast.info("Taking screenshot... Please use the file upload for now.");
+      setIsCapturingScreenshot(true);
       setIsOpen(false);
-      setTimeout(() => {
-        setIsOpen(true);
-        toast.info("Please use the file upload to attach screenshots for now.");
-      }, 500);
+      
+      // Wait a bit for the dialog to close
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Capture the screen
+      const canvas = await html2canvas(document.body);
+      const dataUrl = canvas.toDataURL('image/png');
+      
+      // Convert to File object
+      const blobBin = atob(dataUrl.split(',')[1]);
+      const array = [];
+      for (let i = 0; i < blobBin.length; i++) {
+        array.push(blobBin.charCodeAt(i));
+      }
+      const file = new File([new Uint8Array(array)], 'screenshot.png', {type: 'image/png'});
+      
+      // Add the new screenshot
+      setScreenshots(prev => [...prev, file]);
+      setScreenshotPreviews(prev => [...prev, dataUrl]);
+      
+      // Reopen the dialog
+      setIsOpen(true);
+      toast.success("Screenshot captured successfully!");
     } catch (error) {
       console.error("Error capturing screenshot:", error);
       toast.error("Failed to capture screenshot");
+      setIsOpen(true);
+    } finally {
+      setIsCapturingScreenshot(false);
     }
   };
 
@@ -173,7 +197,7 @@ export function BetaTestingButton() {
         const uploadPromises = screenshots.map(async (file, index) => {
           const fileExt = file.name.split('.').pop();
           const fileName = `${ticketData.id}_${index}.${fileExt}`;
-          // Updated to use the correct bucket path
+          // Use beta-testing bucket instead of ticket-attachments
           const filePath = `${user.id}/${ticketData.id}/${fileName}`;
           
           const { error: uploadError } = await supabase
@@ -337,9 +361,10 @@ export function BetaTestingButton() {
                   variant="outline" 
                   size="sm"
                   onClick={captureScreenshot}
+                  disabled={isCapturingScreenshot}
                 >
                   <Camera className="mr-2 h-4 w-4" />
-                  Capture Screen
+                  {isCapturingScreenshot ? "Capturing..." : "Capture Screen"}
                 </Button>
                 <input
                   ref={fileInputRef}
