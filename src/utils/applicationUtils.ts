@@ -1,6 +1,7 @@
 
 import { JobApplication, BusinessRole, EquityProject } from '@/types/jobSeeker';
 import { Skill } from '@/types/profile';
+import { Application } from '@/types/business';
 
 export const formatApplicationDate = (dateString?: string) => {
   if (!dateString) return 'Unknown date';
@@ -145,4 +146,54 @@ export const normalizeEquityProject = (data: any): EquityProject => {
     equity_allocated: data.equity_allocated || 0,
     completion_percentage: data.completion_percentage || 0
   };
+};
+
+// Add the missing convertApplicationToJobApplication function
+export const convertApplicationToJobApplication = (application: Application): JobApplication => {
+  const jobApp: JobApplication = {
+    job_app_id: application.job_app_id,
+    user_id: application.user_id,
+    task_id: application.task_id,
+    status: application.status,
+    message: application.message,
+    cv_url: application.cv_url,
+    accepted_jobseeker: application.accepted_jobseeker,
+    accepted_business: application.accepted_business,
+    applied_at: application.applied_at,
+    updated_at: application.updated_at,
+    created_at: application.created_at,
+    task_discourse: application.task_discourse,
+    project_id: application.project_id,
+    
+    // Map properties from business_roles
+    task_title: application.business_roles?.title || '',
+    task_description: application.business_roles?.description || '',
+    equity_allocation: application.business_roles?.equity_allocation || 0,
+    timeframe: application.business_roles?.timeframe || '',
+    
+    // Map any other properties needed
+    is_equity_project: true, // Assuming all applications from business context are equity projects
+    
+    // Create an accepted_jobs object with the required fields
+    accepted_jobs: {
+      equity_agreed: application.accepted_jobs?.equity_agreed || 0,
+      jobs_equity_allocated: application.accepted_jobs?.jobs_equity_allocated || 0,
+      id: application.accepted_jobs?.id || application.job_app_id,
+      date_accepted: application.accepted_jobs?.date_accepted || new Date().toISOString()
+    },
+    
+    // Map profile info if available
+    applicant_name: application.profile ? `${application.profile.first_name} ${application.profile.last_name}`.trim() : '',
+    applicant_email: '',
+    applicant_skills: application.profile?.skills?.map(s => typeof s === 'string' ? s : s.skill) || [],
+    
+    // Skills matching
+    skillMatch: application.skillMatch,
+    
+    // Computed properties
+    hasEquityData: Boolean(application.accepted_jobs && 
+      (application.accepted_jobs.equity_agreed || application.accepted_jobs.jobs_equity_allocated))
+  };
+  
+  return jobApp;
 };

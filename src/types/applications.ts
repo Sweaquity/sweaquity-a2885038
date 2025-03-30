@@ -31,9 +31,20 @@ export interface JobApplication {
   company_name?: string;
   project_title?: string;
   task_title?: string;
+  task_description?: string;
+  project_description?: string;
   description?: string;
   skills_required?: string[];
   applicant_skills?: string[];
+  is_equity_project?: boolean;
+  equity_allocation?: number;
+  timeframe?: string;
+  applicant_name?: string;
+  applicant_email?: string;
+  business_id?: string;
+  business_name?: string;
+  hasEquityData?: boolean;
+  skillMatch?: number;
 }
 
 export interface AcceptedJob {

@@ -93,3 +93,14 @@ export interface TicketDashboardProps {
   expandedTickets?: Set<string> | Record<string, boolean>;
   toggleTicketExpansion?: (ticketId: string) => void;
 }
+
+// Add interface for ExpandedTicketDetailsProps
+export interface ExpandedTicketDetailsProps {
+  ticket: Ticket;
+  onAction?: (action: string, data?: any) => Promise<void>;
+  onClose?: () => void;
+  canEdit?: boolean;
+  isLoading?: boolean;
+  showTimeTracking?: boolean;
+  onLogTime?: () => void;
+}
