@@ -112,6 +112,21 @@ export function BetaTestingButton() {
     setScreenshotPreviews(screenshotPreviews.filter((_, i) => i !== index));
   };
 
+  // Adding the captureScreenshot function from BetaTestingButton(2)
+  const captureScreenshot = async () => {
+    try {
+      toast.info("Taking screenshot... Please use the file upload for now.");
+      setIsOpen(false);
+      setTimeout(() => {
+        setIsOpen(true);
+        toast.info("Please use the file upload to attach screenshots for now.");
+      }, 500);
+    } catch (error) {
+      console.error("Error capturing screenshot:", error);
+      toast.error("Failed to capture screenshot");
+    }
+  };
+
   const handleSubmit = async () => {
     if (!description.trim()) {
       toast.error("Please describe the error you encountered");
@@ -157,11 +172,12 @@ export function BetaTestingButton() {
         const uploadPromises = screenshots.map(async (file, index) => {
           const fileExt = file.name.split('.').pop();
           const fileName = `${ticketData.id}_${index}.${fileExt}`;
-          const filePath = `${fileName}`;
+          // Updated to use the correct bucket path
+          const filePath = `${user.id}/${ticketData.id}/${fileName}`;
           
           const { error: uploadError } = await supabase
             .storage
-            .from('beta-testing')
+            .from('ticket-attachments')
             .upload(filePath, file);
             
           if (uploadError) {
@@ -171,7 +187,7 @@ export function BetaTestingButton() {
           
           const { data: { publicUrl } } = supabase
             .storage
-            .from('beta-testing')
+            .from('ticket-attachments')
             .getPublicUrl(filePath);
             
           return publicUrl;
@@ -314,6 +330,15 @@ export function BetaTestingButton() {
                 >
                   <Upload className="mr-2 h-4 w-4" />
                   Upload Files
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={captureScreenshot}
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  Capture Screen
                 </Button>
                 <input
                   ref={fileInputRef}
