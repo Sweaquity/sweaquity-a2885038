@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { BetaTestingForm } from "./beta-testing/BetaTestingForm";
@@ -46,6 +46,7 @@ export function BetaTestingButton() {
         return;
       }
       
+      // Create the ticket first
       const { data: ticketData, error: ticketError } = await supabase
         .from('tickets')
         .insert({
@@ -71,51 +72,62 @@ export function BetaTestingButton() {
         throw ticketError;
       }
       
+      // Handle file uploads if screenshots were provided
+      let attachments = [];
       if (formData.screenshots.length > 0 && ticketData?.id) {
-        const uploadPromises = formData.screenshots.map(async (file, index) => {
+        console.log(`Uploading ${formData.screenshots.length} screenshots for ticket ${ticketData.id}`);
+        
+        for (let i = 0; i < formData.screenshots.length; i++) {
+          const file = formData.screenshots[i];
           const fileExt = file.name.split('.').pop();
-          const fileName = `${index}_${Date.now()}.${fileExt}`;
+          const fileName = `${i}_${Date.now()}.${fileExt}`;
           
           // Using project_id/ticket_id/fileName format for storage
           const filePath = `${projectId}/${ticketData.id}/${fileName}`;
           
-          const { error: uploadError } = await supabase
+          console.log(`Uploading file to path: ${filePath}`);
+          const { data: uploadData, error: uploadError } = await supabase
             .storage
             .from('ticket-attachments')
-            .upload(filePath, file);
+            .upload(filePath, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
             
           if (uploadError) {
             console.error("Error uploading screenshot:", uploadError);
-            return null;
+            toast.error(`Error uploading screenshot ${i+1}: ${uploadError.message}`);
+            continue;
           }
           
+          console.log("Upload successful:", uploadData);
           const { data: { publicUrl } } = supabase
             .storage
             .from('ticket-attachments')
             .getPublicUrl(filePath);
             
-          return {
+          attachments.push({
             url: publicUrl,
             name: file.name,
             path: filePath,
             type: file.type,
             size: file.size
-          };
-        });
+          });
+        }
         
-        const uploadedFiles = await Promise.all(uploadPromises);
-        const validFiles = uploadedFiles.filter(file => file !== null);
-        
-        if (validFiles.length > 0) {
+        // Only update the ticket with attachments if we successfully uploaded any
+        if (attachments.length > 0) {
+          console.log("Updating ticket with attachments:", attachments);
           const { error: updateError } = await supabase
             .from('tickets')
             .update({
-              attachments: validFiles
+              attachments: attachments
             })
             .eq('id', ticketData.id);
             
           if (updateError) {
             console.error("Error updating ticket with screenshots:", updateError);
+            toast.error("Error saving attachments to ticket");
           }
         }
       }

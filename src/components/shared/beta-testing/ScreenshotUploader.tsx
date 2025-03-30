@@ -25,6 +25,13 @@ export function ScreenshotUploader({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
+      
+      // Limit the number of files to prevent performance issues
+      if (screenshots.length + newFiles.length > 5) {
+        toast.warning("Maximum 5 screenshots allowed. Only the first ones will be added.");
+        newFiles.splice(0, 5 - screenshots.length);
+      }
+      
       setScreenshots([...screenshots, ...newFiles]);
       
       newFiles.forEach(file => {
@@ -61,7 +68,14 @@ export function ScreenshotUploader({
       for (let i = 0; i < blobBin.length; i++) {
         array.push(blobBin.charCodeAt(i));
       }
-      const file = new File([new Uint8Array(array)], 'screenshot.png', {type: 'image/png'});
+      const file = new File([new Uint8Array(array)], `screenshot_${Date.now()}.png`, {type: 'image/png'});
+      
+      // Check if we have room for more screenshots
+      if (screenshots.length >= 5) {
+        toast.warning("Maximum 5 screenshots allowed. Please remove some before adding more.");
+        setIsCapturingScreenshot(false);
+        return;
+      }
       
       // Add the new screenshot
       setScreenshots(prev => [...prev, file]);
@@ -78,13 +92,14 @@ export function ScreenshotUploader({
 
   return (
     <div className="space-y-2">
-      <Label className="mb-2 block">Attach Screenshots</Label>
+      <Label className="mb-2 block">Attach Screenshots (max 5)</Label>
       <div className="flex gap-2 mb-2">
         <Button 
           type="button" 
           variant="outline" 
           size="sm"
           onClick={() => fileInputRef.current?.click()}
+          disabled={screenshots.length >= 5}
         >
           <Upload className="mr-2 h-4 w-4" />
           Upload Files
@@ -94,7 +109,7 @@ export function ScreenshotUploader({
           variant="outline" 
           size="sm"
           onClick={captureScreenshot}
-          disabled={isCapturingScreenshot}
+          disabled={isCapturingScreenshot || screenshots.length >= 5}
         >
           <Camera className="mr-2 h-4 w-4" />
           {isCapturingScreenshot ? "Capturing..." : "Capture Screen"}
