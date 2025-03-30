@@ -114,16 +114,20 @@ export function BetaTestingButton() {
     setScreenshotPreviews(screenshotPreviews.filter((_, i) => i !== index));
   };
 
+  // Improved screenshot capture function
   const captureScreenshot = async () => {
     try {
       setIsCapturingScreenshot(true);
       setIsOpen(false);
       
+      // Wait a bit for the dialog to close
       await new Promise(resolve => setTimeout(resolve, 200));
       
+      // Capture the screen
       const canvas = await html2canvas(document.body);
       const dataUrl = canvas.toDataURL('image/png');
       
+      // Convert to File object
       const blobBin = atob(dataUrl.split(',')[1]);
       const array = [];
       for (let i = 0; i < blobBin.length; i++) {
@@ -131,9 +135,11 @@ export function BetaTestingButton() {
       }
       const file = new File([new Uint8Array(array)], 'screenshot.png', {type: 'image/png'});
       
+      // Add the new screenshot
       setScreenshots(prev => [...prev, file]);
       setScreenshotPreviews(prev => [...prev, dataUrl]);
       
+      // Reopen the dialog
       setIsOpen(true);
       toast.success("Screenshot captured successfully!");
     } catch (error) {
@@ -190,11 +196,12 @@ export function BetaTestingButton() {
         const uploadPromises = screenshots.map(async (file, index) => {
           const fileExt = file.name.split('.').pop();
           const fileName = `${ticketData.id}_${index}.${fileExt}`;
+          // Updated to use the correct bucket path
           const filePath = `${user.id}/${ticketData.id}/${fileName}`;
           
           const { error: uploadError } = await supabase
             .storage
-            .from('beta-testing')
+            .from('ticket-attachments')
             .upload(filePath, file);
             
           if (uploadError) {
@@ -204,7 +211,7 @@ export function BetaTestingButton() {
           
           const { data: { publicUrl } } = supabase
             .storage
-            .from('beta-testing')
+            .from('ticket-attachments')
             .getPublicUrl(filePath);
             
           return publicUrl;
@@ -242,7 +249,7 @@ export function BetaTestingButton() {
       setIsSubmitting(false);
     }
   };
-
+      
   return (
     <>
       <TooltipProvider>
@@ -390,22 +397,6 @@ export function BetaTestingButton() {
               )}
             </div>
             
-            <div className="flex justify-end gap-2 mt-6">
-              <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <span className="mr-2">Submitting...</span>
-                    <span className="animate-spin">⟳</span>
-                  </>
-                ) : (
-                  "Submit Report"
-                )}
-              </Button>
-            </div>
-            
             {systemInfo && (
               <div className="space-y-2 bg-gray-50 p-3 rounded text-sm">
                 <p className="font-medium">System Information (Automatically Collected)</p>
@@ -418,6 +409,22 @@ export function BetaTestingButton() {
               </div>
             )}
           </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <span className="mr-2">Submitting...</span>
+                  <span className="animate-spin">⟳</span>
+                </>
+              ) : (
+                "Submit Report"
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
