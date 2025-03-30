@@ -40,6 +40,9 @@ export function BetaTestingButton() {
   const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Fixed project ID for Sweaquity beta testing
+  const SWEAQUITY_PROJECT_ID = '1ec133ba-26d6-4112-8e44-f0b67ddc8fb4';
+
   useEffect(() => {
     if (isOpen) {
       fetchProjectSubTasks();
@@ -68,7 +71,7 @@ export function BetaTestingButton() {
       const { data, error } = await supabase
         .from('project_sub_tasks')
         .select('task_id, title')
-        .eq('project_id', '1ec133ba-26d6-4112-8e44-f0b67ddc8fb4');
+        .eq('project_id', SWEAQUITY_PROJECT_ID);
       
       if (error) {
         console.error("Error fetching project sub-tasks:", error);
@@ -183,7 +186,7 @@ export function BetaTestingButton() {
           notes: [],
           replies: [],
           task_id: selectedSubTaskId || null,
-          project_id: '1ec133ba-26d6-4112-8e44-f0b67ddc8fb4'
+          project_id: SWEAQUITY_PROJECT_ID
         })
         .select('id')
         .single();
@@ -197,8 +200,9 @@ export function BetaTestingButton() {
         const uploadPromises = screenshots.map(async (file, index) => {
           const fileExt = file.name.split('.').pop();
           const fileName = `${ticketData.id}_${index}.${fileExt}`;
-          // Use beta-testing bucket instead of ticket-attachments
-          const filePath = `${user.id}/${ticketData.id}/${fileName}`;
+          
+          // Use project_id instead of user.id for the file path
+          const filePath = `${SWEAQUITY_PROJECT_ID}/${ticketData.id}/${fileName}`;
           
           const { error: uploadError } = await supabase
             .storage

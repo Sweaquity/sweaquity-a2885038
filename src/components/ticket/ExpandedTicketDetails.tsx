@@ -1,440 +1,284 @@
 
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from 'react';
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { CalendarIcon, Clock, AlertCircle } from "lucide-react";
-import { format, parseISO } from "date-fns";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Ticket } from "@/types/types";
-import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { SendHorizontal, Clock, UserRound, Calendar, FileText, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Ticket, ExpandedTicketDetailsProps } from "@/types/types";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { TicketAttachments } from "./TicketAttachments";
 
-const statusOptions = [
-  { value: "new", label: "New" },
-  { value: "in-progress", label: "In Progress" },
-  { value: "blocked", label: "Blocked" },
-  { value: "review", label: "Review" },
-  { value: "done", label: "Done" },
-  { value: "closed", label: "Closed" },
-];
-
-const priorityOptions = [
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-];
-
-interface TimeEntry {
-  id: string;
-  ticket_id: string;
-  hours_logged: number;
-  description?: string;
-  created_at: string;
-  user_id?: string;
-  profiles?: {
-    first_name?: string;
-    last_name?: string;
-    email?: string;
-  };
-}
-
-interface ExpandedTicketDetailsProps {
-  ticket: Ticket;
-  onClose?: () => void;
-  onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
-  onLogTime?: (ticketId: string) => void;
-  userCanEditStatus?: boolean;
-  userCanEditDates?: boolean;
-}
-
-export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
-  ticket,
-  onClose,
-  onTicketAction = async () => {},
+export const ExpandedTicketDetails = ({ 
+  ticket, 
+  onClose, 
+  onTicketAction,
   onLogTime,
-  userCanEditStatus = true,
-  userCanEditDates = true
-}) => {
-  const [activeTab, setActiveTab] = useState("details");
-  const [newNote, setNewNote] = useState("");
-  const [date, setDate] = useState<Date | undefined>(
-    ticket.due_date ? new Date(ticket.due_date) : undefined
-  );
-  const [completionPercent, setCompletionPercent] = useState<number>(
-    ticket.completion_percentage || 0
-  );
-  const [estimatedHours, setEstimatedHours] = useState<number>(
-    ticket.estimated_hours || 0
-  );
-  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
-  const [isLoadingTimeEntries, setIsLoadingTimeEntries] = useState(false);
-  const [timeEntriesError, setTimeEntriesError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (ticket.id) {
-      fetchTimeEntries(ticket.id);
-    }
-  }, [ticket.id]);
-
-  const fetchTimeEntries = async (ticketId: string) => {
-    setIsLoadingTimeEntries(true);
-    setTimeEntriesError(null);
-    try {
-      // First, get time entries for this ticket
-      const { data, error } = await supabase
-        .from('time_entries')
-        .select('*')
-        .eq('ticket_id', ticketId)
-        .order('created_at', { ascending: false });
-        
-      if (error) throw error;
-      
-      // Now get user details for each entry
-      const entriesWithUserDetails = await Promise.all((data || []).map(async (entry) => {
-        if (entry.user_id) {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('first_name, last_name, email')
-            .eq('id', entry.user_id)
-            .single();
-            
-          return {
-            ...entry,
-            profiles: profileData
-          };
-        }
-        return entry;
-      }));
-      
-      setTimeEntries(entriesWithUserDetails);
-    } catch (error) {
-      console.error('Error fetching time entries:', error);
-      setTimeEntriesError('Failed to load time entries. Please try again.');
-    } finally {
-      setIsLoadingTimeEntries(false);
-    }
+  userCanEditStatus,
+  userCanEditDates
+}: ExpandedTicketDetailsProps) => {
+  const [newNote, setNewNote] = useState('');
+  
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    
+    const date = new Date(dateString);
+    return date.toLocaleString();
   };
-
-  const getStatusColor = (status: string) => {
+  
+  const getInitials = (name?: string) => {
+    if (!name) return 'U';
+    
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
+  };
+  
+  const getStatusIcon = (status: string) => {
     switch (status) {
-      case "new":
-        return "bg-blue-100 text-blue-800";
-      case "in-progress":
-        return "bg-yellow-100 text-yellow-800";
-      case "blocked":
-        return "bg-red-100 text-red-800";
-      case "review":
-        return "bg-purple-100 text-purple-800";
-      case "done":
-        return "bg-green-100 text-green-800";
-      case "closed":
-        return "bg-gray-100 text-gray-800";
+      case 'new':
+        return <AlertCircle className="h-4 w-4 text-blue-500" />;
+      case 'in-progress':
+        return <Clock className="h-4 w-4 text-yellow-500" />;
+      case 'blocked':
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
+      case 'review':
+        return <FileText className="h-4 w-4 text-purple-500" />;
+      case 'done':
+      case 'closed':
+        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       default:
-        return "bg-gray-100 text-gray-800";
+        return <AlertCircle className="h-4 w-4" />;
     }
   };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "low":
-        return "bg-blue-100 text-blue-800";
-      case "medium":
-        return "bg-yellow-100 text-yellow-800";
-      case "high":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const formatDate = (date: string | null) => {
-    if (!date) return "Not set";
-    try {
-      return format(parseISO(date), "PPP");
-    } catch (error) {
-      return "Invalid date";
-    }
-  };
-
-  const formatDateTime = (date: string | null) => {
-    if (!date) return "Not set";
-    try {
-      return format(parseISO(date), "PPP p");
-    } catch (error) {
-      return "Invalid date";
-    }
-  };
-
-  const handleStatusChange = async (value: string) => {
-    await onTicketAction(ticket.id, "updateStatus", value);
-  };
-
-  const handlePriorityChange = async (value: string) => {
-    await onTicketAction(ticket.id, "updatePriority", value);
-  };
-
-  const handleDueDateChange = async (selectedDate: Date | undefined) => {
-    setDate(selectedDate);
-    if (selectedDate) {
-      const formattedDate = selectedDate.toISOString().split('T')[0];
-      await onTicketAction(ticket.id, "updateDueDate", formattedDate);
-    } else {
-      await onTicketAction(ticket.id, "updateDueDate", null);
-    }
-  };
-
-  const handleCompletionChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = Number(e.target.value);
-    setCompletionPercent(value);
-    await onTicketAction(ticket.id, "updateCompletionPercentage", value);
-  };
-
-  const handleEstimatedHoursChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = Number(e.target.value);
-    setEstimatedHours(value);
-    await onTicketAction(ticket.id, "updateEstimatedHours", value);
-  };
-
-  const handleAddNote = async () => {
+  
+  const handleAddNote = () => {
     if (!newNote.trim()) return;
     
-    await onTicketAction(ticket.id, "addNote", newNote);
-    setNewNote("");
+    if (onTicketAction) {
+      onTicketAction(ticket.id, 'addNote', newNote.trim());
+      setNewNote('');
+    }
   };
-
+  
   return (
-    <div className="max-h-[80vh] overflow-y-auto">
-      <div className="flex justify-between items-start mb-4">
-        <h2 className="text-xl font-bold">{ticket.title}</h2>
-        <div>
-          <Button variant="outline" size="sm" onClick={onClose}>
-            Close
-          </Button>
-        </div>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="conversation">Conversation</TabsTrigger>
-          <TabsTrigger value="activity-log">Activity Log</TabsTrigger>
-          <TabsTrigger value="time-log">Time Log</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="details" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Status</label>
-              <Select
-                value={ticket.status}
-                disabled={!userCanEditStatus}
-                onValueChange={handleStatusChange}
-              >
-                <SelectTrigger className={getStatusColor(ticket.status)}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Priority</label>
-              <Select
-                value={ticket.priority}
-                disabled={!userCanEditStatus}
-                onValueChange={handlePriorityChange}
-              >
-                <SelectTrigger className={getPriorityColor(ticket.priority)}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {priorityOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Due Date</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
-                    )}
-                    disabled={!userCanEditDates}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP") : "No date selected"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={handleDueDateChange}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Estimated Hours</label>
-              <div className="flex items-center space-x-2">
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  value={estimatedHours}
-                  onChange={handleEstimatedHoursChange}
-                  disabled={!userCanEditDates}
-                  className="w-20"
-                />
-                <span>hrs</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Completion</label>
-              <div className="flex items-center space-x-2">
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={completionPercent}
-                  onChange={handleCompletionChange}
-                  disabled={!userCanEditStatus}
-                  className="w-20"
-                />
-                <span>%</span>
-                <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-500"
-                    style={{ width: `${completionPercent}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
+    <div className="mt-4 border-t pt-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="col-span-1 md:col-span-2 space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
-            <div className="p-3 bg-gray-50 rounded-md border min-h-[100px] whitespace-pre-wrap">
-              {ticket.description || "No description provided."}
+            <h4 className="text-sm font-medium mb-2">Description</h4>
+            <div className="bg-gray-50 p-3 rounded text-sm">
+              {ticket.description || 'No description provided'}
             </div>
-          </div>
-
-          {onLogTime && (
-            <div className="pt-4">
-              <Button onClick={() => onLogTime(ticket.id)}>
-                <Clock className="h-4 w-4 mr-2" /> Log Time
-              </Button>
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Conversation, Activity Log, and other tabs remain the same */}
-
-        <TabsContent value="time-log" className="space-y-4">
-          <div className="bg-gray-50 p-4 rounded-md border mb-4">
-            <p className="text-sm text-gray-500 mb-2">
-              Time Log shows all time entries recorded for this ticket.
-            </p>
           </div>
           
-          {isLoadingTimeEntries ? (
-            <div className="flex justify-center p-8">
-              <p>Loading time entries...</p>
-            </div>
-          ) : timeEntriesError ? (
-            <div className="flex items-center justify-center p-8 bg-red-50 rounded-md border border-red-200">
-              <AlertCircle className="h-6 w-6 text-red-500 mr-2" />
-              <p className="text-red-700">{timeEntriesError}</p>
-            </div>
-          ) : (
+          {ticket.reproduction_steps && (
             <div>
-              {timeEntries.length === 0 ? (
-                <div className="text-center text-gray-500 py-8 border rounded-md">
-                  <p>No time entries found for this ticket.</p>
-                </div>
-              ) : (
-                <div className="border rounded-md overflow-hidden">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          User
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Hours
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Date
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Description
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {timeEntries.map((entry) => (
-                        <tr key={entry.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {entry.profiles ? 
-                              `${entry.profiles.first_name || ''} ${entry.profiles.last_name || ''}`.trim() || entry.profiles.email : 
-                              'Unknown user'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {entry.hours_logged.toFixed(2)} hrs
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {formatDate(entry.created_at)}
-                          </td>
-                          <td className="px-6 py-4 text-sm">
-                            {entry.description || 'No description'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              <h4 className="text-sm font-medium mb-2">Steps to Reproduce</h4>
+              <div className="bg-gray-50 p-3 rounded text-sm">
+                {ticket.reproduction_steps}
+              </div>
+            </div>
+          )}
+          
+          {ticket.system_info && (
+            <div>
+              <h4 className="text-sm font-medium mb-2">System Information</h4>
+              <div className="bg-gray-50 p-3 rounded text-sm">
+                <pre className="whitespace-pre-wrap">{typeof ticket.system_info === 'string' ? ticket.system_info : JSON.stringify(ticket.system_info, null, 2)}</pre>
+              </div>
+            </div>
+          )}
+          
+          {/* Add the attachments section */}
+          {(ticket.attachments?.length > 0 || (ticket.project_id && ticket.id)) && (
+            <div>
+              <h4 className="text-sm font-medium mb-2">Attachments</h4>
+              <div className="flex gap-2 flex-wrap">
+                <TicketAttachments 
+                  ticketId={ticket.id}
+                  projectId={ticket.project_id}
+                  attachmentUrls={ticket.attachments}
+                  label="View Attachments"
+                />
+              </div>
+            </div>
+          )}
+          
+          {(ticket.notes && ticket.notes.length > 0) && (
+            <div>
+              <h4 className="text-sm font-medium mb-2">Notes & Updates</h4>
+              <div className="space-y-3">
+                {ticket.notes.map((note, index) => (
+                  <div key={index} className="bg-gray-50 p-3 rounded">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback>{getInitials(note.user)}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium">{note.user}</span>
+                      </div>
+                      <span className="text-xs text-gray-500">{formatDate(note.timestamp)}</span>
+                    </div>
+                    <p className="text-sm">{note.comment || note.content}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          <div>
+            <h4 className="text-sm font-medium mb-2">Add Note</h4>
+            <div className="flex gap-2">
+              <Textarea
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                placeholder="Add a note or update..."
+                className="min-h-[100px]"
+              />
+            </div>
+            <div className="flex justify-end mt-2">
+              <Button 
+                variant="default" 
+                size="sm"
+                disabled={!newNote.trim()}
+                onClick={handleAddNote}
+              >
+                <SendHorizontal className="mr-2 h-4 w-4" />
+                Add Note
+              </Button>
+            </div>
+          </div>
+        </div>
+        
+        <div className="col-span-1 space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <UserRound className="h-4 w-4" /> Reporter
+                </span>
+                <span>{ticket.reporter ? ticket.reporter : 'Unknown'}</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <UserRound className="h-4 w-4" /> Assignee
+                </span>
+                <span>{ticket.assigned_to ? ticket.assigned_to : 'Unassigned'}</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <Calendar className="h-4 w-4" /> Created
+                </span>
+                <span>{formatDate(ticket.created_at)}</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <Calendar className="h-4 w-4" /> Updated
+                </span>
+                <span>{formatDate(ticket.updated_at)}</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <Calendar className="h-4 w-4" /> Due Date
+                </span>
+                <span>{ticket.due_date ? formatDate(ticket.due_date) : 'Not set'}</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <FileText className="h-4 w-4" /> Type
+                </span>
+                <span>{ticket.ticket_type || 'Task'}</span>
+              </div>
+              
+              {ticket.completion_percentage !== undefined && (
+                <div className="flex justify-between items-center">
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="h-4 w-4" /> Completion
+                  </span>
+                  <span>{ticket.completion_percentage}%</span>
                 </div>
               )}
               
-              {onLogTime && (
-                <div className="mt-4">
-                  <Button onClick={() => onLogTime(ticket.id)}>
-                    <Clock className="h-4 w-4 mr-2" /> Log Time
-                  </Button>
+              {ticket.equity_points !== undefined && ticket.equity_points > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="h-4 w-4" /> Equity Points
+                  </span>
+                  <span>{ticket.equity_points}</span>
                 </div>
               )}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+            </CardContent>
+            {onLogTime && (
+              <CardFooter>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => onLogTime(ticket.id)}
+                >
+                  <Clock className="mr-2 h-4 w-4" />
+                  Log Time
+                </Button>
+              </CardFooter>
+            )}
+          </Card>
+          
+          <div className="flex flex-col gap-2">
+            {userCanEditStatus && onTicketAction && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                className={
+                  ticket.status === 'done' || ticket.status === 'closed'
+                    ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:text-green-800'
+                    : ticket.status === 'in-progress'
+                    ? 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100 hover:text-yellow-800'
+                    : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-800'
+                }
+                onClick={() => {
+                  if (ticket.status === 'new') {
+                    onTicketAction(ticket.id, 'updateStatus', 'in-progress');
+                  } else if (ticket.status === 'in-progress') {
+                    onTicketAction(ticket.id, 'updateStatus', 'review');
+                  } else if (ticket.status === 'review') {
+                    onTicketAction(ticket.id, 'updateStatus', 'done');
+                  }
+                }}
+                disabled={ticket.status === 'done' || ticket.status === 'closed' || ticket.status === 'blocked'}
+              >
+                {getStatusIcon(ticket.status)}
+                <span className="ml-2">
+                  {ticket.status === 'new' && 'Start Progress'}
+                  {ticket.status === 'in-progress' && 'Submit for Review'}
+                  {ticket.status === 'review' && 'Mark as Done'}
+                  {(ticket.status === 'done' || ticket.status === 'closed') && 'Completed'}
+                  {ticket.status === 'blocked' && 'Blocked'}
+                </span>
+              </Button>
+            )}
+            
+            {onClose && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={onClose}
+              >
+                Close Details
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
