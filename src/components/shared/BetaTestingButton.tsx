@@ -199,7 +199,7 @@ export function BetaTestingButton() {
           const fileExt = file.name.split('.').pop();
           const fileName = `${ticketData.id}_${index}.${fileExt}`;
           // Changed from user.id to projectId for the file path
-          const filePath = `${projectId}/${ticketData.id}/${fileName}`;
+          const filePath = `${user.Id}/${ticketData.id}/${fileName}`;
           
           const { error: uploadError } = await supabase
             .storage
