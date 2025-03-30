@@ -8,9 +8,9 @@ export interface Ticket {
   priority: string;
   health: string; 
   assigned_to?: string;
-  created_by?: string;
-  created_at?: string;
-  project_id?: string;
+  created_by?: string; // Make optional to match error requirement
+  created_at?: string; // Make optional to match error requirement
+  project_id?: string; // Make optional to match error requirement
   due_date?: string;
   ticket_type?: string;
   task_id?: string;
@@ -24,7 +24,7 @@ export interface Ticket {
   reporter?: string;
   expanded?: boolean;
   newNote?: string;
-  system_info?: string | object;
+  system_info?: string;
   reproduction_steps?: string;
   replies?: any[];
   job_app_id?: string;
@@ -53,7 +53,6 @@ export interface Task {
   endDate?: string;
   progress: number;
   dependencies?: string[];
-  hours_logged?: number;
 }
 
 export interface TaskCompletionReviewProps {
@@ -71,8 +70,8 @@ export interface TicketStatistics {
   inProgressTickets: number;
   completedTickets: number;
   overdueTickets: number;
-  total?: number;
-  open?: number;
+  total?: number; // Add this property to fix errors
+  open?: number; // Add this property to fix errors
 }
 
 export interface BetaTicket extends Ticket {
@@ -92,15 +91,4 @@ export interface TicketDashboardProps {
   renderTicketActions?: (ticket: Ticket) => React.ReactNode;
   expandedTickets?: Set<string> | Record<string, boolean>;
   toggleTicketExpansion?: (ticketId: string) => void;
-}
-
-// Add interface for ExpandedTicketDetailsProps
-export interface ExpandedTicketDetailsProps {
-  ticket: Ticket;
-  onAction?: (action: string, data?: any) => Promise<void>;
-  onClose?: () => void;
-  canEdit?: boolean;
-  isLoading?: boolean;
-  showTimeTracking?: boolean;
-  onLogTime?: () => void;
 }

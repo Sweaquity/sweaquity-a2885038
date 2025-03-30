@@ -41,48 +41,29 @@ export interface Profile {
   terms_accepted: boolean;
 }
 
-// Ensure EquityProject includes all necessary fields
+// Override the EquityProject interface for backward compatibility
 export interface EquityProject {
+  id: string;
   project_id: string;
-  title: string;
-  description: string;
-  equity_allocation: number;
-  project_timeframe: string;
-  skills_required: any[];
-  created_at: string;
-  updated_at: string;
-  business_id: string;
+  equity_amount: number;
+  time_allocated: string;
   status: string;
-  tasks: any[];
-  company_name: string;
-  equity_allocated: number;
-  completion_percentage: number;
-  
-  // Additional fields from other interfaces
-  id?: string;
-  equity_amount?: number;
-  time_allocated?: string;
-  start_date?: string;
+  start_date: string;
   end_date?: string;
-  effort_logs?: {
+  effort_logs: {
     date: string;
     hours: number;
     description: string;
   }[];
-  total_hours_logged?: number;
-  sub_tasks?: any[];
+  total_hours_logged: number;
+  sub_tasks?: import('./businessRoles').SubTask[];
   business_roles?: {
     title: string;
     description: string;
     company_name?: string;
     project_title?: string;
-    status?: string;
-    task_status?: string;
-    completion_percentage?: number;
-    timeframe?: string;
-    skill_requirements?: any[];
-    project_status?: string;
   };
+  title?: string;
   documents?: {
     contract?: {
       url: string;
@@ -90,7 +71,7 @@ export interface EquityProject {
     };
   };
   created_by?: string;
+  created_at?: string;
   skill_match?: number;
-  is_equity_project?: boolean;
-  timeframe?: string;
+  updated_at?: string;
 }

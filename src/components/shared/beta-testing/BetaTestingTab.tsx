@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { Ticket } from "@/types/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RefreshCw, Plus } from "lucide-react";
-import { TicketForm } from "@/components/ticket/TicketForm";
 
 interface BetaTestingTabProps {
   userType: 'business' | 'job_seeker';
@@ -28,7 +27,6 @@ export const BetaTestingTab = ({
   const [expandedTickets, setExpandedTickets] = useState<Set<string>>(new Set());
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
-  const [isCreateTicketOpen, setIsCreateTicketOpen] = useState(false);
   const [taskStats, setTaskStats] = useState({
     total: 0,
     open: 0,
@@ -234,43 +232,8 @@ export const BetaTestingTab = ({
     });
   };
 
-  const handleCreateTicket = async (formData: any) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast.error("You must be logged in to create tickets");
-        return;
-      }
-      
-      const newTicket = {
-        title: formData.title,
-        description: formData.description,
-        status: formData.status,
-        priority: formData.priority,
-        due_date: formData.due_date,
-        reproduction_steps: formData.reproduction_steps,
-        reporter: userId,
-        project_id: selectedProject,
-        health: 'needs-review',
-        ticket_type: 'beta_testing'
-      };
-      
-      const { data, error } = await supabase
-        .from('tickets')
-        .insert(newTicket)
-        .select();
-      
-      if (error) throw error;
-      
-      toast.success("Ticket created successfully");
-      handleRefresh();
-      
-      return data;
-    } catch (error) {
-      console.error("Error creating ticket:", error);
-      toast.error("Failed to create ticket");
-    }
+  const handleCreateTicket = () => {
+    toast.info("Create ticket functionality will be implemented soon");
   };
 
   if (!userId) {
@@ -307,7 +270,7 @@ export const BetaTestingTab = ({
             <RefreshCw className="h-4 w-4 mr-1" /> Refresh
           </Button>
           
-          <Button size="sm" onClick={() => setIsCreateTicketOpen(true)}>
+          <Button size="sm" onClick={handleCreateTicket}>
             <Plus className="h-4 w-4 mr-1" /> Create Ticket
           </Button>
         </div>
@@ -408,13 +371,6 @@ export const BetaTestingTab = ({
           </Card>
         </TabsContent>
       </Tabs>
-
-      <TicketForm 
-        isOpen={isCreateTicketOpen}
-        onOpenChange={setIsCreateTicketOpen}
-        onSubmit={handleCreateTicket}
-        mode="create"
-      />
     </div>
   );
 };
