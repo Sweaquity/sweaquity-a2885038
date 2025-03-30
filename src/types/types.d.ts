@@ -1,3 +1,4 @@
+
 export interface Ticket {
   id: string;
   title: string;
@@ -35,6 +36,7 @@ export interface Ticket {
   type?: string; // Added type property
   // Legacy property to ensure backward compatibility:
   ticket_type?: string;
+  attachments?: string[];
 }
 
 export interface TicketMessage {

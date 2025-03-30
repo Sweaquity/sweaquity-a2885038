@@ -1,57 +1,82 @@
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Clock } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { TicketService } from "@/components/ticket/TicketService";
+import { supabase } from "@/lib/supabase";
 
 interface TimeLogDialogProps {
   open: boolean;
   onClose: () => void;
   ticketId: string;
   userId: string;
-  onTimeLogged: () => void;
+  onTimeLogged?: () => void;
 }
 
-export const TimeLogDialog = ({
-  open,
-  onClose,
-  ticketId,
+export const TimeLogDialog = ({ 
+  open, 
+  onClose, 
+  ticketId, 
   userId,
   onTimeLogged
 }: TimeLogDialogProps) => {
-  const [hours, setHours] = useState<number>(1);
+  const [hours, setHours] = useState<number>(0);
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (hours <= 0) {
-      toast.error("Hours must be greater than 0");
+      toast.error("Please enter a valid number of hours");
       return;
     }
-
+    
     try {
       setIsSubmitting(true);
       
-      // Use the TicketService to log time
-      const success = await TicketService.logTime(ticketId, userId, hours, description || "Work completed");
+      const { error } = await supabase
+        .from('time_entries')
+        .insert({
+          ticket_id: ticketId,
+          user_id: userId,
+          hours_logged: hours,
+          description: description,
+          start_time: new Date().toISOString(),
+          end_time: new Date().toISOString() // For manual entries, we set both times to now
+        });
+        
+      if (error) throw error;
       
-      if (success) {
-        toast.success("Time logged successfully");
-        setHours(1);
-        setDescription("");
-        onTimeLogged();
-        onClose();
-      } else {
-        toast.error("Failed to log time");
+      // Update the hours_logged in the tickets table too
+      const { data: ticketData } = await supabase
+        .from('tickets')
+        .select('hours_logged')
+        .eq('id', ticketId)
+        .single();
+      
+      if (ticketData) {
+        const currentHours = ticketData.hours_logged || 0;
+        await supabase
+          .from('tickets')
+          .update({ hours_logged: currentHours + hours })
+          .eq('id', ticketId);
       }
+      
+      toast.success("Time logged successfully");
+      setHours(0);
+      setDescription("");
+      
+      if (onTimeLogged) {
+        onTimeLogged();
+      }
+      
+      onClose();
     } catch (error) {
-      console.error('Error logging time:', error);
+      console.error("Error logging time:", error);
       toast.error("Failed to log time");
     } finally {
       setIsSubmitting(false);
@@ -59,63 +84,55 @@ export const TimeLogDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Log Time</DialogTitle>
-          <DialogDescription>
-            Record the time you spent working on this task
-          </DialogDescription>
         </DialogHeader>
         
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="hours" className="text-right">
-              Hours
-            </Label>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="hours">Hours Spent</Label>
             <Input
               id="hours"
               type="number"
-              min="0.25"
               step="0.25"
-              value={hours}
-              onChange={(e) => setHours(parseFloat(e.target.value))}
-              className="col-span-3"
+              min="0.25"
+              value={hours || ""}
+              onChange={e => setHours(Number(e.target.value))}
+              placeholder="Enter hours"
+              required
             />
           </div>
           
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="description" className="text-right">
-              Description
-            </Label>
+          <div className="space-y-2">
+            <Label htmlFor="description">Description (optional)</Label>
             <Textarea
               id="description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the work you did"
-              className="col-span-3"
+              onChange={e => setDescription(e.target.value)}
+              placeholder="What did you work on?"
+              rows={3}
             />
           </div>
-        </div>
-        
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Clock className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Clock className="mr-2 h-4 w-4" />
-                Log Time
-              </>
-            )}
-          </Button>
-        </DialogFooter>
+          
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit"
+              disabled={isSubmitting || hours <= 0}
+            >
+              {isSubmitting ? "Logging..." : "Log Time"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

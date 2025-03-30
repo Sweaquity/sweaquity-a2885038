@@ -41,7 +41,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const [showGantt, setShowGantt] = useState(false);
   const [isTimeLogDialogOpen, setIsTimeLogDialogOpen] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
-  const [expandedTickets, setExpandedTickets] = useState<string[]>([]);
+  const [expandedTickets, setExpandedTickets] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (userId) {
@@ -262,6 +262,24 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
           break;
         }
         
+        case 'refreshTicket': {
+          const { data: refreshedTicket, error } = await supabase
+            .from('tickets')
+            .select('*')
+            .eq('id', ticketId)
+            .single();
+            
+          if (error) throw error;
+          
+          if (refreshedTicket) {
+            setTickets(prevTickets => 
+              prevTickets.map(t => t.id === ticketId ? refreshedTicket : t)
+            );
+          }
+          
+          break;
+        }
+        
         default:
           console.warn("Unknown action:", action);
       }
@@ -365,12 +383,14 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   };
 
   const toggleTicketExpansion = (ticketId: string) => {
-    setExpandedTickets(prevExpandedTickets => {
-      if (prevExpandedTickets.includes(ticketId)) {
-        return prevExpandedTickets.filter(id => id !== ticketId);
+    setExpandedTickets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(ticketId)) {
+        newSet.delete(ticketId);
       } else {
-        return [...prevExpandedTickets, ticketId];
+        newSet.add(ticketId);
       }
+      return newSet;
     });
   };
 

@@ -12,13 +12,14 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { CalendarIcon, Clock, AlertCircle } from "lucide-react";
+import { CalendarIcon, Clock, AlertCircle, Send } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Ticket } from "@/types/types";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 const statusOptions = [
   { value: "new", label: "New" },
@@ -68,6 +69,8 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState("details");
   const [newNote, setNewNote] = useState("");
+  const [activityComment, setActivityComment] = useState("");
+  const [conversationMessage, setConversationMessage] = useState("");
   const [date, setDate] = useState<Date | undefined>(
     ticket.due_date ? new Date(ticket.due_date) : undefined
   );
@@ -80,6 +83,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [isLoadingTimeEntries, setIsLoadingTimeEntries] = useState(false);
   const [timeEntriesError, setTimeEntriesError] = useState<string | null>(null);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   useEffect(() => {
     if (ticket.id) {
@@ -211,6 +215,85 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
     
     await onTicketAction(ticket.id, "addNote", newNote);
     setNewNote("");
+  };
+
+  const handleAddConversationMessage = async () => {
+    if (!conversationMessage.trim()) return;
+    
+    setIsSubmittingComment(true);
+    try {
+      // Get user information
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, email')
+        .eq('id', user?.id)
+        .single();
+      
+      const userName = profileData ? 
+        `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || profileData.email : 
+        'User';
+      
+      // We'll use the replies field for conversation messages
+      const replies = Array.isArray(ticket.replies) ? [...ticket.replies] : [];
+      
+      const newReply = {
+        id: Date.now().toString(),
+        user: userName,
+        timestamp: new Date().toISOString(),
+        comment: conversationMessage
+      };
+      
+      replies.push(newReply);
+      
+      await supabase
+        .from('tickets')
+        .update({ replies })
+        .eq('id', ticket.id);
+      
+      toast.success("Message added to conversation");
+      setConversationMessage("");
+      await onTicketAction(ticket.id, "refreshTicket", null);
+    } catch (error) {
+      console.error("Error adding conversation message:", error);
+      toast.error("Failed to add message");
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
+
+  const handleAddActivityComment = async () => {
+    if (!activityComment.trim()) return;
+    
+    setIsSubmittingComment(true);
+    try {
+      // Get user information
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, email')
+        .eq('id', user?.id)
+        .single();
+      
+      const userName = profileData ? 
+        `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || profileData.email : 
+        'User';
+      
+      await supabase.from('ticket_comments').insert({
+        ticket_id: ticket.id,
+        user_id: user?.id,
+        content: activityComment
+      });
+      
+      toast.success("Comment added to activity log");
+      setActivityComment("");
+      await onTicketAction(ticket.id, "refreshTicket", null);
+    } catch (error) {
+      console.error("Error adding activity comment:", error);
+      toast.error("Failed to add comment");
+    } finally {
+      setIsSubmittingComment(false);
+    }
   };
 
   return (
@@ -356,8 +439,107 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
             </div>
           )}
         </TabsContent>
-
-        {/* Conversation, Activity Log, and other tabs remain the same */}
+        
+        <TabsContent value="conversation" className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-md border mb-4">
+            <p className="text-sm text-gray-500">
+              Use this tab to communicate with others about this ticket.
+            </p>
+          </div>
+          
+          <div className="border rounded-md p-2 max-h-[300px] overflow-y-auto space-y-3">
+            {Array.isArray(ticket.replies) && ticket.replies.length > 0 ? (
+              ticket.replies.map((reply, index) => (
+                <div key={index} className="p-3 bg-white border rounded-md shadow-sm">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-medium text-sm">{reply.user}</span>
+                    <span className="text-xs text-gray-500">
+                      {formatDateTime(reply.timestamp)}
+                    </span>
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap">{reply.comment}</p>
+                </div>
+              ))
+            ) : (
+              <div className="p-4 text-center text-gray-500">
+                No conversation messages yet.
+              </div>
+            )}
+          </div>
+          
+          <div className="flex items-end gap-2 mt-4">
+            <div className="flex-1">
+              <Textarea
+                placeholder="Type your message here..."
+                value={conversationMessage}
+                onChange={(e) => setConversationMessage(e.target.value)}
+                className="min-h-[80px] resize-none"
+              />
+            </div>
+            <Button 
+              onClick={handleAddConversationMessage}
+              disabled={!conversationMessage.trim() || isSubmittingComment}
+              size="sm"
+              className="h-10"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Send
+            </Button>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="activity-log" className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-md border mb-4">
+            <p className="text-sm text-gray-500">
+              The activity log shows all actions taken on this ticket.
+            </p>
+          </div>
+          
+          <div className="border rounded-md p-2 max-h-[300px] overflow-y-auto space-y-3">
+            {Array.isArray(ticket.notes) && ticket.notes.length > 0 ? (
+              ticket.notes.map((note, index) => (
+                <div key={index} className="p-3 bg-white border rounded-md shadow-sm">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-medium text-sm">{note.user}</span>
+                    <span className="text-xs text-gray-500">
+                      {formatDateTime(note.timestamp)}
+                    </span>
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap">
+                    {note.action ? (
+                      <span className="font-medium">{note.action}: </span>
+                    ) : null}
+                    {note.comment || note.content}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <div className="p-4 text-center text-gray-500">
+                No activity yet.
+              </div>
+            )}
+          </div>
+          
+          <div className="flex items-end gap-2 mt-4">
+            <div className="flex-1">
+              <Textarea
+                placeholder="Add a comment to the activity log..."
+                value={activityComment}
+                onChange={(e) => setActivityComment(e.target.value)}
+                className="min-h-[80px] resize-none"
+              />
+            </div>
+            <Button 
+              onClick={handleAddActivityComment}
+              disabled={!activityComment.trim() || isSubmittingComment}
+              size="sm"
+              className="h-10"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Add
+            </Button>
+          </div>
+        </TabsContent>
 
         <TabsContent value="time-log" className="space-y-4">
           <div className="bg-gray-50 p-4 rounded-md border mb-4">

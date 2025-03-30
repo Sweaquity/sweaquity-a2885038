@@ -10,7 +10,7 @@ export interface TicketDashboardProps {
   userId: string;
   onLogTime?: (ticketId: string) => void;
   renderTicketActions?: (ticket: Ticket) => ReactNode;
-  expandedTickets?: Set<string> | Record<string, boolean>;
+  expandedTickets?: Set<string> | string[] | Record<string, boolean>;
   toggleTicketExpansion?: (ticketId: string) => void;
   userCanEditDates?: boolean;
   userCanEditStatus?: boolean;

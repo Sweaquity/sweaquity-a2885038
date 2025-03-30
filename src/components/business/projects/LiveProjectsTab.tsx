@@ -8,6 +8,7 @@ import { ProjectTicketTabs } from "./components/ProjectTicketTabs";
 import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
 import { TaskCompletionReview } from "./TaskCompletionReview";
 import { Ticket } from "@/types/types";
+import { supabase } from "@/lib/supabase";
 import { 
   loadTickets, 
   fetchProjects, 
@@ -80,6 +81,28 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
         setReviewTask(ticket);
         setIsReviewOpen(true);
       }
+      return;
+    }
+    
+    if (action === 'refreshTicket') {
+      // Refresh the specific ticket data
+      const { data: refreshedTicket, error } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('id', ticketId)
+        .single();
+        
+      if (error) {
+        console.error("Error refreshing ticket:", error);
+        return;
+      }
+      
+      if (refreshedTicket) {
+        setTickets(prevTickets => 
+          prevTickets.map(t => t.id === ticketId ? refreshedTicket : t)
+        );
+      }
+      
       return;
     }
     
