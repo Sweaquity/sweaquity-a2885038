@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Camera, Upload, X } from "lucide-react";
@@ -197,8 +198,9 @@ export function BetaTestingButton() {
       if (screenshots.length > 0 && ticketData?.id) {
         const uploadPromises = screenshots.map(async (file, index) => {
           const fileExt = file.name.split('.').pop();
-          const fileName = `${ticketData.id}_${index}.${fileExt}`;
-          // Changed from user.id to projectId for the file path
+          const fileName = `${index}_${Date.now()}.${fileExt}`;
+          
+          // Changed path format to project_id/ticket_id/fileName
           const filePath = `${projectId}/${ticketData.id}/${fileName}`;
           
           const { error: uploadError } = await supabase
@@ -216,17 +218,23 @@ export function BetaTestingButton() {
             .from('ticket-attachments')
             .getPublicUrl(filePath);
             
-          return publicUrl;
+          return {
+            url: publicUrl,
+            name: file.name,
+            path: filePath,
+            type: file.type,
+            size: file.size
+          };
         });
         
-        const uploadedUrls = await Promise.all(uploadPromises);
-        const validUrls = uploadedUrls.filter(url => url !== null) as string[];
+        const uploadedFiles = await Promise.all(uploadPromises);
+        const validFiles = uploadedFiles.filter(file => file !== null);
         
-        if (validUrls.length > 0) {
+        if (validFiles.length > 0) {
           const { error: updateError } = await supabase
             .from('tickets')
             .update({
-              attachments: validUrls
+              attachments: validFiles
             })
             .eq('id', ticketData.id);
             
