@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Camera, Upload, X } from "lucide-react";
@@ -372,6 +373,23 @@ export function BetaTestingButton() {
               )}
             </div>
             
+            {/* Move DialogFooter above System Information for better mobile usability */}
+            <DialogFooter className="mt-6 mb-4">
+              <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button onClick={handleSubmit} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <span className="mr-2">Submitting...</span>
+                    <span className="animate-spin">⟳</span>
+                  </>
+                ) : (
+                  "Submit Report"
+                )}
+              </Button>
+            </DialogFooter>
+            
             {systemInfo && (
               <div className="space-y-2 bg-gray-50 p-3 rounded text-sm">
                 <p className="font-medium">System Information (Automatically Collected)</p>
@@ -384,22 +402,6 @@ export function BetaTestingButton() {
               </div>
             )}
           </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <span className="mr-2">Submitting...</span>
-                  <span className="animate-spin">⟳</span>
-                </>
-              ) : (
-                "Submit Report"
-              )}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

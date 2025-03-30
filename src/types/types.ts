@@ -1,15 +1,16 @@
-// We only need to add the missing fields to the Ticket interface
+
+// Update Ticket interface to fix inconsistencies
 export interface Ticket {
   id: string;
   title: string;
   description: string;
   status: string;
   priority: string;
-  health: string; // Make health required to match BetaTicket requirement
+  health: string; 
   assigned_to?: string;
-  created_by: string; // Make required to fix TypeScript error
-  created_at: string; // Make required to fix TypeScript error
-  project_id: string;
+  created_by?: string; // Make optional to match error requirement
+  created_at?: string; // Make optional to match error requirement
+  project_id?: string; // Make optional to match error requirement
   due_date?: string;
   ticket_type?: string;
   task_id?: string;
@@ -20,12 +21,22 @@ export interface Ticket {
   notes?: any[];
   type?: string;
   equity_points?: number;
+  reporter?: string;
+  expanded?: boolean;
+  newNote?: string;
+  system_info?: string;
+  reproduction_steps?: string;
+  replies?: any[];
+  job_app_id?: string;
+  isTaskTicket?: boolean;
+  isProjectTicket?: boolean;
+  attachments?: string[];
 }
 
 // Update UserData interface to include the required name field
 export interface UserData {
   id: string;
-  name: string; // Required field
+  name: string;
   email: string;
   avatar?: string;
 }
@@ -64,10 +75,10 @@ export interface TicketStatistics {
 }
 
 export interface BetaTicket extends Ticket {
-  health: string; // Already required in Ticket now
+  // health is already required in Ticket now
 }
 
-// Add TicketDashboardProps to fix the error
+// Add TicketDashboardProps with optional expandedTickets and toggleTicketExpansion
 export interface TicketDashboardProps {
   initialTickets: Ticket[];
   onRefresh?: () => void;
@@ -78,4 +89,6 @@ export interface TicketDashboardProps {
   userCanEditDates?: boolean;
   userCanEditStatus?: boolean;
   renderTicketActions?: (ticket: Ticket) => React.ReactNode;
+  expandedTickets?: Set<string> | Record<string, boolean>;
+  toggleTicketExpansion?: (ticketId: string) => void;
 }

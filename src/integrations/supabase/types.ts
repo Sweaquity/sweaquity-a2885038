@@ -1427,6 +1427,40 @@ export type Database = {
         }
         Returns: undefined
       }
+      extract_ticket_id_from_path: {
+        Args: {
+          path: string
+        }
+        Returns: string
+      }
+      is_project_member: {
+        Args: {
+          project_uuid: string
+          user_uuid: string
+        }
+        Returns: boolean
+      }
+      is_project_owner: {
+        Args: {
+          project_uuid: string
+          user_uuid: string
+        }
+        Returns: boolean
+      }
+      is_ticket_owner_or_admin: {
+        Args: {
+          ticket_uuid: string
+          user_uuid: string
+        }
+        Returns: boolean
+      }
+      path_contains_user_id: {
+        Args: {
+          path: string
+          user_id: string
+        }
+        Returns: boolean
+      }
       update_active_project: {
         Args: {
           p_task_id: string

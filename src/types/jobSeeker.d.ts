@@ -11,7 +11,7 @@ export * from './dashboardProps';
 // Legacy Skill interface (updated to match profile.ts)
 export interface Skill {
   id?: string;
-  skill: string;
+  skill?: string;
   level?: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
   name?: string; // Added for backward compatibility
 }
@@ -62,6 +62,12 @@ export interface EquityProject {
     description: string;
     company_name?: string;
     project_title?: string;
+    status?: string;
+    task_status?: string;
+    completion_percentage?: number;
+    timeframe?: string;
+    skill_requirements?: any[];
+    project_status?: string;
   };
   title?: string;
   documents?: {
@@ -81,6 +87,14 @@ export interface EquityProject {
   description?: string;
 }
 
+// Update AcceptedJob to match the database fields
+export interface AcceptedJob {
+  equity_agreed: number;
+  jobs_equity_allocated: number;
+  date_accepted?: string;
+  id?: string;
+}
+
 // Add JobApplication interface properties needed for compatibility
 export interface JobApplication {
   job_app_id: string;
@@ -97,6 +111,7 @@ export interface JobApplication {
   cv_url?: string;
   task_discourse?: string;
   business_roles?: {
+    id?: string;
     title: string;
     description: string;
     company_name?: string;
@@ -107,6 +122,7 @@ export interface JobApplication {
     timeframe?: string;
     skill_requirements?: any[];
     project_status?: string;
+    equity_allocation?: number;
   };
   accepted_jobs?: AcceptedJob;
   is_equity_project?: boolean;
@@ -117,12 +133,4 @@ export interface JobApplication {
   project_title?: string;
   description?: string;
   hasEquityData?: boolean;
-}
-
-// Update AcceptedJob to match the database fields
-export interface AcceptedJob {
-  equity_agreed: number;
-  jobs_equity_allocated: number;
-  date_accepted?: string;
-  id?: string;
 }

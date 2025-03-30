@@ -1,6 +1,6 @@
 
 import { Application } from "@/types/business";
-import { JobApplication } from "@/types/jobSeeker";
+import { JobApplication, Skill } from "@/types/jobSeeker";
 
 /**
  * Converts an Application object to a JobApplication object
@@ -33,7 +33,8 @@ export function convertApplicationToJobApplication(application: Application): Jo
     return [];
   };
 
-  return {
+  // Create a basic JobApplication object
+  const jobApplication: JobApplication = {
     job_app_id: application.job_app_id,
     user_id: application.user_id,
     task_id: application.task_id,
@@ -59,7 +60,14 @@ export function convertApplicationToJobApplication(application: Application): Jo
       equity_allocation: application.business_roles?.equity_allocation
     },
     // Add hasEquityData property for type compatibility
-    hasEquityData: Boolean(application.accepted_jobs),
-    accepted_jobs: application.accepted_jobs || null
+    hasEquityData: false // Default value if accepted_jobs is not available
   };
+
+  // Handle optional fields conditionally to avoid TypeScript errors
+  if ('accepted_jobs' in application && application.accepted_jobs) {
+    jobApplication.accepted_jobs = application.accepted_jobs;
+    jobApplication.hasEquityData = true;
+  }
+
+  return jobApplication;
 }
