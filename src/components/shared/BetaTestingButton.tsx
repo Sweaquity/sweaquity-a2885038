@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import html2canvas from 'html2canvas';
 
 interface SystemLogInfo {
   url: string;
@@ -36,7 +35,6 @@ export function BetaTestingButton() {
   const [projectSubTasks, setProjectSubTasks] = useState<ProjectSubTask[]>([]);
   const [selectedSubTaskId, setSelectedSubTaskId] = useState<string>('');
   const [isLoadingSubTasks, setIsLoadingSubTasks] = useState(false);
-  const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -114,37 +112,6 @@ export function BetaTestingButton() {
     setScreenshotPreviews(screenshotPreviews.filter((_, i) => i !== index));
   };
 
-  const captureScreenshot = async () => {
-    try {
-      setIsCapturingScreenshot(true);
-      setIsOpen(false);
-      
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      const canvas = await html2canvas(document.body);
-      const dataUrl = canvas.toDataURL('image/png');
-      
-      const blobBin = atob(dataUrl.split(',')[1]);
-      const array = [];
-      for (let i = 0; i < blobBin.length; i++) {
-        array.push(blobBin.charCodeAt(i));
-      }
-      const file = new File([new Uint8Array(array)], 'screenshot.png', {type: 'image/png'});
-      
-      setScreenshots(prev => [...prev, file]);
-      setScreenshotPreviews(prev => [...prev, dataUrl]);
-      
-      setIsOpen(true);
-      toast.success("Screenshot captured successfully!");
-    } catch (error) {
-      console.error("Error capturing screenshot:", error);
-      toast.error("Failed to capture screenshot");
-      setIsOpen(true);
-    } finally {
-      setIsCapturingScreenshot(false);
-    }
-  };
-
   const handleSubmit = async () => {
     if (!description.trim()) {
       toast.error("Please describe the error you encountered");
@@ -190,7 +157,7 @@ export function BetaTestingButton() {
         const uploadPromises = screenshots.map(async (file, index) => {
           const fileExt = file.name.split('.').pop();
           const fileName = `${ticketData.id}_${index}.${fileExt}`;
-          const filePath = `${user.id}/${ticketData.id}/${fileName}`;
+          const filePath = `${fileName}`;
           
           const { error: uploadError } = await supabase
             .storage
@@ -242,7 +209,7 @@ export function BetaTestingButton() {
       setIsSubmitting(false);
     }
   };
-
+      
   return (
     <>
       <TooltipProvider>
@@ -348,16 +315,6 @@ export function BetaTestingButton() {
                   <Upload className="mr-2 h-4 w-4" />
                   Upload Files
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  onClick={captureScreenshot}
-                  disabled={isCapturingScreenshot}
-                >
-                  <Camera className="mr-2 h-4 w-4" />
-                  {isCapturingScreenshot ? "Capturing..." : "Capture Screen"}
-                </Button>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -390,22 +347,6 @@ export function BetaTestingButton() {
               )}
             </div>
             
-            <div className="flex justify-end gap-2 mt-6">
-              <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <span className="mr-2">Submitting...</span>
-                    <span className="animate-spin">⟳</span>
-                  </>
-                ) : (
-                  "Submit Report"
-                )}
-              </Button>
-            </div>
-            
             {systemInfo && (
               <div className="space-y-2 bg-gray-50 p-3 rounded text-sm">
                 <p className="font-medium">System Information (Automatically Collected)</p>
@@ -418,6 +359,22 @@ export function BetaTestingButton() {
               </div>
             )}
           </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <span className="mr-2">Submitting...</span>
+                  <span className="animate-spin">⟳</span>
+                </>
+              ) : (
+                "Submit Report"
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
