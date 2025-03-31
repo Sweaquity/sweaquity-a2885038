@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Plus, RefreshCw } from "lucide-react";
 import { GanttChartView } from "../../testing/GanttChartView";
 import { KanbanBoard } from "@/components/ticket/KanbanBoard";
+const [expandedTickets, setExpandedTickets] = useState<string[]>([]);
+
 
 export const BetaTestingTab = () => {
   const [userId, setUserId] = useState<string | null>(null);
@@ -52,7 +54,15 @@ export const BetaTestingTab = () => {
       loadTickets(userId);
     }
   }, [userId, selectedProject]);
-
+  
+  const toggleTicketExpansion = (ticketId: string) => {
+    setExpandedTickets(prev => 
+      prev.includes(ticketId) 
+        ? prev.filter(id => id !== ticketId) 
+        : [...prev, ticketId]
+    );
+  };
+  
   const fetchProjects = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -290,13 +300,15 @@ export const BetaTestingTab = () => {
         </TabsList>
         
         <TabsContent value="tickets">
-          <TicketDashboard 
-            initialTickets={tickets}
-            onRefresh={handleRefresh}
-            onTicketAction={handleTicketAction}
-            showTimeTracking={false}
-            userId={userId}
-          />
+        <TicketDashboard 
+          initialTickets={tickets}
+          onRefresh={handleRefresh}
+          onTicketAction={handleTicketAction}
+          showTimeTracking={false}
+          userId={userId}
+          expandedTickets={expandedTickets}
+          toggleTicketExpansion={toggleTicketExpansion}
+        />
         </TabsContent>
         
         <TabsContent value="project-tasks">
@@ -306,6 +318,8 @@ export const BetaTestingTab = () => {
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
             userId={userId}
+            expandedTickets={[]} // Add this line
+            toggleTicketExpansion={() => {}} // Add this line
           />
         </TabsContent>
         
@@ -316,6 +330,8 @@ export const BetaTestingTab = () => {
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
             userId={userId}
+            expandedTickets={[]} // Add this line
+            toggleTicketExpansion={() => {}} // Add this line
           />
         </TabsContent>
         
