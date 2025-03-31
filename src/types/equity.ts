@@ -1,27 +1,5 @@
 
-import { BusinessRole, SubTask } from './businessRoles';
-
-export interface EffortLog {
-  id: string;
-  project_id: string;
-  sub_task_id: string;
-  user_id: string;
-  hours: number;
-  description: string;
-  date_logged: string;
-}
-
-export interface TimeEntry {
-  id: string;
-  ticket_id: string;
-  user_id: string;
-  job_app_id?: string;
-  start_time: string;
-  end_time?: string;
-  hours_logged: number;
-  description: string;
-  created_at: string;
-}
+import { SubTask } from './businessRoles';
 
 export interface EquityProject {
   id: string;
@@ -31,49 +9,39 @@ export interface EquityProject {
   status: string;
   start_date: string;
   end_date?: string;
-  effort_logs: EffortLog[];
+  effort_logs: {
+    date: string;
+    hours: number;
+    description: string;
+  }[];
   total_hours_logged: number;
-  title: string;
-  company_name?: string;
-  created_by?: string;
-  skill_match?: number;
   sub_tasks?: SubTask[];
-  business_roles?: BusinessRole;
-  job_app_id?: string;
-  accepted_jobs?: {
-    equity_agreed: number;
-    jobs_equity_allocated: number;
-    id: string;
-    date_accepted: string;
+  business_roles?: {
+    title: string;
+    description: string;
+    company_name?: string;
+    project_title?: string;
+    status?: string;
+    task_status?: string;
+    completion_percentage?: number;
+    timeframe?: string;
+    skill_requirements?: any[];
+    project_status?: string;
   };
-  created_at?: string; // Added for sorting by creation date
-  updated_at?: string; // Added for compatibility
+  title?: string;
   documents?: {
     contract?: {
       url: string;
       status?: string;
     };
   };
-}
-
-export interface ProjectEquity {
-  project_id: string;
-  user_id: string;
-  equity_allocated: number;
-  equity_earned: number;
-  completion_percentage: number;
-  status: string;
-  updated_at: string;
-}
-
-export interface LogEffort {
-  projectId: string;
-  hours: number;
-  description: string;
-}
-
-// Component props
-export interface EquityProjectItemProps {
-  application: import('./applications').JobApplication;
-  onApplicationUpdated: () => void;
+  created_by?: string;
+  created_at?: string;
+  skill_match?: number;
+  updated_at?: string;
+  skills_required?: string[]; // Added for compatibility with ProjectCard
+  is_equity_project?: boolean;
+  timeframe?: string;
+  equity_allocation?: number;
+  description?: string;
 }

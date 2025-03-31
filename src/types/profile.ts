@@ -1,35 +1,45 @@
+
+export type SkillLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+
 export interface Skill {
   id?: string;
-  name: string;
-  skill?: string; // For backward compatibility
-  level?: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+  skill: string; // Making this required to match SkillRequirement
+  level?: SkillLevel;
+  name?: string; // For backward compatibility
 }
 
-export interface Profile {
+export interface SkillRequirement {
+  skill: string;
+  level?: SkillLevel;
   id?: string;
-  email?: string;
-  first_name?: string;
-  last_name?: string;
+  name?: string; // For backward compatibility
+}
+
+export interface SocialLinks {
+  linkedin?: string;
+  github?: string;
+  portfolio?: string;
+  twitter?: string;
+}
+
+export interface UserProfile {
+  id: string;
+  first_name: string;
+  last_name: string;
   title?: string;
+  email: string;
+  location?: string;
   bio?: string;
   phone?: string;
   address?: string;
-  location?: string;
   availability?: string;
-  cv_url?: string;
+  social_links?: SocialLinks;
+  skills: Skill[];
   marketing_consent?: boolean;
   project_updates_consent?: boolean;
   terms_accepted?: boolean;
-  is_anonymized?: boolean;
-  anonymized_at?: string;
-  skills?: Skill[];
-  social_links?: {
-    linkedin?: string;
-    twitter?: string;
-    github?: string;
-    website?: string;
-    [key: string]: string | undefined;
-  };
+  cv_url?: string;
+  account_type?: string;
   created_at?: string;
   updated_at?: string;
 }

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,8 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Plus, RefreshCw } from "lucide-react";
 import { GanttChartView } from "../../testing/GanttChartView";
 import { KanbanBoard } from "@/components/ticket/KanbanBoard";
-const [expandedTickets, setExpandedTickets] = useState<string[]>([]);
-
 
 export const BetaTestingTab = () => {
   const [userId, setUserId] = useState<string | null>(null);
@@ -36,6 +35,7 @@ export const BetaTestingTab = () => {
   });
   const [reviewTask, setReviewTask] = useState<any>(null);
   const [isCompletionReviewOpen, setIsCompletionReviewOpen] = useState(false);
+  const [expandedTickets, setExpandedTickets] = useState<string[]>([]);
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -318,8 +318,8 @@ export const BetaTestingTab = () => {
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
             userId={userId}
-            expandedTickets={[]} // Add this line
-            toggleTicketExpansion={() => {}} // Add this line
+            expandedTickets={expandedTickets}
+            toggleTicketExpansion={toggleTicketExpansion}
           />
         </TabsContent>
         
@@ -330,8 +330,8 @@ export const BetaTestingTab = () => {
             onTicketAction={handleTicketAction}
             showTimeTracking={false}
             userId={userId}
-            expandedTickets={[]} // Add this line
-            toggleTicketExpansion={() => {}} // Add this line
+            expandedTickets={expandedTickets}
+            toggleTicketExpansion={toggleTicketExpansion}
           />
         </TabsContent>
         

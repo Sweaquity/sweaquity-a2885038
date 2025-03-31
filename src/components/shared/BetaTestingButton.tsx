@@ -38,7 +38,6 @@ export function BetaTestingButton() {
   const [isLoadingSubTasks, setIsLoadingSubTasks] = useState(false);
   const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // Store project ID in state to make it easily configurable and reusable
   const [projectId, setProjectId] = useState('1ec133ba-26d6-4112-8e44-f0b67ddc8fb4');
 
   useEffect(() => {
@@ -116,20 +115,16 @@ export function BetaTestingButton() {
     setScreenshotPreviews(screenshotPreviews.filter((_, i) => i !== index));
   };
 
-  // Improved screenshot capture function
   const captureScreenshot = async () => {
     try {
       setIsCapturingScreenshot(true);
       setIsOpen(false);
       
-      // Wait a bit for the dialog to close
       await new Promise(resolve => setTimeout(resolve, 200));
       
-      // Capture the screen
       const canvas = await html2canvas(document.body);
       const dataUrl = canvas.toDataURL('image/png');
       
-      // Convert to File object
       const blobBin = atob(dataUrl.split(',')[1]);
       const array = [];
       for (let i = 0; i < blobBin.length; i++) {
@@ -137,11 +132,9 @@ export function BetaTestingButton() {
       }
       const file = new File([new Uint8Array(array)], 'screenshot.png', {type: 'image/png'});
       
-      // Add the new screenshot
       setScreenshots(prev => [...prev, file]);
       setScreenshotPreviews(prev => [...prev, dataUrl]);
       
-      // Reopen the dialog
       setIsOpen(true);
       toast.success("Screenshot captured successfully!");
     } catch (error) {
@@ -198,8 +191,7 @@ export function BetaTestingButton() {
         const uploadPromises = screenshots.map(async (file, index) => {
           const fileExt = file.name.split('.').pop();
           const fileName = `${ticketData.id}_${index}.${fileExt}`;
-          // Changed from user.id to projectId for the file path
-          const filePath = `${user.Id}/${ticketData.id}/${fileName}`;
+          const filePath = `${user.id}/${ticketData.id}/${fileName}`;
           
           const { error: uploadError } = await supabase
             .storage
@@ -399,7 +391,6 @@ export function BetaTestingButton() {
               )}
             </div>
             
-            {/* Move DialogFooter above System Information for better mobile usability */}
             <DialogFooter className="mt-6 mb-4">
               <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
                 Cancel

@@ -57,15 +57,22 @@ export function convertApplicationToJobApplication(application: Application): Jo
       project_title: application.business_roles?.project?.title || "",
       timeframe: application.business_roles?.timeframe,
       skill_requirements: normalizeSkillRequirements(application.business_roles?.skill_requirements),
-      equity_allocation: application.business_roles?.equity_allocation
+      equity_allocation: application.business_roles?.equity_allocation,
+      project_status: application.business_roles?.project?.status
     },
     // Add hasEquityData property for type compatibility
-    hasEquityData: false // Default value if accepted_jobs is not available
+    hasEquityData: false, // Default value if accepted_jobs is not available
+    is_equity_project: false // Default value
   };
 
   // Handle optional fields conditionally to avoid TypeScript errors
   if ('accepted_jobs' in application && application.accepted_jobs) {
-    jobApplication.accepted_jobs = application.accepted_jobs;
+    jobApplication.accepted_jobs = {
+      equity_agreed: application.accepted_jobs.equity_agreed || 0,
+      jobs_equity_allocated: application.accepted_jobs.jobs_equity_allocated || 0,
+      id: application.accepted_jobs.id || "",
+      date_accepted: application.accepted_jobs.date_accepted || ""
+    };
     jobApplication.hasEquityData = true;
   }
 

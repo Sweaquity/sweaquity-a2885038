@@ -34,6 +34,8 @@ export interface JobApplication {
   description?: string;
   skills_required?: string[];
   applicant_skills?: string[];
+  hasEquityData?: boolean; // Added for compatibility with EquityProjectsList
+  is_equity_project?: boolean; // Added for compatibility with EquityProjectsList
 }
 
 export interface AcceptedJob {
@@ -45,6 +47,7 @@ export interface AcceptedJob {
   accepted_discourse?: string;
   created_at: string;
   updated_at: string;
+  jobs_equity_allocated?: number; // Added for compatibility with UI
 }
 
 // Application component props

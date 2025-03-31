@@ -1454,6 +1454,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      path_contains_project_id: {
+        Args: {
+          file_path: string
+          user_id: string
+        }
+        Returns: boolean
+      }
       path_contains_user_id: {
         Args: {
           path: string

@@ -1,16 +1,15 @@
-
 // Update Ticket interface to fix inconsistencies
 export interface Ticket {
   id: string;
   title: string;
-  description: string;
+  description: string; // Making this required
   status: string;
   priority: string;
   health: string; 
   assigned_to?: string;
-  created_by?: string; // Make optional to match error requirement
-  created_at?: string; // Make optional to match error requirement
-  project_id?: string; // Make optional to match error requirement
+  created_by?: string;
+  created_at?: string;
+  project_id?: string;
   due_date?: string;
   ticket_type?: string;
   task_id?: string;
