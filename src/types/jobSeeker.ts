@@ -75,3 +75,9 @@ export interface EquityProject {
   skill_match?: number;
   updated_at?: string;
 }
+
+export interface LogEffort {
+  projectId: string;
+  hours: number;
+  description: string;
+}
