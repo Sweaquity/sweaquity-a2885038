@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,6 +13,11 @@ interface SkillsCardProps {
   onSkillsUpdate: (skills: Skill[]) => void;
 }
 
+// Helper function to get skill name consistently
+const getSkillName = (skill: Skill): string => {
+  return skill.skill || skill.name || '';
+};
+
 export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
   const [newSkill, setNewSkill] = useState("");
   const [skillLevel, setSkillLevel] = useState<"Beginner" | "Intermediate" | "Expert">("Intermediate");
@@ -25,10 +29,7 @@ export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
     }
 
     // Check if skill already exists
-    if (skills.some((s) => {
-      const skillName = 'skill' in s ? s.skill : 'name' in s ? s.name : '';
-      return skillName.toLowerCase() === newSkill.toLowerCase();
-    })) {
+    if (skills.some((s) => getSkillName(s).toLowerCase() === newSkill.toLowerCase())) {
       toast.error("This skill already exists in your profile");
       return;
     }
@@ -40,17 +41,13 @@ export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
   };
 
   const removeSkill = (skillToRemove: string) => {
-    const updatedSkills = skills.filter((s) => {
-      const skillName = 'skill' in s ? s.skill : 'name' in s ? s.name : '';
-      return skillName !== skillToRemove;
-    });
+    const updatedSkills = skills.filter((s) => getSkillName(s) !== skillToRemove);
     onSkillsUpdate(updatedSkills);
   };
 
   const updateSkillLevel = (skillName: string, newLevel: "Beginner" | "Intermediate" | "Expert") => {
     const updatedSkills = skills.map((s) => {
-      const currentSkillName = 'skill' in s ? s.skill : 'name' in s ? s.name : '';
-      return currentSkillName === skillName ? { ...s, level: newLevel } : s;
+      return getSkillName(s) === skillName ? { ...s, level: newLevel } : s;
     });
     onSkillsUpdate(updatedSkills);
   };
@@ -64,7 +61,7 @@ export const SkillsCard = ({ skills, onSkillsUpdate }: SkillsCardProps) => {
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2">
             {skills.map((skill) => {
-              const skillName = 'skill' in skill ? skill.skill : 'name' in skill ? skill.name : '';
+              const skillName = getSkillName(skill);
               return (
                 <SkillBadge
                   key={skillName}
