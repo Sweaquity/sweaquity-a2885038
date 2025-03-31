@@ -74,9 +74,7 @@ export interface EquityProject {
   created_at?: string;
   skill_match?: number;
   updated_at?: string;
-  skills_required?: string[];
 }
-
 export interface LogEffort {
   project_id: string;
   hours: number;
@@ -89,7 +87,5 @@ export interface SubTask {
   title: string;
   description: string;
   completion_percentage: number;
-  skills_required?: string[];
-  skill_requirements?: any[];
   // ... any other existing properties
 }
