@@ -35,7 +35,7 @@ export const BetaTestingTab = () => {
   });
   const [reviewTask, setReviewTask] = useState<any>(null);
   const [isCompletionReviewOpen, setIsCompletionReviewOpen] = useState(false);
-  const [expandedTickets, setExpandedTickets] = useState<string[]>([]);
+  const [expandedTickets, setExpandedTickets] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -56,11 +56,15 @@ export const BetaTestingTab = () => {
   }, [userId, selectedProject]);
   
   const toggleTicketExpansion = (ticketId: string) => {
-    setExpandedTickets(prev => 
-      prev.includes(ticketId) 
-        ? prev.filter(id => id !== ticketId) 
-        : [...prev, ticketId]
-    );
+    setExpandedTickets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(ticketId)) {
+        newSet.delete(ticketId);
+      } else {
+        newSet.add(ticketId);
+      }
+      return newSet;
+    });
   };
   
   const fetchProjects = async (userId: string) => {
