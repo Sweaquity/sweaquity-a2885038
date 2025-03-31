@@ -1,18 +1,6 @@
 
 import { BusinessRole } from './businessRoles';
 
-export interface AcceptedJob {
-  id: string;
-  job_app_id: string;
-  equity_agreed: number;
-  date_accepted: string;
-  document_url?: string;
-  accepted_discourse?: string;
-  created_at: string;
-  updated_at: string;
-  jobs_equity_allocated?: number; // Added for compatibility with UI
-}
-
 export interface JobApplication {
   job_app_id: string;
   user_id: string;
@@ -33,7 +21,12 @@ export interface JobApplication {
   id?: string; // Add id field for compatibility
   notes?: any[]; // Add notes field for compatibility
   hours_logged?: number; // Added for time tracking
-  accepted_jobs?: AcceptedJob;
+  accepted_jobs?: {
+    equity_agreed: number;
+    jobs_equity_allocated: number;
+    id: string;
+    date_accepted: string;
+  };
   // For compatibility with UI components
   company_name?: string;
   project_title?: string;
@@ -43,6 +36,18 @@ export interface JobApplication {
   applicant_skills?: string[];
   hasEquityData?: boolean; // Added for compatibility with EquityProjectsList
   is_equity_project?: boolean; // Added for compatibility with EquityProjectsList
+}
+
+export interface AcceptedJob {
+  id: string;
+  job_app_id: string;
+  equity_agreed: number;
+  date_accepted: string;
+  document_url?: string;
+  accepted_discourse?: string;
+  created_at: string;
+  updated_at: string;
+  jobs_equity_allocated?: number; // Added for compatibility with UI
 }
 
 // Application component props

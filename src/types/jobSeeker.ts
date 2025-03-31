@@ -75,18 +75,3 @@ export interface EquityProject {
   skill_match?: number;
   updated_at?: string;
 }
-
-export interface LogEffort {
-  project_id: string;
-  hours: number;
-  description: string;
-}
-
-export interface SubTask {
-  task_id: string; // Add this to match your database schema
-  project_id: string;
-  title: string;
-  description: string;
-  completion_percentage: number;
-  // ... any other existing properties
-}

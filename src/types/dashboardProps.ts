@@ -1,31 +1,7 @@
 
 import { EquityProject, LogEffort } from './equity';
 import { JobApplication } from './applications';
-import { Skill } from './profile';
-
-export interface Profile {
-  id: string;
-  first_name: string;
-  last_name: string;
-  title?: string;
-  email: string;
-  location?: string;
-  bio?: string;
-  phone?: string;
-  address?: string;
-  availability?: string;
-  social_links?: {
-    linkedin?: string;
-    github?: string;
-    portfolio?: string;
-    twitter?: string;
-  };
-  skills: Skill[];
-  marketing_consent?: boolean;
-  project_updates_consent?: boolean;
-  terms_accepted?: boolean;
-  cv_url?: string;
-}
+import { Profile, Skill } from './profile';
 
 export interface DashboardTabProps {
   activeTab: string;
@@ -55,7 +31,7 @@ export interface ApplicationContentProps {
 }
 
 export interface ApplicationSkillsProps {
-  skillRequirements: (string | Skill)[];
+  skillRequirements: (string | import('./businessRoles').SkillRequirement)[];
   equityAllocation?: number;
   timeframe?: string;
 }
