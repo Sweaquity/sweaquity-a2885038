@@ -3,7 +3,7 @@ export type SkillLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
 
 export interface Skill {
   id?: string;
-  skill: string; // Making this required to match SkillRequirement
+  skill: string; // Making this required
   level?: SkillLevel;
   name?: string; // For backward compatibility
 }
@@ -22,7 +22,7 @@ export interface SocialLinks {
   twitter?: string;
 }
 
-export interface UserProfile {
+export interface Profile {
   id: string;
   first_name: string;
   last_name: string;

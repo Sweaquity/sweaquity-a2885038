@@ -1,6 +1,13 @@
 
 import { SubTask } from './businessRoles';
 
+export interface LogEffort {
+  hours: number;
+  description: string;
+  projectId: string;
+  date?: string;
+}
+
 export interface EquityProject {
   id: string;
   project_id: string;
@@ -27,6 +34,7 @@ export interface EquityProject {
     timeframe?: string;
     skill_requirements?: any[];
     project_status?: string;
+    project_id?: string;
   };
   title?: string;
   documents?: {

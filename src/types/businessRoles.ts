@@ -19,15 +19,18 @@ export interface BusinessRole {
     status?: string;
   };
   project_status?: string; // Added for compatibility with ApplicationsList
+  project_id?: string; // Added for compatibility with ProjectActions
 }
 
 export interface SubTask {
   id: string;
+  task_id?: string; // Add this for EquityTab compatibility
   title: string;
   description?: string;
   status: string;
   equity_allocation: number;
   skills_required?: string[];
+  skill_requirements?: Array<SkillRequirement | string>; // For backward compatibility
   timeframe?: string;
   completion_percentage?: number;
 }

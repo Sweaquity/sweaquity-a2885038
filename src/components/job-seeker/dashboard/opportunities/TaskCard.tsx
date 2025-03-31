@@ -35,7 +35,7 @@ export const TaskCard = ({ project, task, userSkillStrings, onApply }: TaskCardP
         <div className="space-y-2">
           <h4 className="text-sm font-medium">Required Skills:</h4>
           <div className="flex flex-wrap gap-2">
-            {(task.skill_requirements || []).map((req, idx) => {
+            {(task.skills_required || []).map((req, idx) => {
               const skillName = typeof req === 'string' ? req : 
                         (req && typeof req === 'object' && 'skill' in req) ? 
                         req.skill : '';
