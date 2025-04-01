@@ -9,10 +9,10 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from 'date-fns';
+import { EditorOutput } from "@/components/editor/editor-output";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { checkTicketAttachments } from "@/components/dashboard/TicketAttachmentsList";
 import { TicketAttachmentsList } from "@/components/dashboard/TicketAttachmentsList";
-import { Ticket } from "@/types/types";
 
 interface ExpandedTicketDetailsProps {
   ticket: Ticket;
@@ -23,8 +23,7 @@ interface ExpandedTicketDetailsProps {
   userCanEditDates?: boolean;
 }
 
-// Change to a named export to match how it's being imported in other files
-export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({ ticket, onClose, onTicketAction, onLogTime, userCanEditStatus, userCanEditDates }) => {
+const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({ ticket, onClose, onTicketAction, onLogTime, userCanEditStatus, userCanEditDates }) => {
 
   const handleTicketAction = async (action: string, data: any = {}) => {
     if (ticket.id) {
@@ -88,9 +87,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({ ti
           </div>
           <div>
             <div className="text-sm font-medium">Description:</div>
-            <div className="whitespace-pre-wrap p-2 bg-gray-50 rounded border mt-1">
-              {ticket.description}
-            </div>
+            <EditorOutput content={ticket.description} />
           </div>
         </CardContent>
       </Card>
@@ -133,6 +130,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({ ti
   );
 
   const renderAttachmentsSection = (ticket: Ticket) => {
+    // Pass the attachments array directly from the ticket
     return (
       <div className="p-4 space-y-4">
         <TicketAttachmentsList 
@@ -178,5 +176,4 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({ ti
   );
 };
 
-// Also add a default export for backward compatibility with any components that might be using default import
 export default ExpandedTicketDetails;

@@ -27,7 +27,6 @@ import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
 import { AlertTriangle, CheckCircle2, Clock, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
-// Update import to use the named export
 import { ExpandedTicketDetails } from "./ExpandedTicketDetails";
 
 interface TicketDashboardProps {
