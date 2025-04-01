@@ -162,9 +162,6 @@ export function BetaTestingButton() {
         return;
       }
       
-      console.log("Creating beta testing ticket with description:", description);
-      
-      // First create the ticket without attachments
       const { data: ticketData, error: ticketError } = await supabase
         .from('tickets')
         .insert({
@@ -180,8 +177,7 @@ export function BetaTestingButton() {
           notes: [],
           replies: [],
           task_id: selectedSubTaskId || null,
-          project_id: projectId,
-          attachments: [] // Initialize empty array
+          project_id: projectId
         })
         .select('id')
         .single();
@@ -190,58 +186,44 @@ export function BetaTestingButton() {
         console.error("Error creating ticket:", ticketError);
         throw ticketError;
       }
-
-      console.log("Ticket created successfully with ID:", ticketData?.id);
       
       if (screenshots.length > 0 && ticketData?.id) {
-        // Array to store attachment URLs
-        const attachmentUrls: string[] = [];
-        
-        // Upload each screenshot and store its URL
-        for (let index = 0; index < screenshots.length; index++) {
-          const file = screenshots[index];
+        const uploadPromises = screenshots.map(async (file, index) => {
           const fileExt = file.name.split('.').pop();
-          const fileName = `${index}_${new Date().getTime()}.${fileExt}`;
+          const fileName = `${ticketData.id}_${index}.${fileExt}`;
           const filePath = `${user.id}/${ticketData.id}/${fileName}`;
           
-          console.log(`Uploading screenshot ${index + 1}/${screenshots.length} to path: ${filePath}`);
-          
-          const { error: uploadError, data: uploadData } = await supabase
+          const { error: uploadError } = await supabase
             .storage
             .from('ticket-attachments')
             .upload(filePath, file);
             
           if (uploadError) {
             console.error("Error uploading screenshot:", uploadError);
-            continue;
+            return null;
           }
-          
-          console.log("Upload successful, getting public URL");
           
           const { data: { publicUrl } } = supabase
             .storage
             .from('ticket-attachments')
             .getPublicUrl(filePath);
             
-          console.log("Generated public URL:", publicUrl);
-          attachmentUrls.push(publicUrl);
-        }
+          return publicUrl;
+        });
         
-        // Update the ticket with the attachment URLs if we have any
-        if (attachmentUrls.length > 0) {
-          console.log("Updating ticket with attachment URLs:", attachmentUrls);
-          
+        const uploadedUrls = await Promise.all(uploadPromises);
+        const validUrls = uploadedUrls.filter(url => url !== null) as string[];
+        
+        if (validUrls.length > 0) {
           const { error: updateError } = await supabase
             .from('tickets')
             .update({
-              attachments: attachmentUrls
+              attachments: validUrls
             })
             .eq('id', ticketData.id);
             
           if (updateError) {
             console.error("Error updating ticket with screenshots:", updateError);
-          } else {
-            console.log("Successfully updated ticket with attachment URLs");
           }
         }
       }
@@ -261,7 +243,7 @@ export function BetaTestingButton() {
       setIsSubmitting(false);
     }
   };
-
+      
   return (
     <>
       <TooltipProvider>

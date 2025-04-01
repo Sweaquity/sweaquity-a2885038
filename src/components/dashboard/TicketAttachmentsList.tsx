@@ -8,14 +8,12 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 interface TicketAttachmentsListProps {
   reporterId: string | undefined;
   ticketId: string;
-  attachmentUrls?: string[];
   onAttachmentsLoaded?: (hasAttachments: boolean) => void;
 }
 
 export const TicketAttachmentsList = ({ 
   reporterId, 
   ticketId,
-  attachmentUrls,
   onAttachmentsLoaded
 }: TicketAttachmentsListProps) => {
   const [attachments, setAttachments] = useState<any[]>([]);
@@ -27,39 +25,6 @@ export const TicketAttachmentsList = ({
   const [previewName, setPreviewName] = useState<string | null>(null);
 
   useEffect(() => {
-    if (attachmentUrls && attachmentUrls.length > 0) {
-      console.log("Using provided attachment URLs:", attachmentUrls);
-      const processedAttachments = attachmentUrls.map((url, index) => {
-        const fileName = url.split('/').pop() || `attachment-${index}.png`;
-        const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
-        let mimetype = 'application/octet-stream';
-        
-        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt)) {
-          mimetype = `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`;
-        } else if (fileExt === 'pdf') {
-          mimetype = 'application/pdf';
-        } else if (['doc', 'docx'].includes(fileExt)) {
-          mimetype = 'application/msword';
-        }
-
-        return {
-          id: `url-${index}`,
-          name: fileName,
-          metadata: { mimetype },
-          url: url,
-          isDirectUrl: true
-        };
-      });
-      
-      setAttachments(processedAttachments);
-      setLoading(false);
-      
-      if (onAttachmentsLoaded) {
-        onAttachmentsLoaded(processedAttachments.length > 0);
-      }
-      return;
-    }
-    
     const fetchAttachments = async () => {
       if (!reporterId || !ticketId) {
         setLoading(false);
@@ -67,55 +32,8 @@ export const TicketAttachmentsList = ({
         return;
       }
 
-      console.log("Fetching storage attachments for ticket:", ticketId, "reporter:", reporterId);
-
       try {
-        // First check the ticket's attachments array in the database
-        const { data: ticketData, error: ticketError } = await supabase
-          .from('tickets')
-          .select('attachments')
-          .eq('id', ticketId)
-          .single();
-        
-        if (ticketError) {
-          console.log("Error fetching ticket data:", ticketError);
-          // Continue to check storage if ticket fetch fails
-        } else if (ticketData?.attachments && ticketData.attachments.length > 0) {
-          console.log("Found attachments in ticket record:", ticketData.attachments);
-          // Process the attachments from the ticket record
-          const processedAttachments = ticketData.attachments.map((url: string, index: number) => {
-            const fileName = url.split('/').pop() || `attachment-${index}.png`;
-            const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
-            let mimetype = 'application/octet-stream';
-            
-            if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt)) {
-              mimetype = `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`;
-            } else if (fileExt === 'pdf') {
-              mimetype = 'application/pdf';
-            } else if (['doc', 'docx'].includes(fileExt)) {
-              mimetype = 'application/msword';
-            }
-
-            return {
-              id: `url-${index}`,
-              name: fileName,
-              metadata: { mimetype },
-              url: url,
-              isDirectUrl: true
-            };
-          });
-          
-          setAttachments(processedAttachments);
-          setLoading(false);
-          
-          if (onAttachmentsLoaded) {
-            onAttachmentsLoaded(processedAttachments.length > 0);
-          }
-          return;
-        }
-
-        // Fallback to checking the storage if ticket has no attachments array
-        console.log("Checking storage for attachments");
+        // Using the path format: reporterId/ticketId/*
         const { data, error } = await supabase.storage
           .from('ticket-attachments')
           .list(`${reporterId}/${ticketId}`);
@@ -124,9 +42,9 @@ export const TicketAttachmentsList = ({
           throw error;
         }
 
-        console.log("Storage files found:", data);
         setAttachments(data || []);
         
+        // Notify parent component about attachment status
         if (onAttachmentsLoaded) {
           onAttachmentsLoaded(data && data.length > 0);
         }
@@ -140,16 +58,12 @@ export const TicketAttachmentsList = ({
     };
 
     fetchAttachments();
-  }, [reporterId, ticketId, attachmentUrls, onAttachmentsLoaded]);
+  }, [reporterId, ticketId, onAttachmentsLoaded]);
 
-  const getFileUrl = (file: any) => {
-    if (file.isDirectUrl) {
-      return file.url;
-    }
-    
+  const getFileUrl = (filePath: string) => {
     return supabase.storage
       .from('ticket-attachments')
-      .getPublicUrl(`${reporterId}/${ticketId}/${file.name}`).data.publicUrl;
+      .getPublicUrl(`${reporterId}/${ticketId}/${filePath}`).data.publicUrl;
   };
 
   const getFileIcon = (mimeType: string) => {
@@ -161,7 +75,7 @@ export const TicketAttachmentsList = ({
 
   const openPreview = (file: any) => {
     const isImage = file.metadata?.mimetype?.startsWith('image/');
-    const fileUrl = getFileUrl(file);
+    const fileUrl = getFileUrl(file.name);
     
     setPreviewUrl(fileUrl);
     setPreviewType(file.metadata?.mimetype || '');
@@ -237,7 +151,7 @@ export const TicketAttachmentsList = ({
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {attachments.map((file) => {
           const isImage = file.metadata?.mimetype?.startsWith('image/');
-          const fileUrl = getFileUrl(file);
+          const fileUrl = getFileUrl(file.name);
           
           return (
             <div 
@@ -306,26 +220,11 @@ export const TicketAttachmentsList = ({
   );
 };
 
+// Helper function to check if a ticket has attachments
 export const checkTicketAttachments = async (reporterId?: string, ticketId?: string): Promise<boolean> => {
   if (!reporterId || !ticketId) return false;
   
   try {
-    // First check the ticket's attachments array in the database
-    const { data: ticketData, error: ticketError } = await supabase
-      .from('tickets')
-      .select('attachments')
-      .eq('id', ticketId)
-      .single();
-    
-    if (ticketError) throw ticketError;
-    
-    if (ticketData?.attachments && ticketData.attachments.length > 0) {
-      console.log("Found attachments in the database:", ticketData.attachments);
-      return true;
-    }
-    
-    // Fallback to checking the storage if ticket has no attachments array
-    console.log("Checking storage for ticket attachments");
     const { data, error } = await supabase.storage
       .from('ticket-attachments')
       .list(`${reporterId}/${ticketId}`);
