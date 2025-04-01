@@ -201,7 +201,7 @@ export function BetaTestingButton() {
           const fileName = `${index}_${new Date().getTime()}.${fileExt}`;
           const filePath = `${user.id}/${ticketData.id}/${fileName}`;
           
-          const { error: uploadError } = await supabase
+          const { error: uploadError, data: uploadData } = await supabase
             .storage
             .from('ticket-attachments')
             .upload(filePath, file);

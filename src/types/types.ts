@@ -1,3 +1,4 @@
+
 // Update Ticket interface to fix inconsistencies
 export interface Ticket {
   id: string;
