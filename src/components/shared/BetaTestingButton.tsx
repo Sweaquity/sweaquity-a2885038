@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Camera, Upload, X } from "lucide-react";
@@ -162,6 +163,7 @@ export function BetaTestingButton() {
         return;
       }
       
+      // First create the ticket without attachments
       const { data: ticketData, error: ticketError } = await supabase
         .from('tickets')
         .insert({
@@ -177,7 +179,8 @@ export function BetaTestingButton() {
           notes: [],
           replies: [],
           task_id: selectedSubTaskId || null,
-          project_id: projectId
+          project_id: projectId,
+          attachments: [] // Initialize empty array
         })
         .select('id')
         .single();
@@ -188,9 +191,14 @@ export function BetaTestingButton() {
       }
       
       if (screenshots.length > 0 && ticketData?.id) {
-        const uploadPromises = screenshots.map(async (file, index) => {
+        // Array to store attachment URLs
+        const attachmentUrls: string[] = [];
+        
+        // Upload each screenshot and store its URL
+        for (let index = 0; index < screenshots.length; index++) {
+          const file = screenshots[index];
           const fileExt = file.name.split('.').pop();
-          const fileName = `${ticketData.id}_${index}.${fileExt}`;
+          const fileName = `${index}_${new Date().getTime()}.${fileExt}`;
           const filePath = `${user.id}/${ticketData.id}/${fileName}`;
           
           const { error: uploadError } = await supabase
@@ -200,7 +208,7 @@ export function BetaTestingButton() {
             
           if (uploadError) {
             console.error("Error uploading screenshot:", uploadError);
-            return null;
+            continue;
           }
           
           const { data: { publicUrl } } = supabase
@@ -208,17 +216,15 @@ export function BetaTestingButton() {
             .from('ticket-attachments')
             .getPublicUrl(filePath);
             
-          return publicUrl;
-        });
+          attachmentUrls.push(publicUrl);
+        }
         
-        const uploadedUrls = await Promise.all(uploadPromises);
-        const validUrls = uploadedUrls.filter(url => url !== null) as string[];
-        
-        if (validUrls.length > 0) {
+        // Update the ticket with the attachment URLs if we have any
+        if (attachmentUrls.length > 0) {
           const { error: updateError } = await supabase
             .from('tickets')
             .update({
-              attachments: validUrls
+              attachments: attachmentUrls
             })
             .eq('id', ticketData.id);
             

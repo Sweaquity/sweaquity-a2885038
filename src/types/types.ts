@@ -9,6 +9,7 @@ export interface Ticket {
   assigned_to?: string;
   created_by?: string;
   created_at?: string;
+  updated_at?: string;
   project_id?: string;
   due_date?: string;
   ticket_type?: string;
@@ -16,7 +17,6 @@ export interface Ticket {
   completion_percentage?: number;
   estimated_hours?: number;
   hours_logged?: number;
-  updated_at?: string;
   notes?: any[];
   type?: string;
   equity_points?: number;
