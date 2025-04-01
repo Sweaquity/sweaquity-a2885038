@@ -1,6 +1,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { FileText } from "lucide-react";
 
 interface TicketAttachmentProps {
   attachments: string[];
@@ -49,4 +50,4 @@ export const TicketAttachment: React.FC<TicketAttachmentProps> = ({
   );
 };
 
-import { FileText } from "lucide-react";
+export default TicketAttachment;

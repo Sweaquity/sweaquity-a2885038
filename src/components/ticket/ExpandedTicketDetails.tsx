@@ -23,7 +23,8 @@ interface ExpandedTicketDetailsProps {
   userCanEditDates?: boolean;
 }
 
-const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({ ticket, onClose, onTicketAction, onLogTime, userCanEditStatus, userCanEditDates }) => {
+// Change to a named export to match how it's being imported in other files
+export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({ ticket, onClose, onTicketAction, onLogTime, userCanEditStatus, userCanEditDates }) => {
 
   const handleTicketAction = async (action: string, data: any = {}) => {
     if (ticket.id) {
@@ -177,4 +178,5 @@ const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({ ticket, o
   );
 };
 
+// Also add a default export for backward compatibility with any components that might be using default import
 export default ExpandedTicketDetails;
