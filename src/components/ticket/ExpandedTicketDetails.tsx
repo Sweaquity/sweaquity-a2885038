@@ -9,10 +9,10 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from 'date-fns';
-import { EditorOutput } from "@/components/editor/editor-output";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { checkTicketAttachments } from "@/components/dashboard/TicketAttachmentsList";
 import { TicketAttachmentsList } from "@/components/dashboard/TicketAttachmentsList";
+import { Ticket } from "@/types/types";
 
 interface ExpandedTicketDetailsProps {
   ticket: Ticket;
@@ -87,7 +87,9 @@ const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({ ticket, o
           </div>
           <div>
             <div className="text-sm font-medium">Description:</div>
-            <EditorOutput content={ticket.description} />
+            <div className="whitespace-pre-wrap p-2 bg-gray-50 rounded border mt-1">
+              {ticket.description}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -130,7 +132,6 @@ const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({ ticket, o
   );
 
   const renderAttachmentsSection = (ticket: Ticket) => {
-    // Pass the attachments array directly from the ticket
     return (
       <div className="p-4 space-y-4">
         <TicketAttachmentsList 

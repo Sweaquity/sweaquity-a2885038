@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Camera, Upload, X } from "lucide-react";
@@ -163,6 +162,8 @@ export function BetaTestingButton() {
         return;
       }
       
+      console.log("Creating beta testing ticket with description:", description);
+      
       // First create the ticket without attachments
       const { data: ticketData, error: ticketError } = await supabase
         .from('tickets')
@@ -189,6 +190,8 @@ export function BetaTestingButton() {
         console.error("Error creating ticket:", ticketError);
         throw ticketError;
       }
+
+      console.log("Ticket created successfully with ID:", ticketData?.id);
       
       if (screenshots.length > 0 && ticketData?.id) {
         // Array to store attachment URLs
@@ -201,6 +204,8 @@ export function BetaTestingButton() {
           const fileName = `${index}_${new Date().getTime()}.${fileExt}`;
           const filePath = `${user.id}/${ticketData.id}/${fileName}`;
           
+          console.log(`Uploading screenshot ${index + 1}/${screenshots.length} to path: ${filePath}`);
+          
           const { error: uploadError, data: uploadData } = await supabase
             .storage
             .from('ticket-attachments')
@@ -211,16 +216,21 @@ export function BetaTestingButton() {
             continue;
           }
           
+          console.log("Upload successful, getting public URL");
+          
           const { data: { publicUrl } } = supabase
             .storage
             .from('ticket-attachments')
             .getPublicUrl(filePath);
             
+          console.log("Generated public URL:", publicUrl);
           attachmentUrls.push(publicUrl);
         }
         
         // Update the ticket with the attachment URLs if we have any
         if (attachmentUrls.length > 0) {
+          console.log("Updating ticket with attachment URLs:", attachmentUrls);
+          
           const { error: updateError } = await supabase
             .from('tickets')
             .update({
@@ -230,6 +240,8 @@ export function BetaTestingButton() {
             
           if (updateError) {
             console.error("Error updating ticket with screenshots:", updateError);
+          } else {
+            console.log("Successfully updated ticket with attachment URLs");
           }
         }
       }
@@ -249,7 +261,7 @@ export function BetaTestingButton() {
       setIsSubmitting(false);
     }
   };
-      
+
   return (
     <>
       <TooltipProvider>
