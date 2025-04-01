@@ -82,7 +82,7 @@ export interface LogEffort {
 }
 
 export interface SubTask {
-  task_id: string; // Add this to match your database schema
+  task_id?: string | null; // Optional and can be null
   project_id: string;
   title: string;
   description: string;
