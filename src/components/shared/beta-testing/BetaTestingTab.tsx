@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -201,16 +200,99 @@ export const BetaTestingTab = ({
           toast.success("Note added");
           break;
         
+        case 'deleteTicket':
+          const { data: ticket } = await supabase
+            .from('tickets')
+            .select('reporter, project_id')
+            .eq('id', ticketId)
+            .single();
+          
+          let canDelete = false;
+          
+          if (ticket) {
+            if (ticket.reporter === userId) {
+              canDelete = true;
+            } else if (ticket.project_id) {
+              const { data: projectData } = await supabase
+                .from('business_projects')
+                .select('business_id, created_by')
+                .eq('project_id', ticket.project_id)
+                .single();
+                
+              if (projectData && (projectData.business_id === userId || projectData.created_by === userId)) {
+                canDelete = true;
+              }
+            }
+          }
+          
+          if (!canDelete) {
+            throw new Error("You don't have permission to delete this ticket");
+          }
+          
+          if (ticket) {
+            try {
+              await supabase.storage
+                .from('ticket-attachments')
+                .remove([`${ticket.reporter}/${ticketId}`]);
+            } catch (error) {
+              console.log("No attachments found to delete or error", error);
+            }
+          }
+          
+          const { error } = await supabase
+            .from('tickets')
+            .delete()
+            .eq('id', ticketId);
+          
+          if (error) throw error;
+          
+          toast.success("Ticket deleted successfully");
+          
+          if (userId) {
+            await loadTickets(userId);
+          }
+          break;
+        
+        case 'updateAttachments':
+          const { error: attachmentsError } = await supabase
+            .from('tickets')
+            .update({ attachments: data })
+            .eq('id', ticketId);
+            
+          if (attachmentsError) throw attachmentsError;
+          
+          toast.success("Attachments updated");
+          break;
+            
+        case 'refreshTicket': {
+          const { data: refreshedTicket, error } = await supabase
+            .from('tickets')
+            .select('*')
+            .eq('id', ticketId)
+            .single();
+            
+          if (error) throw error;
+          
+          if (refreshedTicket) {
+            setTickets(prevTickets => 
+              prevTickets.map(t => t.id === ticketId ? refreshedTicket : t)
+            );
+          }
+          
+          break;
+        }
+        
         default:
           console.warn("Unknown action:", action);
       }
       
-      if (userId) {
+      if (userId && action !== 'refreshTicket' && action !== 'deleteTicket') {
         await loadTickets(userId);
       }
     } catch (error) {
       console.error("Error handling ticket action:", error);
       toast.error("Failed to update ticket");
+      throw error;
     }
   };
 

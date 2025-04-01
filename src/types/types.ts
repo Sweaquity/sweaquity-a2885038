@@ -1,4 +1,5 @@
-// Update Ticket interface to fix inconsistencies
+
+// Update Ticket interface to ensure attachments are properly typed
 export interface Ticket {
   id: string;
   title: string;
