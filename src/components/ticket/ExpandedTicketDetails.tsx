@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,10 +9,10 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from 'date-fns';
-import { EditorOutput } from "@/components/editor/editor-output";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { checkTicketAttachments } from "@/components/dashboard/TicketAttachmentsList";
 import { TicketAttachmentsList } from "@/components/dashboard/TicketAttachmentsList";
+import { Ticket } from "@/types/types";
 
 interface ExpandedTicketDetailsProps {
   ticket: Ticket;
@@ -22,7 +23,7 @@ interface ExpandedTicketDetailsProps {
   userCanEditDates?: boolean;
 }
 
-export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({ ticket, onClose, onTicketAction, onLogTime, userCanEditStatus, userCanEditDates }) => {
+const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({ ticket, onClose, onTicketAction, onLogTime, userCanEditStatus, userCanEditDates }) => {
 
   const handleTicketAction = async (action: string, data: any = {}) => {
     if (ticket.id) {
@@ -86,7 +87,9 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({ ti
           </div>
           <div>
             <div className="text-sm font-medium">Description:</div>
-            <EditorOutput content={ticket.description} />
+            <div className="whitespace-pre-wrap p-2 bg-gray-50 rounded border mt-1">
+              {ticket.description}
+            </div>
           </div>
         </CardContent>
       </Card>
