@@ -7,9 +7,14 @@ import { Button } from "@/components/ui/button";
 interface TicketAttachmentsListProps {
   reporterId: string | undefined;
   ticketId: string;
+  onAttachmentsLoaded?: (hasAttachments: boolean) => void;
 }
 
-export const TicketAttachmentsList = ({ reporterId, ticketId }: TicketAttachmentsListProps) => {
+export const TicketAttachmentsList = ({ 
+  reporterId, 
+  ticketId,
+  onAttachmentsLoaded
+}: TicketAttachmentsListProps) => {
   const [attachments, setAttachments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,6 +23,7 @@ export const TicketAttachmentsList = ({ reporterId, ticketId }: TicketAttachment
     const fetchAttachments = async () => {
       if (!reporterId || !ticketId) {
         setLoading(false);
+        if (onAttachmentsLoaded) onAttachmentsLoaded(false);
         return;
       }
 
@@ -32,16 +38,22 @@ export const TicketAttachmentsList = ({ reporterId, ticketId }: TicketAttachment
         }
 
         setAttachments(data || []);
+        
+        // Notify parent component about attachment status
+        if (onAttachmentsLoaded) {
+          onAttachmentsLoaded(data && data.length > 0);
+        }
       } catch (err: any) {
         console.error("Error fetching attachments:", err);
         setError(err.message || "Failed to load attachments");
+        if (onAttachmentsLoaded) onAttachmentsLoaded(false);
       } finally {
         setLoading(false);
       }
     };
 
     fetchAttachments();
-  }, [reporterId, ticketId]);
+  }, [reporterId, ticketId, onAttachmentsLoaded]);
 
   const getFileUrl = (filePath: string) => {
     return supabase.storage
@@ -117,4 +129,22 @@ export const TicketAttachmentsList = ({ reporterId, ticketId }: TicketAttachment
       </div>
     </div>
   );
+};
+
+// Helper function to check if a ticket has attachments
+export const checkTicketAttachments = async (reporterId?: string, ticketId?: string): Promise<boolean> => {
+  if (!reporterId || !ticketId) return false;
+  
+  try {
+    const { data, error } = await supabase.storage
+      .from('ticket-attachments')
+      .list(`${reporterId}/${ticketId}`);
+
+    if (error) throw error;
+    
+    return data && data.length > 0;
+  } catch (err) {
+    console.error("Error checking ticket attachments:", err);
+    return false;
+  }
 };

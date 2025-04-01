@@ -672,6 +672,31 @@ const SweaquityDashboard = () => {
 
   const ExpandedTicketDetails = ({ ticket }: { ticket: BetaTicket }) => {
     const [activeTab, setActiveTab] = useState("details");
+    const [hasAttachments, setHasAttachments] = useState(false);
+    const [isCheckingAttachments, setIsCheckingAttachments] = useState(true);
+
+    useEffect(() => {
+      const checkAttachments = async () => {
+        if (ticket.reporter && ticket.id) {
+          setIsCheckingAttachments(true);
+          const { data, error } = await supabase.storage
+            .from('ticket-attachments')
+            .list(`${ticket.reporter}/${ticket.id}`);
+          
+          setHasAttachments(data && data.length > 0);
+          setIsCheckingAttachments(false);
+        } else {
+          setHasAttachments(false);
+          setIsCheckingAttachments(false);
+        }
+      };
+      
+      checkAttachments();
+    }, [ticket.id, ticket.reporter]);
+
+    const handleAttachmentsLoaded = (hasFiles: boolean) => {
+      setHasAttachments(hasFiles);
+    };
 
     return (
       <div className="p-4 border-t">
@@ -679,12 +704,17 @@ const SweaquityDashboard = () => {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-2">
               <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="attachments">
-                <div className="flex items-center">
-                  <Image className="h-4 w-4 mr-1" />
-                  Attachments
-                </div>
-              </TabsTrigger>
+              {(hasAttachments || isCheckingAttachments) && (
+                <TabsTrigger value="attachments">
+                  <div className="flex items-center">
+                    <Image className="h-4 w-4 mr-1" />
+                    Attachments
+                    {isCheckingAttachments && (
+                      <span className="ml-1 h-3 w-3 rounded-full bg-gray-200 animate-pulse"></span>
+                    )}
+                  </div>
+                </TabsTrigger>
+              )}
               <TabsTrigger value="activity">Activity</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -766,6 +796,7 @@ const SweaquityDashboard = () => {
           <TicketAttachmentsList 
             reporterId={ticket.reporter} 
             ticketId={ticket.id} 
+            onAttachmentsLoaded={handleAttachmentsLoaded}
           />
         </TabsContent>
 

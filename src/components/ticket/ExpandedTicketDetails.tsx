@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -12,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { CalendarIcon, Clock, AlertCircle, Send } from "lucide-react";
+import { CalendarIcon, Clock, AlertCircle, Send, Image } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -20,6 +19,7 @@ import { Ticket } from "@/types/types";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { TicketAttachmentsList, checkTicketAttachments } from "@/components/dashboard/TicketAttachmentsList";
 
 const statusOptions = [
   { value: "new", label: "New" },
@@ -84,18 +84,32 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   const [isLoadingTimeEntries, setIsLoadingTimeEntries] = useState(false);
   const [timeEntriesError, setTimeEntriesError] = useState<string | null>(null);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [hasAttachments, setHasAttachments] = useState(false);
+  const [isCheckingAttachments, setIsCheckingAttachments] = useState(true);
 
   useEffect(() => {
     if (ticket.id) {
       fetchTimeEntries(ticket.id);
+      checkForAttachments();
     }
   }, [ticket.id]);
+
+  const checkForAttachments = async () => {
+    setIsCheckingAttachments(true);
+    const attachmentsExist = await checkTicketAttachments(ticket.reporter, ticket.id);
+    setHasAttachments(attachmentsExist);
+    setIsCheckingAttachments(false);
+  };
+
+  const handleAttachmentsLoaded = (hasAttachments: boolean) => {
+    setHasAttachments(hasAttachments);
+    setIsCheckingAttachments(false);
+  };
 
   const fetchTimeEntries = async (ticketId: string) => {
     setIsLoadingTimeEntries(true);
     setTimeEntriesError(null);
     try {
-      // First, get time entries for this ticket
       const { data, error } = await supabase
         .from('time_entries')
         .select('*')
@@ -104,7 +118,6 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
         
       if (error) throw error;
       
-      // Now get user details for each entry
       const entriesWithUserDetails = await Promise.all((data || []).map(async (entry) => {
         if (entry.user_id) {
           const { data: profileData } = await supabase
@@ -222,7 +235,6 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
     
     setIsSubmittingComment(true);
     try {
-      // Get user information
       const { data: { user } } = await supabase.auth.getUser();
       const { data: profileData } = await supabase
         .from('profiles')
@@ -234,7 +246,6 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
         `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || profileData.email : 
         'User';
       
-      // We'll use the replies field for conversation messages
       const replies = Array.isArray(ticket.replies) ? [...ticket.replies] : [];
       
       const newReply = {
@@ -267,7 +278,6 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
     
     setIsSubmittingComment(true);
     try {
-      // Get user information
       const { data: { user } } = await supabase.auth.getUser();
       const { data: profileData } = await supabase
         .from('profiles')
@@ -312,6 +322,17 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="conversation">Conversation</TabsTrigger>
           <TabsTrigger value="activity-log">Activity Log</TabsTrigger>
+          {(hasAttachments || isCheckingAttachments) && (
+            <TabsTrigger value="attachments">
+              <div className="flex items-center">
+                <Image className="h-4 w-4 mr-1" />
+                Attachments
+                {isCheckingAttachments && (
+                  <span className="ml-1 h-3 w-3 rounded-full bg-gray-200 animate-pulse"></span>
+                )}
+              </div>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="time-log">Time Log</TabsTrigger>
         </TabsList>
 
@@ -541,6 +562,14 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
           </div>
         </TabsContent>
 
+        <TabsContent value="attachments" className="mt-0">
+          <TicketAttachmentsList 
+            reporterId={ticket.reporter} 
+            ticketId={ticket.id}
+            onAttachmentsLoaded={handleAttachmentsLoaded}
+          />
+        </TabsContent>
+        
         <TabsContent value="time-log" className="space-y-4">
           <div className="bg-gray-50 p-4 rounded-md border mb-4">
             <p className="text-sm text-gray-500 mb-2">
