@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +22,7 @@ interface ExpandedTicketDetailsProps {
   userCanEditDates?: boolean;
 }
 
-const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({ ticket, onClose, onTicketAction, onLogTime, userCanEditStatus, userCanEditDates }) => {
+export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({ ticket, onClose, onTicketAction, onLogTime, userCanEditStatus, userCanEditDates }) => {
 
   const handleTicketAction = async (action: string, data: any = {}) => {
     if (ticket.id) {
@@ -130,7 +129,6 @@ const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({ ticket, o
   );
 
   const renderAttachmentsSection = (ticket: Ticket) => {
-    // Pass the attachments array directly from the ticket
     return (
       <div className="p-4 space-y-4">
         <TicketAttachmentsList 
