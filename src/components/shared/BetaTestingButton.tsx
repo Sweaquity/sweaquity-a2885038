@@ -178,7 +178,7 @@ export function BetaTestingButton() {
           replies: [],
           task_id: selectedSubTaskId || null,
           project_id: projectId,
-          attachments: []
+          attachment_url: []
         })
         .select('id')
         .single();
@@ -229,7 +229,7 @@ export function BetaTestingButton() {
           const { error: updateError } = await supabase
             .from('tickets')
             .update({
-              attachments: attachmentUrls
+              attachment_url: attachmentUrls
             })
             .eq('id', ticketData.id);
             
