@@ -1,8 +1,7 @@
-
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Building, FileText, Briefcase, CircleDollarSign, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { Users, Building, FileText, Briefcase, CircleDollarSign, AlertTriangle, CheckCircle, Clock, Image } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -24,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { AdminTicketManager } from "@/components/admin/tickets/AdminTicketManager";
 import { Task, TaskType, KanbanColumn, DragResult, ApplicationStats } from "@/types/dashboard";
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { TicketAttachmentsList } from "@/components/dashboard/TicketAttachmentsList";
 
 interface BetaTicket {
   id: string;
@@ -250,13 +250,11 @@ const SweaquityDashboard = () => {
         ? `${userData.first_name} ${userData.last_name || ''}`
         : userData?.email || user.email || 'Unknown User';
       
-      // Create the user_messages table if it doesn't exist
       const { error: tableCheckError } = await supabase
         .from('user_messages')
         .select('id', { count: 'exact', head: true });
       
       if (tableCheckError) {
-        // Create the user_messages table if it doesn't exist
         const { error: createTableError } = await supabase.rpc('create_messages_table_if_not_exists');
         if (createTableError) {
           console.error("Error creating messages table:", createTableError);
@@ -265,7 +263,6 @@ const SweaquityDashboard = () => {
         }
       }
       
-      // Send a message to the reporter
       const { error: messageError } = await supabase
         .from('user_messages')
         .insert({
@@ -284,7 +281,6 @@ const SweaquityDashboard = () => {
         toast.success("Reply sent to reporter's dashboard");
       }
       
-      // Also update the ticket notes for history tracking
       const { data: ticketData, error: fetchError } = await supabase
         .from('tickets')
         .select('notes')
@@ -675,101 +671,129 @@ const SweaquityDashboard = () => {
   };
 
   const ExpandedTicketDetails = ({ ticket }: { ticket: BetaTicket }) => {
+    const [activeTab, setActiveTab] = useState("details");
+
     return (
       <div className="p-4 border-t">
-        <div className="grid md:grid-cols-2 gap-4 mb-4">
-          <div>
-            <p className="text-sm text-gray-600 mb-2">{ticket.description}</p>
-            
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>
-                <span className="text-gray-500">Created: </span>
-                {formatDate(ticket.created_at)}
-              </div>
-              {ticket.due_date && (
-                <div>
-                  <span className="text-gray-500">Due: </span>
-                  {formatDate(ticket.due_date)}
+        <div className="border-b mb-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-2">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="attachments">
+                <div className="flex items-center">
+                  <Image className="h-4 w-4 mr-1" />
+                  Attachments
                 </div>
-              )}
-              {ticket.reporter_email && (
-                <div>
-                  <span className="text-gray-500">Reporter: </span>
-                  {ticket.reporter_email}
-                </div>
-              )}
-              {ticket.reported_url && (
-                <div>
-                  <span className="text-gray-500">URL: </span>
-                  <span className="text-blue-500 underline">{ticket.reported_url}</span>
-                </div>
-              )}
-            </div>
-            
-            {ticket.system_info && (
-              <div className="mt-3 p-2 bg-gray-50 rounded text-xs">
-                <p className="font-medium mb-1">System Info:</p>
-                <div className="grid grid-cols-2 gap-1">
-                  <div><span className="text-gray-500">Browser: </span>{ticket.system_info.userAgent}</div>
-                  <div><span className="text-gray-500">Screen: </span>{ticket.system_info.viewportSize}</div>
-                  <div><span className="text-gray-500">Time: </span>{new Date(ticket.system_info.timestamp).toLocaleString()}</div>
-                  <div><span className="text-gray-500">Referrer: </span>{ticket.system_info.referrer}</div>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          {ticket.attachments && ticket.attachments.length > 0 && (
+              </TabsTrigger>
+              <TabsTrigger value="activity">Activity</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        <TabsContent value="details" className="mt-0">
+          <div className="grid md:grid-cols-2 gap-4 mb-4">
             <div>
-              <p className="text-sm font-medium mb-2">Screenshots ({ticket.attachments.length})</p>
-              <div className="grid grid-cols-2 gap-2">
-                {ticket.attachments.map((url, i) => (
-                  <div key={i} className="relative group border rounded overflow-hidden h-36">
-                    <img 
-                      src={url} 
-                      alt={`Screenshot ${i+1}`} 
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-white"
-                        onClick={() => window.open(url, '_blank')}
-                      >
-                        View Full
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-        
-        <div className="mb-4">
-          <h4 className="text-sm font-medium mb-2">Activity Timeline</h4>
-          <div className="space-y-2 text-sm pl-4 border-l-2 border-gray-200">
-            {ticket.notes ? (
-              ticket.notes.map((activity, index) => (
-                <div key={index} className="relative pl-4 pb-2">
-                  <div className="absolute w-2 h-2 rounded-full bg-blue-500 -left-[5px]"></div>
-                  <p className="font-medium">{activity.action}</p>
-                  <p className="text-xs text-gray-500">
-                    {new Date(activity.timestamp).toLocaleString()} by {activity.user}
-                  </p>
-                  {activity.comment && (
-                    <p className="mt-1 bg-gray-50 p-2 rounded border border-gray-100">
-                      {activity.comment}
-                    </p>
-                  )}
+              <p className="text-sm text-gray-600 mb-2">{ticket.description}</p>
+              
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-gray-500">Created: </span>
+                  {formatDate(ticket.created_at)}
                 </div>
-              ))
-            ) : (
-              <p className="text-gray-500 italic">No activity recorded yet</p>
+                {ticket.due_date && (
+                  <div>
+                    <span className="text-gray-500">Due: </span>
+                    {formatDate(ticket.due_date)}
+                  </div>
+                )}
+                {ticket.reporter_email && (
+                  <div>
+                    <span className="text-gray-500">Reporter: </span>
+                    {ticket.reporter_email}
+                  </div>
+                )}
+                {ticket.reported_url && (
+                  <div>
+                    <span className="text-gray-500">URL: </span>
+                    <span className="text-blue-500 underline">{ticket.reported_url}</span>
+                  </div>
+                )}
+              </div>
+              
+              {ticket.system_info && (
+                <div className="mt-3 p-2 bg-gray-50 rounded text-xs">
+                  <p className="font-medium mb-1">System Info:</p>
+                  <div className="grid grid-cols-2 gap-1">
+                    <div><span className="text-gray-500">Browser: </span>{ticket.system_info.userAgent}</div>
+                    <div><span className="text-gray-500">Screen: </span>{ticket.system_info.viewportSize}</div>
+                    <div><span className="text-gray-500">Time: </span>{new Date(ticket.system_info.timestamp).toLocaleString()}</div>
+                    <div><span className="text-gray-500">Referrer: </span>{ticket.system_info.referrer}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {ticket.attachments && ticket.attachments.length > 0 && (
+              <div>
+                <p className="text-sm font-medium mb-2">Screenshots ({ticket.attachments.length})</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {ticket.attachments.map((url, i) => (
+                    <div key={i} className="relative group border rounded overflow-hidden h-36">
+                      <img 
+                        src={url} 
+                        alt={`Screenshot ${i+1}`} 
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-white"
+                          onClick={() => window.open(url, '_blank')}
+                        >
+                          View Full
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
-        </div>
+        </TabsContent>
+
+        <TabsContent value="attachments" className="mt-0">
+          <TicketAttachmentsList 
+            reporterId={ticket.reporter} 
+            ticketId={ticket.id} 
+          />
+        </TabsContent>
+
+        <TabsContent value="activity" className="mt-0">
+          <div className="mb-4">
+            <h4 className="text-sm font-medium mb-2">Activity Timeline</h4>
+            <div className="space-y-2 text-sm pl-4 border-l-2 border-gray-200">
+              {ticket.notes ? (
+                ticket.notes.map((activity, index) => (
+                  <div key={index} className="relative pl-4 pb-2">
+                    <div className="absolute w-2 h-2 rounded-full bg-blue-500 -left-[5px]"></div>
+                    <p className="font-medium">{activity.action}</p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(activity.timestamp).toLocaleString()} by {activity.user}
+                    </p>
+                    {activity.comment && (
+                      <p className="mt-1 bg-gray-50 p-2 rounded border border-gray-100">
+                        {activity.comment}
+                      </p>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 italic">No activity recorded yet</p>
+              )}
+            </div>
+          </div>
+        </TabsContent>
         
         <div className="border-t pt-4 flex flex-wrap gap-4">
           <div>
