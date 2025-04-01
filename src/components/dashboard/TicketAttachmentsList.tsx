@@ -1,8 +1,9 @@
 
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { FileImage, FileText, Loader2 } from "lucide-react";
+import { FileImage, FileText, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface TicketAttachmentsListProps {
   reporterId: string | undefined;
@@ -18,6 +19,10 @@ export const TicketAttachmentsList = ({
   const [attachments, setAttachments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewType, setPreviewType] = useState<string | null>(null);
+  const [previewName, setPreviewName] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAttachments = async () => {
@@ -68,6 +73,58 @@ export const TicketAttachmentsList = ({
     return <FileText className="h-5 w-5 text-gray-500" />;
   };
 
+  const openPreview = (file: any) => {
+    const isImage = file.metadata?.mimetype?.startsWith('image/');
+    const fileUrl = getFileUrl(file.name);
+    
+    setPreviewUrl(fileUrl);
+    setPreviewType(file.metadata?.mimetype || '');
+    setPreviewName(file.name);
+    setPreviewOpen(true);
+  };
+
+  const closePreview = () => {
+    setPreviewOpen(false);
+    setPreviewUrl(null);
+  };
+
+  const renderPreviewContent = () => {
+    if (!previewUrl) return null;
+    
+    if (previewType?.startsWith('image/')) {
+      return (
+        <div className="relative w-full h-full flex items-center justify-center">
+          <img 
+            src={previewUrl} 
+            alt={previewName || 'Preview'} 
+            className="max-w-full max-h-[70vh] object-contain" 
+          />
+        </div>
+      );
+    } else if (previewType?.startsWith('application/pdf')) {
+      return (
+        <iframe 
+          src={`${previewUrl}#view=FitH`} 
+          className="w-full h-[70vh]" 
+          title={previewName || 'PDF Preview'}
+        />
+      );
+    } else {
+      return (
+        <div className="text-center py-10">
+          <FileText className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+          <p>This file type cannot be previewed directly.</p>
+          <Button 
+            className="mt-4"
+            onClick={() => window.open(previewUrl, '_blank')}
+          >
+            Open in New Tab
+          </Button>
+        </div>
+      );
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-4">
@@ -101,7 +158,10 @@ export const TicketAttachmentsList = ({
               key={file.id} 
               className="border rounded-md p-2 flex flex-col gap-1"
             >
-              <div className="aspect-square bg-gray-100 rounded flex items-center justify-center overflow-hidden">
+              <div 
+                className="aspect-square bg-gray-100 rounded flex items-center justify-center overflow-hidden cursor-pointer"
+                onClick={() => openPreview(file)}
+              >
                 {isImage ? (
                   <img 
                     src={fileUrl} 
@@ -115,18 +175,47 @@ export const TicketAttachmentsList = ({
               <div className="text-xs truncate" title={file.name}>
                 {file.name}
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="mt-auto text-xs h-7"
-                onClick={() => window.open(fileUrl, '_blank')}
-              >
-                View File
-              </Button>
+              <div className="flex gap-1 mt-auto">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-xs h-7 flex-1"
+                  onClick={() => openPreview(file)}
+                >
+                  Preview
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-xs h-7"
+                  onClick={() => window.open(fileUrl, '_blank')}
+                >
+                  Download
+                </Button>
+              </div>
             </div>
           );
         })}
       </div>
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+          <div className="relative p-4 border-b flex justify-between items-center">
+            <h3 className="text-lg font-medium truncate max-w-[80%]">{previewName}</h3>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={closePreview}
+              className="h-8 w-8 rounded-full"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="p-4 overflow-auto max-h-[calc(90vh-80px)]">
+            {renderPreviewContent()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
