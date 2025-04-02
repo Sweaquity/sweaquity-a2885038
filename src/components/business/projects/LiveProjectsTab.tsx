@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,7 @@ interface LiveProjectsTabProps {
   businessId: string;
 }
 
-export const LiveProjectsTab: React.FC<LiveProjectsTabProps> = ({ businessId }: LiveProjectsTabProps) => {
+export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   const [activeTab, setActiveTab] = useState("all-tickets");
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,6 +85,7 @@ export const LiveProjectsTab: React.FC<LiveProjectsTabProps> = ({ businessId }: 
     }
     
     if (action === 'refreshTicket') {
+      // Refresh the specific ticket data
       const { data: refreshedTicket, error } = await supabase
         .from('tickets')
         .select('*')

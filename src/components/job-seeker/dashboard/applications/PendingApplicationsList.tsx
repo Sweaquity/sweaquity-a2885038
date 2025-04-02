@@ -78,25 +78,17 @@ export const PendingApplicationsList = ({
       ? application.business_roles?.skill_requirements
       : [];
       
-    // Extract skill names from task requirements safely
-    const requiredSkillNames = taskSkills.map(skill => {
-      if (typeof skill === 'string') return skill.toLowerCase();
-      if (typeof skill === 'object' && skill !== null) {
-        if ('skill' in skill && typeof skill.skill === 'string') return skill.skill.toLowerCase();
-        if ('name' in skill && typeof skill.name === 'string') return skill.name.toLowerCase();
-      }
-      return '';
-    }).filter(Boolean); // Filter out empty strings
+    // Extract skill names from task requirements
+    const requiredSkillNames = taskSkills.map(skill => 
+      typeof skill === 'string' ? skill.toLowerCase() : (skill.skill ? skill.skill.toLowerCase() : '')
+    ).filter(Boolean);
     
-    // Get user skill names safely
-    const userSkillNames = userSkills.map(skill => {
-      if (typeof skill === 'string') return skill.toLowerCase();
-      if (typeof skill === 'object' && skill !== null) {
-        if ('skill' in skill && typeof skill.skill === 'string') return skill.skill.toLowerCase();
-        if ('name' in skill && typeof skill.name === 'string') return skill.name.toLowerCase();
-      }
-      return '';
-    }).filter(Boolean); // Filter out empty strings
+    // Get user skill names
+    const userSkillNames = userSkills.map(skill => 
+      typeof skill === 'string' ? skill.toLowerCase() : 
+      (skill.skill ? skill.skill.toLowerCase() : 
+      (skill.name ? skill.name.toLowerCase() : ''))
+    ).filter(Boolean);
     
     // Find matching skills
     return requiredSkillNames.filter(skill => 

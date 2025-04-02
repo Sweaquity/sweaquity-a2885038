@@ -74,7 +74,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
       const { data: taskData, error: taskError } = await supabase
         .from('project_sub_tasks')
         .select('*')
-        .eq('task_id', task.task_id)
+        .eq('task_id', task.id)
         .single();
         
       if (taskError || !taskData) {
@@ -85,7 +85,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
         
       navigate(`/projects/${project.project_id}/apply`, { 
         state: { 
-          taskId: task.task_id, 
+          taskId: task.id, 
           projectId: project.project_id,
           projectTitle: project.title || "Untitled Project",
           taskTitle: task.title || "Untitled Task"

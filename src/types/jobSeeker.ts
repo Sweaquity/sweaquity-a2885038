@@ -50,8 +50,6 @@ export interface EquityProject {
   status: string;
   start_date: string;
   end_date?: string;
-  skill_requirements?: string | null;
-  skill_required?: string | null;
   effort_logs: {
     date: string;
     hours: number;
@@ -84,20 +82,10 @@ export interface LogEffort {
 }
 
 export interface SubTask {
-  task_id?: string | null; // Optional and can be null
+  task_id: string; // Add this to match your database schema
   project_id: string;
   title: string;
   description: string;
-  equity_allocation?: number | null;
-  status?: string | null;
-  task_status?: string | null;
-  skill_requirements?: string | null;
-  skill_required?: string | null;
-  timeframe?: string | null;
-  created_by?: string | null;
   completion_percentage: number;
-  dependencies?: string | null;
-  last_activity_at?: string | null;
-  estimated_hours?: number | null;
   // ... any other existing properties
 }

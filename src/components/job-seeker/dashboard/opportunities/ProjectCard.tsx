@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -85,24 +86,16 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
     return [];
   };
 
-  const projectSkills = project.skills_required 
-    ? (Array.isArray(project.skills_required) ? project.skills_required : [project.skills_required])
-    : [];
+  // Get project skills - handle both skills_required and any other property that might contain skills
+  const projectSkills = formatSkills(project.skills_required || []);
   
-  const matchedSkills = projectSkills.filter(skill => {
-    const skillStr = typeof skill === 'string' 
-      ? skill.toLowerCase() 
-      : (typeof skill === 'object' && skill !== null && ('name' in skill || 'skill' in skill))
-        ? ((skill.name || skill.skill || '') as string).toLowerCase()
-        : '';
-        
-    return userSkillStrings.some(userSkill => {
-      const userSkillStr = typeof userSkill === 'string' 
-        ? userSkill.toLowerCase() 
-        : '';
-      return userSkillStr.includes(skillStr);
-    });
-  });
+  const matchedSkills = projectSkills.filter(skill => 
+    userSkillStrings.some(userSkill => 
+      (typeof userSkill === 'string' ? userSkill.toLowerCase() : 
+       (userSkill.name || userSkill.skill || '').toLowerCase())
+       .includes(skill.toLowerCase())
+    )
+  );
 
   const tasks = project.sub_tasks || [];
 
@@ -166,11 +159,6 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
               </Button>
             </div>
             {tasks.map((task) => {
-              const taskWithProjectId = {
-                ...task,
-                project_id: task.project_id || project.project_id || project.id
-              };
-              
               const skillMatch = getSkillMatch(task);
               
               return (
@@ -184,7 +172,7 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
                     </div>
                     <Button 
                       size="sm" 
-                      onClick={() => onApply(project, taskWithProjectId)}
+                      onClick={() => onApply(project, task)}
                     >
                       Apply
                     </Button>
@@ -208,38 +196,28 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
                   <div className="mt-3">
                     <div className="text-xs font-medium mb-1">Required Skills</div>
                     <div className="flex flex-wrap gap-1">
-                      {(() => {
-                        const skillsList = Array.isArray(task.skill_requirements) 
-                          ? task.skill_requirements 
-                          : (Array.isArray(task.skills_required) 
-                            ? task.skills_required 
-                            : []);
+                      {Array.isArray(task.skill_requirements) && task.skill_requirements.map((skill, index) => {
+                        const skillName = typeof skill === 'string' ? skill : 
+                                         (typeof skill === 'object' && skill !== null && 'skill' in skill) ? 
+                                         skill.skill : '';
+                        const skillLevel = typeof skill === 'string' ? 'Intermediate' : 
+                                         (typeof skill === 'object' && skill !== null && 'level' in skill) ? 
+                                         skill.level : '';
                         
-                        return skillsList.map((skill, index) => {
-                          const skillName = typeof skill === 'string' ? skill : 
-                                         (typeof skill === 'object' && skill !== null && ('skill' in skill || 'name' in skill)) 
-                                         ? (skill.skill || skill.name || '') : '';
-                          
-                          const skillLevel = typeof skill === 'string' ? 'Intermediate' : 
-                                         (typeof skill === 'object' && skill !== null && 'level' in skill) 
-                                         ? skill.level : '';
-                          
-                          const isMatched = userSkillStrings.some(s => 
-                            s.toLowerCase() === skillName.toLowerCase()
-                          );
-                          
-                          return (
-                            <Badge 
-                              key={index} 
-                              variant={isMatched ? "default" : "outline"}
-                              className={isMatched ? "bg-green-500" : ""}
-                            >
-                              {skillName} {skillLevel ? `(${skillLevel})` : ''}
-                            </Badge>
-                          );
-                        });
-                      })()}
-                      
+                        const isMatched = userSkillStrings.includes(
+                          typeof skillName === 'string' ? skillName.toLowerCase() : ''
+                        );
+                        
+                        return (
+                          <Badge 
+                            key={index} 
+                            variant={isMatched ? "default" : "outline"}
+                            className={isMatched ? "bg-green-500" : ""}
+                          >
+                            {skillName} {skillLevel ? `(${skillLevel})` : ''}
+                          </Badge>
+                        );
+                      })}
                       {(!Array.isArray(task.skill_requirements) || task.skill_requirements.length === 0) && (
                         <span className="text-sm text-muted-foreground">No specific skills required</span>
                       )}

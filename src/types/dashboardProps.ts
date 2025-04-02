@@ -1,11 +1,11 @@
 
-import { EquityProject } from './equity';
+import { EquityProject, LogEffort } from './equity';
 import { JobApplication } from './applications';
-import { Skill } from './profile';
+import { Profile, Skill } from './profile';
 
 export interface DashboardTabProps {
   activeTab: string;
-  profile: any; // Changed from Profile to any to resolve type issue
+  profile: Profile;
   cvUrl: string;
   parsedCvData: any;
   skills: Skill[];
@@ -31,7 +31,7 @@ export interface ApplicationContentProps {
 }
 
 export interface ApplicationSkillsProps {
-  skillRequirements: any[]; // Changed to any[] to resolve type issue
+  skillRequirements: (string | import('./businessRoles').SkillRequirement)[];
   equityAllocation?: number;
   timeframe?: string;
 }

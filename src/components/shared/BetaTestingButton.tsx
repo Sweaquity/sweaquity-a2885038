@@ -177,8 +177,7 @@ export function BetaTestingButton() {
           notes: [],
           replies: [],
           task_id: selectedSubTaskId || null,
-          project_id: projectId,
-          attachment_url: []
+          project_id: projectId
         })
         .select('id')
         .single();
@@ -188,19 +187,13 @@ export function BetaTestingButton() {
         throw ticketError;
       }
       
-      let attachmentUrls: string[] = [];
-      
       if (screenshots.length > 0 && ticketData?.id) {
-        console.log(`Uploading ${screenshots.length} screenshots for ticket ${ticketData.id}`);
-        
         const uploadPromises = screenshots.map(async (file, index) => {
           const fileExt = file.name.split('.').pop();
           const fileName = `${ticketData.id}_${index}.${fileExt}`;
           const filePath = `${user.id}/${ticketData.id}/${fileName}`;
           
-          console.log(`Uploading file to path: ${filePath}`);
-          
-          const { error: uploadError, data: uploadData } = await supabase
+          const { error: uploadError } = await supabase
             .storage
             .from('ticket-attachments')
             .upload(filePath, file);
@@ -215,29 +208,22 @@ export function BetaTestingButton() {
             .from('ticket-attachments')
             .getPublicUrl(filePath);
             
-          console.log(`Generated public URL: ${publicUrl}`);
-          
           return publicUrl;
         });
         
         const uploadedUrls = await Promise.all(uploadPromises);
-        attachmentUrls = uploadedUrls.filter(url => url !== null) as string[];
+        const validUrls = uploadedUrls.filter(url => url !== null) as string[];
         
-        console.log(`Successfully uploaded ${attachmentUrls.length} attachments:`, attachmentUrls);
-        
-        if (attachmentUrls.length > 0) {
+        if (validUrls.length > 0) {
           const { error: updateError } = await supabase
             .from('tickets')
             .update({
-              attachment_url: attachmentUrls
+              attachments: validUrls
             })
             .eq('id', ticketData.id);
             
           if (updateError) {
             console.error("Error updating ticket with screenshots:", updateError);
-            toast.error("Uploaded attachments but failed to link them to the ticket");
-          } else {
-            console.log("Successfully updated ticket with attachment URLs");
           }
         }
       }
@@ -257,7 +243,7 @@ export function BetaTestingButton() {
       setIsSubmitting(false);
     }
   };
-
+      
   return (
     <>
       <TooltipProvider>

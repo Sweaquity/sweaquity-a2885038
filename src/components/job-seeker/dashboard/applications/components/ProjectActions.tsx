@@ -15,15 +15,12 @@ export const ProjectActions = ({ application, onSendMessage }: ProjectActionsPro
   const navigate = useNavigate();
   
   const handleViewProject = () => {
-    // Try to get project_id from various possible locations
-    const projectId = application.project_id || 
-                     (application.business_roles?.project_id) ||
-                     (application.business_roles?.project && 'id' in application.business_roles.project 
-                      ? application.business_roles.project.id : undefined);
-    
-    if (projectId) {
+    if (application.project_id) {
       // Navigate to the project details page using project_id
-      navigate(`/projects/${projectId}`);
+      navigate(`/projects/${application.project_id}`);
+    } else if (application.business_roles?.project_id) {
+      // Try to get project_id from business_roles
+      navigate(`/projects/${application.business_roles.project_id}`);
     } else if (application.task_id) {
       // Fallback to the task ID if project ID isn't available
       navigate(`/projects/${application.task_id}`);

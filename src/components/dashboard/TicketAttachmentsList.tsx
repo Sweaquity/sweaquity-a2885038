@@ -1,137 +1,150 @@
 
-import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileIcon, Trash2Icon, DownloadIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
+import { FileImage, FileText, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface TicketAttachmentsListProps {
+  reporterId: string | undefined;
   ticketId: string;
-  reporterId?: string;
-  attachmentUrls?: string[];
+  onAttachmentsLoaded?: (hasAttachments: boolean) => void;
 }
 
-export const TicketAttachmentsList: React.FC<TicketAttachmentsListProps> = ({
+export const TicketAttachmentsList = ({ 
+  reporterId, 
   ticketId,
-  reporterId,
-  attachmentUrls = []
-}) => {
-  const [deleting, setDeleting] = useState<string | null>(null);
+  onAttachmentsLoaded
+}: TicketAttachmentsListProps) => {
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleDownload = async (url: string) => {
-    try {
-      // Extract filename from the URL
-      const filename = url.split('/').pop() || 'download';
-      
-      // Fetch the file
-      const response = await fetch(url);
-      const blob = await response.blob();
-      
-      // Create download link
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      
-      // Clean up
-      window.URL.revokeObjectURL(downloadUrl);
-      document.body.removeChild(link);
-      
-      toast.success("File download started");
-    } catch (error) {
-      console.error("Download error:", error);
-      toast.error("Failed to download file");
-    }
-  };
-
-  const handleDelete = async (url: string) => {
-    try {
-      setDeleting(url);
-      
-      // Update the ticket to remove this attachment URL
-      const { error: updateError } = await supabase
-        .from('tickets')
-        .update({
-          attachments: attachmentUrls.filter(a => a !== url)
-        })
-        .eq('id', ticketId);
-      
-      if (updateError) throw updateError;
-      
-      // Try to delete the file from storage if it's a Supabase storage URL
-      if (url.includes('storage.googleapis.com') || url.includes('supabase')) {
-        const filePath = url.split('/').slice(-2).join('/');
-        await supabase.storage.from('attachments').remove([filePath]);
+  useEffect(() => {
+    const fetchAttachments = async () => {
+      if (!reporterId || !ticketId) {
+        setLoading(false);
+        if (onAttachmentsLoaded) onAttachmentsLoaded(false);
+        return;
       }
-      
-      toast.success("Attachment deleted successfully");
-      // You'll need to implement a callback to refresh the parent component
-      // or handle the state update to remove the attachment from the list
-    } catch (error) {
-      console.error("Delete error:", error);
-      toast.error("Failed to delete attachment");
-    } finally {
-      setDeleting(null);
-    }
+
+      try {
+        // Using the path format: reporterId/ticketId/*
+        const { data, error } = await supabase.storage
+          .from('ticket-attachments')
+          .list(`${reporterId}/${ticketId}`);
+
+        if (error) {
+          throw error;
+        }
+
+        setAttachments(data || []);
+        
+        // Notify parent component about attachment status
+        if (onAttachmentsLoaded) {
+          onAttachmentsLoaded(data && data.length > 0);
+        }
+      } catch (err: any) {
+        console.error("Error fetching attachments:", err);
+        setError(err.message || "Failed to load attachments");
+        if (onAttachmentsLoaded) onAttachmentsLoaded(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAttachments();
+  }, [reporterId, ticketId, onAttachmentsLoaded]);
+
+  const getFileUrl = (filePath: string) => {
+    return supabase.storage
+      .from('ticket-attachments')
+      .getPublicUrl(`${reporterId}/${ticketId}/${filePath}`).data.publicUrl;
   };
 
-  if (!attachmentUrls || attachmentUrls.length === 0) {
+  const getFileIcon = (mimeType: string) => {
+    if (mimeType.startsWith('image/')) {
+      return <FileImage className="h-5 w-5 text-blue-500" />;
+    }
+    return <FileText className="h-5 w-5 text-gray-500" />;
+  };
+
+  if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Attachments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-sm">No attachments found for this ticket.</p>
-        </CardContent>
-      </Card>
+      <div className="flex justify-center items-center py-4">
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-sm text-red-500 py-2">{error}</div>
+    );
+  }
+
+  if (attachments.length === 0) {
+    return (
+      <div className="text-sm text-gray-500 py-2">No attachments found for this ticket.</div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Attachments</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          {attachmentUrls.map((url, index) => (
+    <div className="space-y-2">
+      <h4 className="text-sm font-medium">Attachments ({attachments.length})</h4>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {attachments.map((file) => {
+          const isImage = file.metadata?.mimetype?.startsWith('image/');
+          const fileUrl = getFileUrl(file.name);
+          
+          return (
             <div 
-              key={`${url}-${index}`} 
-              className="flex items-center justify-between p-2 border rounded-md hover:bg-accent/50"
+              key={file.id} 
+              className="border rounded-md p-2 flex flex-col gap-1"
             >
-              <div className="flex items-center space-x-2">
-                <FileIcon className="h-5 w-5 text-blue-500" />
-                <span className="text-sm truncate max-w-[200px] md:max-w-[400px]">
-                  {url.split('/').pop() || `Attachment ${index + 1}`}
-                </span>
+              <div className="aspect-square bg-gray-100 rounded flex items-center justify-center overflow-hidden">
+                {isImage ? (
+                  <img 
+                    src={fileUrl} 
+                    alt={file.name} 
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  getFileIcon(file.metadata?.mimetype || '')
+                )}
               </div>
-              <div className="flex space-x-2">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => handleDownload(url)}
-                  title="Download"
-                >
-                  <DownloadIcon className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => handleDelete(url)}
-                  disabled={deleting === url}
-                  title="Delete"
-                >
-                  <Trash2Icon className="h-4 w-4 text-destructive" />
-                </Button>
+              <div className="text-xs truncate" title={file.name}>
+                {file.name}
               </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-auto text-xs h-7"
+                onClick={() => window.open(fileUrl, '_blank')}
+              >
+                View File
+              </Button>
             </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+          );
+        })}
+      </div>
+    </div>
   );
+};
+
+// Helper function to check if a ticket has attachments
+export const checkTicketAttachments = async (reporterId?: string, ticketId?: string): Promise<boolean> => {
+  if (!reporterId || !ticketId) return false;
+  
+  try {
+    const { data, error } = await supabase.storage
+      .from('ticket-attachments')
+      .list(`${reporterId}/${ticketId}`);
+
+    if (error) throw error;
+    
+    return data && data.length > 0;
+  } catch (err) {
+    console.error("Error checking ticket attachments:", err);
+    return false;
+  }
 };

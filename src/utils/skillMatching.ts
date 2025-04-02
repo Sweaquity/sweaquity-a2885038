@@ -324,63 +324,6 @@ export const rankProjectsByRelevance = (
   return scoredProjects.sort((a, b) => (b.skillMatch || 0) - (a.skillMatch || 0));
 };
 
-// Fix the function that uses skill_requirements instead of skills_required
-export const getProjectMatchScores = (projects: any[], userSkills: any[]): any[] => {
-  return projects.map(project => {
-    if (project.sub_tasks && Array.isArray(project.sub_tasks)) {
-      project.sub_tasks = project.sub_tasks.map(task => {
-        // Get skills from either skills_required or skill_requirements
-        const taskSkills = Array.isArray(task.skills_required) 
-          ? task.skills_required 
-          : (Array.isArray(task.skill_requirements) 
-            ? task.skill_requirements 
-            : []);
-            
-        // Add match scores to sub-tasks
-        if (taskSkills.length > 0) {
-          task.matchScore = calculateSkillMatch(userSkills, taskSkills);
-        }
-        
-        return task;
-      });
-    }
-    
-    return project;
-  });
-};
-
-// Fix other functions that use skill_requirements
-export const matchTaskToUserSkills = (task: any, userSkills: any[]): number => {
-  const taskSkills = Array.isArray(task.skills_required) 
-    ? task.skills_required 
-    : (Array.isArray(task.skill_requirements) 
-      ? task.skill_requirements 
-      : []);
-  
-  return calculateSkillMatch(userSkills, taskSkills);
-};
-
-export const extractSkillsFromTask = (task: any): string[] => {
-  if (!task) return [];
-  
-  // Get skills from either skills_required or skill_requirements
-  const skillsArr = Array.isArray(task.skills_required) 
-    ? task.skills_required 
-    : (Array.isArray(task.skill_requirements) 
-      ? task.skill_requirements 
-      : []);
-  
-  return skillsArr.map(skill => {
-    if (typeof skill === 'string') {
-      return String(skill).toLowerCase();
-    }
-    if (skill && typeof skill === 'object' && 'skill' in skill && typeof skill.skill === 'string') {
-      return String(skill.skill).toLowerCase();
-    }
-    return '';
-  }).filter(Boolean);
-};
-
 // Update the mockSkills to use the correct skill property
 const mockSkills = [
   { skill: "JavaScript", level: "Beginner" },
