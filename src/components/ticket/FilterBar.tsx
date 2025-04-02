@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { ViewIcon, KanbanIcon } from "lucide-react";
 
-interface FilterBarProps {
+export interface FilterBarProps {
   statusFilter?: string;
   setStatusFilter?: (status: string) => void;
   priorityFilter?: string;
@@ -20,6 +21,8 @@ interface FilterBarProps {
   // Add the arrays for statuses and priorities
   statuses?: string[];
   priorities?: string[];
+  onToggleView?: () => void;
+  isKanbanView?: boolean;
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -34,7 +37,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onClearFilters = () => {},
   onFilterChange,
   statuses = ['all', 'new', 'in-progress', 'blocked', 'review', 'done', 'closed'],
-  priorities = ['all', 'low', 'medium', 'high']
+  priorities = ['all', 'low', 'medium', 'high'],
+  onToggleView,
+  isKanbanView = false
 }) => {
   const [filters, setFilters] = useState({
     status: statusFilter,
@@ -78,7 +83,15 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
   return (
     <div className="bg-gray-50 p-4 rounded-lg mb-6">
-      <h3 className="text-sm font-medium mb-3">Filter Tickets</h3>
+      <div className="flex justify-between mb-3">
+        <h3 className="text-sm font-medium">Filter Tickets</h3>
+        {onToggleView && (
+          <Button variant="outline" size="sm" onClick={onToggleView}>
+            {isKanbanView ? <ViewIcon className="h-4 w-4 mr-1" /> : <KanbanIcon className="h-4 w-4 mr-1" />}
+            {isKanbanView ? 'List View' : 'Kanban View'}
+          </Button>
+        )}
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
           <Label htmlFor="status-filter" className="text-xs block mb-1">Status</Label>

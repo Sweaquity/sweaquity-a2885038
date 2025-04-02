@@ -6,18 +6,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Clock, User2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { format } from 'date-fns';
 import { EditorOutput } from "@/components/editor/editor-output";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TicketAttachmentsList } from "@/components/dashboard/TicketAttachmentsList";
-import { Ticket } from "@/types/types";
 
-export interface ExpandedTicketDetailsProps {
-  ticket: Ticket;
+interface ExpandedTicketDetailsProps {
+  ticket: any;
   onClose?: () => void;
   onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
-  onLogTime?: (ticketId: string) => void;
+  onLogTime?: () => void;
   userCanEditStatus?: boolean;
   userCanEditDates?: boolean;
 }
@@ -33,6 +31,20 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   const handleTicketAction = async (action: string, data = {}) => {
     if (ticket.id) {
       await onTicketAction?.(ticket.id, action, data);
+    }
+  };
+
+  const getHealthBadgeVariant = (health: string) => {
+    switch (health) {
+      case 'red':
+        return 'destructive';
+      case 'amber':
+      case 'yellow':
+        return 'secondary';
+      case 'green':
+        return 'success';
+      default:
+        return 'secondary';
     }
   };
 
@@ -55,13 +67,11 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
             </div>
             <div>
               <div className="text-sm font-medium">Health:</div>
-              <Badge variant={ticket.health === "red" ? "destructive" : (ticket.health === "amber" ? "warning" : "success")}>
-                {ticket.health}
-              </Badge>
+              <Badge variant={getHealthBadgeVariant(ticket.health)}>{ticket.health}</Badge>
             </div>
             <div>
               <div className="text-sm font-medium">Type:</div>
-              <div>{ticket.ticket_type || ticket.type || 'N/A'}</div>
+              <div>{ticket.ticket_type || 'N/A'}</div>
             </div>
             <div>
               <div className="text-sm font-medium">Created At:</div>
@@ -111,29 +121,26 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
         <CardContent>
           <ScrollArea className="h-[400px] w-full rounded-md border">
             <div className="space-y-4 p-4">
-              {ticket.notes && ticket.notes.length > 0 ? ticket.notes.map((note) => (
-                <div key={note.id} className="border rounded-md p-3">
-                  <div className="flex items-center text-sm text-muted-foreground space-x-2">
-                    <Clock className="h-4 w-4" />
-                    <span>{note.timestamp}</span>
-                    <User2 className="h-4 w-4" />
-                    <span>{note.user}</span>
+              {ticket.notes && ticket.notes.length > 0 ? (
+                ticket.notes.map((note: any) => (
+                  <div key={note.id} className="border rounded-md p-3">
+                    <div className="flex items-center text-sm text-muted-foreground space-x-2">
+                      <Clock className="h-4 w-4" />
+                      <span>{note.timestamp}</span>
+                      <User2 className="h-4 w-4" />
+                      <span>{note.user}</span>
+                    </div>
+                    <div className="text-sm mt-2">{note.comment}</div>
                   </div>
-                  <div className="text-sm mt-2">
-                    {note.comment}
-                  </div>
-                </div>
-              )) : (
-                <div className="text-sm text-muted-foreground">
-                  No activity recorded.
-                </div>
+                ))
+              ) : (
+                <div className="text-sm text-muted-foreground">No activity recorded.</div>
               )}
             </div>
           </ScrollArea>
           <Button 
             variant="secondary" 
             onClick={() => handleTicketAction('reply', { message: 'New reply' })}
-            className="mt-4"
           >
             Reply
           </Button>
@@ -142,14 +149,14 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
     </div>
   );
 
-  const renderAttachmentsSection = (ticket: Ticket) => {
+  const renderAttachmentsSection = (ticket: any) => {
     // Pass the attachments array directly from the ticket
     return (
       <div className="p-4 space-y-4">
         <TicketAttachmentsList
           reporterId={ticket.reporter}
           ticketId={ticket.id}
-          attachmentUrls={ticket.attachments || []}
+          attachmentUrls={ticket.attachments}
         />
       </div>
     );

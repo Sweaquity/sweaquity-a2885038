@@ -2,10 +2,9 @@
 import React, { useState, useEffect } from "react";
 import { TicketList } from "./TicketList";
 import { FilterBar } from "./FilterBar";
-import { TicketStats } from "./TicketStats";
+import TicketStats from "./TicketStats";
 import { Ticket } from "@/types/types";
 import { ExpandedTicketDetails } from "./ExpandedTicketDetails";
-import { ActivityTimeline } from "./ActivityTimeline";
 import { ReplyDialog } from "./ReplyDialog";
 import { Button } from "@/components/ui/button";
 import { KanbanBoard } from "./KanbanBoard";
@@ -122,7 +121,13 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         <div className="flex-1">
           <FilterBar 
             onFilterChange={handleFilterChange} 
-            initialValues={filterParams}
+            statusFilter={filterParams.status}
+            priorityFilter={filterParams.priority}
+            onClearFilters={() => handleFilterChange({
+              status: "all",
+              priority: "all",
+              assigned: "all"
+            })}
             onToggleView={toggleKanbanView}
             isKanbanView={isKanbanView}
           />
@@ -145,13 +150,15 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
       />
       
       {isKanbanView ? (
-        <KanbanBoard 
-          tickets={filteredTickets}
-          onStatusChange={(ticketId, newStatus) => 
-            handleTicketActionWithRefresh(ticketId, 'updateStatus', { status: newStatus })
-          }
-          onTicketClick={handleTicketClick}
-        />
+        <div className="mb-6">
+          <KanbanBoard 
+            tickets={filteredTickets}
+            onStatusChange={(ticketId, newStatus) => 
+              handleTicketActionWithRefresh(ticketId, 'updateStatus', { status: newStatus })
+            }
+            onTicketClick={handleTicketClick}
+          />
+        </div>
       ) : (
         <TicketList 
           tickets={filteredTickets} 
