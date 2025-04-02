@@ -35,40 +35,40 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
-import { Calendar } from "@/components/ui/calendar"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import { format } from "date-fns"
-import { CalendarIcon } from "@radix-ui/react-icons"
-import { DateRange } from "react-day-picker"
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { CalendarIcon } from "@radix-ui/react-icons";
+import { DateRange } from "react-day-picker";
 import { formatDistanceToNow } from 'date-fns';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Separator } from "@/components/ui/separator"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+} from "@/components/ui/tooltip";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LinkedInImportDialog } from "@/components/shared/LinkedInImportDialog";
 import {
   Form,
@@ -78,11 +78,11 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Switch } from "@/components/ui/switch"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { zodResolver } from "@hookform/resolvers/zod"
+} from "@/components/ui/form";
+import { Switch } from "@/components/ui/switch";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Drawer,
   DrawerContent,
@@ -90,10 +90,10 @@ import {
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
-} from "@/components/ui/drawer"
-import { Slider } from "@/components/ui/slider"
-import { Skeleton } from "@/components/ui/skeleton"
-import { AspectRatio } from "@/components/ui/aspect-ratio"
+} from "@/components/ui/drawer";
+import { Slider } from "@/components/ui/slider";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { ProgressCircle } from "@/components/ui/progress-circle";
 import { KanbanBoard } from "@/components/ticket/KanbanBoard";
 import { TimeTracker } from "@/components/business/testing/TimeTracker";
@@ -101,6 +101,7 @@ import { GanttChartView } from "@/components/business/testing/GanttChartView";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { ExpandedTicketDetails } from "@/components/ticket/ExpandedTicketDetails";
 import { TicketAttachmentsList } from "@/components/ticket/TicketAttachmentsList";
+import { supabase } from "@/lib/supabase";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -111,7 +112,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 
 const formSchema = z.object({
   username: z.string().min(2, {
@@ -122,7 +123,7 @@ const formSchema = z.object({
     message: "Bio must not be longer than 160 characters.",
   }),
   notifications: z.boolean().default(true),
-})
+});
 
 const taskSchema = z.object({
   title: z.string().min(2, {
@@ -132,7 +133,7 @@ const taskSchema = z.object({
     message: "Description must be at least 10 characters.",
   }),
   status: z.enum(["open", "in progress", "completed"]),
-})
+});
 
 const ticketSchema = z.object({
   title: z.string().min(2, {
@@ -142,7 +143,7 @@ const ticketSchema = z.object({
     message: "Description must be at least 10 characters.",
   }),
   priority: z.enum(["low", "medium", "high"]),
-})
+});
 
 const SweaquityDashboard = () => {
   const router = useRouter();
@@ -180,7 +181,7 @@ const SweaquityDashboard = () => {
       bio: "",
       notifications: true,
     },
-  })
+  });
 
   const taskForm = useForm<z.infer<typeof taskSchema>>({
     resolver: zodResolver(taskSchema),
@@ -189,7 +190,7 @@ const SweaquityDashboard = () => {
       description: "",
       status: "open",
     },
-  })
+  });
 
   const ticketForm = useForm<z.infer<typeof ticketSchema>>({
     resolver: zodResolver(ticketSchema),
@@ -198,7 +199,7 @@ const SweaquityDashboard = () => {
       description: "",
       priority: "medium",
     },
-  })
+  });
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -709,7 +710,7 @@ const SweaquityDashboard = () => {
                                 <span className="sr-only">Open menu</span>
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
-                            DropdownMenuTrigger>
+                            </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => {
                                 setSelectedTask(task);
@@ -718,20 +719,20 @@ const SweaquityDashboard = () => {
                               }}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 <span>Edit</span>
-                              DropdownMenuItem>
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleDeleteConfirmation(task)}>
                                 <Trash className="mr-2 h-4 w-4" />
                                 <span>Delete</span>
-                              DropdownMenuItem>
-                            DropdownMenuContent>
-                          DropdownMenu>
-                        TableCell>
-                      TableRow>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  TableBody>
-                Table>
+                  </TableBody>
+                </Table>
               )}
-            TabsContent>
+            </TabsContent>
             <TabsContent value="tickets">
               <div className="flex justify-end mb-4">
                 <Button onClick={() => setIsTicketDialogOpen(true)}>
@@ -756,7 +757,7 @@ const SweaquityDashboard = () => {
                   toggleTicketExpansion={toggleTicketExpansion}
                 />
               )}
-            TabsContent>
+            </TabsContent>
             <TabsContent value="testing">
               <div className="grid md:grid-cols-2 gap-4">
                 <Card>
@@ -766,16 +767,16 @@ const SweaquityDashboard = () => {
                       <Button variant="outline" size="sm" onClick={() => setIsKanbanView(!isKanbanView)}>
                         {isKanbanView ? 'Hide Kanban' : 'Show Kanban'}
                         <KanbanSquare className="h-4 w-4 ml-1" />
-                      Button>
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => setIsGanttView(!isGanttView)}>
                         {isGanttView ? 'Hide Gantt' : 'Show Gantt'}
                         <BarChart2 className="h-4 w-4 ml-1" />
-                      Button>
-                    div>
-                  CardHeader>
+                      </Button>
+                    </div>
+                  </CardHeader>
                   <CardContent>
                     {loading ? (
-                      <div className="text-center py-8">Loading tickets...div>
+                      <div className="text-center py-8">Loading tickets...</div>
                     ) : (
                       <TicketDashboard
                         projectId={selectedProject}
@@ -789,8 +790,8 @@ const SweaquityDashboard = () => {
                         toggleTicketExpansion={toggleTicketExpansion}
                       />
                     )}
-                  CardContent>
-                Card>
+                  </CardContent>
+                </Card>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Time Tracking</CardTitle>
@@ -800,23 +801,23 @@ const SweaquityDashboard = () => {
                           <Button variant="outline" size="sm" onClick={() => setIsTimeTrackingEnabled(!isTimeTrackingEnabled)}>
                             {isTimeTrackingEnabled ? 'Disable Time Tracking' : 'Enable Time Tracking'}
                             <Clock className="h-4 w-4 ml-1" />
-                          Button>
-                        TooltipTrigger>
+                          </Button>
+                        </TooltipTrigger>
                         <TooltipContent>
                           <p>Enable or disable time tracking for tickets</p>
-                        TooltipContent>
-                      Tooltip>
-                    TooltipProvider>
-                  CardHeader>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </CardHeader>
                   <CardContent>
                     <TimeTracker />
-                  CardContent>
-                Card>
-              div>
-            TabsContent>
-          Tabs>
-        CardContent>
-      Card>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
 
       {/* Profile Dialog */}
       <Dialog open={isProfileFormOpen} onOpenChange={setIsProfileFormOpen}>
@@ -825,8 +826,8 @@ const SweaquityDashboard = () => {
             <DialogTitle>Edit profile</DialogTitle>
             <DialogDescription>
               Make changes to your profile here. Click save when you're done.
-            DialogDescription>
-          DialogHeader>
+            </DialogDescription>
+          </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleProfileUpdate)} className="space-y-4">
               <FormField
@@ -837,12 +838,12 @@ const SweaquityDashboard = () => {
                     <FormLabel>Username</FormLabel>
                     <FormControl>
                       <Input placeholder="shadcn" {...field} />
-                    FormControl>
+                    </FormControl>
                     <FormDescription>
                       This is your public display name.
-                    FormDescription>
+                    </FormDescription>
                     <FormMessage />
-                  FormItem>
+                  </FormItem>
                 )}
               />
               <FormField
@@ -853,9 +854,9 @@ const SweaquityDashboard = () => {
                     <FormLabel>Email</FormLabel>
                     <FormControl>
                       <Input placeholder="shadcn@example.com" {...field} />
-                    FormControl>
+                    </FormControl>
                     <FormMessage />
-                  FormItem>
+                  </FormItem>
                 )}
               />
               <FormField
@@ -870,12 +871,12 @@ const SweaquityDashboard = () => {
                         className="resize-none"
                         {...field}
                       />
-                    FormControl>
+                    </FormControl>
                     <FormDescription>
                       Max. 160 characters.
-                    FormDescription>
+                    </FormDescription>
                     <FormMessage />
-                  FormItem>
+                  </FormItem>
                 )}
               />
               <FormField
@@ -886,37 +887,37 @@ const SweaquityDashboard = () => {
                     <div className="space-y-0.5">
                       <FormLabel className="text-base">
                         Push Notifications
-                      FormLabel>
+                      </FormLabel>
                       <FormDescription>
                         Receive push notifications on your device.
-                      FormDescription>
-                    div>
+                      </FormDescription>
+                    </div>
                     <FormControl>
                       <Switch
                         checked={field.value}
                         onCheckedChange={field.onChange}
                       />
-                    FormControl>
-                  FormItem>
+                    </FormControl>
+                  </FormItem>
                 )}
               />
               <DialogFooter>
-                <Button type="submit">Save changesButton>
-              DialogFooter>
-            form>
-          Form>
-        DialogContent>
-      Dialog>
+                <Button type="submit">Save changes</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       {/* Task Dialog */}
       <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Create TaskDialogTitle>
+            <DialogTitle>Create Task</DialogTitle>
             <DialogDescription>
               Add a new task to the selected project.
-            DialogDescription>
-          DialogHeader>
+            </DialogDescription>
+          </DialogHeader>
           <Form {...taskForm}>
             <form onSubmit={taskForm.handleSubmit(handleTaskCreate)} className="space-y-4">
               <FormField
@@ -924,12 +925,12 @@ const SweaquityDashboard = () => {
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>TitleFormLabel>
+                    <FormLabel>Title</FormLabel>
                     <FormControl>
                       <Input placeholder="Task title" {...field} />
-                    FormControl>
+                    </FormControl>
                     <FormMessage />
-                  FormItem>
+                  </FormItem>
                 )}
               />
               <FormField
@@ -937,16 +938,16 @@ const SweaquityDashboard = () => {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>DescriptionFormLabel>
+                    <FormLabel>Description</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="Task description"
                         className="resize-none"
                         {...field}
                       />
-                    FormControl>
+                    </FormControl>
                     <FormMessage />
-                  FormItem>
+                  </FormItem>
                 )}
               />
               <FormField
@@ -954,45 +955,35 @@ const SweaquityDashboard = () => {
                 name="status"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>StatusFormLabel>
+                    <FormLabel>Status</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a status" />
-                        SelectTrigger>
-                      FormControl>
+                        </SelectTrigger>
+                      </FormControl>
                       <SelectContent>
-                        <SelectItem value="open">OpenSelectItem>
-                        <SelectItem value="in progress">In ProgressSelectItem>
-                        <SelectItem value="completed">CompletedSelectItem>
-                      SelectContent>
-                    Select>
+                        <SelectItem value="open">Open</SelectItem>
+                        <SelectItem value="in progress">In Progress</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
-                  FormItem>
+                  </FormItem>
                 )}
               />
               <DialogFooter>
-                <Button type="submit">Create TaskButton>
-              DialogFooter>
-            form>
-          Form>
-        DialogContent>
-      Dialog>
+                <Button type="submit">Create Task</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       {/* Ticket Dialog */}
       <Dialog open={isTicketDialogOpen} onOpenChange={setIsTicketDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Create TicketDialogTitle>
+            <DialogTitle>Create Ticket</DialogTitle>
             <DialogDescription>
               Add a new ticket to the selected project.
-            DialogDescription>
-          DialogHeader>
-          <Form {...ticketForm}>
-            <form onSubmit={ticketForm.handleSubmit(handleTicketCreate)} className="space-y-4">
-              <FormField
-                control={ticketForm.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>TitleFormLabel
