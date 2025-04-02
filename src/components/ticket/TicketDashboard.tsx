@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { TicketList } from "./TicketList";
 import { FilterBar } from "./FilterBar";

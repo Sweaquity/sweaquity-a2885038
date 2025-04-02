@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -145,10 +144,14 @@ export const EquityProjectItem: React.FC<EquityProjectItemProps> = ({
   };
   
   const handleViewProject = () => {
-    if (application.project_id) {
-      navigate(`/projects/${application.project_id}`);
-    } else if (application.business_roles?.project_id) {
-      navigate(`/projects/${application.business_roles.project_id}`);
+    const projectId = application.project_id || 
+                     (application.business_roles && 'project_id' in application.business_roles 
+                      ? application.business_roles.project_id 
+                      : (application.business_roles?.project && 'id' in application.business_roles.project 
+                         ? application.business_roles.project.id : undefined));
+    
+    if (projectId) {
+      navigate(`/projects/${projectId}`);
     } else {
       toast.error("Project details not available");
     }

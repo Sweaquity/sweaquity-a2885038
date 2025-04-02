@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -362,6 +361,7 @@ export const BetaTestingTab = () => {
           />
         </TabsContent>
         
+      
         <TabsContent value="kanban">
           {selectedProject ? (
             <KanbanBoard 

@@ -1,4 +1,3 @@
-
 import { Application } from "@/types/business";
 import { JobApplication, Skill } from "@/types/jobSeeker";
 
@@ -78,3 +77,41 @@ export function convertApplicationToJobApplication(application: Application): Jo
 
   return jobApplication;
 }
+
+export const getTaskStatus = (application: any): string => {
+  if (!application) return 'unknown';
+  
+  // If the application has a direct status, use it
+  if (application.status) return application.status;
+  
+  // Try to get the status from business_roles
+  if (application.business_roles) {
+    if (typeof application.business_roles === 'object') {
+      if (application.business_roles.status) return application.business_roles.status;
+      if (application.business_roles.task_status) return application.business_roles.task_status;
+    }
+  }
+  
+  // Default fallback
+  return 'pending';
+};
+
+export const getAcceptedJobDetails = (application: any) => {
+  if (!application || !application.accepted_jobs) {
+    return {
+      equity_agreed: 0,
+      jobs_equity_allocated: 0,
+      id: '',
+      date_accepted: ''
+    };
+  }
+  
+  const acceptedJobs = application.accepted_jobs;
+  
+  return {
+    equity_agreed: typeof acceptedJobs.equity_agreed === 'number' ? acceptedJobs.equity_agreed : 0,
+    jobs_equity_allocated: typeof acceptedJobs.jobs_equity_allocated === 'number' ? acceptedJobs.jobs_equity_allocated : 0,
+    id: acceptedJobs.id || '',
+    date_accepted: acceptedJobs.date_accepted || ''
+  };
+};

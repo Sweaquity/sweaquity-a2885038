@@ -13,8 +13,22 @@ interface TaskCardProps {
 }
 
 export const TaskCard = ({ project, task, userSkillStrings, onApply }: TaskCardProps) => {
+  // Ensure task has an id for the key
+  const taskId = task.task_id || task.id || "";
+  
+  // Handle skill requirements safely
+  const getSkillRequirements = () => {
+    if (Array.isArray(task.skill_requirements)) {
+      return task.skill_requirements;
+    }
+    if (Array.isArray(task.skills_required)) {
+      return task.skills_required;
+    }
+    return [];
+  };
+  
   return (
-    <div key={task.id} className="border-b pb-4 mb-4 last:border-0 last:mb-0 last:pb-0">
+    <div key={taskId} className="border-b pb-4 mb-4 last:border-0 last:mb-0 last:pb-0">
       <div className="space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
           <h3 className="font-semibold text-base">{task.title}</h3>
@@ -35,10 +49,10 @@ export const TaskCard = ({ project, task, userSkillStrings, onApply }: TaskCardP
         <div className="space-y-2">
           <h4 className="text-sm font-medium">Required Skills:</h4>
           <div className="flex flex-wrap gap-2">
-            {(task.skill_requirements || []).map((req, idx) => {
+            {getSkillRequirements().map((req, idx) => {
               const skillName = typeof req === 'string' ? req : 
-                        (req && typeof req === 'object' && 'skill' in req) ? 
-                        req.skill : '';
+                        (req && typeof req === 'object' && ('skill' in req || 'name' in req)) ? 
+                        (req.skill || req.name) : '';
                         
               if (!skillName) return null;
               

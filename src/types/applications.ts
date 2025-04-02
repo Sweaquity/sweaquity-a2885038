@@ -24,8 +24,8 @@ export interface JobApplication {
   accepted_jobs?: {
     equity_agreed: number;
     jobs_equity_allocated: number;
-    id: string;
-    date_accepted: string;
+    id?: string;
+    date_accepted?: string;
   };
   // For compatibility with UI components
   company_name?: string;
@@ -39,14 +39,14 @@ export interface JobApplication {
 }
 
 export interface AcceptedJob {
-  id: string;
+  id?: string;
   job_app_id: string;
   equity_agreed: number;
-  date_accepted: string;
+  date_accepted?: string;
   document_url?: string;
   accepted_discourse?: string;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
   jobs_equity_allocated?: number; // Added for compatibility with UI
 }
 

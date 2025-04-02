@@ -18,18 +18,22 @@ export interface BusinessRole {
     description?: string;
     status?: string;
   };
+  project_id?: string; // Added for compatibility with components
   project_status?: string; // Added for compatibility with ApplicationsList
 }
 
 export interface SubTask {
-  id: string;
+  id?: string;
+  task_id?: string; // Added for compatibility
   title: string;
   description?: string;
-  status: string;
-  equity_allocation: number;
-  skills_required?: string[];
+  status?: string;
+  equity_allocation?: number;
+  skills_required?: string[] | any[];
+  skill_requirements?: Array<SkillRequirement | string>; // Added for compatibility
   timeframe?: string;
   completion_percentage?: number;
+  project_id?: string; // Added for compatibility
 }
 
 export interface BusinessProjectBasic {

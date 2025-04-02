@@ -37,7 +37,7 @@ export const EquityProjectsList = ({
       // Fetch equity data from accepted_jobs
       const { data: acceptedJobsData, error } = await supabase
         .from('accepted_jobs')
-        .select('job_app_id, equity_agreed, jobs_equity_allocated')
+        .select('job_app_id, equity_agreed, jobs_equity_allocated, id, date_accepted')
         .in('job_app_id', appIds);
       
       if (error) {
@@ -67,7 +67,9 @@ export const EquityProjectsList = ({
             is_equity_project: true,
             accepted_jobs: {
               equity_agreed: jobData.equity_agreed || 0,
-              jobs_equity_allocated: jobData.jobs_equity_allocated || 0
+              jobs_equity_allocated: jobData.jobs_equity_allocated || 0,
+              id: jobData.id || '',
+              date_accepted: jobData.date_accepted || ''
             }
           };
         }
@@ -75,7 +77,8 @@ export const EquityProjectsList = ({
         return { ...app, is_equity_project: false };
       });
       
-      setProcessedApplications(processed.filter(app => app.is_equity_project));
+      // Type assertion to reassure TypeScript
+      setProcessedApplications(processed.filter(app => app.is_equity_project) as JobApplication[]);
     } catch (err) {
       console.error("Error processing applications:", err);
       setProcessedApplications([]);
