@@ -23,17 +23,15 @@ export interface BusinessRole {
 }
 
 export interface SubTask {
-  task_id?: string | null; 
-  id?: string; // Added for compatibility
+  task_id?: string | null; // Optional and can be null
   project_id: string;
   title: string;
   description: string;
   equity_allocation?: number | null;
   status?: string | null;
   task_status?: string | null;
-  skill_requirements?: Array<SkillRequirement | string> | null;
+  skill_requirements?: string | null;
   skill_required?: string | null;
-  skills_required?: string[]; // Added for compatibility
   timeframe?: string | null;
   created_by?: string | null;
   completion_percentage: number;

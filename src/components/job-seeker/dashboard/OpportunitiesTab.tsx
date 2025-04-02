@@ -71,17 +71,10 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
         return;
       }
       
-      const taskId = task.task_id || task.id;
-      
-      if (!taskId) {
-        toast.error("Task ID not available");
-        return;
-      }
-      
       const { data: taskData, error: taskError } = await supabase
         .from('project_sub_tasks')
         .select('*')
-        .eq('task_id', taskId)
+        .eq('task_id', task.task_id)
         .single();
         
       if (taskError || !taskData) {
@@ -92,7 +85,7 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
         
       navigate(`/projects/${project.project_id}/apply`, { 
         state: { 
-          taskId: taskId, 
+          taskId: task.task_id, 
           projectId: project.project_id,
           projectTitle: project.title || "Untitled Project",
           taskTitle: task.title || "Untitled Task"
@@ -107,6 +100,19 @@ export const OpportunitiesTab = ({ projects, userSkills }: OpportunitiesTabProps
   const clearFilters = () => {
     setSearchTerm("");
     setFilterSkill(null);
+  };
+
+  const formatTimeSince = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays < 1) return "Today";
+    if (diffInDays === 1) return "Yesterday";
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
+    if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} months ago`;
+    return `${Math.floor(diffInDays / 365)} years ago`;
   };
 
   return (

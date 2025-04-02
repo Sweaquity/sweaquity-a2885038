@@ -37,26 +37,17 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
   };
 
   const getSkillMatch = (task: SubTask) => {
-    const taskSkillRequirements = task.skill_requirements || [];
-    const taskSkillsRequired = task.skills_required || [];
-    
-    if ((taskSkillRequirements.length === 0 && taskSkillsRequired.length === 0) || !userSkillStrings || userSkillStrings.length === 0) {
+    if (!task.skill_requirements || !Array.isArray(task.skill_requirements) || task.skill_requirements.length === 0 || !userSkillStrings || userSkillStrings.length === 0) {
       return { count: 0, total: 0, percentage: 0 };
     }
     
-    let taskSkills: string[] = [];
-    
-    if (Array.isArray(taskSkillRequirements) && taskSkillRequirements.length > 0) {
-      taskSkills = taskSkillRequirements.map(skill => {
-        if (typeof skill === 'string') return skill.toLowerCase();
-        if (typeof skill === 'object' && skill !== null && 'skill' in skill && typeof skill.skill === 'string') {
-          return skill.skill.toLowerCase();
-        }
-        return '';
-      }).filter(Boolean);
-    } else if (Array.isArray(taskSkillsRequired) && taskSkillsRequired.length > 0) {
-      taskSkills = taskSkillsRequired.map(skill => typeof skill === 'string' ? skill.toLowerCase() : '').filter(Boolean);
-    }
+    const taskSkills = task.skill_requirements.map(skill => {
+      if (typeof skill === 'string') return skill.toLowerCase();
+      if (typeof skill === 'object' && skill !== null && 'skill' in skill && typeof skill.skill === 'string') {
+        return skill.skill.toLowerCase();
+      }
+      return '';
+    }).filter(Boolean);
     
     if (taskSkills.length === 0) {
       return { count: 0, total: 0, percentage: 0 };
@@ -95,10 +86,8 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
   };
 
   const projectSkills = project.skills_required 
-    ? formatSkills(project.skills_required)
-    : project.skill_requirements 
-      ? formatSkills(project.skill_requirements)
-      : [];
+    ? (Array.isArray(project.skills_required) ? project.skills_required : [project.skills_required])
+    : [];
   
   const matchedSkills = projectSkills.filter(skill => {
     const skillStr = typeof skill === 'string' 
@@ -179,13 +168,13 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
             {tasks.map((task) => {
               const taskWithProjectId = {
                 ...task,
-                project_id: task.project_id || project.project_id || project.id || ""
+                project_id: task.project_id || project.project_id || project.id
               };
               
               const skillMatch = getSkillMatch(task);
               
               return (
-                <div key={task.task_id || task.id} className="p-3 border rounded-md">
+                <div key={task.id} className="p-3 border rounded-md">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <div className="font-medium">{task.title}</div>

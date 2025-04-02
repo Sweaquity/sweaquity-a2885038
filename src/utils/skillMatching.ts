@@ -381,44 +381,6 @@ export const extractSkillsFromTask = (task: any): string[] => {
   }).filter(Boolean);
 };
 
-// Use this function to get skills from projects and tasks consistently
-export const extractTaskSkillRequirements = (task: any): string[] => {
-  // Try different possible properties where skills could be stored
-  if (task.skill_requirements && Array.isArray(task.skill_requirements)) {
-    return task.skill_requirements.map((req: any) => {
-      if (typeof req === 'string') return req;
-      return req?.skill || req?.name || '';
-    }).filter(Boolean);
-  }
-  
-  if (task.skills_required && Array.isArray(task.skills_required)) {
-    return task.skills_required.map((skill: any) => {
-      if (typeof skill === 'string') return skill;
-      return skill?.skill || skill?.name || '';
-    }).filter(Boolean);
-  }
-  
-  // Fallback to empty array if no skill requirements found
-  return [];
-};
-
-// Use this function to get skills from projects and tasks consistently
-export const getTaskSkillMatch = (task: any, userSkills: string[]): number => {
-  const taskSkillRequirements = extractTaskSkillRequirements(task);
-  
-  if (taskSkillRequirements.length === 0 || userSkills.length === 0) {
-    return 0;
-  }
-  
-  const matchedSkills = taskSkillRequirements.filter(skill => 
-    userSkills.some(userSkill => 
-      userSkill.toLowerCase().includes(skill.toLowerCase())
-    )
-  );
-  
-  return Math.round((matchedSkills.length / taskSkillRequirements.length) * 100);
-};
-
 // Update the mockSkills to use the correct skill property
 const mockSkills = [
   { skill: "JavaScript", level: "Beginner" },

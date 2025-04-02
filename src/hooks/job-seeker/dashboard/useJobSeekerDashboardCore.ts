@@ -29,42 +29,6 @@ export const useJobSeekerDashboardCore = (refreshTrigger = 0) => {
   const { loadOpportunities } = useOpportunitiesLoader();
   const { userTickets, ticketMessages, loadUserTickets, handleTicketAction } = useTicketsAndMessages();
 
-  const transformUserSkills = (profileData: any) => {
-    if (!profileData) return [];
-    
-    // Handle case where profileData.skills might not be an array
-    if (!profileData.skills) return [];
-    
-    // If skills is already an array of objects, return it
-    if (Array.isArray(profileData.skills) && 
-        profileData.skills.length > 0 && 
-        typeof profileData.skills[0] === 'object') {
-      return profileData.skills.map(skill => ({
-        skill: skill.skill || skill.name || 'Unknown Skill',
-        level: skill.level || 'Intermediate',
-        id: skill.id || undefined
-      }));
-    }
-    
-    // If skills is a JSON string, parse it
-    if (typeof profileData.skills === 'string') {
-      try {
-        const parsedSkills = JSON.parse(profileData.skills);
-        if (Array.isArray(parsedSkills)) {
-          return parsedSkills.map(skill => ({
-            skill: typeof skill === 'string' ? skill : (skill.skill || skill.name || 'Unknown Skill'),
-            level: (typeof skill === 'object' && skill.level) ? skill.level : 'Intermediate',
-            id: (typeof skill === 'object' && skill.id) ? skill.id : undefined
-          }));
-        }
-      } catch (e) {
-        console.error('Error parsing skills JSON:', e);
-      }
-    }
-    
-    return [];
-  };
-
   const loadDashboardData = useCallback(async () => {
     if (loadingRef.current) return;
     
