@@ -1,4 +1,3 @@
-
 import { Skill, SkillRequirement } from './profile';
 
 export interface BusinessRole {
@@ -18,18 +17,28 @@ export interface BusinessRole {
     description?: string;
     status?: string;
   };
+  project_id?: string; // Added for compatibility with components
   project_status?: string; // Added for compatibility with ApplicationsList
 }
 
 export interface SubTask {
-  id: string;
+  task_id?: string | null; 
+  id?: string; // Added for compatibility
+  project_id: string;
   title: string;
-  description?: string;
-  status: string;
-  equity_allocation: number;
-  skills_required?: string[];
-  timeframe?: string;
-  completion_percentage?: number;
+  description: string;
+  equity_allocation?: number | null;
+  status?: string | null;
+  task_status?: string | null;
+  skill_requirements?: Array<SkillRequirement | string> | null;
+  skill_required?: string | null;
+  skills_required?: string[]; // Added for compatibility
+  timeframe?: string | null;
+  created_by?: string | null;
+  completion_percentage: number;
+  dependencies?: string | null;
+  last_activity_at?: string | null;
+  estimated_hours?: number | null;
 }
 
 export interface BusinessProjectBasic {
