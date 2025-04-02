@@ -3,15 +3,32 @@ import React from "react";
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
 import { Ticket } from "@/types/types";
 import { Button } from "@/components/ui/button";
-import { Clock, MoreHorizontal, CheckCircle } from "lucide-react";
+import { Clock, MoreHorizontal, CheckCircle, Trash } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export interface KanbanBoardProps {
   tickets: Ticket[];
   onStatusChange: (ticketId: string, newStatus: string) => void;
   onTicketClick?: (ticket: Ticket) => void;  
+  onTicketDelete?: (ticket: Ticket) => void;
 }
 
-export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChange, onTicketClick }) => {
+export const KanbanBoard: React.FC<KanbanBoardProps> = ({ 
+  tickets, 
+  onStatusChange, 
+  onTicketClick,
+  onTicketDelete
+}) => {
   const columns = [
     { id: 'todo', title: 'To Do' },
     { id: 'in-progress', title: 'In Progress' },
@@ -86,9 +103,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChang
     });
   };
 
-  console.log("Tickets in Kanban:", tickets);
-  console.log("Column statuses:", columns.map(col => col.id));
-
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -103,8 +117,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChang
             
             return false;
           });
-          
-          console.log(`Column ${column.id} has ${columnTickets.length} tickets`);
           
           return (
             <Droppable key={column.id} droppableId={column.id}>
@@ -124,10 +136,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChang
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
                           className="bg-white mb-2 p-3 rounded-md shadow-sm border border-gray-100"
-                          onClick={() => onTicketClick && onTicketClick(ticket)}
                         >
                           <div className="flex justify-between items-start">
-                            <h4 className="font-medium">{ticket.title}</h4>
+                            <h4 
+                              className="font-medium cursor-pointer hover:text-blue-600"
+                              onClick={() => onTicketClick && onTicketClick(ticket)}
+                            >
+                              {ticket.title}
+                            </h4>
                             <div className={`text-xs font-medium px-2 py-1 rounded-full ${
                               getPriorityColor(ticket.priority)
                             }`}>
@@ -154,7 +170,40 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tickets, onStatusChang
                             </div>
                           )}
                           
-                          <div className="mt-2 flex justify-end">
+                          <div className="mt-2 flex justify-end gap-1">
+                            {onTicketDelete && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-5 w-5 p-0 text-red-500 hover:text-red-700 hover:bg-red-50" 
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <Trash className="h-3 w-3" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This action cannot be undone. This will permanently delete the ticket
+                                      and all associated data.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => onTicketDelete(ticket)} 
+                                      className="bg-red-500 hover:bg-red-600"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                            
                             <Button 
                               variant="ghost" 
                               size="sm" 

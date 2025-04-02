@@ -13,6 +13,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,9 +26,21 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
-import { AlertTriangle, CheckCircle2, Clock, RefreshCw } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, RefreshCw, Trash } from "lucide-react";
 import { format } from "date-fns";
 import { ExpandedTicketDetails } from "./ExpandedTicketDetails";
+import { KanbanBoard } from "./KanbanBoard";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface TicketDashboardProps {
   initialTickets: Ticket[];
@@ -67,6 +80,8 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -128,6 +143,24 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         ticket.id === ticketId ? { ...ticket, priority } : ticket
       )
     );
+  };
+
+  const handleDeleteTicket = async () => {
+    if (!ticketToDelete) return;
+    
+    try {
+      await onTicketAction(ticketToDelete.id, "deleteTicket", null);
+      setTickets(tickets.filter(ticket => ticket.id !== ticketToDelete.id));
+      setIsDeleteDialogOpen(false);
+      setTicketToDelete(null);
+    } catch (error) {
+      console.error("Error deleting ticket:", error);
+    }
+  };
+
+  const showDeleteConfirmation = (ticket: Ticket) => {
+    setTicketToDelete(ticket);
+    setIsDeleteDialogOpen(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -200,6 +233,33 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
       default:
         return type.charAt(0).toUpperCase() + type.slice(1);
     }
+  };
+
+  const handleTicketAction = async (ticketId: string, action: string, data: any) => {
+    if (action === 'deleteTicket') {
+      await onTicketAction(ticketId, action, data);
+      setTickets(tickets.filter(ticket => ticket.id !== ticketId));
+      setIsDialogOpen(false);
+      return;
+    }
+    
+    await onTicketAction(ticketId, action, data);
+    
+    // Refresh the specific ticket data
+    const updatedTicket = tickets.find(t => t.id === ticketId);
+    if (updatedTicket && action === 'updateStatus') {
+      updatedTicket.status = data;
+    } else if (updatedTicket && action === 'updatePriority') {
+      updatedTicket.priority = data;
+    } else if (updatedTicket && action === 'updateCompletionPercentage') {
+      updatedTicket.completion_percentage = data;
+    } else if (updatedTicket && action === 'updateEstimatedHours') {
+      updatedTicket.estimated_hours = data;
+    } else if (updatedTicket && action === 'updateDueDate') {
+      updatedTicket.due_date = data;
+    }
+    
+    setTickets([...tickets]);
   };
 
   return (
@@ -303,6 +363,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                       <Select
                         value={ticket.status}
                         onValueChange={(value) => handleUpdateStatus(ticket.id, value)}
+                        disabled={!userCanEditStatus}
                       >
                         <SelectTrigger className={`w-[130px] ${getStatusColor(ticket.status)}`}>
                           <SelectValue>
@@ -375,6 +436,14 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
                             Log Time
                           </Button>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => showDeleteConfirmation(ticket)}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
                         {renderTicketActions && renderTicketActions(ticket)}
                       </div>
                     </TableCell>
@@ -396,11 +465,12 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-4xl">
+          <DialogTitle>Ticket Details</DialogTitle>
           {selectedTicket && (
             <ExpandedTicketDetails
               ticket={selectedTicket}
               onClose={() => setIsDialogOpen(false)}
-              onTicketAction={onTicketAction}
+              onTicketAction={handleTicketAction}
               onLogTime={showTimeTracking && onLogTime ? onLogTime : undefined}
               userCanEditStatus={userCanEditStatus}
               userCanEditDates={userCanEditDates}
@@ -408,6 +478,24 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the ticket
+              and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTicket} className="bg-red-500 hover:bg-red-600">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

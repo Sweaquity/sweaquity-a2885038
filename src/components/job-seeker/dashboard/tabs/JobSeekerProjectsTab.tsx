@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,9 +17,19 @@ import { supabase } from "@/lib/supabase";
 import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
 import { Ticket } from "@/types/types";
 import { RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
-import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
+import { KanbanBoard } from "@/components/ticket/KanbanBoard";
 import { DragDropContext } from "react-beautiful-dnd";
 import { TimeLogDialog } from "../TimeLogDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface JobSeekerProjectsTabProps {
   userId?: string;
@@ -42,6 +53,8 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const [isTimeLogDialogOpen, setIsTimeLogDialogOpen] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [expandedTickets, setExpandedTickets] = useState<Set<string>>(new Set());
+  const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -280,12 +293,45 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
           break;
         }
         
+        case 'deleteTicket': {
+          const { error } = await supabase
+            .from('tickets')
+            .delete()
+            .eq('id', ticketId);
+            
+          if (error) throw error;
+          
+          setTickets(prevTickets => 
+            prevTickets.filter(t => t.id !== ticketId)
+          );
+          
+          toast.success("Ticket deleted successfully");
+          break;
+        }
+        
         default:
           console.warn("Unknown action:", action);
       }
     } catch (error) {
       console.error("Error handling ticket action:", error);
       toast.error("Failed to update ticket");
+    }
+  };
+
+  const confirmTicketDeletion = (ticket: Ticket) => {
+    setTicketToDelete(ticket);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteTicket = async () => {
+    if (!ticketToDelete) return;
+    
+    try {
+      await handleTicketAction(ticketToDelete.id, 'deleteTicket', null);
+      setIsDeleteDialogOpen(false);
+      setTicketToDelete(null);
+    } catch (error) {
+      console.error("Error deleting ticket:", error);
     }
   };
 
@@ -394,6 +440,8 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     });
   };
 
+  const renderTicketActions = (ticket: Ticket) => null;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
@@ -496,6 +544,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
                   onTicketClick={(ticket) => {
                     console.log("Ticket clicked:", ticket.id);
                   }}
+                  onTicketDelete={(ticket) => confirmTicketDeletion(ticket)}
                 />
               </DragDropContext>
             </div>
@@ -515,7 +564,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
               onLogTime={handleLogTime}
               userCanEditDates={true}
               userCanEditStatus={true}
-              renderTicketActions={(ticket) => null}
+              renderTicketActions={renderTicketActions}
               expandedTickets={expandedTickets}
               toggleTicketExpansion={toggleTicketExpansion}
             />
@@ -539,6 +588,24 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
           onTimeLogged={handleTimeLogged}
         />
       )}
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the ticket
+              and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTicket} className="bg-red-500 hover:bg-red-600">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

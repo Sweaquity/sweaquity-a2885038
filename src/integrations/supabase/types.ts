@@ -665,6 +665,7 @@ export type Database = {
           marketing_consent: boolean | null
           phone: string | null
           project_updates_consent: boolean | null
+          session_data: string | null
           skills: Json | null
           social_links: Json | null
           terms_accepted: boolean | null
@@ -691,6 +692,7 @@ export type Database = {
           marketing_consent?: boolean | null
           phone?: string | null
           project_updates_consent?: boolean | null
+          session_data?: string | null
           skills?: Json | null
           social_links?: Json | null
           terms_accepted?: boolean | null
@@ -717,6 +719,7 @@ export type Database = {
           marketing_consent?: boolean | null
           phone?: string | null
           project_updates_consent?: boolean | null
+          session_data?: string | null
           skills?: Json | null
           social_links?: Json | null
           terms_accepted?: boolean | null
@@ -1149,6 +1152,7 @@ export type Database = {
       tickets: {
         Row: {
           assigned_to: string | null
+          attachment_url: string | null
           completion_percentage: number | null
           created_at: string | null
           created_by: string | null
@@ -1174,6 +1178,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          attachment_url?: string | null
           completion_percentage?: number | null
           created_at?: string | null
           created_by?: string | null
@@ -1199,6 +1204,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          attachment_url?: string | null
           completion_percentage?: number | null
           created_at?: string | null
           created_by?: string | null
