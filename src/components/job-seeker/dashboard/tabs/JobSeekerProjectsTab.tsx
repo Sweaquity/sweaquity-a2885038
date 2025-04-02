@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,8 +17,18 @@ import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
 import { Ticket } from "@/types/types";
 import { RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
 import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
-import { DragDropContext } from "react-beautiful-dnd";
+import { DragDropContext, DropResult } from "react-beautiful-dnd";
 import { TimeLogDialog } from "../TimeLogDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 
 interface JobSeekerProjectsTabProps {
   userId?: string;
@@ -429,6 +438,27 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     });
   };
 
+  const handleDragEnd = (result: DropResult) => {
+    const { destination, source, draggableId } = result;
+    
+    // Dropped outside the list
+    if (!destination) {
+      return;
+    }
+    
+    // Dropped in the same position
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    ) {
+      return;
+    }
+    
+    // Update ticket status based on destination column
+    const newStatus = destination.droppableId;
+    handleTicketAction(draggableId, 'updateStatus', newStatus);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
@@ -522,7 +552,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         <TabsContent value={activeTab}>
           {showKanban ? (
             <div className="mb-6">
-              <DragDropContext onDragEnd={() => {}}>
+              <DragDropContext onDragEnd={handleDragEnd}>
                 <KanbanBoard 
                   tickets={getActiveTickets()}
                   onStatusChange={(ticketId, newStatus) => 
@@ -550,7 +580,16 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
               onLogTime={handleLogTime}
               userCanEditDates={true}
               userCanEditStatus={true}
-              renderTicketActions={(ticket) => null}
+              renderTicketActions={(ticket) => (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-red-500 hover:bg-red-50"
+                  onClick={() => confirmTicketDeletion(ticket)}
+                >
+                  Delete
+                </Button>
+              )}
               expandedTickets={expandedTickets}
               toggleTicketExpansion={toggleTicketExpansion}
             />
