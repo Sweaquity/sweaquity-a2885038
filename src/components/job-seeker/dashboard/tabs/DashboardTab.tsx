@@ -691,20 +691,10 @@ export const DashboardTab = ({
             </CardHeader>
             <CardContent className="space-y-8">
               <ExpandedTicketDetails
-                ticket={userTickets.find(t => t.id === selectedTicketId) || null}
-                messages={ticketMessages.filter(m => m.related_ticket === selectedTicketId)}
-                onReply={(message) => 
-                  handleTicketAction(selectedTicketId, 'reply', { 
-                    message,
-                    recipientId: userTickets.find(t => t.id === selectedTicketId)?.assigned_to
-                  })
-                }
-                onStatusChange={(status) => 
-                  handleTicketAction(selectedTicketId, 'update_status', { status })
-                }
-                onPriorityChange={(priority) => 
-                  handleTicketAction(selectedTicketId, 'update_priority', { priority })
-                }
+                ticket={selectedTicket}
+                onReply={handleTicketReply}
+                onStatusChange={handleTicketStatusChange}
+                onPriorityChange={handleTicketPriorityChange}
               />
               
               {selectedTicketId && (

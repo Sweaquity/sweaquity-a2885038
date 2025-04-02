@@ -21,6 +21,7 @@ interface TicketDashboardProps {
   renderTicketActions?: (ticket: Ticket) => React.ReactNode;
   expandedTickets?: Set<string> | Record<string, boolean>;
   toggleTicketExpansion?: (ticketId: string) => void;
+  projectId?: string;
 }
 
 export const TicketDashboard: React.FC<TicketDashboardProps> = ({
@@ -34,7 +35,8 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   userCanEditStatus = false,
   renderTicketActions,
   expandedTickets = new Set<string>(),
-  toggleTicketExpansion = () => {}
+  toggleTicketExpansion = () => {},
+  projectId
 }) => {
   const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>(initialTickets);
@@ -151,11 +153,15 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
       {isKanbanView ? (
         <div className="mb-6">
           <KanbanBoard 
-            tickets={filteredTickets}
-            onStatusChange={(ticketId, newStatus) => 
-              handleTicketActionWithRefresh(ticketId, 'updateStatus', { status: newStatus })
-            }
-            onTicketClick={handleTicketClick}
+            projectId={projectId}
+            tickets={tickets}
+            onTicketClick={onTicketClick}
+            onTicketAction={onTicketAction}
+            showTimeTracking={showTimeTracking}
+            onLogTime={onLogTime}
+            renderTicketActions={renderTicketActions}
+            expandedTickets={expandedTickets}
+            toggleTicketExpansion={toggleTicketExpansion}
           />
         </div>
       ) : (

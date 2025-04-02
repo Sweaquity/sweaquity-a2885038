@@ -115,3 +115,51 @@ export const getAcceptedJobDetails = (application: any) => {
     date_accepted: acceptedJobs.date_accepted || ''
   };
 };
+
+export const prepareApplicationsData = (applications: any[] = [], projects: any[] = [], tasks: any[] = []) => {
+  return applications.map(app => {
+    // Get project data
+    const project = projects.find(p => p.project_id === app.project_id) || {};
+    
+    // Get task data
+    const task = tasks.find(t => t.task_id === app.task_id) || {};
+
+    // Ensure we have a proper business_roles object
+    const business_roles = {
+      title: task.title || 'Unknown Role',
+      description: task.description || project.description || '',
+      project_title: project.title || 'Unknown Project',
+      company_name: project.business_name || 'Unknown Company',
+      status: task.task_status || task.status || 'pending',
+      project_id: project.project_id || app.project_id,
+      project: {
+        title: project.title,
+        status: project.status
+      }
+    };
+
+    // Ensure accepted_jobs object is properly formatted
+    let accepted_jobs;
+    if (app.accepted_jobs) {
+      accepted_jobs = {
+        equity_agreed: app.accepted_jobs.equity_agreed || 0,
+        jobs_equity_allocated: app.accepted_jobs.jobs_equity_allocated || 0,
+        id: app.accepted_jobs.id || '',
+        date_accepted: app.accepted_jobs.date_accepted || new Date().toISOString()
+      };
+    }
+
+    // Return normalized application object
+    return {
+      ...app,
+      business_roles,
+      ...(accepted_jobs && { accepted_jobs }),
+      project_title: project.title || 'Unknown Project',
+      company_name: project.business_name || 'Unknown Company',
+      task_title: task.title || 'Unknown Task',
+      description: task.description || project.description || '',
+      is_equity_project: !!project.equity_allocation || false,
+      hasEquityData: !!accepted_jobs
+    };
+  });
+};

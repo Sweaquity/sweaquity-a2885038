@@ -50,10 +50,17 @@ export const OpportunitiesTabContent = ({
         return;
       }
       
+      const taskId = task.task_id || task.id;
+      
+      if (!taskId) {
+        toast.error("Task ID not available");
+        return;
+      }
+      
       const { data: taskData, error: taskError } = await supabase
         .from('project_sub_tasks')
         .select('*')
-        .eq('task_id', task.id)
+        .eq('task_id', taskId)
         .single();
         
       if (taskError || !taskData) {
@@ -64,7 +71,7 @@ export const OpportunitiesTabContent = ({
         
       navigate(`/projects/${project.project_id}/apply`, { 
         state: { 
-          taskId: task.id, 
+          taskId: taskId, 
           projectId: project.project_id,
           projectTitle: project.title || "Untitled Project",
           taskTitle: task.title || "Untitled Task"

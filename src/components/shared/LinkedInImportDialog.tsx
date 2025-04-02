@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { 
   Dialog, 
@@ -21,6 +20,21 @@ interface LinkedInImportDialogProps {
 
 export const LinkedInImportDialog = ({ isOpen, onClose }: LinkedInImportDialogProps) => {
   const [isImporting, setIsImporting] = useState(false);
+
+  const handleSkills = (skills: any[]) => {
+    if (!Array.isArray(skills)) return [];
+    
+    return skills.map(skill => {
+      // Ensure we're creating a proper Skill object
+      return {
+        skill: typeof skill === 'string' ? skill : 
+          (typeof skill === 'object' && skill !== null) ? 
+            (skill.skill || skill.name || 'Unknown Skill') : 'Unknown Skill',
+        level: (typeof skill === 'object' && skill !== null && skill.level) ? 
+          skill.level : 'Intermediate'
+      };
+    });
+  };
 
   const importLinkedInSkills = async () => {
     try {
@@ -53,10 +67,7 @@ export const LinkedInImportDialog = ({ isOpen, onClose }: LinkedInImportDialogPr
       }
       
       // Format the skills in the required format
-      const formattedSkills: Skill[] = data.skills.map((skill: string) => ({
-        skill,
-        level: "Intermediate" // Default level as LinkedIn doesn't provide skill levels
-      }));
+      const formattedSkills: Skill[] = handleSkills(data.skills);
       
       // Get existing skills
       const { data: profileData, error: profileError } = await supabase

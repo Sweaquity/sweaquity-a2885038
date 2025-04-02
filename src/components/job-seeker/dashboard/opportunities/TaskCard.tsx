@@ -18,10 +18,10 @@ export const TaskCard = ({ project, task, userSkillStrings, onApply }: TaskCardP
   
   // Handle skill requirements safely
   const getSkillRequirements = () => {
-    if (Array.isArray(task.skill_requirements)) {
+    if (task.skill_requirements && Array.isArray(task.skill_requirements)) {
       return task.skill_requirements;
     }
-    if (Array.isArray(task.skills_required)) {
+    if (task.skills_required && Array.isArray(task.skills_required)) {
       return task.skills_required;
     }
     return [];
