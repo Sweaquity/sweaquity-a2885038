@@ -665,6 +665,7 @@ export type Database = {
           marketing_consent: boolean | null
           phone: string | null
           project_updates_consent: boolean | null
+          session_data: string | null
           skills: Json | null
           social_links: Json | null
           terms_accepted: boolean | null
@@ -691,6 +692,7 @@ export type Database = {
           marketing_consent?: boolean | null
           phone?: string | null
           project_updates_consent?: boolean | null
+          session_data?: string | null
           skills?: Json | null
           social_links?: Json | null
           terms_accepted?: boolean | null
@@ -717,6 +719,7 @@ export type Database = {
           marketing_consent?: boolean | null
           phone?: string | null
           project_updates_consent?: boolean | null
+          session_data?: string | null
           skills?: Json | null
           social_links?: Json | null
           terms_accepted?: boolean | null

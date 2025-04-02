@@ -1,52 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { Ticket } from '@/types/types';
-import { toast } from '@/components/ui/use-toast'; // Add missing toast import
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Pagination } from "@/components/ui/pagination";
-import { AlertTriangle, CheckCircle2, Clock, RefreshCw } from "lucide-react";
-import { format } from "date-fns";
+import React, { useState, useEffect } from "react";
+import { TicketList } from "./TicketList";
+import { FilterBar } from "./FilterBar";
+import { TicketStats } from "./TicketStats";
+import { Ticket } from "@/types/types";
 import { ExpandedTicketDetails } from "./ExpandedTicketDetails";
-import { checkTicketAttachments } from "../dashboard/TicketAttachmentsList";
+import { ActivityTimeline } from "./ActivityTimeline";
+import { ReplyDialog } from "./ReplyDialog";
+import { Button } from "@/components/ui/button";
+import { KanbanBoard } from "./KanbanBoard";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface TicketDashboardProps {
   initialTickets: Ticket[];
-  onRefresh: () => void;
-  onTicketAction: (ticketId: string, action: string, data: any) => Promise<void>;
+  onRefresh?: () => void;
+  onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
   showTimeTracking?: boolean;
-  userId: string;
+  userId?: string;
   onLogTime?: (ticketId: string) => void;
-  renderTicketActions?: (ticket: Ticket) => React.ReactNode;
-  expandedTickets: Set<string>;
-  toggleTicketExpansion: (ticketId: string) => void;
   userCanEditDates?: boolean;
   userCanEditStatus?: boolean;
-  loading?: boolean;
+  renderTicketActions?: (ticket: Ticket) => React.ReactNode;
+  expandedTickets?: Set<string> | Record<string, boolean>;
+  toggleTicketExpansion?: (ticketId: string) => void;
 }
 
 export const TicketDashboard: React.FC<TicketDashboardProps> = ({
@@ -56,487 +32,155 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   showTimeTracking = false,
   userId,
   onLogTime,
-  renderTicketActions,
-  expandedTickets = new Set<string>(),
-  toggleTicketExpansion = () => {},
   userCanEditDates = false,
   userCanEditStatus = false,
-  loading = false,
+  renderTicketActions,
+  expandedTickets = new Set<string>(),
+  toggleTicketExpansion = () => {}
 }) => {
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
+  const [filteredTickets, setFilteredTickets] = useState<Ticket[]>(initialTickets);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const [ticketsWithAttachments, setTicketsWithAttachments] = useState<Record<string, boolean>>({});
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [ticketToDelete, setTicketToDelete] = useState<string | null>(null);
-  const itemsPerPage = 10;
+  const [replyDialogOpen, setReplyDialogOpen] = useState(false);
+  const [isKanbanView, setIsKanbanView] = useState(false);
+  const [filterParams, setFilterParams] = useState({
+    status: "all",
+    priority: "all",
+    assigned: "all"
+  });
 
   useEffect(() => {
     setTickets(initialTickets);
+    setFilteredTickets(initialTickets);
   }, [initialTickets]);
 
-  useEffect(() => {
-    // Check for attachments for each ticket
-    const checkAttachments = async () => {
-      const attachmentChecks = await Promise.all(
-        tickets.map(async (ticket) => {
-          // Check if ticket has attachments property
-          const hasAttachmentsArray = ticket.attachments && ticket.attachments.length > 0;
-          
-          // Also check storage for attachments
-          const hasStorageAttachments = await checkTicketAttachments(ticket.reporter, ticket.id);
-          
-          return { 
-            id: ticket.id, 
-            hasAttachments: hasAttachmentsArray || hasStorageAttachments 
-          };
-        })
-      );
-      
-      const result = attachmentChecks.reduce((acc, { id, hasAttachments }) => {
-        acc[id] = hasAttachments;
-        return acc;
-      }, {} as Record<string, boolean>);
-      
-      setTicketsWithAttachments(result);
-    };
+  const handleFilterChange = (newFilterParams: any) => {
+    setFilterParams(newFilterParams);
     
-    checkAttachments();
-  }, [tickets]);
-
-  useEffect(() => {
-    let filtered = [...tickets];
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (ticket) =>
-          ticket.title.toLowerCase().includes(term) ||
-          (ticket.description && ticket.description.toLowerCase().includes(term))
-      );
+    let result = [...tickets];
+    
+    if (newFilterParams.status !== "all") {
+      result = result.filter(ticket => ticket.status === newFilterParams.status);
     }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((ticket) => ticket.status === statusFilter);
+    
+    if (newFilterParams.priority !== "all") {
+      result = result.filter(ticket => ticket.priority === newFilterParams.priority);
     }
-
-    if (priorityFilter !== "all") {
-      filtered = filtered.filter((ticket) => ticket.priority === priorityFilter);
+    
+    if (newFilterParams.assigned === "mine" && userId) {
+      result = result.filter(ticket => ticket.assigned_to === userId);
+    } else if (newFilterParams.assigned === "unassigned") {
+      result = result.filter(ticket => !ticket.assigned_to);
     }
+    
+    setFilteredTickets(result);
+  };
 
-    if (typeFilter !== "all") {
-      filtered = filtered.filter((ticket) => ticket.type === typeFilter);
-    }
-
-    setFilteredTickets(filtered);
-    setCurrentPage(1);
-  }, [tickets, searchTerm, statusFilter, priorityFilter, typeFilter]);
-
-  const totalPages = Math.ceil(filteredTickets.length / itemsPerPage);
-  const displayedTickets = filteredTickets.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const openTicketDetails = (ticket: Ticket) => {
+  const handleTicketClick = (ticket: Ticket) => {
     setSelectedTicket(ticket);
-    setIsDialogOpen(true);
   };
 
-  const handleUpdateStatus = async (ticketId: string, status: string) => {
-    try {
-      await onTicketAction(ticketId, "updateStatus", status);
-      setTickets(
-        tickets.map((ticket) =>
-          ticket.id === ticketId ? { ...ticket, status } : ticket
-        )
-      );
-    } catch (error) {
-      console.error("Error updating status:", error);
-      toast?.error?.("Failed to update ticket status");
+  const handleCloseTicket = () => {
+    setSelectedTicket(null);
+  };
+
+  const handleReply = async (message: string) => {
+    if (selectedTicket && onTicketAction) {
+      await onTicketAction(selectedTicket.id, 'reply', { message });
+      setReplyDialogOpen(false);
+      onRefresh?.();
     }
   };
 
-  const handleUpdatePriority = async (ticketId: string, priority: string) => {
-    try {
-      await onTicketAction(ticketId, "updatePriority", priority);
-      setTickets(
-        tickets.map((ticket) =>
-          ticket.id === ticketId ? { ...ticket, priority } : ticket
-        )
-      );
-    } catch (error) {
-      console.error("Error updating priority:", error);
-      toast?.error?.("Failed to update ticket priority");
-    }
-  };
-
-  const handleDeleteTicket = async (ticketId: string) => {
-    try {
-      if (onTicketAction) {
-        await onTicketAction(ticketId, 'deleteTicket', null);
-        setTickets(tickets.filter(t => t.id !== ticketId));
-        toast?.success?.("Ticket deleted successfully");
+  const handleTicketActionWithRefresh = async (ticketId: string, action: string, data: any) => {
+    if (onTicketAction) {
+      if (action === 'reply') {
+        setReplyDialogOpen(true);
+        return;
       }
-      setConfirmDeleteOpen(false);
-      setTicketToDelete(null);
-    } catch (error) {
-      console.error("Error deleting ticket:", error);
-      toast?.error?.("Failed to delete ticket");
+      
+      await onTicketAction(ticketId, action, data);
+      onRefresh?.();
+      
+      // If the action was on the currently selected ticket, refresh it
+      if (selectedTicket && selectedTicket.id === ticketId) {
+        const updatedTicket = tickets.find(t => t.id === ticketId);
+        if (updatedTicket) {
+          setSelectedTicket(updatedTicket);
+        }
+      }
     }
   };
 
-  const confirmDelete = (ticketId: string, event: React.MouseEvent) => {
-    event.stopPropagation();
-    setTicketToDelete(ticketId);
-    setConfirmDeleteOpen(true);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "new":
-        return "bg-blue-100 text-blue-800";
-      case "in-progress":
-        return "bg-yellow-100 text-yellow-800";
-      case "blocked":
-        return "bg-red-100 text-red-800";
-      case "review":
-        return "bg-purple-100 text-purple-800";
-      case "done":
-        return "bg-green-100 text-green-800";
-      case "closed":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "low":
-        return "bg-blue-100 text-blue-800";
-      case "medium":
-        return "bg-yellow-100 text-yellow-800";
-      case "high":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const formatDate = (date: string | null) => {
-    if (!date) return "Not set";
-    try {
-      return format(new Date(date), "MMM d, yyyy");
-    } catch (error) {
-      return "Invalid date";
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "new":
-        return <Clock className="h-4 w-4 mr-1 text-blue-500" />;
-      case "in-progress":
-        return <Clock className="h-4 w-4 mr-1 text-yellow-500" />;
-      case "blocked":
-        return <AlertTriangle className="h-4 w-4 mr-1 text-red-500" />;
-      case "done":
-      case "closed":
-        return <CheckCircle2 className="h-4 w-4 mr-1 text-green-500" />;
-      default:
-        return <Clock className="h-4 w-4 mr-1 text-gray-500" />;
-    }
-  };
-
-  const getTicketTypeLabel = (type: string) => {
-    switch (type) {
-      case "task":
-        return "Task";
-      case "ticket":
-        return "Ticket";
-      case "beta_testing":
-      case "beta-test":
-      case "beta-testing":
-        return "Beta Test";
-      default:
-        return type.charAt(0).toUpperCase() + type.slice(1);
-    }
+  const toggleKanbanView = () => {
+    setIsKanbanView(!isKanbanView);
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col md:flex-row justify-between gap-4">
+    <div className="space-y-6">
+      <div className="flex flex-col space-y-4 lg:flex-row lg:justify-between lg:space-y-0">
         <div className="flex-1">
-          <Input
-            placeholder="Search tickets..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+          <FilterBar 
+            onFilterChange={handleFilterChange} 
+            initialValues={filterParams}
+            onToggleView={toggleKanbanView}
+            isKanbanView={isKanbanView}
           />
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Select
-            value={statusFilter}
-            onValueChange={setStatusFilter}
-          >
-            <SelectTrigger className="w-[130px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="new">New</SelectItem>
-              <SelectItem value="in-progress">In Progress</SelectItem>
-              <SelectItem value="blocked">Blocked</SelectItem>
-              <SelectItem value="review">Review</SelectItem>
-              <SelectItem value="done">Done</SelectItem>
-              <SelectItem value="closed">Closed</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={priorityFilter}
-            onValueChange={setPriorityFilter}
-          >
-            <SelectTrigger className="w-[130px]">
-              <SelectValue placeholder="Priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Priorities</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={typeFilter}
-            onValueChange={setTypeFilter}
-          >
-            <SelectTrigger className="w-[130px]">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="task">Task</SelectItem>
-              <SelectItem value="ticket">Ticket</SelectItem>
-              <SelectItem value="beta-test">Beta Test</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button variant="outline" onClick={onRefresh} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} /> Refresh
-          </Button>
+        <div className="flex space-x-2">
+          {onRefresh && (
+            <Button onClick={onRefresh} variant="outline" size="sm">
+              Refresh
+            </Button>
+          )}
         </div>
       </div>
-
-      {loading ? (
-        <div className="text-center py-12 border rounded-md bg-gray-50">
-          <RefreshCw className="h-8 w-8 mx-auto animate-spin text-gray-400" />
-          <p className="text-muted-foreground mt-2">Loading tickets...</p>
-        </div>
-      ) : displayedTickets.length === 0 ? (
-        <div className="text-center py-12 border rounded-md bg-gray-50">
-          <h3 className="font-medium text-lg">No tickets found</h3>
-          <p className="text-muted-foreground mt-1">
-            Try adjusting your search or filters to find what you're looking for.
-          </p>
-        </div>
+      
+      <TicketStats 
+        total={tickets.length}
+        open={tickets.filter(t => t.status === 'todo' || t.status === 'backlog').length}
+        inProgress={tickets.filter(t => t.status === 'in_progress').length}
+        completed={tickets.filter(t => t.status === 'done' || t.status === 'closed').length}
+        highPriority={tickets.filter(t => t.priority === 'high').length}
+      />
+      
+      {isKanbanView ? (
+        <KanbanBoard 
+          tickets={filteredTickets}
+          onStatusChange={(ticketId, newStatus) => 
+            handleTicketActionWithRefresh(ticketId, 'updateStatus', { status: newStatus })
+          }
+          onTicketClick={handleTicketClick}
+        />
       ) : (
-        <>
-          <div className="border rounded-md overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Type</TableHead>
-                  {showTimeTracking && <TableHead>Hours</TableHead>}
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Completion</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {displayedTickets.map((ticket) => (
-                  <TableRow key={ticket.id}>
-                    <TableCell
-                      className="font-medium cursor-pointer hover:text-blue-600"
-                      onClick={() => openTicketDetails(ticket)}
-                    >
-                      {ticket.title}
-                      {ticketsWithAttachments[ticket.id] && (
-                        <span className="ml-2 text-xs text-blue-500">📎</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {userCanEditStatus ? (
-                        <Select
-                          value={ticket.status}
-                          onValueChange={(value) => handleUpdateStatus(ticket.id, value)}
-                        >
-                          <SelectTrigger className={`w-[130px] ${getStatusColor(ticket.status)}`}>
-                            <SelectValue>
-                              <div className="flex items-center">
-                                {getStatusIcon(ticket.status)}
-                                <span>
-                                  {ticket.status === "in-progress"
-                                    ? "In Progress"
-                                    : ticket.status.charAt(0).toUpperCase() +
-                                      ticket.status.slice(1)}
-                                </span>
-                              </div>
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="new">New</SelectItem>
-                            <SelectItem value="in-progress">In Progress</SelectItem>
-                            <SelectItem value="blocked">Blocked</SelectItem>
-                            <SelectItem value="review">Review</SelectItem>
-                            <SelectItem value="done">Done</SelectItem>
-                            <SelectItem value="closed">Closed</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Badge className={getStatusColor(ticket.status)}>
-                          <div className="flex items-center">
-                            {getStatusIcon(ticket.status)}
-                            <span>
-                              {ticket.status === "in-progress"
-                                ? "In Progress"
-                                : ticket.status.charAt(0).toUpperCase() +
-                                  ticket.status.slice(1)}
-                            </span>
-                          </div>
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={ticket.priority}
-                        onValueChange={(value) => handleUpdatePriority(ticket.id, value)}
-                        disabled={!userCanEditStatus}
-                      >
-                        <SelectTrigger className={`w-[100px] ${getPriorityColor(ticket.priority)}`}>
-                          <SelectValue>
-                            {ticket.priority.charAt(0).toUpperCase() +
-                              ticket.priority.slice(1)}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {getTicketTypeLabel(ticket.type || "task")}
-                      </Badge>
-                    </TableCell>
-                    {showTimeTracking && (
-                      <TableCell>
-                        {ticket.hours_logged || 0} / {ticket.estimated_hours || 0} hrs
-                      </TableCell>
-                    )}
-                    <TableCell>{formatDate(ticket.due_date)}</TableCell>
-                    <TableCell>{ticket.completion_percentage || 0}%</TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openTicketDetails(ticket)}
-                        >
-                          View
-                        </Button>
-                        {showTimeTracking && onLogTime && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onLogTime(ticket.id)}
-                          >
-                            Log Time
-                          </Button>
-                        )}
-                        {renderTicketActions && renderTicketActions(ticket)}
-                        {userCanEditStatus && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={(e) => confirmDelete(ticket.id, e)}
-                          >
-                            Delete
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          {totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
-          )}
-        </>
+        <TicketList 
+          tickets={filteredTickets} 
+          onTicketClick={handleTicketClick}
+          onTicketAction={handleTicketActionWithRefresh}
+          showTimeTracking={showTimeTracking}
+          onLogTime={onLogTime}
+          renderTicketActions={renderTicketActions}
+          expandedTickets={expandedTickets}
+          toggleTicketExpansion={toggleTicketExpansion}
+        />
       )}
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl">
-          {selectedTicket && (
-            <ExpandedTicketDetails
-              ticket={selectedTicket}
-              onClose={() => setIsDialogOpen(false)}
-              onTicketAction={onTicketAction}
-              onLogTime={showTimeTracking && onLogTime ? onLogTime : undefined}
-              userCanEditStatus={userCanEditStatus}
-              userCanEditDates={userCanEditDates}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Confirm delete dialog */}
-      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Ticket</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this ticket? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setConfirmDeleteOpen(false);
-                setTicketToDelete(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => ticketToDelete && handleDeleteTicket(ticketToDelete)}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      
+      {selectedTicket && (
+        <ExpandedTicketDetails 
+          ticket={selectedTicket}
+          onClose={handleCloseTicket}
+          onTicketAction={handleTicketActionWithRefresh}
+          onLogTime={onLogTime ? () => onLogTime(selectedTicket.id) : undefined}
+          userCanEditStatus={userCanEditStatus}
+          userCanEditDates={userCanEditDates}
+        />
+      )}
+      
+      <ReplyDialog 
+        isOpen={replyDialogOpen} 
+        onOpenChange={setReplyDialogOpen}
+        onSendReply={handleReply}
+      />
     </div>
   );
 };
