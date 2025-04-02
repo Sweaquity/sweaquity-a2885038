@@ -23,17 +23,21 @@ export interface BusinessRole {
 }
 
 export interface SubTask {
-  id?: string;
-  task_id?: string; // Added for compatibility
+  task_id?: string | null; // Optional and can be null
+  project_id: string;
   title: string;
-  description?: string;
-  status?: string;
-  equity_allocation?: number;
-  skills_required?: string[] | any[];
-  skill_requirements?: Array<SkillRequirement | string>; // Added for compatibility
-  timeframe?: string;
-  completion_percentage?: number;
-  project_id?: string; // Added for compatibility
+  description: string;
+  equity_allocation?: number | null;
+  status?: string | null;
+  task_status?: string | null;
+  skill_requirements?: string | null;
+  skill_required?: string | null;
+  timeframe?: string | null;
+  created_by?: string | null;
+  completion_percentage: number;
+  dependencies?: string | null;
+  last_activity_at?: string | null;
+  estimated_hours?: number | null;
 }
 
 export interface BusinessProjectBasic {
