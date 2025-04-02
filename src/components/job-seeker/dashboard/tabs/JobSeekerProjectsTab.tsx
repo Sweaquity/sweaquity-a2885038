@@ -17,19 +17,9 @@ import { supabase } from "@/lib/supabase";
 import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
 import { Ticket } from "@/types/types";
 import { RefreshCw, KanbanSquare, BarChart2 } from "lucide-react";
-import { KanbanBoard } from "@/components/ticket/KanbanBoard";
+import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
 import { DragDropContext } from "react-beautiful-dnd";
 import { TimeLogDialog } from "../TimeLogDialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 interface JobSeekerProjectsTabProps {
   userId?: string;
@@ -55,7 +45,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const [expandedTickets, setExpandedTickets] = useState<Set<string>>(new Set());
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-
+  
   useEffect(() => {
     if (userId) {
       fetchProjects();
@@ -128,7 +118,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       
       const processedTickets = filteredTickets.map(ticket => ({
         ...ticket,
-        ticket_type: ticket.ticket_type || "task",
+        ticket_type: ticket.ticket_type || "",
         description: ticket.description || "",
         equity_agreed: ticket.accepted_jobs?.equity_agreed || 0,
         equity_allocated: ticket.accepted_jobs?.jobs_equity_allocated || 0
@@ -292,8 +282,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
           
           break;
         }
-        
-        case 'deleteTicket': {
+         case 'deleteTicket': {
           const { error } = await supabase
             .from('tickets')
             .delete()
@@ -318,7 +307,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     }
   };
 
-  const confirmTicketDeletion = (ticket: Ticket) => {
+ const confirmTicketDeletion = (ticket: Ticket) => {
     setTicketToDelete(ticket);
     setIsDeleteDialogOpen(true);
   };
@@ -334,7 +323,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       console.error("Error deleting ticket:", error);
     }
   };
-
+  
   const handleLogTime = (ticketId: string) => {
     if (!userId) {
       toast.error("User ID not found");
@@ -440,8 +429,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     });
   };
 
-  const renderTicketActions = (ticket: Ticket) => null;
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
@@ -544,7 +531,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
                   onTicketClick={(ticket) => {
                     console.log("Ticket clicked:", ticket.id);
                   }}
-                  onTicketDelete={(ticket) => confirmTicketDeletion(ticket)}
                 />
               </DragDropContext>
             </div>
@@ -564,7 +550,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
               onLogTime={handleLogTime}
               userCanEditDates={true}
               userCanEditStatus={true}
-              renderTicketActions={renderTicketActions}
+              renderTicketActions={(ticket) => null}
               expandedTickets={expandedTickets}
               toggleTicketExpansion={toggleTicketExpansion}
             />
@@ -606,6 +592,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
     </div>
   );
 };
