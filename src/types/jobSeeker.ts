@@ -1,7 +1,4 @@
 
-// This file re-exports all job seeker related types for backward compatibility
-// New code should import from the specific type files
-
 export * from './profile';
 export * from './businessRoles';
 export * from './applications';
@@ -50,6 +47,8 @@ export interface EquityProject {
   status: string;
   start_date: string;
   end_date?: string;
+  skill_requirements?: any[]; // Added for compatibility
+  skill_required?: string | null;
   effort_logs: {
     date: string;
     hours: number;
@@ -62,6 +61,13 @@ export interface EquityProject {
     description: string;
     company_name?: string;
     project_title?: string;
+    status?: string;
+    task_status?: string;
+    completion_percentage?: number;
+    timeframe?: string;
+    skill_requirements?: any[];
+    project_status?: string;
+    project_id?: string; // Added for compatibility
   };
   title?: string;
   documents?: {
@@ -74,18 +80,90 @@ export interface EquityProject {
   created_at?: string;
   skill_match?: number;
   updated_at?: string;
+  skills_required?: string[]; // Added for ProjectCard compatibility
+  is_equity_project?: boolean;
+  timeframe?: string;
+  equity_allocation?: number;
+  description?: string;
 }
+
+// Update AcceptedJob to match the database fields
+export interface AcceptedJob {
+  equity_agreed: number;
+  jobs_equity_allocated: number;
+  date_accepted?: string;
+  id?: string;
+}
+
+// Add JobApplication interface properties needed for compatibility
+export interface JobApplication {
+  job_app_id: string;
+  id?: string;
+  user_id: string;
+  task_id: string;
+  project_id?: string;
+  applied_at: string;
+  status: string;
+  notes?: any;
+  accepted_jobseeker: boolean;
+  accepted_business: boolean;
+  message?: string;
+  cv_url?: string;
+  task_discourse?: string;
+  business_roles?: {
+    id?: string;
+    title: string;
+    description: string;
+    company_name?: string;
+    project_title?: string;
+    status?: string;
+    task_status?: string;
+    completion_percentage?: number;
+    timeframe?: string;
+    skill_requirements?: any[];
+    project_status?: string;
+    equity_allocation?: number;
+    project_id?: string; // Added for compatibility
+    project?: {
+      id?: string;
+      title?: string;
+      status?: string;
+    };
+  };
+  accepted_jobs?: AcceptedJob;
+  is_equity_project?: boolean;
+  applicant_skills?: string[];
+  // Adding additional fields for enhanced features
+  task_title?: string;
+  company_name?: string;
+  project_title?: string;
+  description?: string;
+  hasEquityData?: boolean;
+}
+
+// Fix the SubTask type to include 'id' property
+export interface SubTask {
+  task_id?: string | null;
+  id?: string;
+  project_id: string;
+  title: string;
+  description: string;
+  equity_allocation?: number | null;
+  status?: string | null;
+  task_status?: string | null;
+  skill_requirements?: Array<import('./profile').SkillRequirement | string> | null;
+  skill_required?: string | null;
+  skills_required?: string[];
+  timeframe?: string | null;
+  created_by?: string | null;
+  completion_percentage: number;
+  dependencies?: string | null;
+  last_activity_at?: string | null;
+  estimated_hours?: number | null;
+}
+
 export interface LogEffort {
   project_id: string;
   hours: number;
   description: string;
-}
-
-export interface SubTask {
-  task_id: string; // Add this to match your database schema
-  project_id: string;
-  title: string;
-  description: string;
-  completion_percentage: number;
-  // ... any other existing properties
 }
