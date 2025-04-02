@@ -50,6 +50,8 @@ export interface EquityProject {
   status: string;
   start_date: string;
   end_date?: string;
+  skill_requirements?: string | null;
+  skill_required?: string | null;
   effort_logs: {
     date: string;
     hours: number;
