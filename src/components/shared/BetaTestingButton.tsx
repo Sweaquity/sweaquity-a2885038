@@ -218,7 +218,7 @@ export function BetaTestingButton() {
           const { error: updateError } = await supabase
             .from('tickets')
             .update({
-              attachments: validUrls
+              attachment_url: validUrls
             })
             .eq('id', ticketData.id);
             
