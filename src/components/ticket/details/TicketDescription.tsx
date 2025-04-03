@@ -2,7 +2,7 @@
 import React from "react";
 
 interface TicketDescriptionProps {
-  description: string;
+  description: string | null | undefined;
 }
 
 export const TicketDescription: React.FC<TicketDescriptionProps> = ({ description }) => {

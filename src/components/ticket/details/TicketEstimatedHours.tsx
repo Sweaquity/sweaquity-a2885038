@@ -3,7 +3,7 @@ import React from "react";
 import { Input } from "@/components/ui/input";
 
 interface TicketEstimatedHoursProps {
-  hours: number;
+  hours: number | null | undefined;
   disabled?: boolean;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
@@ -21,7 +21,7 @@ export const TicketEstimatedHours: React.FC<TicketEstimatedHoursProps> = ({
           type="number"
           min="0"
           step="0.5"
-          value={hours}
+          value={hours || 0}
           onChange={onChange}
           disabled={disabled}
           className="w-20"

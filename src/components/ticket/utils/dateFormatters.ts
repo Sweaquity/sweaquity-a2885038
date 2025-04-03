@@ -1,7 +1,7 @@
 
 import { format, parseISO } from "date-fns";
 
-export const formatDate = (date: string | null) => {
+export const formatDate = (date: string | null | undefined) => {
   if (!date) return "Not set";
   try {
     return format(parseISO(date), "PPP");
@@ -10,7 +10,7 @@ export const formatDate = (date: string | null) => {
   }
 };
 
-export const formatDateTime = (date: string | null) => {
+export const formatDateTime = (date: string | null | undefined) => {
   if (!date) return "Not set";
   try {
     return format(parseISO(date), "PPP p");
