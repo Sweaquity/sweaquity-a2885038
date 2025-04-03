@@ -11,7 +11,7 @@ interface ProjectTabContentProps {
   showKanban: boolean;
   showGantt: boolean;
   onRefresh: () => void;
-  onTicketAction: (ticketId: string, action: string, data: any) => void;
+  onTicketAction: (ticketId: string, action: string, data: any) => Promise<void>;
   onLogTime: (ticketId: string) => void;
   userId: string;
   expandedTickets: Set<string>;
