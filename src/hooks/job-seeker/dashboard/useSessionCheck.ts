@@ -15,6 +15,7 @@ export const useSessionCheck = () => {
       }
       return session;
     } catch (error) {
+      console.error("Session check error:", error);
       navigate('/auth/seeker');
       return false;
     }
@@ -44,11 +45,16 @@ export const useSessionCheck = () => {
 
   const checkBusinessProfile = useCallback(async (userId: string) => {
     try {
-      const { data: businessData } = await supabase
+      const { data: businessData, error } = await supabase
         .from('businesses')
         .select('businesses_id')
         .eq('businesses_id', userId)
         .maybeSingle();
+        
+      if (error) {
+        console.error('Business profile check error:', error);
+        return false;
+      }
         
       return !!businessData;
     } catch (error) {
@@ -61,6 +67,7 @@ export const useSessionCheck = () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
+        console.error("Sign out error:", error);
         return { success: false, error };
       } else {
         return { success: true };

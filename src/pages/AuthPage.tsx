@@ -17,13 +17,15 @@ const AuthPage = () => {
 
   useEffect(() => {
     // Check if we're handling a password reset
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const accessToken = hashParams.get("access_token");
-    const refreshToken = hashParams.get("refresh_token");
-    const type = hashParams.get("type");
+    const handleHashParams = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      const type = hashParams.get("type");
 
-    const handleAuth = async () => {
-      if (accessToken) {
+      if (!accessToken) return;
+
+      try {
         if (type === "recovery") {
           // Handle password reset
           navigate(`/auth/${type}/reset-password`, {
@@ -32,24 +34,22 @@ const AuthPage = () => {
           return;
         }
 
-        try {
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken!
-          });
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken || ""
+        });
 
-          if (error) throw error;
+        if (error) throw error;
 
-          toast.success("Authentication successful!");
-          navigate(`/${type}/dashboard`);
-        } catch (error) {
-          console.error('Error setting session:', error);
-          toast.error("Authentication failed. Please try logging in.");
-        }
+        toast.success("Authentication successful!");
+        navigate(`/${type}/dashboard`);
+      } catch (error) {
+        console.error('Error setting session:', error);
+        toast.error("Authentication failed. Please try logging in.");
       }
     };
 
-    handleAuth();
+    handleHashParams();
   }, [location, navigate]);
 
   return (

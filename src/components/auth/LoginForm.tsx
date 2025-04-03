@@ -39,31 +39,31 @@ export const LoginForm = ({ type }: LoginFormProps) => {
     checkSession();
 
     // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session);
-      
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         // Update the user's last active account type
-        try {
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ 
-              account_type: [type],
-              session_data: {
-                last_login: new Date().toISOString(),
-                last_account_type: type
-              }
-            })
-            .eq('id', session.user.id);
+        setTimeout(async () => {
+          try {
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({ 
+                account_type: [type],
+                session_data: {
+                  last_login: new Date().toISOString(),
+                  last_account_type: type
+                }
+              })
+              .eq('id', session.user.id);
 
-          if (updateError) {
-            console.error('Error updating profile:', updateError);
+            if (updateError) {
+              console.error('Error updating profile:', updateError);
+            }
+
+            navigate(`/${type}/dashboard`);
+          } catch (error) {
+            console.error('Profile update error:', error);
           }
-
-          navigate(`/${type}/dashboard`);
-        } catch (error) {
-          console.error('Profile update error:', error);
-        }
+        }, 0);
       }
     });
 
