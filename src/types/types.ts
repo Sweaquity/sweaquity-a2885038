@@ -30,6 +30,7 @@ export interface Ticket {
   isTaskTicket?: boolean;
   isProjectTicket?: boolean;
   attachments?: string[];
+  project?: any; // Add this property to fix the TypeScript error
 }
 
 // Update UserData interface to include the required name field
