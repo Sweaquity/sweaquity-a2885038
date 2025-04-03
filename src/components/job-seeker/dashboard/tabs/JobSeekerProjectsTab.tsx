@@ -291,7 +291,8 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
           
           break;
         }
-         case 'deleteTicket': {
+        
+        case 'deleteTicket': {
           const { error } = await supabase
             .from('tickets')
             .delete()
@@ -316,7 +317,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     }
   };
 
- const confirmTicketDeletion = (ticket: Ticket) => {
+  const confirmTicketDeletion = (ticket: Ticket) => {
     setTicketToDelete(ticket);
     setIsDeleteDialogOpen(true);
   };
@@ -441,12 +442,10 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const handleDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
     
-    // Dropped outside the list
     if (!destination) {
       return;
     }
     
-    // Dropped in the same position
     if (
       destination.droppableId === source.droppableId &&
       destination.index === source.index
@@ -454,7 +453,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       return;
     }
     
-    // Update ticket status based on destination column
     const newStatus = destination.droppableId;
     handleTicketAction(draggableId, 'updateStatus', newStatus);
   };
