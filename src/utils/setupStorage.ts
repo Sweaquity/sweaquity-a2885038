@@ -203,3 +203,40 @@ export const listUserCVs = async (userId: string) => {
     return [];
   }
 };
+
+// Add new function to test storage permissions
+export const checkStoragePermissions = async (bucketName: string, folderPath: string) => {
+  try {
+    console.log(`Checking storage permissions for ${bucketName}/${folderPath}`);
+    
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      console.error("Not authenticated");
+      return { success: false, error: "Not authenticated" };
+    }
+    
+    // Try to list files to check permissions
+    const { data, error } = await supabase.storage
+      .from(bucketName)
+      .list(folderPath);
+    
+    if (error) {
+      console.error("Storage permission check failed:", error);
+      return { 
+        success: false, 
+        error: error.message,
+        details: {
+          statusCode: error.status,
+          bucket: bucketName,
+          path: folderPath,
+          userId: session.user.id
+        }
+      };
+    }
+    
+    return { success: true, files: data };
+  } catch (error: any) {
+    console.error("Error checking storage permissions:", error);
+    return { success: false, error: error.message };
+  }
+};

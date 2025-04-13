@@ -32,37 +32,38 @@ export const TicketAttachmentsList = ({
       try {
         console.log(`Fetching attachments from path: ${reporterId}/${ticketId}`);
         
-        // Using the path format: reporterId/ticketId/*
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session) {
+          throw new Error("Not authenticated");
+        }
+        
         const { data, error } = await supabase.storage
           .from('ticket-attachments')
           .list(`${reporterId}/${ticketId}`);
 
         if (error) {
+          console.error("Storage list error:", error);
           throw error;
         }
 
         console.log("Attachments fetched:", data);
         setAttachments(data || []);
         
-        // Prepare URLs for each attachment
         if (data && data.length > 0) {
-          const urlPromises = data.map(async (file) => {
-            return getFileUrl(file.name);
-          });
+          const urlMap: {[key: string]: string} = {};
           
-          // Load all URLs at once
-          const urls = await Promise.all(urlPromises);
-          
-          // Create a map of filename to URL
-          const urlMap = data.reduce((map, file, index) => {
-            map[file.name] = urls[index];
-            return map;
-          }, {} as {[key: string]: string});
+          for (const file of data) {
+            try {
+              const url = await getFileUrl(file.name);
+              urlMap[file.name] = url;
+            } catch (err) {
+              console.error(`Error getting URL for ${file.name}:`, err);
+            }
+          }
           
           setFileUrls(urlMap);
         }
         
-        // Notify parent component about attachment status
         if (onAttachmentsLoaded) {
           onAttachmentsLoaded(data && data.length > 0);
         }
@@ -80,7 +81,6 @@ export const TicketAttachmentsList = ({
 
   const getFileUrl = async (filePath: string) => {
     try {
-      // Try signed URL first for better security
       const { data: signedData, error: signedError } = await supabase.storage
         .from('ticket-attachments')
         .createSignedUrl(`${reporterId}/${ticketId}/${filePath}`, 3600); // 1 hour expiry
@@ -88,7 +88,18 @@ export const TicketAttachmentsList = ({
       if (signedError) {
         console.warn("Couldn't create signed URL, falling back to public URL:", signedError);
         
-        // Fall back to public URL if signed URL fails
+        const { data: bucketData, error: bucketError } = await supabase
+          .from('storage.buckets')
+          .select('public')
+          .eq('id', 'ticket-attachments')
+          .maybeSingle();
+        
+        if (bucketError || !bucketData) {
+          console.error("Error checking bucket:", bucketError || "No bucket data");
+        }
+        
+        console.log("Bucket public status:", bucketData?.public);
+        
         const { data: publicData } = supabase.storage
           .from('ticket-attachments')
           .getPublicUrl(`${reporterId}/${ticketId}/${filePath}`);
@@ -111,10 +122,8 @@ export const TicketAttachmentsList = ({
   };
 
   const isImageFile = (file: any) => {
-    // Check if file is an image based on mimetype or extension
     if (file.metadata?.mimetype?.startsWith('image/')) return true;
     
-    // Check common image extensions
     const imageSuffixes = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.heic'];
     return imageSuffixes.some(suffix => file.name.toLowerCase().endsWith(suffix));
   };
@@ -226,17 +235,26 @@ export const TicketAttachmentsList = ({
   );
 };
 
-// Helper function to check if a ticket has attachments
 export const checkTicketAttachments = async (reporterId?: string, ticketId?: string): Promise<boolean> => {
   if (!reporterId || !ticketId) return false;
   
   try {
     console.log(`Checking attachments at path: ${reporterId}/${ticketId}`);
+    
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      console.error("Not authenticated");
+      return false;
+    }
+    
     const { data, error } = await supabase.storage
       .from('ticket-attachments')
       .list(`${reporterId}/${ticketId}`);
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error checking attachments:", error);
+      throw error;
+    }
     
     return data && data.length > 0;
   } catch (err) {

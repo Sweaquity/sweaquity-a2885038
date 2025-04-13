@@ -679,12 +679,34 @@ const SweaquityDashboard = () => {
       const checkAttachments = async () => {
         if (ticket.reporter && ticket.id) {
           setIsCheckingAttachments(true);
-          const { data, error } = await supabase.storage
-            .from('ticket-attachments')
-            .list(`${ticket.reporter}/${ticket.id}`);
-          
-          setHasAttachments(data && data.length > 0);
-          setIsCheckingAttachments(false);
+          try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (!sessionData.session) {
+              console.error("Not authenticated");
+              setHasAttachments(false);
+              setIsCheckingAttachments(false);
+              return;
+            }
+            
+            console.log(`Checking attachments for ticket: Reporter ID=${ticket.reporter}, Ticket ID=${ticket.id}`);
+            
+            const { data, error } = await supabase.storage
+              .from('ticket-attachments')
+              .list(`${ticket.reporter}/${ticket.id}`);
+            
+            if (error) {
+              console.error("Error checking attachments:", error);
+              setHasAttachments(false);
+            } else {
+              console.log("Attachments found:", data);
+              setHasAttachments(data && data.length > 0);
+            }
+          } catch (err) {
+            console.error("Error in checkAttachments:", err);
+            setHasAttachments(false);
+          } finally {
+            setIsCheckingAttachments(false);
+          }
         } else {
           setHasAttachments(false);
           setIsCheckingAttachments(false);
@@ -693,7 +715,7 @@ const SweaquityDashboard = () => {
       
       checkAttachments();
     }, [ticket.id, ticket.reporter]);
-
+    
     const handleAttachmentsLoaded = (hasFiles: boolean) => {
       setHasAttachments(hasFiles);
     };

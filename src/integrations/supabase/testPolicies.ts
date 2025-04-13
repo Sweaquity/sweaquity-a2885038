@@ -1,4 +1,42 @@
+
 import { supabase } from './client';
+
+// Function to test if a user can access files in a storage bucket
+async function testStorageAccess(userId: string, bucketId: string, filePath: string) {
+  try {
+    // For testing storage policies, we need to be authenticated as the user
+    console.log(`Testing storage access for user ${userId} to ${bucketId}/${filePath}`);
+    
+    // First, check if the bucket exists
+    const { data: buckets, error: bucketError } = await supabase
+      .from('storage.buckets')
+      .select('id, name, public')
+      .eq('id', bucketId)
+      .limit(1);
+    
+    if (bucketError) {
+      console.error("Error checking bucket:", bucketError);
+      return { success: false, error: bucketError };
+    }
+    
+    console.log("Bucket info:", buckets);
+    
+    // Then try to list files in the path
+    const { data, error } = await supabase.storage
+      .from(bucketId)
+      .list(filePath);
+    
+    if (error) {
+      console.error("Storage access error:", error);
+      return { success: false, error };
+    }
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error("Error testing storage access:", error);
+    return { success: false, error };
+  }
+}
 
 // Test Cases
 const testCases = [
@@ -54,28 +92,48 @@ const testCases = [
 ];
 
 // Function to simulate policy conditions
-const simulatePolicy = async (testCase) => {
+const simulatePolicy = async (testCase: any) => {
   const { description, bucketId, role, path, userId, ticketId, expectedResult } = testCase;
+  
+  console.log(`Running test: ${description}`);
+  
   try {
+    // For storage policies, we need to test actual storage access
+    if (bucketId && (path || (userId && ticketId))) {
+      const fullPath = path || `${userId}/${ticketId}`;
+      const result = await testStorageAccess(userId || 'test-user', bucketId, fullPath);
+      
+      console.log(`${description}: ${result.success === expectedResult ? 'PASS' : 'FAIL'}`);
+      return;
+    }
+    
+    // Original policy simulation for database tables
     const { data, error } = await supabase
       .from('ticket-attachments')
       .select('*')
       .eq('bucket_id', bucketId)
-      .eq('role', role)
-      .eq('path', path)
-      .or(`reporter.eq.${userId},assigned_to.eq.${userId},created_by.eq.${userId}`)
-      .eq('ticket_id', ticketId);
+      .eq('role', role || null)
+      .eq('path', path || null)
+      .or(`reporter.eq.${userId || null},assigned_to.eq.${userId || null},created_by.eq.${userId || null}`)
+      .eq('ticket_id', ticketId || null);
 
     if (error) {
-      throw error;
+      console.error(`${description}: ERROR - ${error.message}`);
+      return;
     }
 
-    const hasAccess = data.length > 0;
+    const hasAccess = data && data.length > 0;
     console.log(`${description}: ${hasAccess === expectedResult ? 'PASS' : 'FAIL'}`);
-  } catch (error) {
+  } catch (error: any) {
     console.error(`${description}: ERROR - ${error.message}`);
   }
 };
 
 // Run test cases
-testCases.forEach(testCase => simulatePolicy(testCase));
+export const runPolicyTests = () => {
+  console.log("Running storage policy tests...");
+  testCases.forEach(testCase => simulatePolicy(testCase));
+};
+
+// Export for direct use
+export { testCases };
