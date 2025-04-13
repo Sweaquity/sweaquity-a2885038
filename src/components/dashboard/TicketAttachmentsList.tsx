@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { FileImage, FileText, Loader2, AlertCircle, RefreshCw } from "lucide-react";
@@ -10,7 +11,7 @@ interface TicketAttachmentsListProps {
   onAttachmentsLoaded?: (hasAttachments: boolean) => void;
 }
 
-export const TicketAttachmentsList = ({ 
+export const TicketAttachmentsList = React.memo(({ 
   reporterId, 
   ticketId,
   onAttachmentsLoaded
@@ -32,6 +33,8 @@ export const TicketAttachmentsList = ({
   // Create stable refs for the props to compare for changes
   const prevReporterIdRef = useRef<string | undefined>(reporterId);
   const prevTicketIdRef = useRef<string>(ticketId);
+  // Add a processingRef to prevent multiple parallel URL processing
+  const processingRef = useRef(false);
 
   // Memoize the fetch path to prevent unnecessary effect triggers
   const fetchPath = useMemo(() => {
@@ -48,7 +51,9 @@ export const TicketAttachmentsList = ({
 
   // Process files and get secure URLs
   const processFileUrls = useCallback(async (files: any[]) => {
-    if (!fetchPath || !files.length || !isMounted.current) return;
+    if (!fetchPath || !files.length || !isMounted.current || processingRef.current) return;
+    
+    processingRef.current = true;
     
     const urlMap: {[key: string]: string} = {};
     const loadingMap: {[key: string]: boolean} = {};
@@ -92,10 +97,18 @@ export const TicketAttachmentsList = ({
     await Promise.all(filePromises);
     
     if (isMounted.current) {
-      setFileUrls(urlMap);
-      setFileErrors(errorMap);
-      setLoadingFiles(loadingMap);
+      setFileUrls(prevUrls => ({ ...prevUrls, ...urlMap }));
+      setFileErrors(prevErrors => ({ ...prevErrors, ...errorMap }));
+      setLoadingFiles(prevLoadingState => {
+        const newState = { ...prevLoadingState };
+        Object.keys(loadingMap).forEach(key => {
+          newState[key] = false;
+        });
+        return newState;
+      });
     }
+    
+    processingRef.current = false;
   }, [fetchPath]);
 
   // Memoized fetch function to prevent recreating on each render
@@ -187,7 +200,7 @@ export const TicketAttachmentsList = ({
     }
   }, [fetchPath, fetchAttachments]);
 
-  const handleRetry = () => {
+  const handleRetry = useCallback(() => {
     // Increment retry counter to trigger a fetch
     retryCountRef.current += 1;
     setLoading(true);
@@ -195,25 +208,26 @@ export const TicketAttachmentsList = ({
     setFileErrors({});
     // Force reset the fetching flag to ensure we can retry
     isFetching.current = false;
-  };
+    processingRef.current = false;
+  }, []);
 
-  const getFileIcon = (mimeType: string) => {
+  const getFileIcon = useCallback((mimeType: string) => {
     if (mimeType?.startsWith('image/')) {
       return <FileImage className="h-5 w-5 text-blue-500" />;
     }
     return <FileText className="h-5 w-5 text-gray-500" />;
-  };
+  }, []);
 
-  const isImageFile = (file: any) => {
+  const isImageFile = useCallback((file: any) => {
     if (file.metadata?.mimetype?.startsWith('image/')) return true;
     
     const imageSuffixes = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.heic'];
     return imageSuffixes.some(suffix => file.name.toLowerCase().endsWith(suffix));
-  };
+  }, []);
 
-  const handleImageError = (filename: string) => {
+  const handleImageError = useCallback((filename: string) => {
     setFileErrors(prev => ({...prev, [filename]: "Failed to load image preview"}));
-  };
+  }, []);
 
   if (loading) {
     return (
@@ -345,7 +359,9 @@ export const TicketAttachmentsList = ({
       </div>
     </div>
   );
-};
+});
+
+TicketAttachmentsList.displayName = "TicketAttachmentsList";
 
 export const checkTicketAttachments = async (reporterId?: string, ticketId?: string): Promise<boolean> => {
   if (!reporterId || !ticketId) return false;
