@@ -1,51 +1,44 @@
 
-import { JobApplication } from './consolidatedTypes';
-import { LogEffort } from './consolidatedTypes';
-import { ParsedCVData } from './jobSeeker'; 
-import { Profile } from './jobSeeker';
-import { Skill, EquityProject, SkillRequirement, SubTask } from './consolidatedTypes';
+import { EquityProject, LogEffort } from './equity';
+import { JobApplication } from './applications';
+import { Profile, Skill } from './profile';
 
-// JobSeeker Dashboard Props
-export interface JobSeekerDashboardProps {
-  profile: Profile | null;
-  applications: JobApplication[];
-  cvUrl: string | null;
-  equityProjects: EquityProject[];
-  availableOpportunities: any[];
+export interface DashboardTabProps {
+  activeTab: string;
+  profile: Profile;
+  cvUrl: string;
+  parsedCvData: any;
   skills: Skill[];
-  parsedCvData?: ParsedCVData;
-  isLoading: boolean;
-  
-  handleSignOut: () => Promise<void>;
-  handleCvUpload: (file: File) => Promise<boolean>;
-  handleProfileUpdate: (data: any) => Promise<boolean>;
-  handleSkillsUpdate: (skills: Skill[]) => Promise<boolean>;
-  refreshApplications: () => Promise<void>;
-  handleAcceptJob: (jobAppId: string) => Promise<boolean>;
-  handleWithdrawApplication: (jobAppId: string, reason?: string) => Promise<boolean>;
-  handleLogEffort: (effort: LogEffort) => Promise<boolean>;
-  handleTicketAction: (ticketId: string, action: string, data?: any) => Promise<void>;
-  hasBusinessProfile: boolean;
+  onSkillsUpdate: (skills: Skill[]) => void;
+  equityProjects: EquityProject[];
+  userCVs?: any[];
+  onCvListUpdated?: () => void;
 }
 
-// ProjectCard Props for job opportunities
-export interface ProjectCardProps {
-  project: any;
-  userSkills: Skill[];
-  onApply?: (taskId: string, projectId: string) => void;
+// Adding component-specific props
+export interface ApplicationHeaderProps {
+  title?: string;
+  company?: string;
+  project?: string;
+  status?: string;
 }
 
-// SubTask Props for job opportunities
-export interface SubTaskProps {
-  subTask: SubTask;
-  skillMatch: number;
-  onApply: () => void;
+export interface ApplicationContentProps {
+  description: string;
+  message: string;
+  discourse?: string;
+  appliedAt: string;
 }
 
-// ApplicationItemContentProps for ApplicationItem component
+export interface ApplicationSkillsProps {
+  skillRequirements: (string | import('./businessRoles').SkillRequirement)[];
+  equityAllocation?: number;
+  timeframe?: string;
+}
+
 export interface ApplicationItemContentProps {
-  description?: string;
-  message?: string;
+  description: string;
+  message: string;
   discourse?: string;
   appliedAt: string;
 }

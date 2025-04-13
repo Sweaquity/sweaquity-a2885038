@@ -1,20 +1,76 @@
 
-import { UserData } from './types';
-import { 
-  Skill,
-  JobApplication,
-  LogEffort,
-  EquityProject,
-  SkillRequirement
-} from './consolidatedTypes';
+// Update JobApplication type to match required fields
+import { Skill, UserData } from './types';
 
-export type { 
-  Skill,
-  JobApplication,
-  LogEffort,
-  EquityProject,
-  SkillRequirement
+export type EquityProject = {
+  projectId: string;
+  title: string;
+  description?: string;
+  equity: number;
+  equityEarned: number;
+  status: string;
+  ticketId?: string;
+  taskId?: string;
+  completionPercentage?: number;
+  // Add compatibility properties to fix existing references
+  id?: string;
+  project_id?: string;
+  equity_amount?: number;
+  time_allocated?: any;
+  start_date?: string;
+  updated_at?: string;
+  total_hours_logged?: number;
+  skill_match?: number;
+  created_by?: any;
+  business_roles?: any;
+  sub_tasks?: any[];
 };
+
+export interface JobApplication {
+  job_app_id: string;
+  task_id: string;
+  applicant_id?: string;
+  user_id: string;
+  project_id?: string;
+  status: string;
+  message?: string;
+  task_discourse?: string;
+  created_at?: string;
+  updated_at?: string;
+  applied_at: string; // Make this required to match the expected type
+  accepted_business?: boolean;
+  accepted_jobseeker?: boolean;
+  applicant_anonymized?: boolean;
+  cv_url?: string;
+  business_roles?: {
+    id: string;
+    title: string;
+    description?: string;
+    company_name?: string;
+    project_title?: string;
+    equity_allocation?: number;
+    timeframe?: string;
+    task_status?: string;
+    project_status?: string;
+    completion_percentage?: number;
+    skill_requirements?: any[];
+  };
+  task_title?: string;
+  description?: string;
+  company_name?: string;
+  project_title?: string;
+  accepted_jobs?: any;
+  hasEquityData?: boolean;
+}
+
+export interface LogEffort {
+  jobAppId: string;
+  taskId: string;
+  hours: number;
+  description: string;
+  date: Date;
+  effortId?: string;
+}
 
 export interface ParsedCVData {
   skills: string[];
@@ -42,6 +98,9 @@ export interface ApplicationHistoryItem {
   status: string;
 }
 
+// Re-export types from jobSeeker.ts to fix import errors
+export { Skill } from './types';
+
 export interface Profile {
   id: string;
   first_name?: string;
@@ -54,11 +113,20 @@ export interface Profile {
   bio?: string;
   location?: string;
   avatar_url?: string;
-  title?: string;
-  phone?: string;
-  address?: string;
-  social_links?: any;
-  marketing_consent?: boolean;
-  project_updates_consent?: boolean;
-  terms_accepted?: boolean;
+}
+
+export interface SubTask {
+  id: string;
+  title: string;
+  description?: string;
+  status?: string;
+  assigned_to?: string;
+  due_date?: string;
+  start_date?: string;
+  completion_percentage: number;
+}
+
+export interface SkillRequirement {
+  skill: string;
+  level?: string;
 }

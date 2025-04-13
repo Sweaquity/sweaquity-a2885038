@@ -1,128 +1,80 @@
-import { JobApplication } from '@/types/consolidatedTypes';
-import { Application } from '@/types/consolidatedTypes';
 
-export interface ApplicationStats {
-  pending: number;
-  accepted: number;
-  rejected: number;
-  withdrawn: number;
-}
-
-export const getApplicationStats = (applications: JobApplication[]): ApplicationStats => {
-  return {
-    pending: applications.filter(app => app.status === 'pending').length,
-    accepted: applications.filter(app => app.status === 'accepted').length,
-    rejected: applications.filter(app => app.status === 'rejected').length,
-    withdrawn: applications.filter(app => app.status === 'withdrawn').length,
-  };
-};
-
-export const formatApplicationDate = (dateString?: string): string => {
-  if (!dateString) return 'Unknown date';
-  
-  try {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    }).format(date);
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return 'Invalid date';
-  }
-};
-
-export const getStatusColor = (status: string): string => {
-  switch (status?.toLowerCase()) {
-    case 'pending':
-      return 'bg-yellow-500';
-    case 'accepted':
-      return 'bg-green-500';
-    case 'rejected':
-      return 'bg-red-500';
-    case 'withdrawn':
-      return 'bg-gray-500';
-    case 'completed':
-      return 'bg-blue-500';
-    default:
-      return 'bg-gray-400';
-  }
-};
-
-export const getReadableStatus = (
-  app: JobApplication | { title: string }
-): string => {
-  if (!app) return 'Unknown';
-  
-  // Check if we have a JobApplication with status property
-  if ('status' in app && app.status) {
-    return app.status.charAt(0).toUpperCase() + app.status.slice(1);
-  }
-  
-  return 'Pending'; // Default status
-};
-
-export const getEquityInfo = (jobAppId: string, acceptedJobs: any[] = []): {
-  equity: number;
-  allocated: number;
-  acceptedDate: string | null;
-} => {
-  const acceptedJob = acceptedJobs?.find(job => job && typeof job === 'object' && job.job_app_id === jobAppId);
-  
-  if (!acceptedJob) {
-    return {
-      equity: 0,
-      allocated: 0,
-      acceptedDate: null
-    };
-  }
-  
-  return {
-    equity: Number(acceptedJob.equity_agreed || 0),
-    allocated: Number(acceptedJob.jobs_equity_allocated || 0),
-    acceptedDate: acceptedJob.date_accepted || null
-  };
-};
+import { Application } from "@/types/business";
+import { JobApplication, Skill } from "@/types/jobSeeker";
 
 /**
- * Convert a business Application to JobApplication format
- * This function is needed by the ProjectApplicationsSection component
+ * Converts an Application object to a JobApplication object
+ * Handles type differences and ensures proper type conversion
+ * 
+ * ID Mapping:
+ * - job_app_id: The unique ID of the application itself
+ * - project_id: The ID of the project the application is for
+ * - task_id: The ID of the specific task/role within the project
+ * - business_roles.id: References the task_id (the specific role being applied for)
  */
-export const convertApplicationToJobApplication = (application: Application): JobApplication => {
-  return {
-    job_app_id: application.job_app_id || '',
-    task_id: application.task_id || '',
-    user_id: application.user_id || '',
-    project_id: application.project_id || '',
-    status: application.status || 'pending',
-    message: application.message || '',
-    task_discourse: application.task_discourse || '',
-    created_at: application.created_at || '',
-    updated_at: application.updated_at || '',
-    applied_at: application.applied_at || new Date().toISOString(),
-    accepted_business: application.accepted_business || false,
-    accepted_jobseeker: application.accepted_jobseeker || false,
-    applicant_anonymized: application.applicant_anonymized || false,
-    cv_url: application.cv_url || '',
-    business_roles: {
-      id: application.business_roles?.id || '',
-      title: application.business_roles?.title || '',
-      description: application.business_roles?.description || '',
-      company_name: application.business_roles?.company_name || application.company_name || '',
-      project_title: application.business_roles?.project_title || application.project_title || '',
-      project_id: application.business_roles?.project_id || application.project_id || '',
-      equity_allocation: application.business_roles?.equity_allocation || 0,
-      timeframe: application.business_roles?.timeframe || '',
-      task_status: application.business_roles?.task_status || '',
-      project_status: application.business_roles?.project_status || '',
-      completion_percentage: application.business_roles?.completion_percentage || 0,
-      skill_requirements: application.business_roles?.skill_requirements || []
-    },
-    task_title: application.task_title || '',
-    description: application.description || '',
-    company_name: application.company_name || '',
-    project_title: application.project_title || '',
-    hasEquityData: false
+export function convertApplicationToJobApplication(application: Application): JobApplication {
+  // Helper function to normalize skill requirements to a consistent format
+  const normalizeSkillRequirements = (skillReqs: any) => {
+    if (!skillReqs) return [];
+    
+    if (Array.isArray(skillReqs)) {
+      return skillReqs.map(req => {
+        if (typeof req === 'string') {
+          return { skill: req, level: "Intermediate" };
+        }
+        // Ensure required properties exist
+        return {
+          skill: req.skill || (req.name || ""),
+          level: req.level || "Intermediate"
+        };
+      });
+    }
+    
+    return [];
   };
-};
+
+  // Create a basic JobApplication object
+  const jobApplication: JobApplication = {
+    job_app_id: application.job_app_id,
+    user_id: application.user_id,
+    task_id: application.task_id,
+    project_id: application.project_id,
+    status: application.status,
+    applied_at: application.applied_at || "",
+    notes: application.notes ? [application.notes] : [], // Convert string to array
+    message: application.message || "",
+    cv_url: application.cv_url,
+    task_discourse: application.task_discourse || "",
+    id: application.job_app_id, // Ensure id matches job_app_id for consistency
+    accepted_jobseeker: application.accepted_jobseeker || false,
+    accepted_business: application.accepted_business || false,
+    // Use helper function to ensure consistent skill requirement format
+    business_roles: {
+      // The ID here should reference the task_id - this is the specific role/task the applicant is applying for
+      id: application.task_id || "",
+      title: application.business_roles?.title || "",
+      description: application.business_roles?.description || "",
+      project_title: application.business_roles?.project?.title || "",
+      timeframe: application.business_roles?.timeframe,
+      skill_requirements: normalizeSkillRequirements(application.business_roles?.skill_requirements),
+      equity_allocation: application.business_roles?.equity_allocation,
+      project_status: application.business_roles?.project?.status
+    },
+    // Add hasEquityData property for type compatibility
+    hasEquityData: false, // Default value if accepted_jobs is not available
+    is_equity_project: false // Default value
+  };
+
+  // Handle optional fields conditionally to avoid TypeScript errors
+  if ('accepted_jobs' in application && application.accepted_jobs) {
+    jobApplication.accepted_jobs = {
+      equity_agreed: application.accepted_jobs.equity_agreed || 0,
+      jobs_equity_allocated: application.accepted_jobs.jobs_equity_allocated || 0,
+      id: application.accepted_jobs.id || "",
+      date_accepted: application.accepted_jobs.date_accepted || ""
+    };
+    jobApplication.hasEquityData = true;
+  }
+
+  return jobApplication;
+}
