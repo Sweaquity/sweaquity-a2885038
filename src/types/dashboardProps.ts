@@ -3,7 +3,7 @@ import { JobApplication } from './consolidatedTypes';
 import { LogEffort } from './consolidatedTypes';
 import { ParsedCVData } from './jobSeeker'; 
 import { Profile } from './jobSeeker';
-import { Skill, EquityProject, SkillRequirement } from './consolidatedTypes';
+import { Skill, EquityProject, SkillRequirement, SubTask } from './consolidatedTypes';
 
 // JobSeeker Dashboard Props
 export interface JobSeekerDashboardProps {
@@ -37,13 +37,15 @@ export interface ProjectCardProps {
 
 // SubTask Props for job opportunities
 export interface SubTaskProps {
-  subTask: {
-    id: string;
-    title: string;
-    description?: string;
-    equity_allocation: number;
-    skill_requirements?: SkillRequirement[];
-  };
+  subTask: SubTask;
   skillMatch: number;
   onApply: () => void;
+}
+
+// ApplicationItemContentProps for ApplicationItem component
+export interface ApplicationItemContentProps {
+  description?: string;
+  message?: string;
+  discourse?: string;
+  appliedAt: string;
 }

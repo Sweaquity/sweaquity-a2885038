@@ -1,13 +1,39 @@
-import { useState, useEffect, useRef } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
-import { Profile, Skill } from '@/types/jobSeeker';
-import { JobApplication, EquityProject } from '@/types/consolidatedTypes';
-
-// Add the new imports at the top
+import { Skill, JobApplication, EquityProject } from '@/types/consolidatedTypes';
+import { Profile, ParsedCVData } from '@/types/jobSeeker';
 import { convertToSkill, convertToJobApplication, convertToEquityProject } from '@/utils/typeConverters';
+import { toast } from 'sonner';
+import { CVFile } from '@/hooks/job-seeker/useCVData';
+import { useNavigate } from 'react-router-dom';
+import { LogEffort } from '@/types/consolidatedTypes';
 
-export const useJobSeekerDashboardCore = (refreshTrigger = 0) => {
+export interface UseJobSeekerDashboardResult {
+  isLoading: boolean;
+  profile: Profile | null;
+  cvUrl: string | null;
+  applications: JobApplication[];
+  equityProjects: EquityProject[];
+  availableOpportunities: any[];
+  skills: Skill[];
+  parsedCvData?: ParsedCVData;
+  userCVs: CVFile[];
+  handleSignOut: () => Promise<void>;
+  handleCvUpload: (file: File) => Promise<boolean>;
+  handleProfileUpdate: (data: any) => Promise<boolean>;
+  handleSkillsUpdate: (skills: Skill[]) => Promise<boolean>;
+  refreshApplications: () => Promise<void>;
+  handleAcceptJob: (jobAppId: string) => Promise<boolean>;
+  handleWithdrawApplication: (jobAppId: string, reason?: string) => Promise<boolean>;
+  handleLogEffort: (effort: LogEffort) => Promise<boolean>;
+  hasBusinessProfile: boolean;
+  onCvListUpdated: () => Promise<void>;
+  handleTicketAction: (ticketId: string, action: string, data?: any) => Promise<void>;
+}
+
+export const useJobSeekerDashboardCore = (refreshTrigger = 0): UseJobSeekerDashboardResult => {
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [cvUrl, setCvUrl] = useState<string | null>(null);
@@ -15,430 +41,647 @@ export const useJobSeekerDashboardCore = (refreshTrigger = 0) => {
   const [equityProjects, setEquityProjects] = useState<EquityProject[]>([]);
   const [availableOpportunities, setAvailableOpportunities] = useState<any[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
-  const [parsedCvData, setParsedCvData] = useState<any | null>(null);
-  const [isProfileComplete, setIsProfileComplete] = useState(false);
-  const [hasBusinessProfile, setHasBusinessProfile] = useState(false);
-  const [userCVs, setUserCVs] = useState<any[]>([]);
+  const [parsedCvData, setParsedCvData] = useState<ParsedCVData | undefined>(undefined);
+  const [hasBusinessProfile, setHasBusinessProfile] = useState<boolean>(false);
+  const [userCVs, setUserCVs] = useState<CVFile[]>([]);
 
-  const loadingRef = useRef(false);
-
-  useEffect(() => {
-    const userId = supabase.auth.currentUser?.id;
-    if (userId) {
-      loadProfileData(userId);
-      loadUserCVs(userId);
-    }
-  }, [refreshTrigger]);
-
-  const loadUserCVs = async (userId: string) => {
+  // Load the user's profile data
+  const loadProfile = useCallback(async () => {
     try {
-      const { data, error } = await supabase.storage
-        .from('cvs')
-        .list(`${userId}/`, {
-          sortBy: { column: 'created_at', order: 'desc' }
-        });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
       if (error) {
-        console.error("Error listing CVs:", error);
+        console.error('Error loading profile:', error);
         return;
       }
 
-      setUserCVs(data || []);
-    } catch (error) {
-      console.error("Error listing CVs:", error);
-    }
-  };
-
-  const onCvListUpdated = () => {
-    const userId = supabase.auth.currentUser?.id;
-    if (userId) {
-      loadUserCVs(userId);
-    }
-  };
-
-  const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast.error("Failed to sign out");
-    } else {
-      window.location.href = '/auth/seeker';
-    }
-  };
-
-  const handleCvUpload = async (file: File) => {
-    const userId = supabase.auth.currentUser?.id;
-    if (!userId) {
-      toast.error("You must be logged in to upload a CV");
-      return false;
-    }
-
-    const fileName = `${file.name}`;
-    const filePath = `${userId}/${fileName}`;
-
-    try {
-      const { error: uploadError } = await supabase.storage
-        .from('cvs')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) {
-        console.error("Error uploading CV:", uploadError);
-        toast.error("Failed to upload CV");
-        return false;
-      }
-
-      toast.success("CV uploaded successfully");
-      loadUserCVs(userId);
-      return true;
-    } catch (error) {
-      console.error("Error uploading CV:", error);
-      toast.error("Failed to upload CV");
-      return false;
-    }
-  };
-
-  const handleProfileUpdate = async (data: any) => {
-    const userId = supabase.auth.currentUser?.id;
-    if (!userId) {
-      toast.error("You must be logged in to update your profile");
-      return false;
-    }
-
-    try {
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update(data)
-        .eq('id', userId);
-
-      if (updateError) {
-        console.error("Error updating profile:", updateError);
-        toast.error("Failed to update profile");
-        return false;
-      }
-
-      toast.success("Profile updated successfully");
-      loadProfileData(userId);
-      return true;
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      toast.error("Failed to update profile");
-      return false;
-    }
-  };
-
-  const handleSkillsUpdate = async (skills: Skill[]) => {
-    const userId = supabase.auth.currentUser?.id;
-    if (!userId) {
-      toast.error("You must be logged in to update your skills");
-      return false;
-    }
-
-    try {
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ skills: skills })
-        .eq('id', userId);
-
-      if (updateError) {
-        console.error("Error updating skills:", updateError);
-        toast.error("Failed to update skills");
-        return false;
-      }
-
-      toast.success("Skills updated successfully");
-      setSkills(skills);
-      return true;
-    } catch (error) {
-      console.error("Error updating skills:", error);
-      toast.error("Failed to update skills");
-      return false;
-    }
-  };
-
-  const refreshApplications = async () => {
-    const userId = supabase.auth.currentUser?.id;
-    if (!userId) {
-      toast.error("You must be logged in to refresh applications");
-      return;
-    }
-
-    try {
-      const { data: applicationsData, error: applicationsError } = await supabase
-        .from('job_applications')
-        .select('*, business_roles:project_sub_tasks!job_applications_task_id_fkey(*)')
-        .eq('user_id', userId);
-
-      if (applicationsError) throw applicationsError;
-
-      // Convert job applications
-      const convertedApplications = (applicationsData || []).map(convertToJobApplication);
-      setApplications(convertedApplications);
-
-      toast.success("Applications refreshed successfully");
-    } catch (error) {
-      console.error("Error refreshing applications:", error);
-      toast.error("Failed to refresh applications");
-    }
-  };
-
-  const handleAcceptJob = async (jobAppId: string) => {
-    const userId = supabase.auth.currentUser?.id;
-    if (!userId) {
-      toast.error("You must be logged in to accept a job");
-      return false;
-    }
-
-    try {
-      const { error: updateError } = await supabase
-        .from('job_applications')
-        .update({ accepted_jobseeker: true })
-        .eq('job_app_id', jobAppId);
-
-      if (updateError) {
-        console.error("Error accepting job:", updateError);
-        toast.error("Failed to accept job");
-        return false;
-      }
-
-      toast.success("Job accepted successfully");
-      refreshApplications();
-      return true;
-    } catch (error) {
-      console.error("Error accepting job:", error);
-      toast.error("Failed to accept job");
-      return false;
-    }
-  };
-
-  const handleWithdrawApplication = async (jobAppId: string, reason?: string) => {
-    const userId = supabase.auth.currentUser?.id;
-    if (!userId) {
-      toast.error("You must be logged in to withdraw an application");
-      return false;
-    }
-
-    try {
-      const { error: updateError } = await supabase
-        .from('job_applications')
-        .update({ status: 'withdrawn', message: reason })
-        .eq('job_app_id', jobAppId);
-
-      if (updateError) {
-        console.error("Error withdrawing application:", updateError);
-        toast.error("Failed to withdraw application");
-        return false;
-      }
-
-      toast.success("Application withdrawn successfully");
-      refreshApplications();
-      return true;
-    } catch (error) {
-      console.error("Error withdrawing application:", error);
-      toast.error("Failed to withdraw application");
-      return false;
-    }
-  };
-
-  const handleLogEffort = async (effort: any) => {
-    const userId = supabase.auth.currentUser?.id;
-    if (!userId) {
-      toast.error("You must be logged in to log effort");
-      return false;
-    }
-
-    try {
-      const { error: insertError } = await supabase
-        .from('effort_logs')
-        .insert([
-          {
-            job_app_id: effort.jobAppId,
-            task_id: effort.taskId,
-            user_id: userId,
-            hours: effort.hours,
-            description: effort.description,
-            date: effort.date.toISOString()
+      // Process skills data
+      let parsedSkills: Skill[] = [];
+      if (profileData?.skills) {
+        try {
+          if (typeof profileData.skills === 'string') {
+            const skillsData = JSON.parse(profileData.skills);
+            parsedSkills = Array.isArray(skillsData) ? 
+              skillsData.map(convertToSkill) : [];
+          } else if (Array.isArray(profileData.skills)) {
+            parsedSkills = profileData.skills.map(convertToSkill);
           }
-        ]);
-
-      if (insertError) {
-        console.error("Error logging effort:", insertError);
-        toast.error("Failed to log effort");
-        return false;
+        } catch (e) {
+          console.error("Error parsing skills:", e);
+        }
       }
 
-      toast.success("Effort logged successfully");
-      return true;
-    } catch (error) {
-      console.error("Error logging effort:", error);
-      toast.error("Failed to log effort");
-      return false;
-    }
-  };
-
-  const handleTicketAction = async (ticketId: string, action: string, data?: any) => {
-    console.log(`Handling action ${action} for ticket ${ticketId} with data:`, data);
-    try {
-      if (action === 'startTask') {
-        const { error } = await supabase
-          .from('tickets')
-          .update({ status: 'in_progress' })
-          .eq('id', ticketId);
-
-        if (error) throw error;
-        toast.success('Task marked as In Progress');
-      } else if (action === 'submitForReview') {
-        const { error } = await supabase
-          .from('tickets')
-          .update({ status: 'review', completion_percentage: 100 })
-          .eq('id', ticketId);
-
-        if (error) throw error;
-        toast.success('Task submitted for review');
-      } else if (action === 'markComplete') {
-        const { error } = await supabase
-          .from('tickets')
-          .update({ status: 'done' })
-          .eq('id', ticketId);
-
-        if (error) throw error;
-        toast.success('Task marked as Complete');
-      } else if (action === 'logTime') {
-        // Placeholder for logging time
-        toast.info('Time logged successfully (placeholder)');
-      } else {
-        console.warn(`Unknown action: ${action}`);
-        toast.warning(`Unknown action: ${action}`);
-        return;
-      }
-    } catch (error: any) {
-      console.error(`Error performing action ${action}:`, error.message);
-      toast.error(`Failed to perform action: ${action}`);
-    }
-  };
-
-  // Update the function to use our type converters
-  const loadProfileData = async (userId: string) => {
-    if (!userId || loadingRef.current) return;
-    loadingRef.current = true;
-    
-    try {
-      console.log("Loading profile data for user:", userId);
+      setProfile({
+        ...profileData,
+        skills: parsedSkills
+      });
       
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      setSkills(parsedSkills);
       
-      if (profileError) throw profileError;
-      
-      // Process skills with the converter
-      const userSkills = profileData?.skills ? 
-        (Array.isArray(profileData.skills) ? profileData.skills : (profileData.skills as any).map(convertToSkill)) : 
-        [];
-
-      // Set states with processed data
-      setProfile(profileData || null);
-      setSkills(userSkills);
-      
-      // Load CV URL safely
-      setCvUrl(profileData?.cv_url || null);
-      
-      // Check if this user also has a business profile
+      // Check if the user has a business profile
       const { data: businessData } = await supabase
         .from('businesses')
-        .select('businesses_id')
-        .eq('businesses_id', userId)
+        .select('*')
+        .eq('businesses_id', user.id)
         .maybeSingle();
-      
+        
       setHasBusinessProfile(!!businessData);
       
-      // Load applications and convert them
-      const { data: applicationsData, error: applicationsError } = await supabase
-        .from('job_applications')
-        .select('*, business_roles:project_sub_tasks!job_applications_task_id_fkey(*)')
-        .eq('user_id', userId);
-      
-      if (applicationsError) throw applicationsError;
-      
-      // Convert job applications
-      const convertedApplications = (applicationsData || []).map(convertToJobApplication);
-      setApplications(convertedApplications);
-      
-      // Load equity projects and convert them
-      const { data: equityData, error: equityError } = await supabase
-        .from('jobseeker_active_projects')
+    } catch (error) {
+      console.error('Error in loadProfile:', error);
+    }
+  }, [navigate]);
+
+  // Load the user's CV data
+  const loadCvData = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: parsedData, error } = await supabase
+        .from('cv_parsed_data')
         .select('*')
-        .eq('user_id', userId);
+        .eq('user_id', user.id)
+        .order('cv_upload_date', { ascending: false })
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error loading CV data:', error);
+        return;
+      }
+
+      if (parsedData) {
+        setCvUrl(parsedData.cv_url);
+        setParsedCvData({
+          skills: parsedData.skills || [],
+          education: parsedData.education || [],
+          careerHistory: parsedData.career_history || []
+        });
+      }
+    } catch (error) {
+      console.error('Error in loadCvData:', error);
+    }
+  }, []);
+
+  // Load the user's job applications
+  const loadApplications = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('job_applications')
+        .select(`
+          *,
+          business_roles:project_sub_tasks (
+            title, description, equity_allocation, timeframe, skill_requirements,
+            project:project_id (title)
+          )
+        `)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error loading applications:', error);
+        return;
+      }
+
+      if (data) {
+        const formattedApplications = data.map(convertToJobApplication);
+        setApplications(formattedApplications);
+      }
+    } catch (error) {
+      console.error('Error in loadApplications:', error);
+    }
+  }, []);
+
+  // Load equity projects
+  const loadEquityProjects = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get accepted job applications with equity data
+      const { data: acceptedJobs, error } = await supabase
+        .from('accepted_jobs')
+        .select(`
+          id, job_app_id, equity_agreed, jobs_equity_allocated, date_accepted,
+          job_applications!inner (
+            task_id, project_id, user_id, status
+          )
+        `)
+        .eq('job_applications.user_id', user.id)
+        .gt('equity_agreed', 0);
+
+      if (error) {
+        console.error('Error loading equity projects:', error);
+        return;
+      }
+
+      if (!acceptedJobs || acceptedJobs.length === 0) {
+        setEquityProjects([]);
+        return;
+      }
+
+      // Get project details for the accepted jobs
+      const projectIds = acceptedJobs.map(job => job.job_applications.project_id).filter(Boolean);
       
-      if (equityError) throw equityError;
+      if (projectIds.length === 0) {
+        setEquityProjects([]);
+        return;
+      }
+
+      const { data: projects, error: projectsError } = await supabase
+        .from('business_projects')
+        .select('*')
+        .in('project_id', projectIds);
+
+      if (projectsError) {
+        console.error('Error loading project details:', projectsError);
+        return;
+      }
+
+      // Map projects with equity data
+      const equityProjectsList = acceptedJobs.map(job => {
+        const relatedProject = projects?.find(p => p.project_id === job.job_applications.project_id);
+        
+        if (relatedProject) {
+          return convertToEquityProject({
+            ...relatedProject,
+            equity_agreed: job.equity_agreed,
+            jobs_equity_allocated: job.jobs_equity_allocated,
+            date_accepted: job.date_accepted,
+            job_app_id: job.job_app_id,
+            task_id: job.job_applications.task_id
+          });
+        }
+        
+        // If no project found, create a minimal entry
+        return convertToEquityProject({
+          project_id: job.job_applications.project_id,
+          title: 'Unknown Project',
+          equity_amount: job.equity_agreed,
+          jobs_equity_allocated: job.jobs_equity_allocated,
+          status: 'active',
+          task_id: job.job_applications.task_id
+        });
+      });
+
+      setEquityProjects(equityProjectsList);
+    } catch (error) {
+      console.error('Error in loadEquityProjects:', error);
+    }
+  }, []);
+
+  // Load available opportunities
+  const loadOpportunities = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
       
-      // Convert equity projects
-      const convertedProjects = (equityData || []).map(item => convertToEquityProject({
-        id: item.project_id,
-        project_id: item.project_id,
-        equity_amount: item.equity_agreed,
-        time_allocated: null,
-        status: item.project_status,
-        start_date: item.date_accepted,
-        effort_logs: [],
-        total_hours_logged: item.total_hours_logged || 0,
-        title: item.ticket_title || item.project_title || "Unknown Project",
-        created_by: null,
-        updated_at: item.ticket_updated_at,
-        skill_match: 0,
-        sub_tasks: [],
-        business_roles: {}
-      }));
-      
-      setEquityProjects(convertedProjects);
-      
-      // Load opportunities with matching
-      const { data: opportunityData, error: opportunityError } = await supabase
+      // Get user's current applications to filter them out
+      const { data: userApps } = await supabase
+        .from('job_applications')
+        .select('task_id')
+        .eq('user_id', user.id);
+        
+      const appliedTaskIds = userApps ? userApps.map(app => app.task_id) : [];
+
+      // Get active projects with tasks
+      const { data: projects, error } = await supabase
         .from('business_projects')
         .select(`
           *,
-          sub_tasks:project_sub_tasks(*)
+          sub_tasks:project_sub_tasks (*)
         `)
         .eq('status', 'active');
+
+      if (error) {
+        console.error('Error loading opportunities:', error);
+        return;
+      }
+
+      // Filter out tasks user has already applied for
+      const availableProjects = projects.map(project => {
+        const filteredTasks = project.sub_tasks.filter(
+          (task: any) => !appliedTaskIds.includes(task.task_id)
+        );
+        
+        return {
+          ...project,
+          sub_tasks: filteredTasks
+        };
+      }).filter(p => p.sub_tasks.length > 0); // Only keep projects with available tasks
+
+      setAvailableOpportunities(availableProjects);
+    } catch (error) {
+      console.error('Error in loadOpportunities:', error);
+    }
+  }, []);
+
+  const loadUserCVs = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
       
-      if (opportunityError) throw opportunityError;
-      
-      setAvailableOpportunities(opportunityData || []);
-      
-      // Load CV parsed data
-      const { data: cvData } = await supabase
+      // Fetch all user CV files from the cv_parsed_data table
+      const { data, error } = await supabase
         .from('cv_parsed_data')
         .select('*')
-        .eq('user_id', userId)
-        .order('cv_upload_date', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .eq('user_id', user.id)
+        .order('cv_upload_date', { ascending: false });
+        
+      if (error) {
+        console.error('Error loading user CVs:', error);
+        return;
+      }
       
-      if (cvData) {
-        setParsedCvData({
-          skills: cvData.skills || [],
-          education: cvData.education || [],
-          careerHistory: cvData.career_history || []
+      if (data) {
+        const cvFiles: CVFile[] = data.map(cv => ({
+          id: cv.id,
+          url: cv.cv_url || '',
+          uploadDate: cv.cv_upload_date || new Date().toISOString(),
+          isDefault: false, // We'll set this later
+        }));
+        
+        // Check if user has a default CV in profile
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('cv_url')
+          .eq('id', user.id)
+          .single();
+        
+        if (profileData?.cv_url) {
+          // Mark the CV that matches the profile's CV URL as default
+          const defaultCvUrl = profileData.cv_url;
+          cvFiles.forEach(cv => {
+            cv.isDefault = cv.url === defaultCvUrl;
+          });
+        } else if (cvFiles.length > 0) {
+          // If no default CV is set in profile, mark the most recent as default
+          cvFiles[0].isDefault = true;
+        }
+        
+        setUserCVs(cvFiles);
+      }
+    } catch (error) {
+      console.error('Error loading user CVs:', error);
+    }
+  }, []);
+
+  // Handle sign out
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Error signing out:', error);
+      toast.error('Error signing out');
+      return;
+    }
+    
+    toast.success('Signed out successfully');
+    navigate('/login');
+  };
+
+  // Handle updating profile with new CV data
+  const handleCvUpload = async (file: File): Promise<boolean> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('You must be logged in to upload a CV');
+        return false;
+      }
+
+      // Create a file path for the CV
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `cv/${fileName}`;
+      
+      // Upload the file to storage
+      const { error: uploadError } = await supabase
+        .storage
+        .from('user-uploads')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error('Error uploading CV:', uploadError);
+        toast.error('Error uploading CV');
+        return false;
+      }
+
+      // Get the public URL for the uploaded file
+      const { data: publicUrlData } = await supabase
+        .storage
+        .from('user-uploads')
+        .getPublicUrl(filePath);
+
+      if (!publicUrlData) {
+        console.error('Error getting public URL for CV');
+        toast.error('Error processing CV');
+        return false;
+      }
+
+      const publicUrl = publicUrlData.publicUrl;
+
+      // Update profile with new CV URL
+      const { error: profileUpdateError } = await supabase
+        .from('profiles')
+        .update({
+          cv_url: publicUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (profileUpdateError) {
+        console.error('Error updating profile with CV URL:', profileUpdateError);
+        toast.error('Error updating profile');
+        return false;
+      }
+
+      // Create a record in cv_parsed_data
+      const { error: cvDataError } = await supabase
+        .from('cv_parsed_data')
+        .insert({
+          user_id: user.id,
+          cv_url: publicUrl,
+          cv_upload_date: new Date().toISOString()
+        });
+
+      if (cvDataError) {
+        console.error('Error saving CV data:', cvDataError);
+        toast.error('Error saving CV data');
+        return false;
+      }
+
+      // TODO: In a real implementation, parse the CV and extract skills, education, etc.
+      // For now, we'll just set the CV URL
+
+      setCvUrl(publicUrl);
+      loadProfile();
+      loadCvData();
+      loadUserCVs();
+      
+      toast.success('CV uploaded successfully');
+      return true;
+    } catch (error) {
+      console.error('Error in handleCvUpload:', error);
+      toast.error('Error uploading CV');
+      return false;
+    }
+  };
+
+  // Handle updating skills
+  const handleSkillsUpdate = async (updatedSkills: Skill[]): Promise<boolean> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('You must be logged in to update skills');
+        return false;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          skills: updatedSkills,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('Error updating skills:', error);
+        toast.error('Error updating skills');
+        return false;
+      }
+
+      setSkills(updatedSkills);
+      if (profile) {
+        setProfile({
+          ...profile,
+          skills: updatedSkills
         });
       }
       
-      setIsProfileComplete(
-        !!profileData?.first_name &&
-        !!profileData?.last_name &&
-        !!(profileData?.skills && profileData.skills.length > 0)
-      );
-      
-    } catch (error: any) {
-      console.error("Error loading profile data:", error.message);
-      toast.error("Failed to load profile data");
-    } finally {
-      setIsLoading(false);
-      loadingRef.current = false;
+      toast.success('Skills updated successfully');
+      return true;
+    } catch (error) {
+      console.error('Error in handleSkillsUpdate:', error);
+      toast.error('Error updating skills');
+      return false;
     }
   };
+
+  // Handle accept job
+  const handleAcceptJob = async (jobAppId: string): Promise<boolean> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+      
+      // First update the job application to mark as accepted by job seeker
+      const { error: updateError } = await supabase
+        .from('job_applications')
+        .update({
+          accepted_jobseeker: true,
+          updated_at: new Date().toISOString(),
+          status: 'accepted'
+        })
+        .eq('job_app_id', jobAppId)
+        .eq('user_id', user.id);
+        
+      if (updateError) {
+        console.error('Error accepting job:', updateError);
+        toast.error('Error accepting job');
+        return false;
+      }
+      
+      // Check if an accepted_jobs record already exists
+      const { data: existingRecord } = await supabase
+        .from('accepted_jobs')
+        .select('id')
+        .eq('job_app_id', jobAppId)
+        .maybeSingle();
+        
+      if (!existingRecord) {
+        // Create a record in accepted_jobs
+        const { error: acceptedJobError } = await supabase
+          .from('accepted_jobs')
+          .insert({
+            job_app_id: jobAppId,
+            date_accepted: new Date().toISOString()
+          });
+          
+        if (acceptedJobError) {
+          console.error('Error creating accepted job record:', acceptedJobError);
+          toast.error('Error finalizing job acceptance');
+          return false;
+        }
+      }
+      
+      // Refresh applications
+      await loadApplications();
+      await loadEquityProjects();
+      
+      toast.success('Job accepted successfully');
+      return true;
+    } catch (error) {
+      console.error('Error in handleAcceptJob:', error);
+      toast.error('Error accepting job');
+      return false;
+    }
+  };
+
+  // Handle withdraw application
+  const handleWithdrawApplication = async (jobAppId: string, reason?: string): Promise<boolean> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+
+      const { error } = await supabase
+        .from('job_applications')
+        .update({
+          status: 'withdrawn',
+          notes: reason || 'Withdrawn by applicant',
+          updated_at: new Date().toISOString()
+        })
+        .eq('job_app_id', jobAppId)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error withdrawing application:', error);
+        toast.error('Error withdrawing application');
+        return false;
+      }
+
+      await loadApplications();
+      toast.success('Application withdrawn successfully');
+      return true;
+    } catch (error) {
+      console.error('Error in handleWithdrawApplication:', error);
+      toast.error('Error withdrawing application');
+      return false;
+    }
+  };
+
+  // Handle logging effort on a project
+  const handleLogEffort = async (effort: LogEffort): Promise<boolean> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+
+      // Create a time entry record
+      const { error } = await supabase
+        .from('time_entries')
+        .insert({
+          job_app_id: effort.jobAppId,
+          ticket_id: effort.taskId,
+          user_id: user.id,
+          hours_logged: effort.hours,
+          description: effort.description,
+          start_time: effort.date.toISOString(),
+          end_time: new Date(effort.date.getTime() + effort.hours * 3600000).toISOString()
+        });
+
+      if (error) {
+        console.error('Error logging effort:', error);
+        toast.error('Error logging effort');
+        return false;
+      }
+
+      toast.success('Effort logged successfully');
+      await loadEquityProjects();
+      return true;
+    } catch (error) {
+      console.error('Error in handleLogEffort:', error);
+      toast.error('Error logging effort');
+      return false;
+    }
+  };
+
+  // Handle ticket actions
+  const handleTicketAction = async (ticketId: string, action: string, data?: any) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      if (action === 'update_status') {
+        await supabase
+          .from('tickets')
+          .update({ status: data.status })
+          .eq('id', ticketId);
+      } else if (action === 'log_time') {
+        await supabase
+          .from('ticket_time_entries')
+          .insert({
+            ticket_id: ticketId,
+            user_id: user.id,
+            hours_logged: data.hours,
+            description: data.description,
+            start_time: new Date().toISOString(),
+            end_time: new Date(Date.now() + data.hours * 60 * 60 * 1000).toISOString()
+          });
+      } else if (action === 'update_progress') {
+        await supabase
+          .from('tickets')
+          .update({ completion_percentage: data.progress })
+          .eq('id', ticketId);
+      }
+      
+      toast.success('Ticket updated');
+    } catch (error) {
+      console.error('Error in handleTicketAction:', error);
+      toast.error('Error updating ticket');
+    }
+  };
+
+  // Refresh applications
+  const refreshApplications = useCallback(async () => {
+    await loadApplications();
+    await loadEquityProjects();
+  }, [loadApplications, loadEquityProjects]);
+
+  // Refresh CV list
+  const onCvListUpdated = useCallback(async () => {
+    await loadUserCVs();
+    await loadCvData();
+  }, [loadUserCVs, loadCvData]);
+
+  // Effect to load data on initial render and when refreshTrigger changes
+  useEffect(() => {
+    const loadAllData = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.all([
+          loadProfile(),
+          loadCvData(),
+          loadApplications(),
+          loadEquityProjects(),
+          loadOpportunities(),
+          loadUserCVs()
+        ]);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAllData();
+  }, [
+    loadProfile, 
+    loadCvData, 
+    loadApplications, 
+    loadEquityProjects, 
+    loadOpportunities,
+    loadUserCVs,
+    refreshTrigger
+  ]);
 
   return {
     isLoading,
@@ -449,18 +692,17 @@ export const useJobSeekerDashboardCore = (refreshTrigger = 0) => {
     availableOpportunities,
     skills,
     parsedCvData,
-    isProfileComplete,
-    hasBusinessProfile,
     userCVs,
     handleSignOut,
     handleCvUpload,
-    handleProfileUpdate,
+    handleProfileUpdate: async () => false, // Not implemented yet
     handleSkillsUpdate,
     refreshApplications,
     handleAcceptJob,
     handleWithdrawApplication,
     handleLogEffort,
-    handleTicketAction,
-    onCvListUpdated
+    hasBusinessProfile,
+    onCvListUpdated,
+    handleTicketAction
   };
 };

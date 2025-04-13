@@ -1,6 +1,5 @@
-
 import { JobApplication } from '@/types/consolidatedTypes';
-import { Application } from '@/types/business';
+import { Application } from '@/types/consolidatedTypes';
 
 export interface ApplicationStats {
   pending: number;
@@ -101,12 +100,25 @@ export const convertApplicationToJobApplication = (application: Application): Jo
     task_discourse: application.task_discourse || '',
     created_at: application.created_at || '',
     updated_at: application.updated_at || '',
-    applied_at: application.applied_at || application.created_at || new Date().toISOString(),
+    applied_at: application.applied_at || new Date().toISOString(),
     accepted_business: application.accepted_business || false,
     accepted_jobseeker: application.accepted_jobseeker || false,
     applicant_anonymized: application.applicant_anonymized || false,
     cv_url: application.cv_url || '',
-    business_roles: application.business_roles,
+    business_roles: {
+      id: application.business_roles?.id || '',
+      title: application.business_roles?.title || '',
+      description: application.business_roles?.description || '',
+      company_name: application.business_roles?.company_name || application.company_name || '',
+      project_title: application.business_roles?.project_title || application.project_title || '',
+      project_id: application.business_roles?.project_id || application.project_id || '',
+      equity_allocation: application.business_roles?.equity_allocation || 0,
+      timeframe: application.business_roles?.timeframe || '',
+      task_status: application.business_roles?.task_status || '',
+      project_status: application.business_roles?.project_status || '',
+      completion_percentage: application.business_roles?.completion_percentage || 0,
+      skill_requirements: application.business_roles?.skill_requirements || []
+    },
     task_title: application.task_title || '',
     description: application.description || '',
     company_name: application.company_name || '',

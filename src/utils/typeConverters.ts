@@ -38,7 +38,8 @@ export const convertToJobApplication = (rawApp: any): JobApplication => {
     project_title: rawApp.project_title,
     accepted_jobs: rawApp.accepted_jobs,
     hasEquityData: rawApp.hasEquityData || false,
-    notes: rawApp.notes
+    notes: rawApp.notes,
+    id: rawApp.id
   };
 };
 
@@ -67,6 +68,9 @@ export const convertToEquityProject = (rawProject: any): EquityProject => {
     sub_tasks: rawProject.sub_tasks || [],
     created_at: rawProject.created_at,
     skills_required: rawProject.skills_required || [],
-    skill_requirements: rawProject.skill_requirements || []
+    skill_requirements: rawProject.skill_requirements || [],
+    effort_logs: rawProject.effort_logs || [],
+    end_date: rawProject.end_date,
+    equity_allocation: rawProject.equity_allocation
   };
 };
