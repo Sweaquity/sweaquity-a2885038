@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { FileImage, FileText, Loader2, AlertCircle, RefreshCw } from "lucide-react";
@@ -30,7 +29,7 @@ export const TicketAttachmentsList = ({
   const isFetching = useRef(false);
   // Store retry counter in a ref to avoid unnecessary renders
   const retryCountRef = useRef(0);
-  // Create refs for the props to compare for changes
+  // Create stable refs for the props to compare for changes
   const prevReporterIdRef = useRef<string | undefined>(reporterId);
   const prevTicketIdRef = useRef<string>(ticketId);
 
@@ -46,6 +45,58 @@ export const TicketAttachmentsList = ({
       isMounted.current = false;
     };
   }, []);
+
+  // Process files and get secure URLs
+  const processFileUrls = useCallback(async (files: any[]) => {
+    if (!fetchPath || !files.length || !isMounted.current) return;
+    
+    const urlMap: {[key: string]: string} = {};
+    const loadingMap: {[key: string]: boolean} = {};
+    const errorMap: {[key: string]: string} = {};
+    
+    // Initialize loading state for all files at once
+    files.forEach(file => {
+      loadingMap[file.name] = true;
+    });
+    
+    if (isMounted.current) {
+      setLoadingFiles(loadingMap);
+    }
+    
+    // Process files in parallel using Promise.all
+    const filePromises = files.map(async (file) => {
+      try {
+        const result = await getSecureFileUrl(
+          'ticket-attachments', 
+          `${fetchPath}/${file.name}`
+        );
+        
+        if (!isMounted.current) return;
+        
+        if (result.success && result.url) {
+          urlMap[file.name] = result.url;
+        } else {
+          errorMap[file.name] = `Failed to get URL: ${result.error}`;
+        }
+      } catch (err: any) {
+        if (!isMounted.current) return;
+        errorMap[file.name] = err.message || "Failed to get URL";
+      } finally {
+        if (isMounted.current) {
+          loadingMap[file.name] = false;
+        }
+      }
+    });
+    
+    // Wait for all promises to complete
+    await Promise.all(filePromises);
+    
+    if (isMounted.current) {
+      setFileUrls(urlMap);
+      setFileErrors(errorMap);
+      setLoadingFiles(loadingMap);
+    }
+  }, [fetchPath]);
 
   // Memoized fetch function to prevent recreating on each render
   const fetchAttachments = useCallback(async () => {
@@ -88,54 +139,18 @@ export const TicketAttachmentsList = ({
       if (!isMounted.current) return;
 
       console.log("Attachments fetched:", data);
-      setAttachments(data || []);
+      
+      const fileList = data || [];
+      setAttachments(fileList);
       
       // Process file URLs if we have attachments
-      if (data && data.length > 0) {
-        const urlMap: {[key: string]: string} = {};
-        
-        for (const file of data) {
-          try {
-            if (!isMounted.current) return;
-            
-            // Show loading state for this file
-            setLoadingFiles(prev => ({ ...prev, [file.name]: true }));
-            
-            // Get a signed URL for the file
-            const result = await getSecureFileUrl(
-              'ticket-attachments', 
-              `${fetchPath}/${file.name}`
-            );
-            
-            if (!isMounted.current) return;
-            
-            if (result.success && result.url) {
-              urlMap[file.name] = result.url;
-            } else {
-              setFileErrors(prev => ({ 
-                ...prev, 
-                [file.name]: `Failed to get URL: ${result.error}` 
-              }));
-            }
-          } catch (err: any) {
-            if (!isMounted.current) return;
-            console.error(`Error getting URL for ${file.name}:`, err);
-            setFileErrors(prev => ({ ...prev, [file.name]: err.message || "Failed to get URL" }));
-          } finally {
-            if (isMounted.current) {
-              setLoadingFiles(prev => ({ ...prev, [file.name]: false }));
-            }
-          }
-        }
-        
-        if (isMounted.current) {
-          setFileUrls(urlMap);
-        }
+      if (fileList.length > 0) {
+        await processFileUrls(fileList);
       }
       
       // Notify parent component about attachment state
       if (isMounted.current && onAttachmentsLoaded) {
-        onAttachmentsLoaded(data && data.length > 0);
+        onAttachmentsLoaded(fileList.length > 0);
       }
     } catch (err: any) {
       if (isMounted.current) {
@@ -147,12 +162,10 @@ export const TicketAttachmentsList = ({
       if (isMounted.current) {
         setLoading(false);
       }
-      // Reset the fetching flag after a delay to prevent excessive retries
-      setTimeout(() => {
-        isFetching.current = false;
-      }, 500);
+      // Reset the fetching flag immediately to allow retries if needed
+      isFetching.current = false;
     }
-  }, [fetchPath, onAttachmentsLoaded]);
+  }, [fetchPath, onAttachmentsLoaded, processFileUrls]);
 
   // Only fetch when necessary - when path has changed or on retry
   useEffect(() => {
@@ -180,7 +193,7 @@ export const TicketAttachmentsList = ({
     setLoading(true);
     setError(null);
     setFileErrors({});
-    // Re-fetch will be triggered by the effect
+    // Force reset the fetching flag to ensure we can retry
     isFetching.current = false;
   };
 
@@ -199,7 +212,7 @@ export const TicketAttachmentsList = ({
   };
 
   const handleImageError = (filename: string) => {
-    setFileErrors({...fileErrors, [filename]: "Failed to load image preview"});
+    setFileErrors(prev => ({...prev, [filename]: "Failed to load image preview"}));
   };
 
   if (loading) {
