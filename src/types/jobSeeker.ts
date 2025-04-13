@@ -1,38 +1,10 @@
 
-// Update JobApplication type to match required fields
 import { Skill as BaseSkill, UserData } from './types';
 
-export type EquityProject = {
-  projectId: string;
-  title: string;
-  description?: string;
-  equity: number;
-  equityEarned: number;
-  status: string;
-  ticketId?: string;
-  taskId?: string;
-  completionPercentage?: number;
-  // Add compatibility properties to fix existing references
-  id?: string;
-  project_id?: string;
-  equity_amount?: number;
-  time_allocated?: any;
-  start_date?: string;
-  updated_at?: string;
-  total_hours_logged?: number;
-  skill_match?: number;
-  created_by?: any;
-  business_roles?: any;
-  sub_tasks?: any[];
-  created_at?: string;
-  skills_required?: any[];
-  skill_requirements?: any[];
-};
-
+// Update JobApplication type to match required fields
 export interface JobApplication {
   job_app_id: string;
   task_id: string;
-  applicant_id?: string;
   user_id: string;
   project_id?: string;
   status: string;
@@ -40,7 +12,7 @@ export interface JobApplication {
   task_discourse?: string;
   created_at?: string;
   updated_at?: string;
-  applied_at: string; // Make this required to match the expected type
+  applied_at: string;
   accepted_business?: boolean;
   accepted_jobseeker?: boolean;
   applicant_anonymized?: boolean;
@@ -51,7 +23,7 @@ export interface JobApplication {
     description?: string;
     company_name?: string;
     project_title?: string;
-    project_id?: string; // Add this for compatibility
+    project_id?: string;
     equity_allocation?: number;
     timeframe?: string;
     task_status?: string;
@@ -65,7 +37,7 @@ export interface JobApplication {
   project_title?: string;
   accepted_jobs?: any;
   hasEquityData?: boolean;
-  notes?: string; // Add for compatibility
+  notes?: string;
 }
 
 export interface LogEffort {
@@ -103,7 +75,7 @@ export interface ApplicationHistoryItem {
   status: string;
 }
 
-// Define Skill directly in this file to avoid circular dependencies
+// Define Skill interface consistently
 export interface Skill {
   id?: string;
   skill: string;
@@ -151,3 +123,32 @@ export interface SkillRequirement {
   skill: string;
   level?: string;
 }
+
+// Update EquityProject to match both dashboard needs
+export interface EquityProject {
+  projectId: string;
+  title: string;
+  description?: string;
+  equity: number;
+  equityEarned: number;
+  status: string;
+  ticketId?: string;
+  taskId?: string;
+  completionPercentage?: number;
+  // Add compatibility properties
+  id?: string;
+  project_id?: string;
+  equity_amount?: number;
+  time_allocated?: any;
+  start_date?: string;
+  updated_at?: string;
+  total_hours_logged?: number;
+  skill_match?: number;
+  created_by?: any;
+  business_roles?: any;
+  sub_tasks?: any[];
+  created_at?: string;
+  skills_required?: any[];
+  skill_requirements?: any[];
+}
+
