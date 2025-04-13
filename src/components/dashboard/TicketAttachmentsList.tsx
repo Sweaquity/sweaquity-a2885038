@@ -1,7 +1,9 @@
+
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { FileImage, FileText, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { checkStoragePermissions } from "@/utils/setupStorage";
 
 interface TicketAttachmentsListProps {
   reporterId: string | undefined;
@@ -20,6 +22,7 @@ export const TicketAttachmentsList = ({
   const [fileUrls, setFileUrls] = useState<{[key: string]: string}>({});
   const [loadingFiles, setLoadingFiles] = useState<{[key: string]: boolean}>({});
   const [fileErrors, setFileErrors] = useState<{[key: string]: string}>({});
+  const [permissionsDetails, setPermissionsDetails] = useState<any>(null);
 
   useEffect(() => {
     const fetchAttachments = async () => {
@@ -32,11 +35,15 @@ export const TicketAttachmentsList = ({
       try {
         console.log(`Fetching attachments from path: ${reporterId}/${ticketId}`);
         
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (!sessionData.session) {
-          throw new Error("Not authenticated");
-        }
+        // First check storage permissions
+        const permissionCheck = await checkStoragePermissions('ticket-attachments', `${reporterId}/${ticketId}`);
+        setPermissionsDetails(permissionCheck);
         
+        if (!permissionCheck.success) {
+          console.error("Storage access denied:", permissionCheck);
+          throw new Error(`Storage access denied: ${permissionCheck.error}`);
+        }
+
         const { data, error } = await supabase.storage
           .from('ticket-attachments')
           .list(`${reporterId}/${ticketId}`);
@@ -88,18 +95,6 @@ export const TicketAttachmentsList = ({
       if (signedError) {
         console.warn("Couldn't create signed URL, falling back to public URL:", signedError);
         
-        const { data: bucketData, error: bucketError } = await supabase
-          .from('storage.buckets')
-          .select('public')
-          .eq('id', 'ticket-attachments')
-          .maybeSingle();
-        
-        if (bucketError || !bucketData) {
-          console.error("Error checking bucket:", bucketError || "No bucket data");
-        }
-        
-        console.log("Bucket public status:", bucketData?.public);
-        
         const { data: publicData } = supabase.storage
           .from('ticket-attachments')
           .getPublicUrl(`${reporterId}/${ticketId}/${filePath}`);
@@ -148,6 +143,13 @@ export const TicketAttachmentsList = ({
         <div className="text-xs mt-2">
           Check storage bucket permissions and RLS policies
         </div>
+        {permissionsDetails && (
+          <div className="text-xs mt-2 bg-gray-100 p-2 rounded max-w-full overflow-auto">
+            <pre className="whitespace-pre-wrap">
+              {JSON.stringify(permissionsDetails, null, 2)}
+            </pre>
+          </div>
+        )}
       </div>
     );
   }

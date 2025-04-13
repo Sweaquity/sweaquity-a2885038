@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -226,7 +227,7 @@ export const checkStoragePermissions = async (bucketName: string, folderPath: st
         success: false, 
         error: error.message,
         details: {
-          statusCode: error.status,
+          statusText: error.message,
           bucket: bucketName,
           path: folderPath,
           userId: session.user.id

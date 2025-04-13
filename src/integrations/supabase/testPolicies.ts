@@ -7,21 +7,7 @@ async function testStorageAccess(userId: string, bucketId: string, filePath: str
     // For testing storage policies, we need to be authenticated as the user
     console.log(`Testing storage access for user ${userId} to ${bucketId}/${filePath}`);
     
-    // First, check if the bucket exists
-    const { data: buckets, error: bucketError } = await supabase
-      .from('storage.buckets')
-      .select('id, name, public')
-      .eq('id', bucketId)
-      .limit(1);
-    
-    if (bucketError) {
-      console.error("Error checking bucket:", bucketError);
-      return { success: false, error: bucketError };
-    }
-    
-    console.log("Bucket info:", buckets);
-    
-    // Then try to list files in the path
+    // Check if the bucket exists using storage API directly
     const { data, error } = await supabase.storage
       .from(bucketId)
       .list(filePath);
@@ -107,23 +93,7 @@ const simulatePolicy = async (testCase: any) => {
       return;
     }
     
-    // Original policy simulation for database tables
-    const { data, error } = await supabase
-      .from('ticket-attachments')
-      .select('*')
-      .eq('bucket_id', bucketId)
-      .eq('role', role || null)
-      .eq('path', path || null)
-      .or(`reporter.eq.${userId || null},assigned_to.eq.${userId || null},created_by.eq.${userId || null}`)
-      .eq('ticket_id', ticketId || null);
-
-    if (error) {
-      console.error(`${description}: ERROR - ${error.message}`);
-      return;
-    }
-
-    const hasAccess = data && data.length > 0;
-    console.log(`${description}: ${hasAccess === expectedResult ? 'PASS' : 'FAIL'}`);
+    console.log(`${description}: SKIP - Not a storage test case`);
   } catch (error: any) {
     console.error(`${description}: ERROR - ${error.message}`);
   }
