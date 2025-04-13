@@ -12,6 +12,18 @@ export type EquityProject = {
   ticketId?: string;
   taskId?: string;
   completionPercentage?: number;
+  // Add compatibility properties to fix existing references
+  id?: string;
+  project_id?: string;
+  equity_amount?: number;
+  time_allocated?: any;
+  start_date?: string;
+  updated_at?: string;
+  total_hours_logged?: number;
+  skill_match?: number;
+  created_by?: any;
+  business_roles?: any;
+  sub_tasks?: any[];
 };
 
 export interface JobApplication {
@@ -36,11 +48,19 @@ export interface JobApplication {
     description?: string;
     company_name?: string;
     project_title?: string;
+    equity_allocation?: number;
+    timeframe?: string;
+    task_status?: string;
+    project_status?: string;
+    completion_percentage?: number;
+    skill_requirements?: any[];
   };
   task_title?: string;
   description?: string;
   company_name?: string;
   project_title?: string;
+  accepted_jobs?: any;
+  hasEquityData?: boolean;
 }
 
 export interface LogEffort {
@@ -76,4 +96,37 @@ export interface ApplicationHistoryItem {
   company: string;
   date: string;
   status: string;
+}
+
+// Re-export types from jobSeeker.ts to fix import errors
+export { Skill } from './types';
+
+export interface Profile {
+  id: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  skills: Skill[];
+  updated_at?: string;
+  availability?: string;
+  headline?: string;
+  bio?: string;
+  location?: string;
+  avatar_url?: string;
+}
+
+export interface SubTask {
+  id: string;
+  title: string;
+  description?: string;
+  status?: string;
+  assigned_to?: string;
+  due_date?: string;
+  start_date?: string;
+  completion_percentage: number;
+}
+
+export interface SkillRequirement {
+  skill: string;
+  level?: string;
 }
