@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { FileImage, FileText, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,13 +23,23 @@ export const TicketAttachmentsList = ({
   const [loadingFiles, setLoadingFiles] = useState<{[key: string]: boolean}>({});
   const [fileErrors, setFileErrors] = useState<{[key: string]: string}>({});
   const [permissionsDetails, setPermissionsDetails] = useState<any>(null);
-  const [retryCount, setRetryCount] = useState(0);
   
-  // Add a ref to track if the component is mounted
+  // Use a ref to track the component mount state
   const isMounted = useRef(true);
-  // Add a ref to prevent multiple simultaneous fetches
+  // Use ref for tracking fetch status to prevent duplicate fetches
   const isFetching = useRef(false);
+  // Store retry counter in a ref to avoid unnecessary renders
+  const retryCountRef = useRef(0);
+  // Create refs for the props to compare for changes
+  const prevReporterIdRef = useRef<string | undefined>(reporterId);
+  const prevTicketIdRef = useRef<string>(ticketId);
 
+  // Memoize the fetch path to prevent unnecessary effect triggers
+  const fetchPath = useMemo(() => {
+    return reporterId && ticketId ? `${reporterId}/${ticketId}` : null;
+  }, [reporterId, ticketId]);
+
+  // Cleanup on unmount
   useEffect(() => {
     isMounted.current = true;
     return () => {
@@ -37,128 +47,141 @@ export const TicketAttachmentsList = ({
     };
   }, []);
 
-  useEffect(() => {
-    // Exit early if required props are missing
-    if (!reporterId || !ticketId) {
-      setLoading(false);
-      return;
-    }
-
-    // Exit if already fetching
-    if (isFetching.current) {
-      return;
-    }
+  // Memoized fetch function to prevent recreating on each render
+  const fetchAttachments = useCallback(async () => {
+    // Skip if no valid path or already fetching
+    if (!fetchPath || isFetching.current) return;
     
-    const fetchAttachments = async () => {
-      // Set fetching flag to prevent multiple simultaneous calls
-      isFetching.current = true;
+    // Set fetching flag to prevent simultaneous calls
+    isFetching.current = true;
+    
+    try {
+      console.log(`Fetching attachments from path: ${fetchPath}`);
       
-      try {
-        console.log(`Fetching attachments from path: ${reporterId}/${ticketId}`);
-        
-        // Check if we're authenticated
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          throw new Error("Not authenticated");
-        }
+      // Check if we're authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Not authenticated");
+      }
 
-        // First check storage permissions
-        const permissionCheck = await checkStoragePermissions('ticket-attachments', `${reporterId}/${ticketId}`);
-        
-        if (!isMounted.current) return; // Check if component is still mounted
-        
-        setPermissionsDetails(permissionCheck);
-        
-        if (!permissionCheck.success) {
-          console.error("Storage access denied:", permissionCheck);
-          throw new Error(`Storage access denied: ${permissionCheck.error}`);
-        }
+      // Check storage permissions
+      const permissionCheck = await checkStoragePermissions('ticket-attachments', fetchPath);
+      
+      if (!isMounted.current) return; 
+      
+      setPermissionsDetails(permissionCheck);
+      
+      if (!permissionCheck.success) {
+        console.error("Storage access denied:", permissionCheck);
+        throw new Error(`Storage access denied: ${permissionCheck.error}`);
+      }
 
-        const { data, error } = await supabase.storage
-          .from('ticket-attachments')
-          .list(`${reporterId}/${ticketId}`);
+      const { data, error } = await supabase.storage
+        .from('ticket-attachments')
+        .list(fetchPath);
 
-        if (error) {
-          console.error("Storage list error:", error);
-          throw error;
-        }
+      if (error) {
+        console.error("Storage list error:", error);
+        throw error;
+      }
 
-        if (!isMounted.current) return; // Check if component is still mounted
+      if (!isMounted.current) return;
 
-        console.log("Attachments fetched:", data);
-        setAttachments(data || []);
+      console.log("Attachments fetched:", data);
+      setAttachments(data || []);
+      
+      // Process file URLs if we have attachments
+      if (data && data.length > 0) {
+        const urlMap: {[key: string]: string} = {};
         
-        if (data && data.length > 0) {
-          const urlMap: {[key: string]: string} = {};
-          
-          for (const file of data) {
-            try {
-              // Skip if component unmounted during async operation
-              if (!isMounted.current) return;
-              
-              // Show loading state for this file
-              setLoadingFiles(prev => ({ ...prev, [file.name]: true }));
-              
-              // Get a signed URL for the file
-              const result = await getSecureFileUrl(
-                'ticket-attachments', 
-                `${reporterId}/${ticketId}/${file.name}`
-              );
-              
-              if (!isMounted.current) return; // Check again after async operation
-              
-              if (result.success && result.url) {
-                urlMap[file.name] = result.url;
-              } else {
-                setFileErrors(prev => ({ 
-                  ...prev, 
-                  [file.name]: `Failed to get URL: ${result.error}` 
-                }));
-              }
-            } catch (err: any) {
-              if (!isMounted.current) return;
-              console.error(`Error getting URL for ${file.name}:`, err);
-              setFileErrors(prev => ({ ...prev, [file.name]: err.message || "Failed to get URL" }));
-            } finally {
-              if (isMounted.current) {
-                setLoadingFiles(prev => ({ ...prev, [file.name]: false }));
-              }
+        for (const file of data) {
+          try {
+            if (!isMounted.current) return;
+            
+            // Show loading state for this file
+            setLoadingFiles(prev => ({ ...prev, [file.name]: true }));
+            
+            // Get a signed URL for the file
+            const result = await getSecureFileUrl(
+              'ticket-attachments', 
+              `${fetchPath}/${file.name}`
+            );
+            
+            if (!isMounted.current) return;
+            
+            if (result.success && result.url) {
+              urlMap[file.name] = result.url;
+            } else {
+              setFileErrors(prev => ({ 
+                ...prev, 
+                [file.name]: `Failed to get URL: ${result.error}` 
+              }));
+            }
+          } catch (err: any) {
+            if (!isMounted.current) return;
+            console.error(`Error getting URL for ${file.name}:`, err);
+            setFileErrors(prev => ({ ...prev, [file.name]: err.message || "Failed to get URL" }));
+          } finally {
+            if (isMounted.current) {
+              setLoadingFiles(prev => ({ ...prev, [file.name]: false }));
             }
           }
-          
-          if (isMounted.current) {
-            setFileUrls(urlMap);
-          }
         }
         
-        if (isMounted.current && onAttachmentsLoaded) {
-          onAttachmentsLoaded(data && data.length > 0);
-        }
-      } catch (err: any) {
         if (isMounted.current) {
-          console.error("Error fetching attachments:", err);
-          setError(err.message || "Failed to load attachments");
-          if (onAttachmentsLoaded) onAttachmentsLoaded(false);
+          setFileUrls(urlMap);
         }
-      } finally {
-        if (isMounted.current) {
-          setLoading(false);
-        }
-        // Reset the fetching flag
-        isFetching.current = false;
       }
-    };
+      
+      // Notify parent component about attachment state
+      if (isMounted.current && onAttachmentsLoaded) {
+        onAttachmentsLoaded(data && data.length > 0);
+      }
+    } catch (err: any) {
+      if (isMounted.current) {
+        console.error("Error fetching attachments:", err);
+        setError(err.message || "Failed to load attachments");
+        if (onAttachmentsLoaded) onAttachmentsLoaded(false);
+      }
+    } finally {
+      if (isMounted.current) {
+        setLoading(false);
+      }
+      // Reset the fetching flag after a delay to prevent excessive retries
+      setTimeout(() => {
+        isFetching.current = false;
+      }, 500);
+    }
+  }, [fetchPath, onAttachmentsLoaded]);
 
-    setLoading(true);
-    setError(null);
-    fetchAttachments();
-  }, [reporterId, ticketId, onAttachmentsLoaded, retryCount]);
+  // Only fetch when necessary - when path has changed or on retry
+  useEffect(() => {
+    // Check if reporterId or ticketId has actually changed
+    const hasPathChanged = prevReporterIdRef.current !== reporterId || prevTicketIdRef.current !== ticketId;
+    
+    // Only fetch if we have a valid path and either the path changed or we're doing a manual retry
+    if (fetchPath && (hasPathChanged || retryCountRef.current > 0)) {
+      // Update ref values
+      prevReporterIdRef.current = reporterId;
+      prevTicketIdRef.current = ticketId;
+      
+      setLoading(true);
+      setError(null);
+      fetchAttachments();
+      
+      // Reset retry counter after fetch attempt
+      retryCountRef.current = 0;
+    }
+  }, [fetchPath, fetchAttachments]);
 
   const handleRetry = () => {
+    // Increment retry counter to trigger a fetch
+    retryCountRef.current += 1;
     setLoading(true);
     setError(null);
     setFileErrors({});
-    setRetryCount(prev => prev + 1);
+    // Re-fetch will be triggered by the effect
+    isFetching.current = false;
   };
 
   const getFileIcon = (mimeType: string) => {
