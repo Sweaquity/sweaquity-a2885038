@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Image, Trash2 } from "lucide-react";
@@ -37,24 +37,37 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   const [isCheckingAttachments, setIsCheckingAttachments] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const attachmentsChecked = useRef(false);
+
+  // Use useCallback to memoize the function
+  const checkForAttachments = useCallback(async () => {
+    if (!ticket.id || !ticket.reporter || attachmentsChecked.current) return;
+    
+    setIsCheckingAttachments(true);
+    try {
+      const attachmentsExist = await checkTicketAttachments(ticket.reporter, ticket.id);
+      setHasAttachments(attachmentsExist);
+      attachmentsChecked.current = true;
+    } catch (error) {
+      console.error("Error checking attachments:", error);
+    } finally {
+      setIsCheckingAttachments(false);
+    }
+  }, [ticket.id, ticket.reporter]);
 
   useEffect(() => {
+    // Reset the ref when ticket changes
     if (ticket.id) {
+      attachmentsChecked.current = false;
       checkForAttachments();
     }
-  }, [ticket.id]);
+  }, [ticket.id, checkForAttachments]);
 
-  const checkForAttachments = async () => {
-    setIsCheckingAttachments(true);
-    const attachmentsExist = await checkTicketAttachments(ticket.reporter, ticket.id);
-    setHasAttachments(attachmentsExist);
-    setIsCheckingAttachments(false);
-  };
-
-  const handleAttachmentsLoaded = (hasAttachments: boolean) => {
+  const handleAttachmentsLoaded = useCallback((hasAttachments: boolean) => {
     setHasAttachments(hasAttachments);
     setIsCheckingAttachments(false);
-  };
+    attachmentsChecked.current = true;
+  }, []);
 
   const handleDeleteTicket = async () => {
     setIsDeleting(true);
@@ -141,11 +154,13 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
         </TabsContent>
 
         <TabsContent value="attachments" className="mt-0">
-          <TicketAttachmentsList 
-            reporterId={ticket.reporter} 
-            ticketId={ticket.id}
-            onAttachmentsLoaded={handleAttachmentsLoaded}
-          />
+          {activeTab === 'attachments' && ticket.reporter && ticket.id && (
+            <TicketAttachmentsList 
+              reporterId={ticket.reporter} 
+              ticketId={ticket.id}
+              onAttachmentsLoaded={handleAttachmentsLoaded}
+            />
+          )}
         </TabsContent>
         
         <TabsContent value="time-log">

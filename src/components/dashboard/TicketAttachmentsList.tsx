@@ -24,6 +24,7 @@ export const TicketAttachmentsList = React.memo(({
   const [fileErrors, setFileErrors] = useState<{[key: string]: string}>({});
   const [permissionsDetails, setPermissionsDetails] = useState<any>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [loadingTriggered, setLoadingTriggered] = useState(false);
 
   // Memoize the path to prevent unnecessary re-renders
   const storagePath = useMemo(() => {
@@ -32,10 +33,12 @@ export const TicketAttachmentsList = React.memo(({
   }, [reporterId, ticketId]);
 
   const fetchAttachments = useCallback(async () => {
-    if (!storagePath) {
+    if (!storagePath || loadingTriggered) {
       setLoading(false);
       return;
     }
+
+    setLoadingTriggered(true);
 
     try {
       console.log(`Fetching attachments from path: ${storagePath}`);
@@ -109,21 +112,24 @@ export const TicketAttachmentsList = React.memo(({
       if (onAttachmentsLoaded) onAttachmentsLoaded(false);
     } finally {
       setLoading(false);
+      setLoadingTriggered(false);
     }
-  }, [storagePath, onAttachmentsLoaded]);
+  }, [storagePath, onAttachmentsLoaded, loadingTriggered]);
 
-  // Properly memoize the effect dependencies
   useEffect(() => {
-    setLoading(true);
-    setError(null);
-    fetchAttachments();
-  }, [fetchAttachments, retryCount]);
+    if (!loadingTriggered) {
+      setLoading(true);
+      setError(null);
+      fetchAttachments();
+    }
+  }, [fetchAttachments, retryCount, loadingTriggered]);
 
   const handleRetry = () => {
     setLoading(true);
     setError(null);
     setFileErrors({});
     setRetryCount(prev => prev + 1);
+    setLoadingTriggered(false);
   };
 
   const getFileIcon = (mimeType: string) => {

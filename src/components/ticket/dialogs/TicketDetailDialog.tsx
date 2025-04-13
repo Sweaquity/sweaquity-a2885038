@@ -3,6 +3,7 @@ import React from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Ticket } from "@/types/types";
@@ -33,6 +34,9 @@ export const TicketDetailDialog: React.FC<TicketDetailDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl">
         <DialogTitle>Ticket Details</DialogTitle>
+        <DialogDescription className="sr-only">
+          View and manage ticket details, conversations, and attachments
+        </DialogDescription>
         {selectedTicket && (
           <ExpandedTicketDetails
             ticket={selectedTicket}
