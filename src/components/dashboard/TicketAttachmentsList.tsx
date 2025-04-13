@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { FileImage, FileText, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,18 @@ export const TicketAttachmentsList = ({
   const [fileErrors, setFileErrors] = useState<{[key: string]: string}>({});
   const [permissionsDetails, setPermissionsDetails] = useState<any>(null);
   const [retryCount, setRetryCount] = useState(0);
+  
+  // Add a ref to track if the component is mounted
+  const isMounted = useRef(true);
+  // Add a ref to prevent multiple simultaneous fetches
+  const isFetching = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     // Exit early if required props are missing
@@ -32,7 +44,15 @@ export const TicketAttachmentsList = ({
       return;
     }
 
+    // Exit if already fetching
+    if (isFetching.current) {
+      return;
+    }
+    
     const fetchAttachments = async () => {
+      // Set fetching flag to prevent multiple simultaneous calls
+      isFetching.current = true;
+      
       try {
         console.log(`Fetching attachments from path: ${reporterId}/${ticketId}`);
         
@@ -44,6 +64,9 @@ export const TicketAttachmentsList = ({
 
         // First check storage permissions
         const permissionCheck = await checkStoragePermissions('ticket-attachments', `${reporterId}/${ticketId}`);
+        
+        if (!isMounted.current) return; // Check if component is still mounted
+        
         setPermissionsDetails(permissionCheck);
         
         if (!permissionCheck.success) {
@@ -60,6 +83,8 @@ export const TicketAttachmentsList = ({
           throw error;
         }
 
+        if (!isMounted.current) return; // Check if component is still mounted
+
         console.log("Attachments fetched:", data);
         setAttachments(data || []);
         
@@ -68,6 +93,9 @@ export const TicketAttachmentsList = ({
           
           for (const file of data) {
             try {
+              // Skip if component unmounted during async operation
+              if (!isMounted.current) return;
+              
               // Show loading state for this file
               setLoadingFiles(prev => ({ ...prev, [file.name]: true }));
               
@@ -76,6 +104,8 @@ export const TicketAttachmentsList = ({
                 'ticket-attachments', 
                 `${reporterId}/${ticketId}/${file.name}`
               );
+              
+              if (!isMounted.current) return; // Check again after async operation
               
               if (result.success && result.url) {
                 urlMap[file.name] = result.url;
@@ -86,25 +116,36 @@ export const TicketAttachmentsList = ({
                 }));
               }
             } catch (err: any) {
+              if (!isMounted.current) return;
               console.error(`Error getting URL for ${file.name}:`, err);
               setFileErrors(prev => ({ ...prev, [file.name]: err.message || "Failed to get URL" }));
             } finally {
-              setLoadingFiles(prev => ({ ...prev, [file.name]: false }));
+              if (isMounted.current) {
+                setLoadingFiles(prev => ({ ...prev, [file.name]: false }));
+              }
             }
           }
           
-          setFileUrls(urlMap);
+          if (isMounted.current) {
+            setFileUrls(urlMap);
+          }
         }
         
-        if (onAttachmentsLoaded) {
+        if (isMounted.current && onAttachmentsLoaded) {
           onAttachmentsLoaded(data && data.length > 0);
         }
       } catch (err: any) {
-        console.error("Error fetching attachments:", err);
-        setError(err.message || "Failed to load attachments");
-        if (onAttachmentsLoaded) onAttachmentsLoaded(false);
+        if (isMounted.current) {
+          console.error("Error fetching attachments:", err);
+          setError(err.message || "Failed to load attachments");
+          if (onAttachmentsLoaded) onAttachmentsLoaded(false);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted.current) {
+          setLoading(false);
+        }
+        // Reset the fetching flag
+        isFetching.current = false;
       }
     };
 

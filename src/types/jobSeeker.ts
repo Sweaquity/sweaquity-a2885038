@@ -1,6 +1,6 @@
 
 // Update JobApplication type to match required fields
-import { Skill, UserData } from './types';
+import { Skill as BaseSkill, UserData } from './types';
 
 export type EquityProject = {
   projectId: string;
@@ -24,6 +24,9 @@ export type EquityProject = {
   created_by?: any;
   business_roles?: any;
   sub_tasks?: any[];
+  created_at?: string;
+  skills_required?: any[];
+  skill_requirements?: any[];
 };
 
 export interface JobApplication {
@@ -48,6 +51,7 @@ export interface JobApplication {
     description?: string;
     company_name?: string;
     project_title?: string;
+    project_id?: string; // Add this for compatibility
     equity_allocation?: number;
     timeframe?: string;
     task_status?: string;
@@ -61,6 +65,7 @@ export interface JobApplication {
   project_title?: string;
   accepted_jobs?: any;
   hasEquityData?: boolean;
+  notes?: string; // Add for compatibility
 }
 
 export interface LogEffort {
@@ -98,8 +103,14 @@ export interface ApplicationHistoryItem {
   status: string;
 }
 
-// Re-export types from jobSeeker.ts to fix import errors
-export { Skill } from './types';
+// Define Skill directly in this file to avoid circular dependencies
+export interface Skill {
+  id?: string;
+  skill: string;
+  level?: string;
+  years?: number;
+  name?: string;
+}
 
 export interface Profile {
   id: string;
@@ -113,6 +124,13 @@ export interface Profile {
   bio?: string;
   location?: string;
   avatar_url?: string;
+  title?: string;
+  phone?: string;
+  address?: string;
+  social_links?: any;
+  marketing_consent?: boolean;
+  project_updates_consent?: boolean;
+  terms_accepted?: boolean;
 }
 
 export interface SubTask {
@@ -124,6 +142,9 @@ export interface SubTask {
   due_date?: string;
   start_date?: string;
   completion_percentage: number;
+  equity_allocation?: number;
+  timeframe?: string;
+  skill_requirements?: any[];
 }
 
 export interface SkillRequirement {
