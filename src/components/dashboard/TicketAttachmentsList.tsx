@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { FileImage, FileText, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ interface TicketAttachmentsListProps {
   onAttachmentsLoaded?: (hasAttachments: boolean) => void;
 }
 
-export const TicketAttachmentsList = ({ 
+export const TicketAttachmentsList = React.memo(({ 
   reporterId, 
   ticketId,
   onAttachmentsLoaded
@@ -25,93 +25,99 @@ export const TicketAttachmentsList = ({
   const [permissionsDetails, setPermissionsDetails] = useState<any>(null);
   const [retryCount, setRetryCount] = useState(0);
 
-  useEffect(() => {
-    // Exit early if required props are missing
-    if (!reporterId || !ticketId) {
+  // Memoize the path to prevent unnecessary re-renders
+  const storagePath = useMemo(() => {
+    if (!reporterId || !ticketId) return null;
+    return `${reporterId}/${ticketId}`;
+  }, [reporterId, ticketId]);
+
+  const fetchAttachments = useCallback(async () => {
+    if (!storagePath) {
       setLoading(false);
       return;
     }
 
-    const fetchAttachments = async () => {
-      try {
-        console.log(`Fetching attachments from path: ${reporterId}/${ticketId}`);
-        
-        // Check if we're authenticated
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          throw new Error("Not authenticated");
-        }
-
-        // First check storage permissions
-        const permissionCheck = await checkStoragePermissions('ticket-attachments', `${reporterId}/${ticketId}`);
-        setPermissionsDetails(permissionCheck);
-        
-        if (!permissionCheck.success) {
-          console.error("Storage access denied:", permissionCheck);
-          throw new Error(`Storage access denied: ${permissionCheck.error}`);
-        }
-
-        const { data, error } = await supabase.storage
-          .from('ticket-attachments')
-          .list(`${reporterId}/${ticketId}`);
-
-        if (error) {
-          console.error("Storage list error:", error);
-          throw error;
-        }
-
-        console.log("Attachments fetched:", data);
-        setAttachments(data || []);
-        
-        if (data && data.length > 0) {
-          const urlMap: {[key: string]: string} = {};
-          
-          for (const file of data) {
-            try {
-              // Show loading state for this file
-              setLoadingFiles(prev => ({ ...prev, [file.name]: true }));
-              
-              // Get a signed URL for the file
-              const result = await getSecureFileUrl(
-                'ticket-attachments', 
-                `${reporterId}/${ticketId}/${file.name}`
-              );
-              
-              if (result.success && result.url) {
-                urlMap[file.name] = result.url;
-              } else {
-                setFileErrors(prev => ({ 
-                  ...prev, 
-                  [file.name]: `Failed to get URL: ${result.error}` 
-                }));
-              }
-            } catch (err: any) {
-              console.error(`Error getting URL for ${file.name}:`, err);
-              setFileErrors(prev => ({ ...prev, [file.name]: err.message || "Failed to get URL" }));
-            } finally {
-              setLoadingFiles(prev => ({ ...prev, [file.name]: false }));
-            }
-          }
-          
-          setFileUrls(urlMap);
-        }
-        
-        if (onAttachmentsLoaded) {
-          onAttachmentsLoaded(data && data.length > 0);
-        }
-      } catch (err: any) {
-        console.error("Error fetching attachments:", err);
-        setError(err.message || "Failed to load attachments");
-        if (onAttachmentsLoaded) onAttachmentsLoaded(false);
-      } finally {
-        setLoading(false);
+    try {
+      console.log(`Fetching attachments from path: ${storagePath}`);
+      
+      // Check if we're authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Not authenticated");
       }
-    };
 
+      // First check storage permissions
+      const permissionCheck = await checkStoragePermissions('ticket-attachments', storagePath);
+      setPermissionsDetails(permissionCheck);
+      
+      if (!permissionCheck.success) {
+        console.error("Storage access denied:", permissionCheck);
+        throw new Error(`Storage access denied: ${permissionCheck.error}`);
+      }
+
+      const { data, error } = await supabase.storage
+        .from('ticket-attachments')
+        .list(storagePath);
+
+      if (error) {
+        console.error("Storage list error:", error);
+        throw error;
+      }
+
+      console.log("Attachments fetched:", data);
+      setAttachments(data || []);
+      
+      if (data && data.length > 0) {
+        const urlMap: {[key: string]: string} = {};
+        
+        for (const file of data) {
+          try {
+            // Show loading state for this file
+            setLoadingFiles(prev => ({ ...prev, [file.name]: true }));
+            
+            // Get a signed URL for the file
+            const result = await getSecureFileUrl(
+              'ticket-attachments', 
+              `${storagePath}/${file.name}`
+            );
+            
+            if (result.success && result.url) {
+              urlMap[file.name] = result.url;
+            } else {
+              setFileErrors(prev => ({ 
+                ...prev, 
+                [file.name]: `Failed to get URL: ${result.error}` 
+              }));
+            }
+          } catch (err: any) {
+            console.error(`Error getting URL for ${file.name}:`, err);
+            setFileErrors(prev => ({ ...prev, [file.name]: err.message || "Failed to get URL" }));
+          } finally {
+            setLoadingFiles(prev => ({ ...prev, [file.name]: false }));
+          }
+        }
+        
+        setFileUrls(urlMap);
+      }
+      
+      if (onAttachmentsLoaded) {
+        onAttachmentsLoaded(data && data.length > 0);
+      }
+    } catch (err: any) {
+      console.error("Error fetching attachments:", err);
+      setError(err.message || "Failed to load attachments");
+      if (onAttachmentsLoaded) onAttachmentsLoaded(false);
+    } finally {
+      setLoading(false);
+    }
+  }, [storagePath, onAttachmentsLoaded]);
+
+  // Properly memoize the effect dependencies
+  useEffect(() => {
     setLoading(true);
     setError(null);
     fetchAttachments();
-  }, [reporterId, ticketId, onAttachmentsLoaded, retryCount]);
+  }, [fetchAttachments, retryCount]);
 
   const handleRetry = () => {
     setLoading(true);
@@ -268,7 +274,9 @@ export const TicketAttachmentsList = ({
       </div>
     </div>
   );
-};
+});
+
+TicketAttachmentsList.displayName = "TicketAttachmentsList";
 
 export const checkTicketAttachments = async (reporterId?: string, ticketId?: string): Promise<boolean> => {
   if (!reporterId || !ticketId) return false;
