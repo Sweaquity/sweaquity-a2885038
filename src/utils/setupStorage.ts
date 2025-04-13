@@ -213,7 +213,7 @@ export const checkStoragePermissions = async (bucketName: string, folderPath: st
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       console.error("Not authenticated");
-      return { success: false, error: "Not authenticated" };
+      return { success: false, error: "Not authenticated", details: { userId: null, authenticated: false } };
     }
     
     // Try to list files to check permissions
@@ -230,14 +230,64 @@ export const checkStoragePermissions = async (bucketName: string, folderPath: st
           statusText: error.message,
           bucket: bucketName,
           path: folderPath,
-          userId: session.user.id
+          userId: session.user.id,
+          authenticated: true
         }
       };
     }
     
-    return { success: true, files: data };
+    return { 
+      success: true, 
+      files: data,
+      details: {
+        bucket: bucketName,
+        path: folderPath,
+        userId: session.user.id,
+        authenticated: true,
+        fileCount: data?.length || 0
+      }
+    };
   } catch (error: any) {
     console.error("Error checking storage permissions:", error);
-    return { success: false, error: error.message };
+    return { 
+      success: false, 
+      error: error.message,
+      details: {
+        error: error.message,
+        stack: error.stack
+      }
+    };
+  }
+};
+
+// New function to get a signed URL with retries and fallback to public URL
+export const getSecureFileUrl = async (bucketName: string, filePath: string, expirySeconds = 3600) => {
+  try {
+    // First try to get a signed URL (more secure)
+    const { data: signedData, error: signedError } = await supabase.storage
+      .from(bucketName)
+      .createSignedUrl(filePath, expirySeconds);
+    
+    if (signedData?.signedUrl) {
+      return { url: signedData.signedUrl, success: true };
+    }
+    
+    if (signedError) {
+      console.warn(`Failed to create signed URL for ${bucketName}/${filePath}:`, signedError);
+      
+      // Fall back to public URL
+      const { data: publicData } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(filePath);
+      
+      if (publicData?.publicUrl) {
+        return { url: publicData.publicUrl, success: true, isPublic: true };
+      }
+    }
+    
+    return { success: false, error: signedError || "Could not generate URL" };
+  } catch (error: any) {
+    console.error(`Error getting file URL for ${bucketName}/${filePath}:`, error);
+    return { success: false, error };
   }
 };

@@ -7,6 +7,12 @@ async function testStorageAccess(userId: string, bucketId: string, filePath: str
     // For testing storage policies, we need to be authenticated as the user
     console.log(`Testing storage access for user ${userId} to ${bucketId}/${filePath}`);
     
+    // Check if we're authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return { success: false, error: "Not authenticated", status: "Not authenticated" };
+    }
+    
     // Check if the bucket exists using storage API directly
     const { data, error } = await supabase.storage
       .from(bucketId)
@@ -14,13 +20,13 @@ async function testStorageAccess(userId: string, bucketId: string, filePath: str
     
     if (error) {
       console.error("Storage access error:", error);
-      return { success: false, error };
+      return { success: false, error, status: error.message };
     }
     
-    return { success: true, data };
-  } catch (error) {
+    return { success: true, data, status: "Access granted" };
+  } catch (error: any) {
     console.error("Error testing storage access:", error);
-    return { success: false, error };
+    return { success: false, error, status: error.message || "Unknown error" };
   }
 }
 
@@ -89,20 +95,26 @@ const simulatePolicy = async (testCase: any) => {
       const fullPath = path || `${userId}/${ticketId}`;
       const result = await testStorageAccess(userId || 'test-user', bucketId, fullPath);
       
-      console.log(`${description}: ${result.success === expectedResult ? 'PASS' : 'FAIL'}`);
-      return;
+      console.log(`${description}: ${result.success === expectedResult ? 'PASS' : 'FAIL'} - ${result.status}`);
+      return result;
     }
     
     console.log(`${description}: SKIP - Not a storage test case`);
+    return null;
   } catch (error: any) {
     console.error(`${description}: ERROR - ${error.message}`);
+    return { success: false, error, status: error.message };
   }
 };
 
 // Run test cases
-export const runPolicyTests = () => {
+export const runPolicyTests = async () => {
   console.log("Running storage policy tests...");
-  testCases.forEach(testCase => simulatePolicy(testCase));
+  const results = [];
+  for (const testCase of testCases) {
+    results.push(await simulatePolicy(testCase));
+  }
+  return results;
 };
 
 // Export for direct use

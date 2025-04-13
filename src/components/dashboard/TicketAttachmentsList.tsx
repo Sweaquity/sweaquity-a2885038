@@ -1,9 +1,9 @@
 
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { FileImage, FileText, Loader2, AlertCircle } from "lucide-react";
+import { FileImage, FileText, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { checkStoragePermissions } from "@/utils/setupStorage";
+import { checkStoragePermissions, getSecureFileUrl } from "@/utils/setupStorage";
 
 interface TicketAttachmentsListProps {
   reporterId: string | undefined;
@@ -23,6 +23,7 @@ export const TicketAttachmentsList = ({
   const [loadingFiles, setLoadingFiles] = useState<{[key: string]: boolean}>({});
   const [fileErrors, setFileErrors] = useState<{[key: string]: string}>({});
   const [permissionsDetails, setPermissionsDetails] = useState<any>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     const fetchAttachments = async () => {
@@ -35,6 +36,12 @@ export const TicketAttachmentsList = ({
       try {
         console.log(`Fetching attachments from path: ${reporterId}/${ticketId}`);
         
+        // Check if we're authenticated
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error("Not authenticated");
+        }
+
         // First check storage permissions
         const permissionCheck = await checkStoragePermissions('ticket-attachments', `${reporterId}/${ticketId}`);
         setPermissionsDetails(permissionCheck);
@@ -61,10 +68,28 @@ export const TicketAttachmentsList = ({
           
           for (const file of data) {
             try {
-              const url = await getFileUrl(file.name);
-              urlMap[file.name] = url;
-            } catch (err) {
+              // Show loading state for this file
+              setLoadingFiles(prev => ({ ...prev, [file.name]: true }));
+              
+              // Get a signed URL for the file
+              const result = await getSecureFileUrl(
+                'ticket-attachments', 
+                `${reporterId}/${ticketId}/${file.name}`
+              );
+              
+              if (result.success && result.url) {
+                urlMap[file.name] = result.url;
+              } else {
+                setFileErrors(prev => ({ 
+                  ...prev, 
+                  [file.name]: `Failed to get URL: ${result.error}` 
+                }));
+              }
+            } catch (err: any) {
               console.error(`Error getting URL for ${file.name}:`, err);
+              setFileErrors(prev => ({ ...prev, [file.name]: err.message || "Failed to get URL" }));
+            } finally {
+              setLoadingFiles(prev => ({ ...prev, [file.name]: false }));
             }
           }
           
@@ -84,29 +109,13 @@ export const TicketAttachmentsList = ({
     };
 
     fetchAttachments();
-  }, [reporterId, ticketId, onAttachmentsLoaded]);
+  }, [reporterId, ticketId, onAttachmentsLoaded, retryCount]);
 
-  const getFileUrl = async (filePath: string) => {
-    try {
-      const { data: signedData, error: signedError } = await supabase.storage
-        .from('ticket-attachments')
-        .createSignedUrl(`${reporterId}/${ticketId}/${filePath}`, 3600); // 1 hour expiry
-      
-      if (signedError) {
-        console.warn("Couldn't create signed URL, falling back to public URL:", signedError);
-        
-        const { data: publicData } = supabase.storage
-          .from('ticket-attachments')
-          .getPublicUrl(`${reporterId}/${ticketId}/${filePath}`);
-          
-        return publicData.publicUrl;
-      }
-      
-      return signedData.signedUrl;
-    } catch (err: any) {
-      console.error("Error getting file URL:", err, filePath);
-      return '';
-    }
+  const handleRetry = () => {
+    setLoading(true);
+    setError(null);
+    setFileErrors({});
+    setRetryCount(prev => prev + 1);
   };
 
   const getFileIcon = (mimeType: string) => {
@@ -143,6 +152,15 @@ export const TicketAttachmentsList = ({
         <div className="text-xs mt-2">
           Check storage bucket permissions and RLS policies
         </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleRetry}
+          className="mt-2"
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Retry
+        </Button>
         {permissionsDetails && (
           <div className="text-xs mt-2 bg-gray-100 p-2 rounded max-w-full overflow-auto">
             <pre className="whitespace-pre-wrap">
@@ -156,7 +174,12 @@ export const TicketAttachmentsList = ({
 
   if (attachments.length === 0) {
     return (
-      <div className="text-sm text-gray-500 py-2">No attachments found for this ticket.</div>
+      <div className="text-sm text-gray-500 py-2">
+        No attachments found for this ticket.
+        <div className="text-xs mt-1">
+          Path: {reporterId}/{ticketId}
+        </div>
+      </div>
     );
   }
 
@@ -168,6 +191,7 @@ export const TicketAttachmentsList = ({
           const isImage = isImageFile(file);
           const fileUrl = fileUrls[file.name] || '';
           const hasError = fileErrors[file.name];
+          const isLoading = loadingFiles[file.name];
           
           return (
             <div 
@@ -175,7 +199,9 @@ export const TicketAttachmentsList = ({
               className="border rounded-md p-2 flex flex-col gap-1"
             >
               <div className="aspect-square bg-gray-100 rounded flex items-center justify-center overflow-hidden relative">
-                {isImage && fileUrl ? (
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                ) : isImage && fileUrl ? (
                   <>
                     <img 
                       src={fileUrl} 
@@ -208,9 +234,9 @@ export const TicketAttachmentsList = ({
                   size="sm" 
                   className="text-xs h-7 flex-1"
                   onClick={() => window.open(fileUrl, '_blank')}
-                  disabled={!fileUrl}
+                  disabled={!fileUrl || isLoading}
                 >
-                  View
+                  {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "View"}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -224,11 +250,16 @@ export const TicketAttachmentsList = ({
                     a.click();
                     document.body.removeChild(a);
                   }}
-                  disabled={!fileUrl}
+                  disabled={!fileUrl || isLoading}
                 >
                   Download
                 </Button>
               </div>
+              {hasError && !isLoading && (
+                <div className="text-xs text-red-500 mt-1">
+                  {hasError}
+                </div>
+              )}
             </div>
           );
         })}
