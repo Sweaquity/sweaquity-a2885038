@@ -16,7 +16,7 @@ async function testStorageAccess(userId: string, bucketId: string, filePath: str
     // Check if the bucket exists using storage API directly
     const { data, error } = await supabase.storage
       .from(bucketId)
-      .list(filePath);
+      .list(filePath || '');
     
     if (error) {
       console.error("Storage access error:", error);
