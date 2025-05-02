@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,7 +23,7 @@ interface ExpandedTicketDetailsProps {
 }
 
 export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
-  ticket,
+  ticket: initialTicket,
   onClose,
   onTicketAction = async () => {},
   onLogTime,
@@ -37,6 +36,14 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   const [isCheckingAttachments, setIsCheckingAttachments] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Local state for the ticket to enable immediate UI updates
+  const [ticket, setTicket] = useState<Ticket>(initialTicket);
+
+  useEffect(() => {
+    // Update local ticket state when the prop changes
+    setTicket(initialTicket);
+  }, [initialTicket]);
 
   useEffect(() => {
     if (ticket.id) {
@@ -54,6 +61,32 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   const handleAttachmentsLoaded = (hasAttachments: boolean) => {
     setHasAttachments(hasAttachments);
     setIsCheckingAttachments(false);
+  };
+
+  const handleTicketAction = async (ticketId: string, action: string, data: any) => {
+    try {
+      // Update the local state immediately for instant feedback
+      setTicket(prevTicket => ({
+        ...prevTicket,
+        ...data
+      }));
+      
+      // Call the parent handler to persist changes
+      await onTicketAction(ticketId, action, data);
+      
+      // Optional refresh if needed
+      if (action === "update" && onRefresh) {
+        onRefresh();
+      }
+      
+      // Show success toast
+      toast.success(`${action.charAt(0).toUpperCase() + action.slice(1)} successful`);
+    } catch (error) {
+      // Revert local state on error
+      setTicket(initialTicket);
+      console.error(`Error during ${action}:`, error);
+      toast.error(`Failed to ${action}`);
+    }
   };
 
   const handleDeleteTicket = async () => {
@@ -119,7 +152,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
         <TabsContent value="details">
           <TicketDetailsTab 
             ticket={ticket}
-            onTicketAction={onTicketAction}
+            onTicketAction={handleTicketAction}
             onLogTime={onLogTime}
             userCanEditStatus={userCanEditStatus}
             userCanEditDates={userCanEditDates}
@@ -129,14 +162,14 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
         <TabsContent value="conversation">
           <TicketConversationTab 
             ticket={ticket}
-            onTicketAction={onTicketAction}
+            onTicketAction={handleTicketAction}
           />
         </TabsContent>
         
         <TabsContent value="activity-log">
           <TicketActivityTab 
             ticket={ticket}
-            onTicketAction={onTicketAction}
+            onTicketAction={handleTicketAction}
           />
         </TabsContent>
 
