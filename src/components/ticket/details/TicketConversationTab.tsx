@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send } from "lucide-react";
@@ -9,14 +8,25 @@ import { formatDateTime } from "../utils/dateFormatters";
 interface TicketConversationTabProps {
   ticket: Ticket;
   onTicketAction: (ticketId: string, action: string, data: any) => Promise<void>;
+  onDataChanged?: () => void; // Add callback for parent notification
 }
 
 export const TicketConversationTab: React.FC<TicketConversationTabProps> = ({
   ticket,
-  onTicketAction
+  onTicketAction,
+  onDataChanged
 }) => {
   const [conversationMessage, setConversationMessage] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  
+  // Add key based on ticket data to force re-render
+  const ticketDataKey = JSON.stringify({
+    id: ticket.id,
+    repliesCount: ticket.replies?.length || 0,
+    lastReplyTimestamp: ticket.replies?.length 
+      ? ticket.replies[ticket.replies.length - 1]?.timestamp 
+      : null
+  });
 
   const handleAddConversationMessage = async () => {
     if (!conversationMessage.trim()) return;
@@ -25,13 +35,17 @@ export const TicketConversationTab: React.FC<TicketConversationTabProps> = ({
     try {
       await onTicketAction(ticket.id, "addReply", conversationMessage);
       setConversationMessage("");
+      // Notify parent component about the data change
+      if (onDataChanged) {
+        onDataChanged();
+      }
     } finally {
       setIsSubmittingComment(false);
     }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" key={ticketDataKey}>
       <div className="bg-gray-50 p-4 rounded-md border mb-4">
         <p className="text-sm text-gray-500">
           Use this tab to communicate with others about this ticket.
