@@ -31,29 +31,28 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   userCanEditDates = true,
   onRefresh
 }) => {
+  // Keep local copy of ticket that we can update immediately
+  const [localTicket, setLocalTicket] = useState<Ticket>(initialTicket);
   const [activeTab, setActiveTab] = useState("details");
   const [hasAttachments, setHasAttachments] = useState(false);
   const [isCheckingAttachments, setIsCheckingAttachments] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  
-  // Local state for the ticket to enable immediate UI updates
-  const [ticket, setTicket] = useState<Ticket>(initialTicket);
 
+  // Update local ticket when props change
   useEffect(() => {
-    // Update local ticket state when the prop changes
-    setTicket(initialTicket);
+    setLocalTicket(initialTicket);
   }, [initialTicket]);
 
   useEffect(() => {
-    if (ticket.id) {
+    if (localTicket.id) {
       checkForAttachments();
     }
-  }, [ticket.id]);
+  }, [localTicket.id]);
 
   const checkForAttachments = async () => {
     setIsCheckingAttachments(true);
-    const attachmentsExist = await checkTicketAttachments(ticket.reporter, ticket.id);
+    const attachmentsExist = await checkTicketAttachments(localTicket.reporter, localTicket.id);
     setHasAttachments(attachmentsExist);
     setIsCheckingAttachments(false);
   };
@@ -65,27 +64,41 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
 
   const handleTicketAction = async (ticketId: string, action: string, data: any) => {
     try {
-      // Update the local state immediately for instant feedback
-      setTicket(prevTicket => ({
-        ...prevTicket,
-        ...data
-      }));
-      
-      // Call the parent handler to persist changes
+      // Update local state immediately for better UX
+      setLocalTicket(prev => {
+        // Handle different action types
+        switch (action) {
+          case "updateStatus":
+            return { ...prev, status: data };
+          case "updatePriority":
+            return { ...prev, priority: data };
+          case "updateDueDate":
+            return { ...prev, due_date: data };
+          case "updateEstimatedHours":
+            return { ...prev, estimated_hours: data };
+          case "updateCompletionPercentage":
+            return { ...prev, completion_percentage: data };
+          case "updateDescription":
+            return { ...prev, description: data };
+          default:
+            return prev;
+        }
+      });
+
+      // Call the parent handler (API update)
       await onTicketAction(ticketId, action, data);
       
-      // Optional refresh if needed
-      if (action === "update" && onRefresh) {
+      // Refresh data if onRefresh is provided
+      if (onRefresh) {
         onRefresh();
       }
       
-      // Show success toast
-      toast.success(`${action.charAt(0).toUpperCase() + action.slice(1)} successful`);
+      return true;
     } catch (error) {
-      // Revert local state on error
-      setTicket(initialTicket);
-      console.error(`Error during ${action}:`, error);
-      toast.error(`Failed to ${action}`);
+      console.error(`Error in ${action}:`, error);
+      // Don't revert the local state - parent should handle this
+      // If we revert here, we might create a bad UX with flickering values
+      return false;
     }
   };
 
@@ -95,7 +108,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
       const { error } = await supabase
         .from('tickets')
         .delete()
-        .eq('id', ticket.id);
+        .eq('id', localTicket.id);
       
       if (error) throw error;
       
@@ -114,7 +127,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   return (
     <div className="max-h-[80vh] overflow-y-auto">
       <div className="flex justify-between items-start mb-4">
-        <h2 className="text-xl font-bold">{ticket.title}</h2>
+        <h2 className="text-xl font-bold">{localTicket.title}</h2>
         <div className="flex gap-2">
           <Button 
             variant="destructive" 
@@ -151,7 +164,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
 
         <TabsContent value="details">
           <TicketDetailsTab 
-            ticket={ticket}
+            ticket={localTicket}
             onTicketAction={handleTicketAction}
             onLogTime={onLogTime}
             userCanEditStatus={userCanEditStatus}
@@ -161,29 +174,29 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
         
         <TabsContent value="conversation">
           <TicketConversationTab 
-            ticket={ticket}
+            ticket={localTicket}
             onTicketAction={handleTicketAction}
           />
         </TabsContent>
         
         <TabsContent value="activity-log">
           <TicketActivityTab 
-            ticket={ticket}
+            ticket={localTicket}
             onTicketAction={handleTicketAction}
           />
         </TabsContent>
 
         <TabsContent value="attachments" className="mt-0">
           <TicketAttachmentsList 
-            reporterId={ticket.reporter} 
-            ticketId={ticket.id}
+            reporterId={localTicket.reporter} 
+            ticketId={localTicket.id}
             onAttachmentsLoaded={handleAttachmentsLoaded}
           />
         </TabsContent>
         
         <TabsContent value="time-log">
           <TicketTimeLogTab 
-            ticketId={ticket.id}
+            ticketId={localTicket.id}
             onLogTime={onLogTime}
           />
         </TabsContent>
@@ -194,7 +207,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleDeleteTicket}
         isDeleting={isDeleting}
-        ticketTitle={ticket.title}
+        ticketTitle={localTicket.title}
       />
     </div>
   );
