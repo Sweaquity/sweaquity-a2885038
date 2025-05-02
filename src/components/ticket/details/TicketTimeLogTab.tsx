@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Clock, AlertCircle } from "lucide-react";
@@ -22,15 +21,20 @@ interface TimeEntry {
 interface TicketTimeLogTabProps {
   ticketId: string;
   onLogTime?: (ticketId: string) => void;
+  onDataChanged?: () => void; // Add callback for parent notification
 }
 
 export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
   ticketId,
-  onLogTime
+  onLogTime,
+  onDataChanged
 }) => {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [isLoadingTimeEntries, setIsLoadingTimeEntries] = useState(false);
   const [timeEntriesError, setTimeEntriesError] = useState<string | null>(null);
+  
+  // Create a key to force re-render based on the ticketId
+  const ticketKey = `ticket-${ticketId}`;
 
   useEffect(() => {
     if (ticketId) {
@@ -75,8 +79,19 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
     }
   };
 
+  // Handle log time action
+  const handleLogTimeClick = () => {
+    if (onLogTime) {
+      onLogTime(ticketId);
+      // Notify parent after time is logged
+      if (onDataChanged) {
+        setTimeout(() => onDataChanged(), 500); // Small delay to allow for data update
+      }
+    }
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" key={ticketKey}>
       <div className="bg-gray-50 p-4 rounded-md border mb-4">
         <p className="text-sm text-gray-500 mb-2">
           Time Log shows all time entries recorded for this ticket.
@@ -143,7 +158,7 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
           
           {onLogTime && (
             <div className="mt-4">
-              <Button onClick={() => onLogTime(ticketId)}>
+              <Button onClick={handleLogTimeClick}>
                 <Clock className="h-4 w-4 mr-2" /> Log Time
               </Button>
             </div>
