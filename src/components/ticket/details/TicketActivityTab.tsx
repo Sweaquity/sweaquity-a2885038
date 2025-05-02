@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,14 +8,25 @@ import { formatDateTime } from "../utils/dateFormatters";
 interface TicketActivityTabProps {
   ticket: Ticket;
   onTicketAction: (ticketId: string, action: string, data: any) => Promise<void>;
+  onDataChanged?: () => void; // Add callback for parent notification
 }
 
 export const TicketActivityTab: React.FC<TicketActivityTabProps> = ({
   ticket,
-  onTicketAction
+  onTicketAction,
+  onDataChanged
 }) => {
   const [activityComment, setActivityComment] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  
+  // Add key based on ticket data to force re-render
+  const ticketDataKey = JSON.stringify({
+    id: ticket.id,
+    notesCount: ticket.notes?.length || 0,
+    lastNoteTimestamp: ticket.notes?.length 
+      ? ticket.notes[ticket.notes.length - 1]?.timestamp 
+      : null
+  });
 
   const handleAddActivityComment = async () => {
     if (!activityComment.trim()) return;
@@ -25,13 +35,17 @@ export const TicketActivityTab: React.FC<TicketActivityTabProps> = ({
     try {
       await onTicketAction(ticket.id, "addComment", activityComment);
       setActivityComment("");
+      // Notify parent component about the data change
+      if (onDataChanged) {
+        onDataChanged();
+      }
     } finally {
       setIsSubmittingComment(false);
     }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" key={ticketDataKey}>
       <div className="bg-gray-50 p-4 rounded-md border mb-4">
         <p className="text-sm text-gray-500">
           The activity log shows all actions taken on this ticket.
