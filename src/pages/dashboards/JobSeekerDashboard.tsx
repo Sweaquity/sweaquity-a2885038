@@ -9,11 +9,13 @@ import { toast } from "sonner";
 import { DashboardHeaderWithActions } from "@/components/job-seeker/dashboard/DashboardHeaderWithActions";
 import { DashboardHeader } from "@/components/job-seeker/dashboard/DashboardHeader";
 import { DashboardTabs } from "@/components/job-seeker/dashboard/DashboardTabs";
+import { DashboardTab } from "@/components/job-seeker/dashboard/tabs/DashboardTab";
 import { ProfileTab } from "@/components/job-seeker/dashboard/tabs/ProfileTab";
 import { ApplicationsTab } from "@/components/job-seeker/dashboard/tabs/ApplicationsTab";
 import { OpportunitiesTab } from "@/components/job-seeker/dashboard/OpportunitiesTab";
 import { DashboardSkeleton } from "@/components/job-seeker/dashboard/DashboardSkeleton";
 import { JobSeekerProjectsTab } from "@/components/job-seeker/dashboard/tabs/JobSeekerProjectsTab";
+import { supabase } from "@/lib/supabase";
 
 const JobSeekerDashboard = () => {
   const location = useLocation();
@@ -25,6 +27,7 @@ const JobSeekerDashboard = () => {
   const [activeTab, setActiveTab] = useState<string>(tabFromUrl || "profile");
   const [localLoading, setLocalLoading] = useState(true);
   const [forceRefresh, setForceRefresh] = useState(0);
+  const [userId, setUserId] = useState<string | undefined>(undefined);
   const [pendingApplications, setPendingApplications] = useState(0);
   const [newOpportunities, setNewOpportunities] = useState(0);
 
@@ -43,9 +46,20 @@ const JobSeekerDashboard = () => {
     hasBusinessProfile,
     userCVs,
     onCvListUpdated,
-    handleTicketAction,
-    userId
+    handleTicketAction
   } = useJobSeekerDashboard(forceRefresh);
+
+  useEffect(() => {
+    // Get the current user's ID for the JobSeekerProjectsTab
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+      }
+    };
+    
+    getCurrentUser();
+  }, []);
 
   // Calculate notifications for tabs
   useEffect(() => {
@@ -99,7 +113,6 @@ const JobSeekerDashboard = () => {
   }, [isLoading]);
 
   useEffect(() => {
-    // Set a maximum timeout for loading state to prevent infinite loading
     const timer = setTimeout(() => {
       setLocalLoading(false);
     }, 3000);
@@ -169,7 +182,7 @@ const JobSeekerDashboard = () => {
           </TabsContent>
 
           <TabsContent value="live-projects">
-            <JobSeekerProjectsTab userId={userId || undefined} />
+            <JobSeekerProjectsTab userId={userId} />
           </TabsContent>
         </Tabs>
       </div>

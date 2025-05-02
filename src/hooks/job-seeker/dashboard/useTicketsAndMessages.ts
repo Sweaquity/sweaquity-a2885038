@@ -9,11 +9,6 @@ export const useTicketsAndMessages = () => {
   const [ticketMessages, setTicketMessages] = useState<TicketMessage[]>([]);
 
   const loadUserTickets = useCallback(async (userId: string) => {
-    if (!userId) {
-      console.error("User ID is required to load tickets");
-      return;
-    }
-    
     try {
       const { data: reportedTickets, error: reportedError } = await supabase
         .from('tickets')
@@ -36,15 +31,11 @@ export const useTicketsAndMessages = () => {
       }
 
       const allTickets = [...(reportedTickets || []), ...(assignedTickets || [])];
-      // Use Map to eliminate duplicates (same ticket both reported and assigned)
       const uniqueTickets = Array.from(new Map(allTickets.map(ticket => [ticket.id, ticket])).values());
       
       setUserTickets(uniqueTickets);
 
-      // Only load messages if we have tickets
-      if (uniqueTickets.length > 0) {
-        await loadTicketMessages(userId, uniqueTickets.map(t => t.id));
-      }
+      await loadTicketMessages(userId, uniqueTickets.map(t => t.id));
       
     } catch (error) {
       console.error("Error loading user tickets:", error);
@@ -52,7 +43,7 @@ export const useTicketsAndMessages = () => {
   }, []);
 
   const loadTicketMessages = useCallback(async (userId: string, ticketIds: string[]) => {
-    if (!userId || !ticketIds.length) return;
+    if (!ticketIds.length) return;
     
     try {
       const { data: messages, error: messagesError } = await supabase
@@ -185,10 +176,10 @@ export const useTicketsAndMessages = () => {
         
         toast.success("Message sent successfully");
         
-        // Reload ticket messages after a reply
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && session.user) {
-          await loadTicketMessages(session.user.id, [ticketId]);
+        // Reload ticket messages
+        const session = await supabase.auth.getSession();
+        if (session.data.session) {
+          await loadTicketMessages(session.data.session.user.id, [ticketId]);
         }
       }
     } catch (error) {

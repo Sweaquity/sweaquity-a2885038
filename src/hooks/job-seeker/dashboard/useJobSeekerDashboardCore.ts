@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -21,7 +20,6 @@ export const useJobSeekerDashboardCore = (refreshTrigger = 0) => {
   const [hasBusinessProfile, setHasBusinessProfile] = useState(false);
   const loadingRef = useRef(false);
   const logsDisabledRef = useRef(true);
-  const [userId, setUserId] = useState<string | null>(null);
 
   const { profile, skills, loadProfile, handleSkillsUpdate } = useProfile();
   const { applications, loadApplications } = useApplications();
@@ -45,8 +43,6 @@ export const useJobSeekerDashboardCore = (refreshTrigger = 0) => {
         return;
       }
 
-      setUserId(session.user.id);
-
       const isComplete = await checkProfileCompletion(session.user.id);
       setIsProfileComplete(isComplete);
       
@@ -59,7 +55,6 @@ export const useJobSeekerDashboardCore = (refreshTrigger = 0) => {
       const hasProfile = await checkBusinessProfile(session.user.id);
       setHasBusinessProfile(hasProfile);
 
-      // Load all data in parallel to improve performance
       await Promise.all([
         loadProfile(session.user.id),
         loadApplications(session.user.id),
@@ -69,10 +64,8 @@ export const useJobSeekerDashboardCore = (refreshTrigger = 0) => {
 
       // Convert skills to the format expected by loadOpportunities if needed
       const skillsForOpportunities = skills ? skills.map(s => {
-        if (typeof s === 'object') {
-          if ('skill' in s) return { ...s }; 
-          if ('name' in s) return { skill: s.name, level: s.level };
-        }
+        if ('skill' in s) return { ...s }; 
+        if ('name' in s) return { skill: s.name, level: s.level };
         return s;
       }) : [];
       
@@ -87,7 +80,6 @@ export const useJobSeekerDashboardCore = (refreshTrigger = 0) => {
       setIsSessionChecked(true);
 
     } catch (error) {
-      console.error("Failed to load dashboard data:", error);
       toast.error("Failed to load dashboard data");
     } finally {
       setIsLoading(false);
@@ -184,7 +176,6 @@ export const useJobSeekerDashboardCore = (refreshTrigger = 0) => {
     onCvListUpdated,
     userTickets,
     ticketMessages,
-    handleTicketAction,
-    userId
+    handleTicketAction
   };
 };
