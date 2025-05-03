@@ -407,6 +407,74 @@ export type Database = {
         }
         Relationships: []
       }
+      deleted_tickets: {
+        Row: {
+          assignee_id: string | null
+          completion_percentage: number | null
+          created_at: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          due_date: string | null
+          estimated_hours: number | null
+          id: string
+          original_id: string
+          priority: string
+          project_id: string | null
+          reporter_id: string | null
+          status: string
+          title: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          assignee_id?: string | null
+          completion_percentage?: number | null
+          created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          estimated_hours?: number | null
+          id?: string
+          original_id: string
+          priority: string
+          project_id?: string | null
+          reporter_id?: string | null
+          status: string
+          title: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          assignee_id?: string | null
+          completion_percentage?: number | null
+          created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          estimated_hours?: number | null
+          id?: string
+          original_id?: string
+          priority?: string
+          project_id?: string | null
+          reporter_id?: string | null
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deleted_tickets_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           description: string | null
@@ -451,6 +519,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "business_projects"
             referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "documents_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "active_tickets"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "documents_ticket_id_fkey"
@@ -1028,6 +1103,13 @@ export type Database = {
             foreignKeyName: "ticket_comments_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
+            referencedRelation: "active_tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_comments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
             referencedRelation: "jobseeker_active_projects"
             referencedColumns: ["ticket_id"]
           },
@@ -1089,6 +1171,13 @@ export type Database = {
             foreignKeyName: "ticket_documents_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
+            referencedRelation: "active_tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_documents_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
             referencedRelation: "jobseeker_active_projects"
             referencedColumns: ["ticket_id"]
           },
@@ -1133,6 +1222,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ticket_time_entries_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "active_tickets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ticket_time_entries_ticket_id_fkey"
             columns: ["ticket_id"]
@@ -1298,6 +1394,13 @@ export type Database = {
             foreignKeyName: "time_entries_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
+            referencedRelation: "active_tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
             referencedRelation: "jobseeker_active_projects"
             referencedColumns: ["ticket_id"]
           },
@@ -1346,6 +1449,13 @@ export type Database = {
             foreignKeyName: "user_messages_related_ticket_fkey"
             columns: ["related_ticket"]
             isOneToOne: false
+            referencedRelation: "active_tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_messages_related_ticket_fkey"
+            columns: ["related_ticket"]
+            isOneToOne: false
             referencedRelation: "jobseeker_active_projects"
             referencedColumns: ["ticket_id"]
           },
@@ -1360,6 +1470,109 @@ export type Database = {
       }
     }
     Views: {
+      active_tickets: {
+        Row: {
+          assigned_to: string | null
+          attachment_url: string | null
+          completion_percentage: number | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          equity_points: number | null
+          estimated_hours: number | null
+          health: string | null
+          id: string | null
+          job_app_id: string | null
+          notes: Json | null
+          priority: string | null
+          project_id: string | null
+          replies: Json | null
+          reporter: string | null
+          reproduction_steps: string | null
+          status: string | null
+          system_info: string | null
+          task_id: string | null
+          ticket_type: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          attachment_url?: string | null
+          completion_percentage?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          equity_points?: number | null
+          estimated_hours?: number | null
+          health?: string | null
+          id?: string | null
+          job_app_id?: string | null
+          notes?: Json | null
+          priority?: string | null
+          project_id?: string | null
+          replies?: Json | null
+          reporter?: string | null
+          reproduction_steps?: string | null
+          status?: string | null
+          system_info?: string | null
+          task_id?: string | null
+          ticket_type?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          attachment_url?: string | null
+          completion_percentage?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          equity_points?: number | null
+          estimated_hours?: number | null
+          health?: string | null
+          id?: string | null
+          job_app_id?: string | null
+          notes?: Json | null
+          priority?: string | null
+          project_id?: string | null
+          replies?: Json | null
+          reporter?: string | null
+          reproduction_steps?: string | null
+          status?: string | null
+          system_info?: string | null
+          task_id?: string | null
+          ticket_type?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_job_app_id_fkey"
+            columns: ["job_app_id"]
+            isOneToOne: false
+            referencedRelation: "accepted_jobs"
+            referencedColumns: ["job_app_id"]
+          },
+          {
+            foreignKeyName: "tickets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "tickets_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "project_sub_tasks"
+            referencedColumns: ["task_id"]
+          },
+        ]
+      }
       jobseeker_active_projects: {
         Row: {
           application_status: string | null

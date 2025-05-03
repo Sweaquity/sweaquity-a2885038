@@ -179,15 +179,12 @@ export const TicketTableRow: React.FC<TicketTableRowProps> = ({
               Log Time
             </Button>
           )}
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-red-500 hover:bg-red-50"
-                onClick={() => onDeleteTicket(ticket)}
-              >
-                Delete
-              </Button>
-            )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-red-500 hover:bg-red-50"
+            onClick={() => showDeleteConfirmation(ticket)}
+          >
             <Trash className="h-4 w-4" />
           </Button>
           {renderTicketActions && renderTicketActions(ticket)}

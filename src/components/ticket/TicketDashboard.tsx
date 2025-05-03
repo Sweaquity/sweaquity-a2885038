@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Ticket } from '@/types/types';
 import { Pagination } from "@/components/ui/pagination";
@@ -7,7 +8,7 @@ import { EmptyTicketState } from './empty/EmptyTicketState';
 import { TicketTable } from './table/TicketTable';
 import { TicketDetailDialog } from './dialogs/TicketDetailDialog';
 import { DeleteTicketDialog } from './dialogs/DeleteTicketDialog';
-import { Toast } from '@/components/ui/toast'; // Import your toast component
+import { toast } from "sonner"; // Replace custom Toast with sonner
 
 interface TicketDashboardProps {
   initialTickets: Ticket[];
@@ -38,8 +39,6 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   userCanEditStatus = false,
   loading = false
 }) => {
-  const [toastMessage, setToastMessage] = useState<{message: string, type: 'success' | 'error'} | null>(null);
-  
   const {
     tickets,
     setTickets,
@@ -73,10 +72,10 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
           ticket.id === ticketId ? { ...ticket, status } : ticket
         )
       );
-      setToastMessage({ message: "Status updated successfully", type: "success" });
+      toast.success("Status updated successfully");
     } catch (error) {
       console.error("Error updating status:", error);
-      setToastMessage({ message: "Failed to update status", type: "error" });
+      toast.error("Failed to update status");
     }
   };
 
@@ -88,10 +87,10 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
           ticket.id === ticketId ? { ...ticket, priority } : ticket
         )
       );
-      setToastMessage({ message: "Priority updated successfully", type: "success" });
+      toast.success("Priority updated successfully");
     } catch (error) {
       console.error("Error updating priority:", error);
-      setToastMessage({ message: "Failed to update priority", type: "error" });
+      toast.error("Failed to update priority");
     }
   };
 
@@ -104,14 +103,14 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
       
       // Only update local state after confirming successful DB operation
       setTickets(tickets.filter(ticket => ticket.id !== ticketToDelete.id));
-      setToastMessage({ message: "Ticket deleted successfully", type: "success" });
+      toast.success("Ticket deleted successfully");
       cancelDelete();
       
       // Optionally refresh to ensure UI is in sync with DB
       // onRefresh();
     } catch (error) {
       console.error("Error deleting ticket:", error);
-      setToastMessage({ message: "Failed to delete ticket", type: "error" });
+      toast.error("Failed to delete ticket");
     }
   };
 
@@ -124,7 +123,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
       if (action === 'deleteTicket') {
         setTickets(tickets.filter(ticket => ticket.id !== ticketId));
         closeTicketDetails();
-        setToastMessage({ message: "Ticket deleted successfully", type: "success" });
+        toast.success("Ticket deleted successfully");
         return;
       }
       
@@ -154,24 +153,16 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         }
         
         setTickets(updatedTickets);
-        setToastMessage({ message: `Ticket ${action.replace('update', '').toLowerCase()} updated successfully`, type: "success" });
+        toast.success(`${action.replace('update', '').charAt(0).toUpperCase() + action.replace('update', '').slice(1).toLowerCase()} updated successfully`);
       }
     } catch (error) {
       console.error(`Error with ticket action ${action}:`, error);
-      setToastMessage({ message: `Failed to ${action.replace('update', '').toLowerCase()} ticket`, type: "error" });
+      toast.error(`Failed to ${action.replace('update', '').toLowerCase()} ticket`);
     }
   };
 
   return (
     <div className="space-y-4">
-      {toastMessage && (
-        <Toast 
-          message={toastMessage.message} 
-          type={toastMessage.type} 
-          onClose={() => setToastMessage(null)} 
-        />
-      )}
-      
       <TicketFilters
         searchTerm={searchTerm}
         statusFilter={statusFilter}

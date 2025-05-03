@@ -1,3 +1,4 @@
+
 import React from "react";
 import { DragDropContext, DropResult } from "react-beautiful-dnd";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
@@ -31,7 +32,6 @@ export const ProjectTabContent: React.FC<ProjectTabContentProps> = ({
   onDeleteTicket,
   handleDragEnd
 }) => {
-  // Remove custom delete button and let TicketTableRow handle deletion
   return (
     <>
       {showKanban ? (
@@ -45,6 +45,7 @@ export const ProjectTabContent: React.FC<ProjectTabContentProps> = ({
               onTicketClick={(ticket) => {
                 console.log("Ticket clicked:", ticket.id);
               }}
+              onTicketDelete={onDeleteTicket}
             />
           </DragDropContext>
         </div>
