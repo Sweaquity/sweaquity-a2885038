@@ -1,8 +1,8 @@
-
 import React from "react";
 import { DragDropContext, DropResult } from "react-beautiful-dnd";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
+import { GanttChartView } from "@/components/business/testing/GanttChartView";
 import { Ticket } from "@/types/types";
 
 interface ProjectTabContentProps {
@@ -32,6 +32,21 @@ export const ProjectTabContent: React.FC<ProjectTabContentProps> = ({
   onDeleteTicket,
   handleDragEnd
 }) => {
+  // Enhanced ticket action handler to properly handle deletion
+  const handleTicketAction = async (ticketId: string, action: string, data: any) => {
+    try {
+      // For delete actions, pass the userId as data
+      if (action === "deleteTicket") {
+        return await onTicketAction(ticketId, action, userId);
+      }
+      // For all other actions, pass the data as is
+      return await onTicketAction(ticketId, action, data);
+    } catch (error) {
+      console.error(`Error in handleTicketAction (${action}):`, error);
+      throw error; // Re-throw to allow proper error handling in components
+    }
+  };
+
   return (
     <>
       {showKanban ? (
@@ -51,15 +66,16 @@ export const ProjectTabContent: React.FC<ProjectTabContentProps> = ({
         </div>
       ) : showGantt ? (
         <div className="mb-6">
-          <div className="text-center py-8">
-            <p>Gantt view is being implemented. Please check back later.</p>
-          </div>
+          <GanttChartView 
+            tickets={activeTickets}
+            onTicketAction={handleTicketAction}
+          />
         </div>
       ) : (
         <TicketDashboard 
           initialTickets={activeTickets}
           onRefresh={onRefresh}
-          onTicketAction={onTicketAction}
+          onTicketAction={handleTicketAction}
           showTimeTracking={true}
           userId={userId}
           onLogTime={onLogTime}
