@@ -21,7 +21,7 @@ interface TimeEntry {
 interface TicketTimeLogTabProps {
   ticketId: string;
   onLogTime?: (ticketId: string) => void;
-  onDataChanged?: () => void; // Add callback for parent notification
+  onDataChanged?: () => void; // Callback for parent notification
 }
 
 export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
@@ -30,6 +30,7 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
   onDataChanged
 }) => {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [totalHoursLogged, setTotalHoursLogged] = useState<number>(0);
   const [isLoadingTimeEntries, setIsLoadingTimeEntries] = useState(false);
   const [timeEntriesError, setTimeEntriesError] = useState<string | null>(null);
   
@@ -71,6 +72,18 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
       }));
       
       setTimeEntries(entriesWithUserDetails);
+      
+      // Calculate and set total hours logged
+      const total = entriesWithUserDetails.reduce((sum, entry) => sum + (entry.hours_logged || 0), 0);
+      setTotalHoursLogged(total);
+      
+      // Update the ticket's hours_logged in the database
+      await updateTicketHoursLogged(ticketId, total);
+      
+      // Notify parent component that data has changed
+      if (onDataChanged) {
+        onDataChanged();
+      }
     } catch (error) {
       console.error('Error fetching time entries:', error);
       setTimeEntriesError('Failed to load time entries. Please try again.');
@@ -79,14 +92,26 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
     }
   };
 
+  // Update the ticket's hours_logged field in the database
+  const updateTicketHoursLogged = async (ticketId: string, hoursLogged: number) => {
+    try {
+      const { error } = await supabase
+        .from('tickets')
+        .update({ hours_logged: hoursLogged })
+        .eq('id', ticketId);
+        
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating ticket hours logged:', error);
+    }
+  };
+
   // Handle log time action
   const handleLogTimeClick = () => {
     if (onLogTime) {
       onLogTime(ticketId);
-      // Notify parent after time is logged
-      if (onDataChanged) {
-        setTimeout(() => onDataChanged(), 500); // Small delay to allow for data update
-      }
+      // Fetch time entries again after a delay to ensure the new entry is included
+      setTimeout(() => fetchTimeEntries(ticketId), 1000);
     }
   };
 
@@ -95,6 +120,9 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
       <div className="bg-gray-50 p-4 rounded-md border mb-4">
         <p className="text-sm text-gray-500 mb-2">
           Time Log shows all time entries recorded for this ticket.
+        </p>
+        <p className="text-sm font-medium">
+          Total Hours Logged: {totalHoursLogged.toFixed(2)} hours
         </p>
       </div>
       

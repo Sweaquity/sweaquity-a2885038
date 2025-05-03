@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Ticket } from '@/types/types';
 import { Pagination } from "@/components/ui/pagination";
 import { useTicketDashboard } from './hooks/useTicketDashboard';
@@ -8,6 +8,7 @@ import { TicketTable } from './table/TicketTable';
 import { TicketDetailDialog } from './dialogs/TicketDetailDialog';
 import { DeleteTicketDialog } from './dialogs/DeleteTicketDialog';
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 
 interface TicketDashboardProps {
   initialTickets: Ticket[];
@@ -64,6 +65,134 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     showDeleteConfirmation,
     cancelDelete
   } = useTicketDashboard(initialTickets);
+
+  // Add useEffect to fetch and update time entries for all tickets
+  useEffect(() => {
+    if (showTimeTracking && tickets.length > 0) {
+      updateTicketsWithTimeEntries();
+    }
+  }, [showTimeTracking, tickets.length]);
+
+  // Function to fetch time entries from Supabase and update ticket hours
+  const updateTicketsWithTimeEntries = async () => {
+    try {
+      // Get all unique ticket IDs
+      const ticketIds = tickets.map(ticket => ticket.id);
+      
+      // Fetch time entries for all tickets in one query
+      const { data: timeEntries, error } = await supabase
+        .from('time_entries')
+        .select('ticket_id, hours_logged')
+        .in('ticket_id', ticketIds);
+        
+      if (error) throw error;
+      
+      // Calculate total hours for each ticket
+      const ticketHours = {};
+      timeEntries?.forEach(entry => {
+        if (!ticketHours[entry.ticket_id]) {
+          ticketHours[entry.ticket_id] = 0;
+        }
+        ticketHours[entry.ticket_id] += entry.hours_logged;
+      });
+      
+      // Update tickets with the calculated hours
+      const updatedTickets = tickets.map(ticket => {
+        return {
+          ...ticket,
+          hours_logged: ticketHours[ticket.id] || 0
+        };
+      });
+      
+      setTickets(updatedTickets);
+    } catch (error) {
+      console.error('Error fetching time entries for tickets:', error);
+    }
+  };
+
+  // Update the existing handleTicketAction function to refresh time entries
+  const handleTicketAction = async (ticketId: string, action: string, data: any) => {
+    try {
+      if (action === 'deleteTicket') {
+        // Special handling for deletion
+        try {
+          // Pass the userId to the deleteTicket function
+          await onTicketAction(ticketId, action, userId);
+          setTickets(tickets.filter(ticket => ticket.id !== ticketId));
+          closeTicketDetails();
+          toast.success("Ticket deleted successfully");
+        } catch (error: any) {
+          console.error("Error deleting ticket:", error);
+          // Show specific error message
+          if (error.message) {
+            toast.error(error.message);
+          } else if (error.code === 'P0001') {
+            const msg = error.message || "Cannot delete this ticket";
+            toast.error(msg);
+          } else {
+            toast.error("Failed to delete ticket");
+          }
+          throw error; // Re-throw to prevent further processing
+        }
+        return;
+      }
+      
+      // For all other actions
+      await onTicketAction(ticketId, action, data);
+      
+      // Update the local ticket state
+      const ticketIndex = tickets.findIndex(t => t.id === ticketId);
+      if (ticketIndex !== -1) {
+        const updatedTickets = [...tickets];
+        
+        switch (action) {
+          case 'updateStatus':
+            updatedTickets[ticketIndex] = { ...updatedTickets[ticketIndex], status: data };
+            break;
+          case 'updatePriority':
+            updatedTickets[ticketIndex] = { ...updatedTickets[ticketIndex], priority: data };
+            break;
+          case 'updateCompletionPercentage':
+            updatedTickets[ticketIndex] = { ...updatedTickets[ticketIndex], completion_percentage: data };
+            break;
+          case 'updateEstimatedHours':
+            updatedTickets[ticketIndex] = { ...updatedTickets[ticketIndex], estimated_hours: data };
+            break;
+          case 'updateDueDate':
+            updatedTickets[ticketIndex] = { ...updatedTickets[ticketIndex], due_date: data };
+            break;
+          case 'logTime':
+            // After logging time, update the time entries
+            if (showTimeTracking) {
+              setTimeout(() => updateTicketsWithTimeEntries(), 500);
+            }
+            break;
+          default:
+            break;
+        }
+        
+        setTickets(updatedTickets);
+        const actionName = action.replace('update', '');
+        const formattedAction = actionName.charAt(0).toUpperCase() + actionName.slice(1).toLowerCase();
+        toast.success(`${formattedAction} updated successfully`);
+      }
+    } catch (error: any) {
+      // Only show error if it wasn't already handled in the deleteTicket block
+      if (action !== 'deleteTicket') {
+        console.error(`Error with ticket action ${action}:`, error);
+        toast.error(`Failed to ${action.replace('update', '').toLowerCase()} ticket`);
+      }
+    }
+  };
+
+  // Custom onLogTime handler that updates time entries after logging
+  const handleLogTime = (ticketId: string) => {
+    if (onLogTime) {
+      onLogTime(ticketId);
+      // Update time entries after a slight delay to allow for the time entry to be saved
+      setTimeout(() => updateTicketsWithTimeEntries(), 1000);
+    }
+  };
 
   const handleUpdateStatus = async (ticketId: string, status: string) => {
     try {
@@ -128,74 +257,6 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     }
   };
 
-  const handleTicketAction = async (ticketId: string, action: string, data: any) => {
-    try {
-      if (action === 'deleteTicket') {
-        // Special handling for deletion
-        try {
-          // Pass the userId to the deleteTicket function
-          await onTicketAction(ticketId, action, userId);
-          setTickets(tickets.filter(ticket => ticket.id !== ticketId));
-          closeTicketDetails();
-          toast.success("Ticket deleted successfully");
-        } catch (error: any) {
-          console.error("Error deleting ticket:", error);
-          // Show specific error message
-          if (error.message) {
-            toast.error(error.message);
-          } else if (error.code === 'P0001') {
-            const msg = error.message || "Cannot delete this ticket";
-            toast.error(msg);
-          } else {
-            toast.error("Failed to delete ticket");
-          }
-          throw error; // Re-throw to prevent further processing
-        }
-        return;
-      }
-      
-      // For all other actions
-      await onTicketAction(ticketId, action, data);
-      
-      // Update the local ticket state
-      const ticketIndex = tickets.findIndex(t => t.id === ticketId);
-      if (ticketIndex !== -1) {
-        const updatedTickets = [...tickets];
-        
-        switch (action) {
-          case 'updateStatus':
-            updatedTickets[ticketIndex] = { ...updatedTickets[ticketIndex], status: data };
-            break;
-          case 'updatePriority':
-            updatedTickets[ticketIndex] = { ...updatedTickets[ticketIndex], priority: data };
-            break;
-          case 'updateCompletionPercentage':
-            updatedTickets[ticketIndex] = { ...updatedTickets[ticketIndex], completion_percentage: data };
-            break;
-          case 'updateEstimatedHours':
-            updatedTickets[ticketIndex] = { ...updatedTickets[ticketIndex], estimated_hours: data };
-            break;
-          case 'updateDueDate':
-            updatedTickets[ticketIndex] = { ...updatedTickets[ticketIndex], due_date: data };
-            break;
-          default:
-            break;
-        }
-        
-        setTickets(updatedTickets);
-        const actionName = action.replace('update', '');
-        const formattedAction = actionName.charAt(0).toUpperCase() + actionName.slice(1).toLowerCase();
-        toast.success(`${formattedAction} updated successfully`);
-      }
-    } catch (error: any) {
-      // Only show error if it wasn't already handled in the deleteTicket block
-      if (action !== 'deleteTicket') {
-        console.error(`Error with ticket action ${action}:`, error);
-        toast.error(`Failed to ${action.replace('update', '').toLowerCase()} ticket`);
-      }
-    }
-  };
-
   return (
     <div className="space-y-4">
       <TicketFilters
@@ -222,7 +283,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
             handleUpdateStatus={handleUpdateStatus}
             handleUpdatePriority={handleUpdatePriority}
             showDeleteConfirmation={showDeleteConfirmation}
-            onLogTime={onLogTime}
+            onLogTime={handleLogTime}
             renderTicketActions={renderTicketActions}
           />
 
@@ -241,7 +302,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         selectedTicket={selectedTicket}
         onClose={closeTicketDetails}
         onTicketAction={handleTicketAction}
-        onLogTime={onLogTime}
+        onLogTime={handleLogTime}
         showTimeTracking={showTimeTracking}
         userCanEditStatus={userCanEditStatus}
         userCanEditDates={userCanEditDates}
