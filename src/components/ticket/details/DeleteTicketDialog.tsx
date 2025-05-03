@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   AlertDialog,
@@ -17,6 +16,7 @@ interface DeleteTicketDialogProps {
   onConfirm: () => Promise<void>;
   isDeleting: boolean;
   ticketTitle: string;
+  errorMessage?: string; // Added error message prop
 }
 
 export const DeleteTicketDialog: React.FC<DeleteTicketDialogProps> = ({
@@ -25,6 +25,7 @@ export const DeleteTicketDialog: React.FC<DeleteTicketDialogProps> = ({
   onConfirm,
   isDeleting,
   ticketTitle,
+  errorMessage
 }) => {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -37,6 +38,12 @@ export const DeleteTicketDialog: React.FC<DeleteTicketDialogProps> = ({
             You are about to delete ticket: <strong>{ticketTitle}</strong>
             <br />
             This action cannot be undone. This will permanently delete the ticket and all related data.
+            
+            {errorMessage && (
+              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
+                {errorMessage}
+              </div>
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
