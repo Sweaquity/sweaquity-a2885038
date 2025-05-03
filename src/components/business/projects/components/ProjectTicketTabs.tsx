@@ -4,6 +4,7 @@ import { KanbanBoard } from "@/components/ticket/KanbanBoard";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { GanttChartView } from "@/components/business/testing/GanttChartView";
 import { Ticket } from "@/types/types";
+import { Task } from "gantt-task-react";
 
 interface ProjectTicketTabsProps {
   activeTab: string;
@@ -79,6 +80,38 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
     onLogTime(ticketId, hours, description);
   };
 
+  // Convert tickets to Gantt-compatible Task[] format
+  const getGanttTasks = (): Task[] => {
+    const activeTickets = getActiveTickets();
+    return activeTickets.map((ticket) => {
+      const startDate = new Date(ticket.created_at);
+      let endDate = ticket.due_date ? new Date(ticket.due_date) : new Date();
+      
+      if (!ticket.due_date || endDate < startDate) {
+        endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 7); // Default to one week duration
+      }
+      
+      return {
+        id: ticket.id,
+        name: ticket.title,
+        start: startDate,
+        end: endDate,
+        progress: ticket.completion_percentage ? ticket.completion_percentage / 100 : 0,
+        type: 'task',
+        isDisabled: false,
+        styles: { 
+          progressColor: 
+            ticket.priority === 'high' ? '#ef4444' : 
+            ticket.priority === 'medium' ? '#f59e0b' : '#3b82f6',
+          progressSelectedColor: 
+            ticket.priority === 'high' ? '#dc2626' : 
+            ticket.priority === 'medium' ? '#d97706' : '#2563eb'
+        }
+      };
+    });
+  };
+
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
       <TabsList className="mb-4">
@@ -103,10 +136,7 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
           </div>
         ) : showGantt ? (
           <div className="mb-6">
-            <GanttChartView 
-              tickets={getActiveTickets()}
-              onTicketAction={handleTicketAction}
-            />
+            <GanttChartView tasks={getGanttTasks()} />
           </div>
         ) : (
           <TicketDashboard 
