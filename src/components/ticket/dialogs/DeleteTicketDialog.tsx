@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   AlertDialog,
@@ -17,6 +16,7 @@ interface DeleteTicketDialogProps {
   ticketToDelete: Ticket | null;
   onCancel: () => void;
   onConfirm: () => Promise<void>;
+  isDeleting?: boolean;
 }
 
 export const DeleteTicketDialog: React.FC<DeleteTicketDialogProps> = ({
@@ -24,6 +24,7 @@ export const DeleteTicketDialog: React.FC<DeleteTicketDialogProps> = ({
   ticketToDelete,
   onCancel,
   onConfirm,
+  isDeleting = false
 }) => {
   return (
     <AlertDialog open={isOpen} onOpenChange={onCancel}>
@@ -31,14 +32,28 @@ export const DeleteTicketDialog: React.FC<DeleteTicketDialogProps> = ({
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the ticket
-            and all associated data.
+            {ticketToDelete && (
+              <>
+                You are about to delete ticket: <strong>{ticketToDelete.title}</strong>
+                <br />
+              </>
+            )}
+            This action cannot be undone. The ticket will be archived and removed from view.
+            <br /><br />
+            <strong>Note:</strong> Tickets with time entries or completion progress cannot be deleted.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} className="bg-red-500 hover:bg-red-600">
-            Delete
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault();
+              onConfirm();
+            }}
+            disabled={isDeleting}
+            className="bg-red-500 hover:bg-red-600 focus:ring-red-500"
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
