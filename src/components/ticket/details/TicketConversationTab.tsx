@@ -19,14 +19,10 @@ export const TicketConversationTab: React.FC<TicketConversationTabProps> = ({
   const [conversationMessage, setConversationMessage] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   
-  // Add key based on ticket data to force re-render
-  const ticketDataKey = JSON.stringify({
-    id: ticket.id,
-    repliesCount: ticket.replies?.length || 0,
-    lastReplyTimestamp: ticket.replies?.length 
-      ? ticket.replies[ticket.replies.length - 1]?.timestamp 
-      : null
-  });
+  // Create a unique key that changes whenever replies change
+  const repliesKey = Array.isArray(ticket.replies) 
+    ? ticket.replies.map(reply => `${reply.timestamp}-${reply.comment}`).join('|')
+    : 'no-replies';
 
   const handleAddConversationMessage = async () => {
     if (!conversationMessage.trim()) return;
@@ -44,8 +40,16 @@ export const TicketConversationTab: React.FC<TicketConversationTabProps> = ({
     }
   };
 
+  // Handle key press (Enter) to submit
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleAddConversationMessage();
+    }
+  };
+
   return (
-    <div className="space-y-4" key={ticketDataKey}>
+    <div className="space-y-4" key={repliesKey}>
       <div className="bg-gray-50 p-4 rounded-md border mb-4">
         <p className="text-sm text-gray-500">
           Use this tab to communicate with others about this ticket.
@@ -55,7 +59,7 @@ export const TicketConversationTab: React.FC<TicketConversationTabProps> = ({
       <div className="border rounded-md p-2 max-h-[300px] overflow-y-auto space-y-3">
         {Array.isArray(ticket.replies) && ticket.replies.length > 0 ? (
           ticket.replies.map((reply, index) => (
-            <div key={index} className="p-3 bg-white border rounded-md shadow-sm">
+            <div key={`${reply.timestamp}-${index}`} className="p-3 bg-white border rounded-md shadow-sm">
               <div className="flex justify-between items-center mb-1">
                 <span className="font-medium text-sm">{reply.user}</span>
                 <span className="text-xs text-gray-500">
@@ -78,6 +82,7 @@ export const TicketConversationTab: React.FC<TicketConversationTabProps> = ({
             placeholder="Type your message here..."
             value={conversationMessage}
             onChange={(e) => setConversationMessage(e.target.value)}
+            onKeyDown={handleKeyPress}
             className="min-h-[80px] resize-none"
           />
         </div>
