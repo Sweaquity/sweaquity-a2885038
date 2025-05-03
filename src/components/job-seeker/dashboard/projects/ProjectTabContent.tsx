@@ -4,6 +4,7 @@ import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
 import { GanttChartView } from "@/components/business/testing/GanttChartView";
 import { Ticket } from "@/types/types";
+import { Task, ViewMode } from "gantt-task-react";
 
 interface ProjectTabContentProps {
   activeTickets: Ticket[];
@@ -47,6 +48,37 @@ export const ProjectTabContent: React.FC<ProjectTabContentProps> = ({
     }
   };
 
+  // Convert activeTickets to Gantt-compatible Task[] format
+  const getGanttTasks = (): Task[] => {
+    return activeTickets.map((ticket) => {
+      const startDate = new Date(ticket.created_at);
+      let endDate = ticket.due_date ? new Date(ticket.due_date) : new Date();
+      
+      if (!ticket.due_date || endDate < startDate) {
+        endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 7); // Default to one week duration
+      }
+      
+      return {
+        id: ticket.id,
+        name: ticket.title,
+        start: startDate,
+        end: endDate,
+        progress: ticket.completion_percentage ? ticket.completion_percentage / 100 : 0,
+        type: 'task',
+        isDisabled: false,
+        styles: { 
+          progressColor: 
+            ticket.priority === 'high' ? '#ef4444' : 
+            ticket.priority === 'medium' ? '#f59e0b' : '#3b82f6',
+          progressSelectedColor: 
+            ticket.priority === 'high' ? '#dc2626' : 
+            ticket.priority === 'medium' ? '#d97706' : '#2563eb'
+        }
+      };
+    });
+  };
+
   return (
     <>
       {showKanban ? (
@@ -67,8 +99,7 @@ export const ProjectTabContent: React.FC<ProjectTabContentProps> = ({
       ) : showGantt ? (
         <div className="mb-6">
           <GanttChartView 
-            tickets={activeTickets}
-            onTicketAction={handleTicketAction}
+            tasks={getGanttTasks()}
           />
         </div>
       ) : (
