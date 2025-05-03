@@ -44,9 +44,26 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
   useEffect(() => {
     // Get current user ID
     const getCurrentUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (data?.user) {
-        setCurrentUserId(data.user.id);
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData?.user) {
+        console.log("Current auth user ID:", authData.user.id);
+        
+        // Also check the profiles table to get any alternate user ID
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('auth_id', authData.user.id)
+          .single();
+          
+        if (error) {
+          console.error("Error fetching profile:", error);
+          setCurrentUserId(authData.user.id);
+        } else if (profileData) {
+          console.log("Current profile ID:", profileData.id);
+          setCurrentUserId(profileData.id);
+        } else {
+          setCurrentUserId(authData.user.id);
+        }
       }
     };
     
@@ -69,11 +86,14 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
         
       if (error) throw error;
       
+      // Log all user_ids to debug
+      console.log("Time entries user_ids:", data?.map(entry => entry.user_id));
+      
       const entriesWithUserDetails = await Promise.all((data || []).map(async (entry) => {
         if (entry.user_id) {
           const { data: profileData } = await supabase
             .from('profiles')
-            .select('first_name, last_name, email')
+            .select('first_name, last_name, email, id, auth_id')
             .eq('id', entry.user_id)
             .single();
             
@@ -133,6 +153,25 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
   const handleDeleteTimeEntry = async (entryId: string) => {
     setIsDeletingEntry(entryId);
     try {
+      // Get the entry first to confirm user_id matches
+      const { data: entryData, error: fetchError } = await supabase
+        .from('time_entries')
+        .select('user_id')
+        .eq('id', entryId)
+        .single();
+        
+      if (fetchError) throw fetchError;
+      
+      // Log for debugging
+      console.log("Entry to delete - user_id:", entryData?.user_id);
+      console.log("Current user ID:", currentUserId);
+      
+      // Check if user can delete this entry
+      // This is a backup check in addition to UI hiding - security best practice
+      if (entryData?.user_id !== currentUserId) {
+        throw new Error("You can only delete your own time entries");
+      }
+      
       const { error } = await supabase
         .from('time_entries')
         .delete()
@@ -157,9 +196,9 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
       if (onDataChanged) {
         onDataChanged();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting time entry:', error);
-      toast.error("Failed to delete time entry");
+      toast.error(error?.message || "Failed to delete time entry");
     } finally {
       setIsDeletingEntry(null);
     }
@@ -197,6 +236,98 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Description
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {timeEntries.map((entry) => (
+                    <tr key={entry.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {entry.profiles ? 
+                          `${entry.profiles.first_name || ''} ${entry.profiles.last_name || ''}`.trim() || entry.profiles.email : 
+                          'Unknown user'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {entry.hours_logged.toFixed(2)} hrs
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {formatDate(entry.created_at)}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {entry.description || 'No description'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {/* 
+                          Add debugging info in a comment 
+                          entry.user_id: {entry.user_id} 
+                          currentUserId: {currentUserId}
+                        */}
+                        <div className="flex items-center justify-start gap-1">
+                          {/* Show delete button either if the IDs match exactly OR user_id is in profiles.id OR profiles.auth_id */}
+                          {(currentUserId === entry.user_id || 
+                            entry.profiles?.id === currentUserId || 
+                            entry.profiles?.auth_id === currentUserId) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteTimeEntry(entry.id)}
+                              disabled={isDeletingEntry === entry.id}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              title="Delete this time entry"
+                            >
+                              {isDeletingEntry === entry.id ? 
+                                <span className="text-xs">Deleting...</span> : 
+                                <Trash2 className="h-4 w-4" />
+                              }
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          
+          {onLogTime && (
+            <div className="mt-4 flex gap-2">
+              <Button onClick={handleLogTimeClick}>
+                <Clock className="h-4 w-4 mr-2" /> Log Time
+              </Button>
+              {process.env.NODE_ENV === 'development' && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    console.log({
+                      currentUserId,
+                      timeEntries: timeEntries.map(entry => ({
+                        id: entry.id,
+                        user_id: entry.user_id,
+                        profile: entry.profiles ? {
+                          id: entry.profiles.id,
+                          auth_id: entry.profiles.auth_id
+                        } : null
+                      }))
+                    });
+                    toast.info("User ID debug info logged to console");
+                  }}
+                >
+                  Debug User IDs
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
                       User
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
