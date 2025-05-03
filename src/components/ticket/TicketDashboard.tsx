@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Ticket } from '@/types/types';
 import { Pagination } from "@/components/ui/pagination";
 import { useTicketDashboard } from './hooks/useTicketDashboard';
@@ -8,6 +7,7 @@ import { EmptyTicketState } from './empty/EmptyTicketState';
 import { TicketTable } from './table/TicketTable';
 import { TicketDetailDialog } from './dialogs/TicketDetailDialog';
 import { DeleteTicketDialog } from './dialogs/DeleteTicketDialog';
+import { Toast } from '@/components/ui/toast'; // Import your toast component
 
 interface TicketDashboardProps {
   initialTickets: Ticket[];
@@ -38,6 +38,8 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   userCanEditStatus = false,
   loading = false
 }) => {
+  const [toastMessage, setToastMessage] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  
   const {
     tickets,
     setTickets,
@@ -64,64 +66,112 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   } = useTicketDashboard(initialTickets);
 
   const handleUpdateStatus = async (ticketId: string, status: string) => {
-    await onTicketAction(ticketId, "updateStatus", status);
-    setTickets(
-      tickets.map((ticket) =>
-        ticket.id === ticketId ? { ...ticket, status } : ticket
-      )
-    );
+    try {
+      await onTicketAction(ticketId, "updateStatus", status);
+      setTickets(
+        tickets.map((ticket) =>
+          ticket.id === ticketId ? { ...ticket, status } : ticket
+        )
+      );
+      setToastMessage({ message: "Status updated successfully", type: "success" });
+    } catch (error) {
+      console.error("Error updating status:", error);
+      setToastMessage({ message: "Failed to update status", type: "error" });
+    }
   };
 
   const handleUpdatePriority = async (ticketId: string, priority: string) => {
-    await onTicketAction(ticketId, "updatePriority", priority);
-    setTickets(
-      tickets.map((ticket) =>
-        ticket.id === ticketId ? { ...ticket, priority } : ticket
-      )
-    );
+    try {
+      await onTicketAction(ticketId, "updatePriority", priority);
+      setTickets(
+        tickets.map((ticket) =>
+          ticket.id === ticketId ? { ...ticket, priority } : ticket
+        )
+      );
+      setToastMessage({ message: "Priority updated successfully", type: "success" });
+    } catch (error) {
+      console.error("Error updating priority:", error);
+      setToastMessage({ message: "Failed to update priority", type: "error" });
+    }
   };
 
   const handleDeleteTicket = async () => {
     if (!ticketToDelete) return;
     
     try {
+      // Instead of just updating UI state, we need to ensure the DB operation completes
       await onTicketAction(ticketToDelete.id, "deleteTicket", null);
+      
+      // Only update local state after confirming successful DB operation
       setTickets(tickets.filter(ticket => ticket.id !== ticketToDelete.id));
+      setToastMessage({ message: "Ticket deleted successfully", type: "success" });
       cancelDelete();
+      
+      // Optionally refresh to ensure UI is in sync with DB
+      // onRefresh();
     } catch (error) {
       console.error("Error deleting ticket:", error);
+      setToastMessage({ message: "Failed to delete ticket", type: "error" });
     }
   };
 
   const handleTicketAction = async (ticketId: string, action: string, data: any) => {
-    if (action === 'deleteTicket') {
+    try {
+      // Perform the DB operation first
       await onTicketAction(ticketId, action, data);
-      setTickets(tickets.filter(ticket => ticket.id !== ticketId));
-      closeTicketDetails();
-      return;
+      
+      // Then update the UI based on the action
+      if (action === 'deleteTicket') {
+        setTickets(tickets.filter(ticket => ticket.id !== ticketId));
+        closeTicketDetails();
+        setToastMessage({ message: "Ticket deleted successfully", type: "success" });
+        return;
+      }
+      
+      // For all other actions, update the local ticket state
+      const ticketIndex = tickets.findIndex(t => t.id === ticketId);
+      if (ticketIndex !== -1) {
+        const updatedTickets = [...tickets];
+        
+        switch (action) {
+          case 'updateStatus':
+            updatedTickets[ticketIndex] = { ...updatedTickets[ticketIndex], status: data };
+            break;
+          case 'updatePriority':
+            updatedTickets[ticketIndex] = { ...updatedTickets[ticketIndex], priority: data };
+            break;
+          case 'updateCompletionPercentage':
+            updatedTickets[ticketIndex] = { ...updatedTickets[ticketIndex], completion_percentage: data };
+            break;
+          case 'updateEstimatedHours':
+            updatedTickets[ticketIndex] = { ...updatedTickets[ticketIndex], estimated_hours: data };
+            break;
+          case 'updateDueDate':
+            updatedTickets[ticketIndex] = { ...updatedTickets[ticketIndex], due_date: data };
+            break;
+          default:
+            break;
+        }
+        
+        setTickets(updatedTickets);
+        setToastMessage({ message: `Ticket ${action.replace('update', '').toLowerCase()} updated successfully`, type: "success" });
+      }
+    } catch (error) {
+      console.error(`Error with ticket action ${action}:`, error);
+      setToastMessage({ message: `Failed to ${action.replace('update', '').toLowerCase()} ticket`, type: "error" });
     }
-    
-    await onTicketAction(ticketId, action, data);
-    
-    // Refresh the specific ticket data
-    const updatedTicket = tickets.find(t => t.id === ticketId);
-    if (updatedTicket && action === 'updateStatus') {
-      updatedTicket.status = data;
-    } else if (updatedTicket && action === 'updatePriority') {
-      updatedTicket.priority = data;
-    } else if (updatedTicket && action === 'updateCompletionPercentage') {
-      updatedTicket.completion_percentage = data;
-    } else if (updatedTicket && action === 'updateEstimatedHours') {
-      updatedTicket.estimated_hours = data;
-    } else if (updatedTicket && action === 'updateDueDate') {
-      updatedTicket.due_date = data;
-    }
-    
-    setTickets([...tickets]);
   };
 
   return (
     <div className="space-y-4">
+      {toastMessage && (
+        <Toast 
+          message={toastMessage.message} 
+          type={toastMessage.type} 
+          onClose={() => setToastMessage(null)} 
+        />
+      )}
+      
       <TicketFilters
         searchTerm={searchTerm}
         statusFilter={statusFilter}
