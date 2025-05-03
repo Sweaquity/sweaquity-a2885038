@@ -43,13 +43,65 @@ export const TicketService = {
   },
 
   /**
+   * Check if a ticket has time entries or completion progress
+   * Returns true if the ticket is eligible for deletion
+   */
+  async canDeleteTicket(ticketId: string): Promise<boolean> {
+    try {
+      // Check for time entries
+      const { data: timeEntries, error: timeError } = await supabase
+        .from('time_entries')
+        .select('id')
+        .eq('ticket_id', ticketId)
+        .limit(1);
+        
+      if (timeError) throw timeError;
+      
+      // If there are any time entries, ticket cannot be deleted
+      if (timeEntries && timeEntries.length > 0) {
+        toast.error('Cannot delete ticket with logged time entries');
+        return false;
+      }
+      
+      // Check ticket completion percentage
+      const { data: ticket, error: ticketError } = await supabase
+        .from('tickets')
+        .select('completion_percentage')
+        .eq('id', ticketId)
+        .single();
+        
+      if (ticketError) throw ticketError;
+      
+      // If completion percentage is greater than 0, ticket cannot be deleted
+      if (ticket && ticket.completion_percentage > 0) {
+        toast.error('Cannot delete ticket with completion progress');
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error checking if ticket can be deleted:', error);
+      toast.error('Error checking if ticket can be deleted');
+      return false;
+    }
+  },
+
+  /**
    * Soft deletes a ticket by:
    * 1. Copying it to the deleted_tickets table
    * 2. Marking who deleted it
    * 3. Removing it from the active tickets table
+   * 
+   * First checks if the ticket can be deleted
    */
   async deleteTicket(ticketId: string, userId: string): Promise<boolean> {
     try {
+      // First check if the ticket can be deleted
+      const canDelete = await this.canDeleteTicket(ticketId);
+      if (!canDelete) {
+        return false;
+      }
+      
       // Fetch the ticket to be deleted
       const { data: ticket, error: fetchError } = await supabase
         .from('tickets')
