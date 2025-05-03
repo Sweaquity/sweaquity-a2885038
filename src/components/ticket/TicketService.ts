@@ -1,14 +1,117 @@
-
 import { supabase } from '@/lib/supabase';
 import { Ticket, UserData } from '@/types/types';
 import { toast } from 'sonner';
 
 export const TicketService = {
+  /**
+   * Get all tickets
+   */
+  async getTickets(): Promise<Ticket[]> {
+    try {
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('*')
+        .order('updated_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching tickets:', error);
+      toast.error('Failed to fetch tickets');
+      return [];
+    }
+  },
+
+  /**
+   * Get a specific ticket by ID
+   */
+  async getTicketById(ticketId: string): Promise<Ticket | null> {
+    try {
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('id', ticketId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching ticket:', error);
+      toast.error('Failed to fetch ticket details');
+      return null;
+    }
+  },
+
+  /**
+   * Soft deletes a ticket by:
+   * 1. Copying it to the deleted_tickets table
+   * 2. Marking who deleted it
+   * 3. Removing it from the active tickets table
+   */
+  async deleteTicket(ticketId: string, userId: string): Promise<boolean> {
+    try {
+      // Fetch the ticket to be deleted
+      const { data: ticket, error: fetchError } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('id', ticketId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!ticket) throw new Error('Ticket not found');
+
+      // Insert into deleted_tickets table
+      const { error: insertError } = await supabase
+        .from('deleted_tickets')
+        .insert({
+          original_id: ticket.id,
+          title: ticket.title,
+          description: ticket.description,
+          status: ticket.status,
+          priority: ticket.priority,
+          type: ticket.type,
+          created_at: ticket.created_at,
+          updated_at: ticket.updated_at,
+          due_date: ticket.due_date,
+          assignee_id: ticket.assigned_to, // Note the field name difference
+          reporter_id: ticket.created_by, // Note the field name difference
+          project_id: ticket.project_id,
+          estimated_hours: ticket.estimated_hours,
+          completion_percentage: ticket.completion_percentage,
+          deleted_at: new Date().toISOString(),
+          deleted_by: userId
+        });
+
+      if (insertError) throw insertError;
+
+      // Delete from tickets table
+      const { error: deleteError } = await supabase
+        .from('tickets')
+        .delete()
+        .eq('id', ticketId);
+
+      if (deleteError) throw deleteError;
+      
+      toast.success('Ticket successfully deleted');
+      return true;
+    } catch (error) {
+      console.error('Error deleting ticket:', error);
+      toast.error('Failed to delete ticket');
+      return false;
+    }
+  },
+
+  /**
+   * Update ticket status
+   */
   async updateTicketStatus(ticketId: string, newStatus: string): Promise<Ticket | null> {
     try {
       const { data, error } = await supabase
         .from('tickets')
-        .update({ status: newStatus })
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', ticketId)
         .select()
         .single();
@@ -22,11 +125,17 @@ export const TicketService = {
     }
   },
   
+  /**
+   * Update ticket priority
+   */
   async updateTicketPriority(ticketId: string, newPriority: string): Promise<Ticket | null> {
     try {
       const { data, error } = await supabase
         .from('tickets')
-        .update({ priority: newPriority })
+        .update({ 
+          priority: newPriority,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', ticketId)
         .select()
         .single();
@@ -40,11 +149,17 @@ export const TicketService = {
     }
   },
   
+  /**
+   * Update ticket due date
+   */
   async updateTicketDueDate(ticketId: string, newDueDate: string): Promise<Ticket | null> {
     try {
       const { data, error } = await supabase
         .from('tickets')
-        .update({ due_date: newDueDate })
+        .update({ 
+          due_date: newDueDate,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', ticketId)
         .select()
         .single();
@@ -58,11 +173,17 @@ export const TicketService = {
     }
   },
   
+  /**
+   * Update ticket assignee
+   */
   async updateTicketAssignee(ticketId: string, assigneeId: string): Promise<Ticket | null> {
     try {
       const { data, error } = await supabase
         .from('tickets')
-        .update({ assigned_to: assigneeId })
+        .update({ 
+          assigned_to: assigneeId,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', ticketId)
         .select()
         .single();
@@ -76,11 +197,17 @@ export const TicketService = {
     }
   },
   
+  /**
+   * Update ticket completion percentage
+   */
   async updateTicketCompletionPercentage(ticketId: string, percentage: number): Promise<Ticket | null> {
     try {
       const { data, error } = await supabase
         .from('tickets')
-        .update({ completion_percentage: percentage })
+        .update({ 
+          completion_percentage: percentage,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', ticketId)
         .select()
         .single();
@@ -94,6 +221,33 @@ export const TicketService = {
     }
   },
   
+  /**
+   * Update ticket estimated hours
+   */
+  async updateTicketEstimatedHours(ticketId: string, hours: number): Promise<Ticket | null> {
+    try {
+      const { data, error } = await supabase
+        .from('tickets')
+        .update({ 
+          estimated_hours: hours,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', ticketId)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating ticket estimated hours:', error);
+      toast.error('Failed to update estimated hours');
+      return null;
+    }
+  },
+  
+  /**
+   * Load user data
+   */
   async loadUserData(userId: string): Promise<UserData | null> {
     try {
       const { data, error } = await supabase
@@ -115,6 +269,9 @@ export const TicketService = {
     }
   },
   
+  /**
+   * Get all users
+   */
   async getAllUsers(): Promise<UserData[]> {
     try {
       const { data, error } = await supabase
@@ -134,6 +291,9 @@ export const TicketService = {
     }
   },
   
+  /**
+   * Log time for a ticket
+   */
   async logTime(ticketId: string, userId: string, hours: number, description: string): Promise<boolean> {
     try {
       const { error } = await supabase
