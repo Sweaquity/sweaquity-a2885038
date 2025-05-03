@@ -38,6 +38,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   const [isCheckingAttachments, setIsCheckingAttachments] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | undefined>();
 
   // Update local ticket when props change
   useEffect(() => {
@@ -96,31 +97,67 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
       return true;
     } catch (error) {
       console.error(`Error in ${action}:`, error);
-      // Don't revert the local state - parent should handle this
-      // If we revert here, we might create a bad UX with flickering values
       return false;
+    }
+  };
+
+  // Force refresh of child components
+  const handleDataChanged = () => {
+    if (onRefresh) {
+      onRefresh();
     }
   };
 
   const handleDeleteTicket = async () => {
     setIsDeleting(true);
+    setDeleteErrorMessage(undefined);
     try {
+      // First check if the ticket has any time entries
+      const { data: timeEntries, error: timeEntriesError } = await supabase
+        .from('time_entries')
+        .select('id')
+        .eq('ticket_id', localTicket.id);
+      
+      if (timeEntriesError) throw timeEntriesError;
+      
+      // If there are time entries, delete them first
+      if (timeEntries && timeEntries.length > 0) {
+        const { error: deleteTimeEntriesError } = await supabase
+          .from('time_entries')
+          .delete()
+          .eq('ticket_id', localTicket.id);
+        
+        if (deleteTimeEntriesError) throw deleteTimeEntriesError;
+      }
+      
+      // Then delete the ticket itself
       const { error } = await supabase
         .from('tickets')
         .delete()
         .eq('id', localTicket.id);
       
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23503') {
+          // Foreign key constraint error
+          throw new Error("Cannot delete: this ticket has dependencies (like attachments or references in other tables).");
+        }
+        throw error;
+      }
       
       toast.success("Ticket deleted successfully");
       if (onClose) onClose();
       if (onRefresh) onRefresh();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting ticket:", error);
-      toast.error("Failed to delete ticket");
+      const errorMessage = error?.message || "Failed to delete ticket. Please try again.";
+      setDeleteErrorMessage(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsDeleting(false);
-      setDeleteDialogOpen(false);
+      // Don't close dialog if there's an error
+      if (!deleteErrorMessage) {
+        setDeleteDialogOpen(false);
+      }
     }
   };
 
@@ -176,6 +213,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
           <TicketConversationTab 
             ticket={localTicket}
             onTicketAction={handleTicketAction}
+            onDataChanged={handleDataChanged}
           />
         </TabsContent>
         
@@ -183,6 +221,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
           <TicketActivityTab 
             ticket={localTicket}
             onTicketAction={handleTicketAction}
+            onDataChanged={handleDataChanged}
           />
         </TabsContent>
 
@@ -198,6 +237,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
           <TicketTimeLogTab 
             ticketId={localTicket.id}
             onLogTime={onLogTime}
+            onDataChanged={handleDataChanged}
           />
         </TabsContent>
       </Tabs>
@@ -208,6 +248,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
         onConfirm={handleDeleteTicket}
         isDeleting={isDeleting}
         ticketTitle={localTicket.title}
+        errorMessage={deleteErrorMessage}
       />
     </div>
   );
