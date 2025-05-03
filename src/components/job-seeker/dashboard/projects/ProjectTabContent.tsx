@@ -1,9 +1,7 @@
-
 import React from "react";
 import { DragDropContext, DropResult } from "react-beautiful-dnd";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
 import { KanbanBoard } from "@/components/business/testing/KanbanBoard";
-import { Button } from "@/components/ui/button";
 import { Ticket } from "@/types/types";
 
 interface ProjectTabContentProps {
@@ -33,6 +31,7 @@ export const ProjectTabContent: React.FC<ProjectTabContentProps> = ({
   onDeleteTicket,
   handleDragEnd
 }) => {
+  // Remove custom delete button and let TicketTableRow handle deletion
   return (
     <>
       {showKanban ? (
@@ -65,16 +64,6 @@ export const ProjectTabContent: React.FC<ProjectTabContentProps> = ({
           onLogTime={onLogTime}
           userCanEditDates={true}
           userCanEditStatus={true}
-          renderTicketActions={(ticket) => (
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-red-500 hover:bg-red-50"
-              onClick={() => onDeleteTicket(ticket)}
-            >
-              Delete
-            </Button>
-          )}
           expandedTickets={expandedTickets}
           toggleTicketExpansion={toggleTicketExpansion}
         />
