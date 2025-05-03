@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send } from "lucide-react";
@@ -19,14 +19,10 @@ export const TicketActivityTab: React.FC<TicketActivityTabProps> = ({
   const [activityComment, setActivityComment] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   
-  // Add key based on ticket data to force re-render
-  const ticketDataKey = JSON.stringify({
-    id: ticket.id,
-    notesCount: ticket.notes?.length || 0,
-    lastNoteTimestamp: ticket.notes?.length 
-      ? ticket.notes[ticket.notes.length - 1]?.timestamp 
-      : null
-  });
+  // Create a unique key that changes whenever notes change
+  const notesKey = Array.isArray(ticket.notes) 
+    ? ticket.notes.map(note => `${note.timestamp}-${note.comment}`).join('|')
+    : 'no-notes';
 
   const handleAddActivityComment = async () => {
     if (!activityComment.trim()) return;
@@ -44,8 +40,16 @@ export const TicketActivityTab: React.FC<TicketActivityTabProps> = ({
     }
   };
 
+  // Handle key press (Enter) to submit
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleAddActivityComment();
+    }
+  };
+
   return (
-    <div className="space-y-4" key={ticketDataKey}>
+    <div className="space-y-4" key={notesKey}>
       <div className="bg-gray-50 p-4 rounded-md border mb-4">
         <p className="text-sm text-gray-500">
           The activity log shows all actions taken on this ticket.
@@ -55,7 +59,7 @@ export const TicketActivityTab: React.FC<TicketActivityTabProps> = ({
       <div className="border rounded-md p-2 max-h-[300px] overflow-y-auto space-y-3">
         {Array.isArray(ticket.notes) && ticket.notes.length > 0 ? (
           ticket.notes.map((note, index) => (
-            <div key={index} className="p-3 bg-white border rounded-md shadow-sm">
+            <div key={`${note.timestamp}-${index}`} className="p-3 bg-white border rounded-md shadow-sm">
               <div className="flex justify-between items-center mb-1">
                 <span className="font-medium text-sm">{note.user}</span>
                 <span className="text-xs text-gray-500">
@@ -83,6 +87,7 @@ export const TicketActivityTab: React.FC<TicketActivityTabProps> = ({
             placeholder="Add a comment to the activity log..."
             value={activityComment}
             onChange={(e) => setActivityComment(e.target.value)}
+            onKeyDown={handleKeyPress}
             className="min-h-[80px] resize-none"
           />
         </div>
