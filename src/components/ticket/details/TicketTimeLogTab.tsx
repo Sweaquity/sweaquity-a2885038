@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Clock, AlertCircle } from "lucide-react";
+import { Clock, AlertCircle, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatDate } from "../utils/dateFormatters";
+import { toast } from "sonner";
 
 interface TimeEntry {
   id: string;
@@ -33,11 +34,24 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
   const [totalHoursLogged, setTotalHoursLogged] = useState<number>(0);
   const [isLoadingTimeEntries, setIsLoadingTimeEntries] = useState(false);
   const [timeEntriesError, setTimeEntriesError] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isDeletingEntry, setIsDeletingEntry] = useState<string | null>(null);
   
-  // Create a key to force re-render based on the ticketId
-  const ticketKey = `ticket-${ticketId}`;
+  // Create a unique key that captures both the ticket ID and the state of time entries
+  const entriesKey = timeEntries.map(entry => entry.id).join(',');
+  const ticketKey = `ticket-${ticketId}-${entriesKey}`;
 
   useEffect(() => {
+    // Get current user ID
+    const getCurrentUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        setCurrentUserId(data.user.id);
+      }
+    };
+    
+    getCurrentUser();
+    
     if (ticketId) {
       fetchTimeEntries(ticketId);
     }
@@ -115,6 +129,42 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
     }
   };
 
+  // Handle delete time entry
+  const handleDeleteTimeEntry = async (entryId: string) => {
+    setIsDeletingEntry(entryId);
+    try {
+      const { error } = await supabase
+        .from('time_entries')
+        .delete()
+        .eq('id', entryId);
+        
+      if (error) throw error;
+      
+      // Remove the entry from local state
+      const updatedEntries = timeEntries.filter(entry => entry.id !== entryId);
+      setTimeEntries(updatedEntries);
+      
+      // Recalculate total hours
+      const newTotal = updatedEntries.reduce((sum, entry) => sum + (entry.hours_logged || 0), 0);
+      setTotalHoursLogged(newTotal);
+      
+      // Update ticket's total hours
+      await updateTicketHoursLogged(ticketId, newTotal);
+      
+      toast.success("Time entry deleted successfully");
+      
+      // Notify parent component
+      if (onDataChanged) {
+        onDataChanged();
+      }
+    } catch (error) {
+      console.error('Error deleting time entry:', error);
+      toast.error("Failed to delete time entry");
+    } finally {
+      setIsDeletingEntry(null);
+    }
+  };
+
   return (
     <div className="space-y-4" key={ticketKey}>
       <div className="bg-gray-50 p-4 rounded-md border mb-4">
@@ -156,43 +206,3 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
                       Date
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Description
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {timeEntries.map((entry) => (
-                    <tr key={entry.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {entry.profiles ? 
-                          `${entry.profiles.first_name || ''} ${entry.profiles.last_name || ''}`.trim() || entry.profiles.email : 
-                          'Unknown user'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {entry.hours_logged.toFixed(2)} hrs
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {formatDate(entry.created_at)}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        {entry.description || 'No description'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          
-          {onLogTime && (
-            <div className="mt-4">
-              <Button onClick={handleLogTimeClick}>
-                <Clock className="h-4 w-4 mr-2" /> Log Time
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
