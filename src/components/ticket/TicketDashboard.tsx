@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Ticket } from '@/types/types';
 import { Pagination } from "@/components/ui/pagination";
@@ -8,7 +7,7 @@ import { EmptyTicketState } from './empty/EmptyTicketState';
 import { TicketTable } from './table/TicketTable';
 import { TicketDetailDialog } from './dialogs/TicketDetailDialog';
 import { DeleteTicketDialog } from './dialogs/DeleteTicketDialog';
-import { toast } from "sonner"; // Replace custom Toast with sonner
+import { toast } from "sonner";
 
 interface TicketDashboardProps {
   initialTickets: Ticket[];
@@ -39,6 +38,8 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   userCanEditStatus = false,
   loading = false
 }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   const {
     tickets,
     setTickets,
@@ -95,39 +96,68 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
   };
 
   const handleDeleteTicket = async () => {
-    if (!ticketToDelete) return;
+    if (!ticketToDelete || isDeleting) return;
     
+    setIsDeleting(true);
     try {
-      // Instead of just updating UI state, we need to ensure the DB operation completes
-      await onTicketAction(ticketToDelete.id, "deleteTicket", null);
+      // Call the onTicketAction function which should connect to TicketService.deleteTicket
+      await onTicketAction(ticketToDelete.id, "deleteTicket", userId);
       
       // Only update local state after confirming successful DB operation
       setTickets(tickets.filter(ticket => ticket.id !== ticketToDelete.id));
       toast.success("Ticket deleted successfully");
       cancelDelete();
       
-      // Optionally refresh to ensure UI is in sync with DB
-      // onRefresh();
-    } catch (error) {
+      // Refresh to ensure UI is in sync with DB
+      onRefresh();
+    } catch (error: any) {
       console.error("Error deleting ticket:", error);
-      toast.error("Failed to delete ticket");
+      
+      // Show the specific error message from the backend if available
+      if (error.message) {
+        toast.error(error.message);
+      } else if (error.code === 'P0001' && error.message?.includes('time entries')) {
+        toast.error("Cannot delete ticket with time entries");
+      } else if (error.code === 'P0001' && error.message?.includes('completion progress')) {
+        toast.error("Cannot delete ticket with completion progress");
+      } else {
+        toast.error("Failed to delete ticket");
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const handleTicketAction = async (ticketId: string, action: string, data: any) => {
     try {
-      // Perform the DB operation first
-      await onTicketAction(ticketId, action, data);
-      
-      // Then update the UI based on the action
       if (action === 'deleteTicket') {
-        setTickets(tickets.filter(ticket => ticket.id !== ticketId));
-        closeTicketDetails();
-        toast.success("Ticket deleted successfully");
+        // Special handling for deletion
+        try {
+          // Pass the userId to the deleteTicket function
+          await onTicketAction(ticketId, action, userId);
+          setTickets(tickets.filter(ticket => ticket.id !== ticketId));
+          closeTicketDetails();
+          toast.success("Ticket deleted successfully");
+        } catch (error: any) {
+          console.error("Error deleting ticket:", error);
+          // Show specific error message
+          if (error.message) {
+            toast.error(error.message);
+          } else if (error.code === 'P0001') {
+            const msg = error.message || "Cannot delete this ticket";
+            toast.error(msg);
+          } else {
+            toast.error("Failed to delete ticket");
+          }
+          throw error; // Re-throw to prevent further processing
+        }
         return;
       }
       
-      // For all other actions, update the local ticket state
+      // For all other actions
+      await onTicketAction(ticketId, action, data);
+      
+      // Update the local ticket state
       const ticketIndex = tickets.findIndex(t => t.id === ticketId);
       if (ticketIndex !== -1) {
         const updatedTickets = [...tickets];
@@ -153,11 +183,16 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         }
         
         setTickets(updatedTickets);
-        toast.success(`${action.replace('update', '').charAt(0).toUpperCase() + action.replace('update', '').slice(1).toLowerCase()} updated successfully`);
+        const actionName = action.replace('update', '');
+        const formattedAction = actionName.charAt(0).toUpperCase() + actionName.slice(1).toLowerCase();
+        toast.success(`${formattedAction} updated successfully`);
       }
-    } catch (error) {
-      console.error(`Error with ticket action ${action}:`, error);
-      toast.error(`Failed to ${action.replace('update', '').toLowerCase()} ticket`);
+    } catch (error: any) {
+      // Only show error if it wasn't already handled in the deleteTicket block
+      if (action !== 'deleteTicket') {
+        console.error(`Error with ticket action ${action}:`, error);
+        toast.error(`Failed to ${action.replace('update', '').toLowerCase()} ticket`);
+      }
     }
   };
 
@@ -217,6 +252,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         ticketToDelete={ticketToDelete}
         onCancel={cancelDelete}
         onConfirm={handleDeleteTicket}
+        isDeleting={isDeleting}
       />
     </div>
   );
