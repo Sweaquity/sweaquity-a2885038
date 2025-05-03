@@ -1,8 +1,8 @@
-
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KanbanBoard } from "@/components/ticket/KanbanBoard";
 import { TicketDashboard } from "@/components/ticket/TicketDashboard";
+import { GanttChartView } from "@/components/business/testing/GanttChartView";
 import { Ticket } from "@/types/types";
 
 interface ProjectTicketTabsProps {
@@ -55,16 +55,28 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
     }
   };
 
-  // Wrapper for ticket action to convert to Promise
+  // Enhanced ticket action handler to properly handle deletion
   const handleTicketAction = async (ticketId: string, action: string, data: any) => {
-    return onTicketAction(ticketId, action, data);
+    try {
+      // For delete actions, pass the businessId as data
+      if (action === "deleteTicket") {
+        return await onTicketAction(ticketId, action, businessId);
+      }
+      // For all other actions, pass the data as is
+      return await onTicketAction(ticketId, action, data);
+    } catch (error) {
+      console.error(`Error in handleTicketAction (${action}):`, error);
+      throw error; // Re-throw to allow proper error handling in components
+    }
   };
   
   // Adapt the handler to match the expected interface
   const handleLogTime = (ticketId: string) => {
-    // This is just a stub that will call the actual onLogTime with default values
-    // The actual time logging UI will collect hours and description from the user
-    onLogTime(ticketId, 0, "");
+    // Show a dialog/modal to collect hours and description
+    // This is just a stub that will call the actual onLogTime
+    const hours = 0; // This would be collected from user input
+    const description = ""; // This would be collected from user input
+    onLogTime(ticketId, hours, description);
   };
 
   return (
@@ -86,15 +98,15 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
               }
               onTicketClick={(ticket) => {
                 console.log("Ticket clicked:", ticket.id);
-                // Here you could show a ticket detail dialog or navigate to a ticket details page
               }}
             />
           </div>
         ) : showGantt ? (
           <div className="mb-6">
-            <div className="text-center py-8">
-              <p>Gantt view is being implemented. Please check back later.</p>
-            </div>
+            <GanttChartView 
+              tickets={getActiveTickets()}
+              onTicketAction={handleTicketAction}
+            />
           </div>
         ) : (
           <TicketDashboard 
@@ -102,7 +114,7 @@ export const ProjectTicketTabs: React.FC<ProjectTicketTabsProps> = ({
             onRefresh={onRefresh}
             onTicketAction={handleTicketAction}
             showTimeTracking={showTimeTracking}
-            userId={businessId || ''}
+            userId={businessId}
             onLogTime={handleLogTime}
             renderTicketActions={renderTicketActions}
             expandedTickets={expandedTickets}
