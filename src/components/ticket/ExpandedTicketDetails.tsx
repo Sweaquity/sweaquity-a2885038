@@ -5,7 +5,7 @@ import { Image, Trash2 } from "lucide-react";
 import { Ticket } from "@/types/types";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { TicketService } from "./details/TicketService"; // Add this import
+import { TicketService } from "@/services/TicketService"; // Import from services folder
 import { TicketAttachmentsList, checkTicketAttachments } from "@/components/dashboard/TicketAttachmentsList";
 import { TicketDetailsTab } from "./details/TicketDetailsTab";
 import { TicketConversationTab } from "./details/TicketConversationTab";
