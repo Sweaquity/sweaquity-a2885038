@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,13 +5,14 @@ import { Image, Trash2 } from "lucide-react";
 import { Ticket } from "@/types/types";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { TicketService } from "@/components/ticket/TicketService"; // Correct path to TicketService
+import { TicketService } from "@/components/ticket/TicketService";
 import { TicketAttachmentsList, checkTicketAttachments } from "@/components/dashboard/TicketAttachmentsList";
 import { TicketDetailsTab } from "./details/TicketDetailsTab";
 import { TicketConversationTab } from "./details/TicketConversationTab";
 import { TicketActivityTab } from "./details/TicketActivityTab";
 import { TicketTimeLogTab } from "./details/TicketTimeLogTab";
 import { DeleteTicketDialog } from "./dialogs/DeleteTicketDialog";
+import { showRefreshNotification, RefreshType } from "./utils/refreshNotification";
 
 interface ExpandedTicketDetailsProps {
   ticket: Ticket;
@@ -147,11 +147,8 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
       
       // Refresh data after each action to ensure consistency
       await refreshTicketData();
-      
-      return true;
     } catch (error) {
       console.error(`Error in ${action}:`, error);
-      return false;
     }
   };
 
@@ -288,7 +285,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
       </Tabs>
       
       <DeleteTicketDialog
-        open={deleteDialogOpen}
+        isOpen={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleDeleteTicket}
         isDeleting={isDeleting}

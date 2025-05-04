@@ -1,91 +1,67 @@
 
-import React, { useState } from "react";
+import React from "react";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Ticket } from "@/types/types";
-import { TicketService } from "../TicketService";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { AlertCircle } from "lucide-react";
 
 interface DeleteTicketDialogProps {
   isOpen: boolean;
-  ticketToDelete: Ticket | null;
-  onCancel: () => void;
+  onOpenChange: (open: boolean) => void;
   onConfirm: () => Promise<void>;
-  isDeleting?: boolean;
+  isDeleting: boolean;
+  ticketTitle: string;
+  errorMessage?: string;
 }
 
 export const DeleteTicketDialog: React.FC<DeleteTicketDialogProps> = ({
   isOpen,
-  ticketToDelete,
-  onCancel,
+  onOpenChange,
   onConfirm,
-  isDeleting = false
+  isDeleting,
+  ticketTitle,
+  errorMessage
 }) => {
-  const [errorMessage, setErrorMessage] = useState<string | undefined>();
-
-  const handleConfirm = async () => {
-    if (!ticketToDelete) return;
-    
-    try {
-      // Check if the ticket can be deleted
-      const canDelete = await TicketService.canDeleteTicket(ticketToDelete.id);
-      if (!canDelete) {
-        setErrorMessage("Cannot delete ticket with time entries or completion progress");
-        return;
-      }
-      
-      // If we can delete, proceed with the confirmation
-      setErrorMessage(undefined);
-      await onConfirm();
-    } catch (error: any) {
-      setErrorMessage(error.message || "Failed to check if ticket can be deleted");
-    }
-  };
-
   return (
-    <AlertDialog open={isOpen} onOpenChange={onCancel}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {ticketToDelete && (
-              <>
-                You are about to delete ticket: <strong>{ticketToDelete.title}</strong>
-                <br />
-              </>
-            )}
-            This action cannot be undone. The ticket will be archived and removed from view.
-            <br /><br />
-            <strong>Note:</strong> Tickets with time entries or completion progress cannot be deleted.
-            
-            {errorMessage && (
-              <div className="mt-2 p-2 bg-red-100 text-red-800 rounded">
-                {errorMessage}
-              </div>
-            )}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={(e) => {
-              e.preventDefault();
-              handleConfirm();
-            }}
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete Ticket</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete the ticket "{ticketTitle}"? This action cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        
+        {errorMessage && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-start gap-2 my-2">
+            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-red-700">{errorMessage}</div>
+          </div>
+        )}
+        
+        <DialogFooter>
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
             disabled={isDeleting}
-            className="bg-red-500 hover:bg-red-600 focus:ring-red-500"
+          >
+            Cancel
+          </Button>
+          <Button 
+            variant="destructive" 
+            onClick={onConfirm} 
+            disabled={isDeleting}
           >
             {isDeleting ? "Deleting..." : "Delete"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

@@ -1,10 +1,11 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send } from "lucide-react";
 import { Ticket } from "@/types/types";
 import { formatDateTime } from "../utils/dateFormatters";
+import { showRefreshNotification, RefreshType, showRefreshError } from "../utils/refreshNotification";
 
 interface TicketActivityTabProps {
   ticket: Ticket;
@@ -21,9 +22,6 @@ export const TicketActivityTab: React.FC<TicketActivityTabProps> = ({
 }) => {
   const [activityComment, setActivityComment] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  
-  // Use the refresh trigger in the component key to force a complete re-render
-  const componentKey = `activity-${ticket.id}-${refreshTrigger}`;
 
   const handleAddActivityComment = async () => {
     if (!activityComment.trim()) return;
@@ -32,10 +30,16 @@ export const TicketActivityTab: React.FC<TicketActivityTabProps> = ({
     try {
       await onTicketAction(ticket.id, "addComment", activityComment);
       setActivityComment("");
+      
+      // Show success notification
+      showRefreshNotification(RefreshType.ACTIVITY);
+      
       // Notify parent component about the data change
       if (onDataChanged) {
         onDataChanged();
       }
+    } catch (error) {
+      showRefreshError(RefreshType.ACTIVITY, error);
     } finally {
       setIsSubmittingComment(false);
     }
@@ -50,7 +54,7 @@ export const TicketActivityTab: React.FC<TicketActivityTabProps> = ({
   };
 
   return (
-    <div className="space-y-4" key={componentKey}>
+    <div className="space-y-4" key={`activity-${ticket.id}-${refreshTrigger}`}>
       <div className="bg-gray-50 p-4 rounded-md border mb-4">
         <p className="text-sm text-gray-500">
           The activity log shows all actions taken on this ticket.
@@ -60,7 +64,7 @@ export const TicketActivityTab: React.FC<TicketActivityTabProps> = ({
       <div className="border rounded-md p-2 max-h-[300px] overflow-y-auto space-y-3">
         {Array.isArray(ticket.notes) && ticket.notes.length > 0 ? (
           ticket.notes.map((note, index) => (
-            <div key={`${note.timestamp}-${index}`} className="p-3 bg-white border rounded-md shadow-sm">
+            <div key={`${note.timestamp}-${index}-${refreshTrigger}`} className="p-3 bg-white border rounded-md shadow-sm">
               <div className="flex justify-between items-center mb-1">
                 <span className="font-medium text-sm">{note.user}</span>
                 <span className="text-xs text-gray-500">

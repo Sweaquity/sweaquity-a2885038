@@ -1,10 +1,11 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send } from "lucide-react";
 import { Ticket } from "@/types/types";
 import { formatDateTime } from "../utils/dateFormatters";
+import { showRefreshNotification, RefreshType, showRefreshError } from "../utils/refreshNotification";
 
 interface TicketConversationTabProps {
   ticket: Ticket;
@@ -21,9 +22,6 @@ export const TicketConversationTab: React.FC<TicketConversationTabProps> = ({
 }) => {
   const [conversationMessage, setConversationMessage] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  
-  // Use the refresh trigger in the component key to force a complete re-render
-  const componentKey = `conversation-${ticket.id}-${refreshTrigger}`;
 
   const handleAddConversationMessage = async () => {
     if (!conversationMessage.trim()) return;
@@ -32,10 +30,16 @@ export const TicketConversationTab: React.FC<TicketConversationTabProps> = ({
     try {
       await onTicketAction(ticket.id, "addReply", conversationMessage);
       setConversationMessage("");
+      
+      // Show success notification
+      showRefreshNotification(RefreshType.CONVERSATION);
+      
       // Notify parent component about the data change
       if (onDataChanged) {
         onDataChanged();
       }
+    } catch (error) {
+      showRefreshError(RefreshType.CONVERSATION, error);
     } finally {
       setIsSubmittingComment(false);
     }
@@ -50,7 +54,7 @@ export const TicketConversationTab: React.FC<TicketConversationTabProps> = ({
   };
 
   return (
-    <div className="space-y-4" key={componentKey}>
+    <div className="space-y-4" key={`conversation-${ticket.id}-${refreshTrigger}`}>
       <div className="bg-gray-50 p-4 rounded-md border mb-4">
         <p className="text-sm text-gray-500">
           Use this tab to communicate with others about this ticket.
@@ -60,7 +64,7 @@ export const TicketConversationTab: React.FC<TicketConversationTabProps> = ({
       <div className="border rounded-md p-2 max-h-[300px] overflow-y-auto space-y-3">
         {Array.isArray(ticket.replies) && ticket.replies.length > 0 ? (
           ticket.replies.map((reply, index) => (
-            <div key={`${reply.timestamp}-${index}`} className="p-3 bg-white border rounded-md shadow-sm">
+            <div key={`${reply.timestamp}-${index}-${refreshTrigger}`} className="p-3 bg-white border rounded-md shadow-sm">
               <div className="flex justify-between items-center mb-1">
                 <span className="font-medium text-sm">{reply.user}</span>
                 <span className="text-xs text-gray-500">
