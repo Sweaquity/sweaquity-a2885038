@@ -5,6 +5,7 @@ import { Image, Trash2 } from "lucide-react";
 import { Ticket } from "@/types/types";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { TicketService } from "./details/TicketService"; // Add this import
 import { TicketAttachmentsList, checkTicketAttachments } from "@/components/dashboard/TicketAttachmentsList";
 import { TicketDetailsTab } from "./details/TicketDetailsTab";
 import { TicketConversationTab } from "./details/TicketConversationTab";
@@ -112,39 +113,29 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
     setIsDeleting(true);
     setDeleteErrorMessage(undefined);
     try {
-      // First check if the ticket has any time entries
-      const { data: timeEntries, error: timeEntriesError } = await supabase
-        .from('time_entries')
-        .select('id')
-        .eq('ticket_id', localTicket.id);
-      
-      if (timeEntriesError) throw timeEntriesError;
-      
-      // If there are time entries, delete them first
-      if (timeEntries && timeEntries.length > 0) {
-        const { error: deleteTimeEntriesError } = await supabase
-          .from('time_entries')
-          .delete()
-          .eq('ticket_id', localTicket.id);
-        
-        if (deleteTimeEntriesError) throw deleteTimeEntriesError;
+      // Use the TicketService to check if the ticket can be deleted
+      const canDelete = await TicketService.canDeleteTicket(localTicket.id);
+      if (!canDelete) {
+        // We don't need another toast since canDeleteTicket already shows one
+        setDeleteErrorMessage("Cannot delete ticket with time entries or completion progress");
+        setIsDeleting(false);
+        return;
       }
       
-      // Then delete the ticket itself
-      const { error } = await supabase
-        .from('tickets')
-        .delete()
-        .eq('id', localTicket.id);
-      
-      if (error) {
-        if (error.code === '23503') {
-          // Foreign key constraint error
-          throw new Error("Cannot delete: this ticket has dependencies (like attachments or references in other tables).");
-        }
-        throw error;
+      // Get the current user ID
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("User not authenticated");
       }
       
-      toast.success("Ticket deleted successfully");
+      // Use the TicketService for consistent deletion logic
+      const success = await TicketService.deleteTicket(localTicket.id, user.id);
+      
+      if (!success) {
+        throw new Error("Failed to delete ticket");
+      }
+      
+      // The TicketService already shows a success toast, but we can add another if desired
       if (onClose) onClose();
       if (onRefresh) onRefresh();
     } catch (error: any) {
