@@ -1,3 +1,4 @@
+
 import React from "react";
 import {
   AlertDialog,
@@ -14,16 +15,16 @@ interface DeleteTicketDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => Promise<void>;
-  isDeleting: boolean;
+  isDeleting?: boolean;
   ticketTitle: string;
-  errorMessage?: string; // Added error message prop
+  errorMessage?: string;
 }
 
 export const DeleteTicketDialog: React.FC<DeleteTicketDialogProps> = ({
   open,
   onOpenChange,
   onConfirm,
-  isDeleting,
+  isDeleting = false,
   ticketTitle,
   errorMessage
 }) => {
@@ -31,16 +32,20 @@ export const DeleteTicketDialog: React.FC<DeleteTicketDialogProps> = ({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            Are you sure you want to delete this ticket?
-          </AlertDialogTitle>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            You are about to delete ticket: <strong>{ticketTitle}</strong>
-            <br />
-            This action cannot be undone. This will permanently delete the ticket and all related data.
+            {ticketTitle && (
+              <>
+                You are about to delete ticket: <strong>{ticketTitle}</strong>
+                <br />
+              </>
+            )}
+            This action cannot be undone. The ticket will be archived and removed from view.
+            <br /><br />
+            <strong>Note:</strong> Tickets with time entries or completion progress cannot be deleted.
             
             {errorMessage && (
-              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
+              <div className="mt-2 p-2 bg-red-100 text-red-800 rounded">
                 {errorMessage}
               </div>
             )}
@@ -54,7 +59,7 @@ export const DeleteTicketDialog: React.FC<DeleteTicketDialogProps> = ({
               onConfirm();
             }}
             disabled={isDeleting}
-            className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            className="bg-red-500 hover:bg-red-600 focus:ring-red-500"
           >
             {isDeleting ? "Deleting..." : "Delete"}
           </AlertDialogAction>
