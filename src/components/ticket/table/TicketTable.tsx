@@ -7,6 +7,8 @@ import {
 } from "@/components/ui/table";
 import { TicketTableHeader } from "./TicketTableHeader";
 import { TicketTableRow } from "./TicketTableRow";
+import { TicketService } from "../TicketService";
+import { toast } from "sonner";
 
 interface TicketTableProps {
   tickets: Ticket[];
@@ -31,6 +33,24 @@ export const TicketTable: React.FC<TicketTableProps> = ({
   onLogTime,
   renderTicketActions
 }) => {
+  // Create a wrapper function for showDeleteConfirmation that uses TicketService
+  const handleShowDeleteConfirmation = async (ticket: Ticket) => {
+    try {
+      // First check if the ticket can be deleted using TicketService
+      const canDelete = await TicketService.canDeleteTicket(ticket.id);
+      if (!canDelete) {
+        // canDeleteTicket already shows a toast error
+        return;
+      }
+      
+      // If we can delete, then call the provided function
+      showDeleteConfirmation(ticket);
+    } catch (error) {
+      console.error("Error checking if ticket can be deleted:", error);
+      toast.error("Failed to check if ticket can be deleted");
+    }
+  };
+
   return (
     <div className="border rounded-md overflow-hidden">
       <Table>
@@ -45,7 +65,7 @@ export const TicketTable: React.FC<TicketTableProps> = ({
               openTicketDetails={openTicketDetails}
               handleUpdateStatus={handleUpdateStatus}
               handleUpdatePriority={handleUpdatePriority}
-              showDeleteConfirmation={showDeleteConfirmation}
+              showDeleteConfirmation={handleShowDeleteConfirmation}
               onLogTime={onLogTime}
               renderTicketActions={renderTicketActions}
             />
