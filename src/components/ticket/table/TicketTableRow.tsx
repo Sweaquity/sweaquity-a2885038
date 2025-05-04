@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Ticket } from "@/types/types";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -125,14 +126,32 @@ export const TicketTableRow: React.FC<TicketTableRowProps> = ({
       const canDelete = await TicketService.canDeleteTicket(ticket.id);
       if (canDelete) {
         showDeleteConfirmation(ticket);
+      } else {
+        // If canDeleteTicket method returned false, it should have displayed a toast
+        // with the specific reason already
+        console.log("Cannot delete ticket - server check failed");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error checking if ticket can be deleted:", error);
-      toast.error("Error checking if ticket can be deleted");
+      let errorMessage = "Error checking if ticket can be deleted";
+      if (error?.message) {
+        errorMessage = error.message;
+      }
+      toast.error(errorMessage);
     } finally {
       setIsCheckingDeletability(false);
     }
   };
+
+  // Immediately determine if the delete button should be disabled
+  const isDeleteDisabled = (ticket.completion_percentage && ticket.completion_percentage > 0) || 
+                          (ticket.hours_logged && ticket.hours_logged > 0);
+  
+  const deleteButtonTooltip = isDeleteDisabled ? 
+    (ticket.completion_percentage && ticket.completion_percentage > 0) ? 
+      "Cannot delete ticket with completion progress" : 
+      "Cannot delete ticket with time entries" : 
+    "Delete ticket";
 
   return (
     <TableRow key={ticket.id}>
@@ -222,9 +241,10 @@ export const TicketTableRow: React.FC<TicketTableRowProps> = ({
           <Button
             size="sm"
             variant="outline"
-            className="text-red-500 hover:bg-red-50"
-            onClick={checkAndShowDeleteConfirmation}
-            disabled={isCheckingDeletability}
+            className={`${isDeleteDisabled ? "text-gray-400" : "text-red-500 hover:bg-red-50"}`}
+            onClick={isDeleteDisabled ? () => toast.error(deleteButtonTooltip) : checkAndShowDeleteConfirmation}
+            disabled={isCheckingDeletability || isDeleteDisabled}
+            title={deleteButtonTooltip}
           >
             <Trash className="h-4 w-4" />
           </Button>

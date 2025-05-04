@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -106,6 +107,10 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
     }
   };
 
+  // Check if delete button should be disabled
+  const isDeleteDisabled = localTicket.completion_percentage > 0 || 
+                          (localTicket.hours_logged && localTicket.hours_logged > 0);
+
   const handleDeleteTicket = async () => {
     setIsDeleting(true);
     setDeleteErrorMessage(undefined);
@@ -121,6 +126,10 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
         throw new Error("Cannot delete ticket with completion progress");
       }
       
+      if (localTicket.hours_logged && localTicket.hours_logged > 0) {
+        throw new Error("Cannot delete ticket with time entries");
+      }
+      
       // Use the TicketService for consistent deletion logic
       const success = await TicketService.deleteTicket(localTicket.id, user.id);
       
@@ -129,8 +138,10 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
       }
       
       // If successful, close the dialog and refresh
+      toast.success("Ticket deleted successfully");
       if (onClose) onClose();
       if (onRefresh) onRefresh();
+      
     } catch (error: any) {
       console.error("Error deleting ticket:", error);
       const errorMessage = error?.message || "Failed to delete ticket. Please try again.";
@@ -138,10 +149,6 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
       throw error; // Re-throw the error to be caught by the DeleteTicketDialog
     } finally {
       setIsDeleting(false);
-      // Don't close dialog if there's an error
-      if (!deleteErrorMessage) {
-        setIsDeleteDialogOpen(false);
-      }
     }
   };
 
@@ -153,7 +160,22 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
           <Button 
             variant="destructive" 
             size="sm" 
-            onClick={() => setIsDeleteDialogOpen(true)}
+            onClick={() => {
+              if (isDeleteDisabled) {
+                const reason = localTicket.completion_percentage > 0 
+                  ? "Cannot delete ticket with completion progress" 
+                  : "Cannot delete ticket with time entries";
+                toast.error(reason);
+                return;
+              }
+              setIsDeleteDialogOpen(true);
+            }}
+            disabled={isDeleteDisabled}
+            title={isDeleteDisabled ? 
+              (localTicket.completion_percentage > 0 ? 
+                "Cannot delete ticket with completion progress" : 
+                "Cannot delete ticket with time entries") : 
+              "Delete ticket"}
           >
             <Trash2 className="h-4 w-4 mr-1" />
             Delete

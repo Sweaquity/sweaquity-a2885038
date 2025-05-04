@@ -32,22 +32,11 @@ export const DeleteTicketDialog: React.FC<DeleteTicketDialogProps> = ({
     e.preventDefault();
     try {
       await onConfirm();
-      toast.success("Ticket successfully deleted");
+      // The parent component will handle the success toast
     } catch (error: any) {
-      // Display a meaningful error message
-      let message = "Failed to delete ticket";
-      
-      if (error?.message) {
-        if (error.message.includes("time entries")) {
-          message = "Cannot delete ticket with time entries";
-        } else if (error.message.includes("completion progress")) {
-          message = "Cannot delete ticket with completion progress";
-        } else {
-          message = `Failed to delete ticket: ${error.message}`;
-        }
-      }
-      
-      toast.error(message);
+      // Don't display a toast here, as the parent component already handles error notifications
+      // This prevents duplicate toast messages
+      console.error("Error in DeleteTicketDialog:", error);
       // Keep the dialog open if there was an error
       return;
     }

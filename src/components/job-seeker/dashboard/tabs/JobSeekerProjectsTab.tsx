@@ -62,8 +62,21 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       toast.success("Ticket deleted successfully");
     } catch (error: any) {
       console.error("Error deleting ticket:", error);
-      const errorMessage = error?.message || "Failed to delete ticket";
+      
+      // Create a user-friendly error message based on the error
+      let errorMessage = "Failed to delete ticket";
+      if (error?.message) {
+        if (error.message.includes("time entries")) {
+          errorMessage = "Cannot delete ticket with time entries";
+        } else if (error.message.includes("completion progress")) {
+          errorMessage = "Cannot delete ticket with completion progress";
+        } else {
+          errorMessage = `${error.message}`;
+        }
+      }
+      
       setDeleteErrorMessage(errorMessage);
+      toast.error(errorMessage);
       throw error; // Re-throw for the DeleteTicketDialog to handle
     } finally {
       setIsDeleting(false);
