@@ -1,11 +1,9 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Clock, AlertCircle, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatDate } from "../utils/dateFormatters";
 import { toast } from "sonner";
-import { showRefreshNotification, RefreshType, showRefreshError } from "../utils/refreshNotification";
 
 interface TimeEntry {
   id: string;
@@ -19,6 +17,7 @@ interface TimeEntry {
     last_name?: string;
     email?: string;
     id?: string;
+    auth_id?: string;
   };
 }
 
@@ -26,14 +25,12 @@ interface TicketTimeLogTabProps {
   ticketId: string;
   onLogTime?: (ticketId: string) => void;
   onDataChanged?: () => void; // Callback for parent notification
-  refreshTrigger?: number; // New prop to force re-renders
 }
 
 export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
   ticketId,
   onLogTime,
-  onDataChanged,
-  refreshTrigger = 0
+  onDataChanged
 }) => {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [totalHoursLogged, setTotalHoursLogged] = useState<number>(0);
@@ -41,30 +38,43 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
   const [timeEntriesError, setTimeEntriesError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isDeletingEntry, setIsDeletingEntry] = useState<string | null>(null);
+  
+  // Create a unique key that captures both the ticket ID and the state of time entries
+  const entriesKey = timeEntries.map(entry => entry.id).join(',');
+  const ticketKey = `ticket-${ticketId}-${entriesKey}`;
 
   useEffect(() => {
-    // Get current user ID on mount
+    // Get current user ID
     const getCurrentUser = async () => {
-      try {
-        const { data: authData } = await supabase.auth.getUser();
-        if (authData?.user) {
-          console.log("Current auth user ID:", authData.user.id);
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData?.user) {
+        console.log("Current auth user ID:", authData.user.id);
+        
+        // Also check the profiles table to get any alternate user ID
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('auth_id', authData.user.id)
+          .single();
+          
+        if (error) {
+          console.error("Error fetching profile:", error);
+          setCurrentUserId(authData.user.id);
+        } else if (profileData) {
+          console.log("Current profile ID:", profileData.id);
+          setCurrentUserId(profileData.id);
+        } else {
           setCurrentUserId(authData.user.id);
         }
-      } catch (error) {
-        console.error("Error fetching user:", error);
       }
     };
     
     getCurrentUser();
-  }, []);
-  
-  // Separate effect for fetching time entries based on ticketId and refreshTrigger
-  useEffect(() => {
+    
     if (ticketId) {
       fetchTimeEntries(ticketId);
     }
-  }, [ticketId, refreshTrigger]); // Add refreshTrigger to dependencies
+  }, [ticketId]);
 
   const fetchTimeEntries = async (ticketId: string) => {
     setIsLoadingTimeEntries(true);
@@ -78,30 +88,21 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
         
       if (error) throw error;
       
-      // Log all user_ids for debugging
+      // Log all user_ids to debug
       console.log("Time entries user_ids:", data?.map(entry => entry.user_id));
       
-      // Process user names for each entry
       const entriesWithUserDetails = await Promise.all((data || []).map(async (entry) => {
         if (entry.user_id) {
-          try {
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('first_name, last_name, email, id')
-              .eq('id', entry.user_id)
-              .single();
-              
-            return {
-              ...entry,
-              profiles: profileData || { email: 'Unknown user' }
-            };
-          } catch (error) {
-            console.warn(`Could not fetch profile for user ${entry.user_id}:`, error);
-            return {
-              ...entry,
-              profiles: { email: 'Unknown user' }
-            };
-          }
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, email, id, auth_id')
+            .eq('id', entry.user_id)
+            .single();
+            
+          return {
+            ...entry,
+            profiles: profileData
+          };
         }
         return entry;
       }));
@@ -112,19 +113,8 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
       const total = entriesWithUserDetails.reduce((sum, entry) => sum + (entry.hours_logged || 0), 0);
       setTotalHoursLogged(total);
       
-      // Simplified ticket updating - don't check for column existence
-      try {
-        const { error: updateError } = await supabase
-          .from('tickets')
-          .update({ hours_logged: total })
-          .eq('id', ticketId);
-          
-        if (updateError && updateError.code !== '42703') { // Ignore column not found error
-          console.warn("Could not update ticket hours:", updateError);
-        }
-      } catch (error) {
-        console.warn("Error updating ticket hours:", error);
-      }
+      // Update the ticket's hours_logged in the database
+      await updateTicketHoursLogged(ticketId, total);
       
       // Notify parent component that data has changed
       if (onDataChanged) {
@@ -138,21 +128,26 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
     }
   };
 
+  // Update the ticket's hours_logged field in the database
+  const updateTicketHoursLogged = async (ticketId: string, hoursLogged: number) => {
+    try {
+      const { error } = await supabase
+        .from('tickets')
+        .update({ hours_logged: hoursLogged })
+        .eq('id', ticketId);
+        
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating ticket hours logged:', error);
+    }
+  };
+
   // Handle log time action
   const handleLogTimeClick = () => {
     if (onLogTime) {
       onLogTime(ticketId);
-      
-      // Show success notification
-      showRefreshNotification(RefreshType.TIME_LOG);
-      
       // Fetch time entries again after a delay to ensure the new entry is included
-      setTimeout(() => {
-        fetchTimeEntries(ticketId);
-        if (onDataChanged) {
-          onDataChanged();
-        }
-      }, 1000);
+      setTimeout(() => fetchTimeEntries(ticketId), 1000);
     }
   };
 
@@ -174,6 +169,7 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
       console.log("Current user ID:", currentUserId);
       
       // Check if user can delete this entry
+      // This is a backup check in addition to UI hiding - security best practice
       if (entryData?.user_id !== currentUserId) {
         throw new Error("You can only delete your own time entries");
       }
@@ -193,21 +189,10 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
       const newTotal = updatedEntries.reduce((sum, entry) => sum + (entry.hours_logged || 0), 0);
       setTotalHoursLogged(newTotal);
       
-      // Update ticket's total hours - simplified
-      try {
-        const { error: updateError } = await supabase
-          .from('tickets')
-          .update({ hours_logged: newTotal })
-          .eq('id', ticketId);
-          
-        if (updateError && updateError.code !== '42703') { // Ignore column not found error
-          console.warn("Could not update ticket hours:", updateError);
-        }
-      } catch (error) {
-        console.warn("Error updating ticket hours:", error);
-      }
+      // Update ticket's total hours
+      await updateTicketHoursLogged(ticketId, newTotal);
       
-      showRefreshNotification(RefreshType.TIME_LOG);
+      toast.success("Time entry deleted successfully");
       
       // Notify parent component
       if (onDataChanged) {
@@ -215,14 +200,14 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
       }
     } catch (error: any) {
       console.error('Error deleting time entry:', error);
-      showRefreshError(RefreshType.TIME_LOG, error);
+      toast.error(error?.message || "Failed to delete time entry");
     } finally {
       setIsDeletingEntry(null);
     }
   };
 
   return (
-    <div className="space-y-4" key={`time-log-${ticketId}-${refreshTrigger}`}>
+    <div className="space-y-4" key={ticketKey}>
       <div className="bg-gray-50 p-4 rounded-md border mb-4">
         <p className="text-sm text-gray-500 mb-2">
           Time Log shows all time entries recorded for this ticket.
@@ -271,7 +256,7 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {timeEntries.map((entry) => (
-                    <tr key={`${entry.id}-${refreshTrigger}`}>
+                    <tr key={entry.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         {entry.profiles ? 
                           `${entry.profiles.first_name || ''} ${entry.profiles.last_name || ''}`.trim() || entry.profiles.email : 
@@ -287,8 +272,16 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
                         {entry.description || 'No description'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {/* 
+                          Add debugging info in a comment 
+                          entry.user_id: {entry.user_id} 
+                          currentUserId: {currentUserId}
+                        */}
                         <div className="flex items-center justify-start gap-1">
-                          {currentUserId === entry.user_id && (
+                          {/* Show delete button either if the IDs match exactly OR user_id is in profiles.id OR profiles.auth_id */}
+                          {(currentUserId === entry.user_id || 
+                            entry.profiles?.id === currentUserId || 
+                            entry.profiles?.auth_id === currentUserId) && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -313,10 +306,32 @@ export const TicketTimeLogTab: React.FC<TicketTimeLogTabProps> = ({
           )}
           
           {onLogTime && (
-            <div className="mt-4">
+            <div className="mt-4 flex gap-2">
               <Button onClick={handleLogTimeClick}>
                 <Clock className="h-4 w-4 mr-2" /> Log Time
               </Button>
+              {process.env.NODE_ENV === 'development' && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    console.log({
+                      currentUserId,
+                      timeEntries: timeEntries.map(entry => ({
+                        id: entry.id,
+                        user_id: entry.user_id,
+                        profile: entry.profiles ? {
+                          id: entry.profiles.id,
+                          auth_id: entry.profiles.auth_id
+                        } : null
+                      }))
+                    });
+                    toast.info("User ID debug info logged to console");
+                  }}
+                >
+                  Debug User IDs
+                </Button>
+              )}
             </div>
           )}
         </div>
