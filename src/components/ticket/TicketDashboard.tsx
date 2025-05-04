@@ -110,7 +110,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
     }
   };
 
-  // Update the existing handleTicketAction function to refresh time entries
+  // Update the existing handleTicketAction function to handle soft deletion
   const handleTicketAction = async (ticketId: string, action: string, data: any) => {
     try {
       if (action === 'deleteTicket') {
@@ -118,7 +118,9 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
         try {
           // Pass the userId to the deleteTicket function
           await onTicketAction(ticketId, action, userId);
-          setTickets(tickets.filter(ticket => ticket.id !== ticketId));
+          
+          // Filter out deleted tickets (those with status 'deleted') from the UI
+          setTickets(tickets.filter(ticket => ticket.id !== ticketId || ticket.status !== 'deleted'));
           closeTicketDetails();
           toast.success("Ticket deleted successfully");
         } catch (error: any) {
@@ -233,7 +235,7 @@ export const TicketDashboard: React.FC<TicketDashboardProps> = ({
       await onTicketAction(ticketToDelete.id, "deleteTicket", userId);
       
       // Only update local state after confirming successful DB operation
-      setTickets(tickets.filter(ticket => ticket.id !== ticketToDelete.id));
+      setTickets(tickets.filter(ticket => ticket.id !== ticketToDelete.id || ticket.status === 'deleted'));
       toast.success("Ticket deleted successfully");
       cancelDelete();
       

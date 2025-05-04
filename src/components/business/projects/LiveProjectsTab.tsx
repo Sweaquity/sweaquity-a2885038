@@ -61,13 +61,15 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   const loadTicketsData = async () => {
     setLoading(true);
     const ticketsData = await loadTickets(businessId, selectedProject);
-    setTickets(ticketsData);
+    // Filter out tickets with status 'deleted' to respect our soft-deletion approach
+    const activeTickets = ticketsData.filter(ticket => ticket.status !== 'deleted');
+    setTickets(activeTickets);
     
     const stats = {
-      total: ticketsData.length,
-      open: ticketsData.filter(t => t.status !== 'done' && t.status !== 'closed').length,
-      closed: ticketsData.filter(t => t.status === 'done' || t.status === 'closed').length,
-      highPriority: ticketsData.filter(t => t.priority === 'high').length
+      total: activeTickets.length,
+      open: activeTickets.filter(t => t.status !== 'done' && t.status !== 'closed').length,
+      closed: activeTickets.filter(t => t.status === 'done' || t.status === 'closed').length,
+      highPriority: activeTickets.filter(t => t.priority === 'high').length
     };
     
     setTaskStats(stats);

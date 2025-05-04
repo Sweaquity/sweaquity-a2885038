@@ -89,60 +89,30 @@ export const TicketService = {
   /**
    * Soft deletes a ticket by:
    * 1. Copying it to the deleted_tickets table
-   * 2. Marking who deleted it
-   * 3. Removing it from the active tickets table
+   * 2. Marking it as deleted in the tickets table (status='deleted')
    * 
    * First checks if the ticket can be deleted
    */
   async deleteTicket(ticketId: string, userId: string): Promise<boolean> {
     try {
-      // First check if the ticket can be deleted
-      const canDelete = await this.canDeleteTicket(ticketId);
-      if (!canDelete) {
-        return false;
-      }
-      
-      // Fetch the ticket to be deleted
-      const { data: ticket, error: fetchError } = await supabase
-        .from('tickets')
-        .select('*')
-        .eq('id', ticketId)
-        .single();
-
-      if (fetchError) throw fetchError;
-      if (!ticket) throw new Error('Ticket not found');
-
-      // Insert into deleted_tickets table
-      const { error: insertError } = await supabase
-        .from('deleted_tickets')
-        .insert({
-          original_id: ticket.id,
-          title: ticket.title,
-          description: ticket.description,
-          status: ticket.status,
-          priority: ticket.priority,
-          type: ticket.type,
-          created_at: ticket.created_at,
-          updated_at: ticket.updated_at,
-          due_date: ticket.due_date,
-          assignee_id: ticket.assigned_to, // Note the field name difference
-          reporter_id: ticket.created_by, // Note the field name difference
-          project_id: ticket.project_id,
-          estimated_hours: ticket.estimated_hours,
-          completion_percentage: ticket.completion_percentage,
-          deleted_at: new Date().toISOString(),
-          deleted_by: userId
+      // Use the database function for soft deletion
+      const { data, error } = await supabase
+        .rpc('soft_delete_ticket', { 
+          ticket_id: ticketId, 
+          user_id: userId 
         });
 
-      if (insertError) throw insertError;
-
-      // Delete from tickets table
-      const { error: deleteError } = await supabase
-        .from('tickets')
-        .delete()
-        .eq('id', ticketId);
-
-      if (deleteError) throw deleteError;
+      if (error) {
+        console.error("Error in soft_delete_ticket:", error);
+        if (error.message.includes('time entries')) {
+          toast.error('Cannot delete ticket with logged time entries');
+        } else if (error.message.includes('completion progress')) {
+          toast.error('Cannot delete ticket with completion progress');
+        } else {
+          toast.error('Failed to delete ticket');
+        }
+        return false;
+      }
       
       toast.success('Ticket successfully deleted');
       return true;

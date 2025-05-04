@@ -64,7 +64,8 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
     setIsCheckingAttachments(false);
   };
 
-  const handleTicketAction = async (ticketId: string, action: string, data: any) => {
+  // Update the handleTicketAction function to return a Promise<boolean>
+  const handleTicketAction = async (ticketId: string, action: string, data: any): Promise<boolean> => {
     try {
       // Update local state immediately for better UX
       setLocalTicket(prev => {
@@ -113,15 +114,6 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
     setIsDeleting(true);
     setDeleteErrorMessage(undefined);
     try {
-      // Use the TicketService to check if the ticket can be deleted
-      const canDelete = await TicketService.canDeleteTicket(localTicket.id);
-      if (!canDelete) {
-        // We don't need another toast since canDeleteTicket already shows one
-        setDeleteErrorMessage("Cannot delete ticket with time entries or completion progress");
-        setIsDeleting(false);
-        return;
-      }
-      
       // Get the current user ID
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -135,7 +127,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
         throw new Error("Failed to delete ticket");
       }
       
-      // The TicketService already shows a success toast, but we can add another if desired
+      // If successful, close the dialog and refresh
       if (onClose) onClose();
       if (onRefresh) onRefresh();
     } catch (error: any) {

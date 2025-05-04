@@ -1667,6 +1667,10 @@ export type Database = {
         Args: { path: string; user_id: string }
         Returns: boolean
       }
+      soft_delete_ticket: {
+        Args: { ticket_id: string; user_id: string }
+        Returns: boolean
+      }
       update_active_project: {
         Args: {
           p_task_id: string
