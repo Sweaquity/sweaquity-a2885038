@@ -64,8 +64,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
     setIsCheckingAttachments(false);
   };
 
-  // Update the handleTicketAction function to return a Promise<boolean>
-  const handleTicketAction = async (ticketId: string, action: string, data: any): Promise<boolean> => {
+  const handleTicketAction = async (ticketId: string, action: string, data: any): Promise<void> => {
     try {
       // Update local state immediately for better UX
       setLocalTicket(prev => {
@@ -95,11 +94,8 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
       if (onRefresh) {
         onRefresh();
       }
-      
-      return true;
     } catch (error) {
       console.error(`Error in ${action}:`, error);
-      return false;
     }
   };
 

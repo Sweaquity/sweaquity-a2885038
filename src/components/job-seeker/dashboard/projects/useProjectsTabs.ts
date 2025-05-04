@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -87,14 +86,17 @@ export const useProjectsTabs = (userId?: string) => {
       
       if (error) throw error;
       
-      const filteredTickets = (data || []).filter(ticket => {
-        if (ticket.accepted_jobs && 
-            ticket.accepted_jobs.equity_agreed > 0 && 
-            ticket.accepted_jobs.jobs_equity_allocated >= ticket.accepted_jobs.equity_agreed) {
-          return false;
-        }
-        return true;
-      });
+      // Filter out deleted tickets using the soft-delete approach
+      const filteredTickets = (data || [])
+        .filter(ticket => ticket.status !== 'deleted') // Filter out soft-deleted tickets
+        .filter(ticket => {
+          if (ticket.accepted_jobs && 
+              ticket.accepted_jobs.equity_agreed > 0 && 
+              ticket.accepted_jobs.jobs_equity_allocated >= ticket.accepted_jobs.equity_agreed) {
+            return false;
+          }
+          return true;
+        });
       
       const processedTickets = filteredTickets.map(ticket => ({
         ...ticket,
