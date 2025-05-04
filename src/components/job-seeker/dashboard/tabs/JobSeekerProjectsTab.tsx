@@ -7,7 +7,7 @@ import { useProjectsTabs } from "../projects/useProjectsTabs";
 import { ProjectsHeader } from "../projects/ProjectsHeader";
 import { StatisticsCards } from "../projects/StatisticsCards";
 import { ProjectTabContent } from "../projects/ProjectTabContent";
-import { DeleteTicketDialog } from "../projects/DeleteTicketDialog";
+import { DeleteTicketDialog } from "@/components/ticket/dialogs/DeleteTicketDialog";
 
 interface JobSeekerProjectsTabProps {
   userId?: string;
@@ -112,9 +112,10 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
 
       <DeleteTicketDialog
         isOpen={isDeleteDialogOpen}
-        ticket={ticketToDelete}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onDelete={handleDeleteTicket}
+        ticketToDelete={ticketToDelete}
+        onCancel={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDeleteTicket}
+        isDeleting={false}
       />
     </div>
   );

@@ -1,3 +1,4 @@
+
 import React from "react";
 import {
   AlertDialog,
@@ -13,10 +14,10 @@ import { Ticket } from "@/types/types";
 
 interface DeleteTicketDialogProps {
   isOpen: boolean;
-  ticketToDelete: Ticket | null;
   onCancel: () => void;
   onConfirm: () => Promise<void>;
   isDeleting?: boolean;
+  ticketToDelete: Ticket | null;
 }
 
 export const DeleteTicketDialog: React.FC<DeleteTicketDialogProps> = ({
