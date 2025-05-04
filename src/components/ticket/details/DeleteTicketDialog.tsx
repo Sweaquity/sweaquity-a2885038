@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   AlertDialog,
@@ -10,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 interface DeleteTicketDialogProps {
   open: boolean;
@@ -28,6 +28,31 @@ export const DeleteTicketDialog: React.FC<DeleteTicketDialogProps> = ({
   ticketTitle,
   errorMessage,
 }) => {
+  const handleConfirm = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    try {
+      await onConfirm();
+      toast.success("Ticket successfully deleted");
+    } catch (error: any) {
+      // Display a meaningful error message
+      let message = "Failed to delete ticket";
+      
+      if (error?.message) {
+        if (error.message.includes("time entries")) {
+          message = "Cannot delete ticket with time entries";
+        } else if (error.message.includes("completion progress")) {
+          message = "Cannot delete ticket with completion progress";
+        } else {
+          message = `Failed to delete ticket: ${error.message}`;
+        }
+      }
+      
+      toast.error(message);
+      // Keep the dialog open if there was an error
+      return;
+    }
+  };
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -50,10 +75,7 @@ export const DeleteTicketDialog: React.FC<DeleteTicketDialogProps> = ({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={(e) => {
-              e.preventDefault();
-              onConfirm();
-            }}
+            onClick={handleConfirm}
             disabled={isDeleting}
             className="bg-red-500 hover:bg-red-600 focus:ring-red-500"
           >

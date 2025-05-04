@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,7 +5,7 @@ import { Image, Trash2 } from "lucide-react";
 import { Ticket } from "@/types/types";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { TicketService } from "@/components/ticket/TicketService"; // Correct path to TicketService
+import { TicketService } from "@/components/ticket/TicketService";
 import { TicketAttachmentsList, checkTicketAttachments } from "@/components/dashboard/TicketAttachmentsList";
 import { TicketDetailsTab } from "./details/TicketDetailsTab";
 import { TicketConversationTab } from "./details/TicketConversationTab";
@@ -38,7 +37,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   const [activeTab, setActiveTab] = useState("details");
   const [hasAttachments, setHasAttachments] = useState(false);
   const [isCheckingAttachments, setIsCheckingAttachments] = useState(true);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | undefined>();
 
@@ -117,6 +116,11 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
         throw new Error("User not authenticated");
       }
       
+      // Check if the ticket has time entries or completion progress
+      if (localTicket.completion_percentage > 0) {
+        throw new Error("Cannot delete ticket with completion progress");
+      }
+      
       // Use the TicketService for consistent deletion logic
       const success = await TicketService.deleteTicket(localTicket.id, user.id);
       
@@ -127,18 +131,16 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
       // If successful, close the dialog and refresh
       if (onClose) onClose();
       if (onRefresh) onRefresh();
-      
-      toast.success("Ticket deleted successfully");
     } catch (error: any) {
       console.error("Error deleting ticket:", error);
       const errorMessage = error?.message || "Failed to delete ticket. Please try again.";
       setDeleteErrorMessage(errorMessage);
-      toast.error(errorMessage);
+      throw error; // Re-throw the error to be caught by the DeleteTicketDialog
     } finally {
       setIsDeleting(false);
       // Don't close dialog if there's an error
       if (!deleteErrorMessage) {
-        setDeleteDialogOpen(false);
+        setIsDeleteDialogOpen(false);
       }
     }
   };
@@ -151,7 +153,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
           <Button 
             variant="destructive" 
             size="sm" 
-            onClick={() => setDeleteDialogOpen(true)}
+            onClick={() => setIsDeleteDialogOpen(true)}
           >
             <Trash2 className="h-4 w-4 mr-1" />
             Delete
@@ -226,7 +228,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
       
       <DeleteTicketDialog
         open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
         onConfirm={handleDeleteTicket}
         isDeleting={isDeleting}
         ticketTitle={localTicket.title}

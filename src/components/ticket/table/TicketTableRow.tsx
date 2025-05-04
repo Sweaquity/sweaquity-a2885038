@@ -1,5 +1,4 @@
-
-import React from "react";
+import React, { useState } from "react";
 import { Ticket } from "@/types/types";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Trash } from "lucide-react";
 import { formatDate } from "../utils/dateFormatters";
+import { toast } from "sonner";
+import { TicketService } from "../TicketService";
+import { supabase } from "@/lib/supabase";
 
 interface TicketTableRowProps {
   ticket: Ticket;
@@ -31,6 +33,8 @@ export const TicketTableRow: React.FC<TicketTableRowProps> = ({
   onLogTime,
   renderTicketActions
 }) => {
+  const [isCheckingDeletability, setIsCheckingDeletability] = useState(false);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "new":
@@ -91,6 +95,42 @@ export const TicketTableRow: React.FC<TicketTableRowProps> = ({
         return "Beta Test";
       default:
         return type.charAt(0).toUpperCase() + type.slice(1);
+    }
+  };
+
+  // Check if ticket can be deleted before showing confirmation
+  const checkAndShowDeleteConfirmation = async () => {
+    // Block deletion if we can see the ticket has completion progress or time entries
+    if ((ticket.completion_percentage && ticket.completion_percentage > 0) || 
+        (ticket.hours_logged && ticket.hours_logged > 0)) {
+      let message = "";
+      if (ticket.completion_percentage && ticket.completion_percentage > 0) {
+        message = "Cannot delete ticket with completion progress";
+      } else if (ticket.hours_logged && ticket.hours_logged > 0) {
+        message = "Cannot delete ticket with time entries";
+      }
+      toast.error(message);
+      return;
+    }
+
+    // For data we might not have cached, check with the server
+    setIsCheckingDeletability(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        toast.error("You must be logged in to delete tickets");
+        return;
+      }
+
+      const canDelete = await TicketService.canDeleteTicket(ticket.id);
+      if (canDelete) {
+        showDeleteConfirmation(ticket);
+      }
+    } catch (error) {
+      console.error("Error checking if ticket can be deleted:", error);
+      toast.error("Error checking if ticket can be deleted");
+    } finally {
+      setIsCheckingDeletability(false);
     }
   };
 
@@ -183,7 +223,8 @@ export const TicketTableRow: React.FC<TicketTableRowProps> = ({
             size="sm"
             variant="outline"
             className="text-red-500 hover:bg-red-50"
-            onClick={() => showDeleteConfirmation(ticket)}
+            onClick={checkAndShowDeleteConfirmation}
+            disabled={isCheckingDeletability}
           >
             <Trash className="h-4 w-4" />
           </Button>

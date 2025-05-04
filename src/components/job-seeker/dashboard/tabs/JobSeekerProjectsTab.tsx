@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
 import { TimeLogDialog } from "../TimeLogDialog";
@@ -8,6 +8,7 @@ import { ProjectsHeader } from "../projects/ProjectsHeader";
 import { StatisticsCards } from "../projects/StatisticsCards";
 import { ProjectTabContent } from "../projects/ProjectTabContent";
 import { DeleteTicketDialog } from "@/components/ticket/details/DeleteTicketDialog";
+import { toast } from "sonner";
 
 interface JobSeekerProjectsTabProps {
   userId?: string;
@@ -46,6 +47,28 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
     toggleTicketExpansion,
     handleDragEnd
   } = useProjectsTabs(userId);
+
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | undefined>();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!ticketToDelete) return;
+    
+    setIsDeleting(true);
+    setDeleteErrorMessage(undefined);
+    
+    try {
+      await handleDeleteTicket();
+      toast.success("Ticket deleted successfully");
+    } catch (error: any) {
+      console.error("Error deleting ticket:", error);
+      const errorMessage = error?.message || "Failed to delete ticket";
+      setDeleteErrorMessage(errorMessage);
+      throw error; // Re-throw for the DeleteTicketDialog to handle
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -114,10 +137,10 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         <DeleteTicketDialog
           open={isDeleteDialogOpen}
           onOpenChange={setIsDeleteDialogOpen}
-          onConfirm={handleDeleteTicket}
-          isDeleting={false}
+          onConfirm={handleConfirmDelete}
+          isDeleting={isDeleting}
           ticketTitle={ticketToDelete.title}
-          errorMessage={undefined}
+          errorMessage={deleteErrorMessage}
         />
       )}
     </div>
