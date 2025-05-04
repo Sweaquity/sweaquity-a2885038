@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,20 +10,20 @@ interface TicketConversationTabProps {
   ticket: Ticket;
   onTicketAction: (ticketId: string, action: string, data: any) => Promise<void>;
   onDataChanged?: () => void; // Add callback for parent notification
+  refreshTrigger?: number; // New prop to force re-renders
 }
 
 export const TicketConversationTab: React.FC<TicketConversationTabProps> = ({
   ticket,
   onTicketAction,
-  onDataChanged
+  onDataChanged,
+  refreshTrigger = 0
 }) => {
   const [conversationMessage, setConversationMessage] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   
-  // Create a unique key that changes whenever replies change
-  const repliesKey = Array.isArray(ticket.replies) 
-    ? ticket.replies.map(reply => `${reply.timestamp}-${reply.comment}`).join('|')
-    : 'no-replies';
+  // Use the refresh trigger in the component key to force a complete re-render
+  const componentKey = `conversation-${ticket.id}-${refreshTrigger}`;
 
   const handleAddConversationMessage = async () => {
     if (!conversationMessage.trim()) return;
@@ -49,7 +50,7 @@ export const TicketConversationTab: React.FC<TicketConversationTabProps> = ({
   };
 
   return (
-    <div className="space-y-4" key={repliesKey}>
+    <div className="space-y-4" key={componentKey}>
       <div className="bg-gray-50 p-4 rounded-md border mb-4">
         <p className="text-sm text-gray-500">
           Use this tab to communicate with others about this ticket.

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,20 +10,20 @@ interface TicketActivityTabProps {
   ticket: Ticket;
   onTicketAction: (ticketId: string, action: string, data: any) => Promise<void>;
   onDataChanged?: () => void; // Add callback for parent notification
+  refreshTrigger?: number; // New prop to force re-renders
 }
 
 export const TicketActivityTab: React.FC<TicketActivityTabProps> = ({
   ticket,
   onTicketAction,
-  onDataChanged
+  onDataChanged,
+  refreshTrigger = 0
 }) => {
   const [activityComment, setActivityComment] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   
-  // Create a unique key that changes whenever notes change
-  const notesKey = Array.isArray(ticket.notes) 
-    ? ticket.notes.map(note => `${note.timestamp}-${note.comment}`).join('|')
-    : 'no-notes';
+  // Use the refresh trigger in the component key to force a complete re-render
+  const componentKey = `activity-${ticket.id}-${refreshTrigger}`;
 
   const handleAddActivityComment = async () => {
     if (!activityComment.trim()) return;
@@ -49,7 +50,7 @@ export const TicketActivityTab: React.FC<TicketActivityTabProps> = ({
   };
 
   return (
-    <div className="space-y-4" key={notesKey}>
+    <div className="space-y-4" key={componentKey}>
       <div className="bg-gray-50 p-4 rounded-md border mb-4">
         <p className="text-sm text-gray-500">
           The activity log shows all actions taken on this ticket.

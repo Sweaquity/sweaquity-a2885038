@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Image, Trash2 } from "lucide-react";
@@ -11,7 +12,7 @@ import { TicketDetailsTab } from "./details/TicketDetailsTab";
 import { TicketConversationTab } from "./details/TicketConversationTab";
 import { TicketActivityTab } from "./details/TicketActivityTab";
 import { TicketTimeLogTab } from "./details/TicketTimeLogTab";
-import { DeleteTicketDialog } from "./details/DeleteTicketDialog";
+import { DeleteTicketDialog } from "./dialogs/DeleteTicketDialog";
 
 interface ExpandedTicketDetailsProps {
   ticket: Ticket;
@@ -40,6 +41,9 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | undefined>();
+  // Add refresh trigger state to force re-renders
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Update local ticket when props change
   useEffect(() => {
@@ -51,6 +55,37 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
       checkForAttachments();
     }
   }, [localTicket.id]);
+
+  // Refresh ticket data from the database
+  const refreshTicketData = useCallback(async () => {
+    if (!localTicket?.id) return;
+    
+    setIsRefreshing(true);
+    try {
+      // Fetch the latest ticket data from the server
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('id', localTicket.id)
+        .single();
+        
+      if (error) throw error;
+      
+      // Update the local ticket state with fresh data
+      setLocalTicket(prev => ({...prev, ...data}));
+      
+      // Increment the refresh trigger to force child component re-renders
+      setRefreshTrigger(prev => prev + 1);
+      
+      // Call the parent's refresh handler if provided
+      if (onRefresh) onRefresh();
+    } catch (error) {
+      console.error('Error refreshing ticket data:', error);
+      toast.error('Failed to refresh ticket data');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [localTicket?.id, onRefresh]);
 
   const checkForAttachments = async () => {
     setIsCheckingAttachments(true);
@@ -82,6 +117,26 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
             return { ...prev, completion_percentage: data };
           case "updateDescription":
             return { ...prev, description: data };
+          case "addComment":
+            // For notes, we need to update the notes array
+            const newNote = {
+              id: Date.now().toString(),
+              user: "Current User",
+              timestamp: new Date().toISOString(),
+              comment: data
+            };
+            const existingNotes = prev.notes || [];
+            return { ...prev, notes: [...existingNotes, newNote] };
+          case "addReply":
+            // For replies, we need to update the replies array
+            const newReply = {
+              id: Date.now().toString(),
+              user: "Current User",
+              timestamp: new Date().toISOString(),
+              comment: data
+            };
+            const existingReplies = prev.replies || [];
+            return { ...prev, replies: [...existingReplies, newReply] };
           default:
             return prev;
         }
@@ -90,10 +145,8 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
       // Call the parent handler (API update)
       await onTicketAction(ticketId, action, data);
       
-      // Refresh data if onRefresh is provided
-      if (onRefresh) {
-        onRefresh();
-      }
+      // Refresh data after each action to ensure consistency
+      await refreshTicketData();
       
       return true;
     } catch (error) {
@@ -103,11 +156,9 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
   };
 
   // Force refresh of child components
-  const handleDataChanged = () => {
-    if (onRefresh) {
-      onRefresh();
-    }
-  };
+  const handleDataChanged = useCallback(() => {
+    refreshTicketData();
+  }, [refreshTicketData]);
 
   const handleDeleteTicket = async () => {
     setIsDeleting(true);
@@ -205,6 +256,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
             ticket={localTicket}
             onTicketAction={handleTicketAction}
             onDataChanged={handleDataChanged}
+            refreshTrigger={refreshTrigger}
           />
         </TabsContent>
         
@@ -213,6 +265,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
             ticket={localTicket}
             onTicketAction={handleTicketAction}
             onDataChanged={handleDataChanged}
+            refreshTrigger={refreshTrigger}
           />
         </TabsContent>
 
@@ -229,6 +282,7 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
             ticketId={localTicket.id}
             onLogTime={onLogTime}
             onDataChanged={handleDataChanged}
+            refreshTrigger={refreshTrigger}
           />
         </TabsContent>
       </Tabs>
