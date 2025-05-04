@@ -7,7 +7,7 @@ import { useProjectsTabs } from "../projects/useProjectsTabs";
 import { ProjectsHeader } from "../projects/ProjectsHeader";
 import { StatisticsCards } from "../projects/StatisticsCards";
 import { ProjectTabContent } from "../projects/ProjectTabContent";
-import { DeleteTicketDialog } from "@/components/ticket/dialogs/DeleteTicketDialog";
+import { DeleteTicketDialog } from "@/components/ticket/details/DeleteTicketDialog";
 
 interface JobSeekerProjectsTabProps {
   userId?: string;
@@ -110,13 +110,16 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
         />
       )}
 
-      <DeleteTicketDialog
-        isOpen={isDeleteDialogOpen}
-        ticketToDelete={ticketToDelete}
-        onCancel={() => setIsDeleteDialogOpen(false)}
-        onConfirm={handleDeleteTicket}
-        isDeleting={false}
-      />
+      {ticketToDelete && (
+        <DeleteTicketDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          onConfirm={handleDeleteTicket}
+          isDeleting={false}
+          ticketTitle={ticketToDelete.title}
+          errorMessage={undefined}
+        />
+      )}
     </div>
   );
 };

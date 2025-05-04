@@ -87,15 +87,12 @@ export const TicketService = {
   },
 
   /**
-   * Soft deletes a ticket by:
-   * 1. Copying it to the deleted_tickets table
-   * 2. Marking it as deleted in the tickets table (status='deleted')
-   * 
-   * First checks if the ticket can be deleted
+   * Soft deletes a ticket using the database function
+   * This copies the ticket to deleted_tickets and marks it as deleted in the tickets table
    */
   async deleteTicket(ticketId: string, userId: string): Promise<boolean> {
     try {
-      // Use the database function for soft deletion
+      // Use the fixed database function for soft deletion
       const { data, error } = await supabase
         .rpc('soft_delete_ticket', { 
           ticket_id: ticketId, 
@@ -109,16 +106,15 @@ export const TicketService = {
         } else if (error.message.includes('completion progress')) {
           toast.error('Cannot delete ticket with completion progress');
         } else {
-          toast.error('Failed to delete ticket');
+          toast.error('Failed to delete ticket: ' + error.message);
         }
         return false;
       }
       
-      toast.success('Ticket successfully deleted');
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting ticket:', error);
-      toast.error('Failed to delete ticket');
+      toast.error('Failed to delete ticket: ' + (error.message || 'Unknown error'));
       return false;
     }
   },

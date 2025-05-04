@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -126,6 +127,8 @@ export const ExpandedTicketDetails: React.FC<ExpandedTicketDetailsProps> = ({
       // If successful, close the dialog and refresh
       if (onClose) onClose();
       if (onRefresh) onRefresh();
+      
+      toast.success("Ticket deleted successfully");
     } catch (error: any) {
       console.error("Error deleting ticket:", error);
       const errorMessage = error?.message || "Failed to delete ticket. Please try again.";
