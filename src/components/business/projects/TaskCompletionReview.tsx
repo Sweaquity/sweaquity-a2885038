@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -30,6 +31,9 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
   useEffect(() => {
     if (task && task.job_app_id) {
       fetchJobApplicationData(task.job_app_id);
+    } else if (task && task.task_id) {
+      // If no job_app_id is directly available, try to find it through the task_id
+      fetchJobAppIdFromTaskId(task.task_id);
     }
     
     if (task && task.assigned_to) {
@@ -38,6 +42,7 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
   }, [task]);
 
   useEffect(() => {
+    // Calculate equity to award whenever completionPercentage or jobAppData changes
     if (jobAppData?.accepted_jobs?.equity_agreed) {
       const equityAgreed = jobAppData.accepted_jobs.equity_agreed;
       const percentageToAward = completionPercentage / 100;
@@ -45,8 +50,31 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
     }
   }, [completionPercentage, jobAppData]);
 
+  const fetchJobAppIdFromTaskId = async (taskId: string) => {
+    try {
+      console.log("Fetching job application data from task ID:", taskId);
+      const { data, error } = await supabase
+        .from('job_applications')
+        .select('job_app_id')
+        .eq('task_id', taskId)
+        .maybeSingle();
+
+      if (error) throw error;
+      
+      if (data && data.job_app_id) {
+        console.log("Found job app ID from task ID:", data.job_app_id);
+        fetchJobApplicationData(data.job_app_id);
+      } else {
+        console.log("No job application found for task ID:", taskId);
+      }
+    } catch (error) {
+      console.error("Error fetching job application ID from task ID:", error);
+    }
+  };
+
   const fetchJobApplicationData = async (jobAppId: string) => {
     try {
+      console.log("Fetching job application data for ID:", jobAppId);
       const { data, error } = await supabase
         .from('job_applications')
         .select(`
@@ -95,21 +123,29 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
     try {
       setIsSubmitting(true);
       
-      if (!task || !jobAppData?.accepted_jobs?.id) {
-        toast.error("Missing task or accepted job data");
+      if (!task) {
+        toast.error("Missing task data");
         return;
       }
       
-      const { error: updateError } = await supabase
-        .from('accepted_jobs')
-        .update({
-          jobs_equity_allocated: equityToAward
-        })
-        .eq('id', jobAppData.accepted_jobs.id);
-        
-      if (updateError) throw updateError;
+      // Update equity allocated in accepted_jobs if we have job app data
+      if (jobAppData?.accepted_jobs?.id) {
+        console.log("Updating accepted job with equity allocation:", equityToAward);
+        const { error: updateError } = await supabase
+          .from('accepted_jobs')
+          .update({
+            jobs_equity_allocated: equityToAward
+          })
+          .eq('id', jobAppData.accepted_jobs.id);
+          
+        if (updateError) throw updateError;
+      } else {
+        console.log("No accepted job data available to update");
+      }
       
-      if (completionPercentage >= 100) {
+      // Update task completion status
+      if (completionPercentage >= 100 && task.task_id) {
+        console.log("Closing project sub task with ID:", task.task_id);
         const { error: taskError } = await supabase
           .from('project_sub_tasks')
           .update({
@@ -121,6 +157,8 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
         if (taskError) throw taskError;
       }
       
+      // Update ticket status
+      console.log("Updating ticket with ID:", task.id);
       const { error: ticketError } = await supabase
         .from('tickets')
         .update({
@@ -131,14 +169,18 @@ export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
         
       if (ticketError) throw ticketError;
       
-      const { error: functionError } = await supabase.rpc('update_active_project', {
-        p_task_id: task.task_id,
-        p_completion_percentage: completionPercentage,
-        p_status: completionPercentage >= 100 ? 'done' : 'in-progress'
-      });
-      
-      if (functionError) {
-        console.error("Error calling update_active_project function:", functionError);
+      // Call the update_active_project function to ensure all related records are updated
+      if (task.task_id) {
+        console.log("Calling update_active_project function for task ID:", task.task_id);
+        const { error: functionError } = await supabase.rpc('update_active_project', {
+          p_task_id: task.task_id,
+          p_completion_percentage: completionPercentage,
+          p_status: completionPercentage >= 100 ? 'done' : 'in-progress'
+        });
+        
+        if (functionError) {
+          console.error("Error calling update_active_project function:", functionError);
+        }
       }
       
       toast.success(`Task approved. ${equityToAward}% equity awarded.`);

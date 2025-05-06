@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
 import { TaskCompletionReview } from "./TaskCompletionReview";
 import { Ticket } from "@/types/types";
 import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 import { 
   loadTickets, 
   fetchProjects, 
@@ -79,6 +81,7 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
     if (action === 'reviewCompletion') {
       const ticket = tickets.find(t => t.id === ticketId);
       if (ticket) {
+        console.log("Reviewing completion for ticket:", ticket);
         setReviewTask(ticket);
         setIsReviewOpen(true);
       }
@@ -170,8 +173,10 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
   };
 
   const renderTicketActions = (ticket: Ticket) => {
-    if ((ticket.status === 'review' || ticket.status === 'in review') && 
-        (ticket.completion_percentage === 100)) {
+    // Improved condition to check for tickets in review status
+    // This will also log tickets that should be in review to help with debugging
+    if ((ticket.status === 'review' || ticket.status === 'in review')) {
+      console.log("Found ticket in review status:", ticket);
       return (
         <Button
           variant="default"

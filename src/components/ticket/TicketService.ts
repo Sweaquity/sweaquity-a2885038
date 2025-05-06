@@ -20,7 +20,6 @@ export class TicketService {
 
       // If there are any time entries, ticket cannot be deleted
       if (timeEntries && timeEntries.length > 0) {
-        toast.error("Cannot delete ticket with logged time entries");
         return false;
       }
 
@@ -37,14 +36,12 @@ export class TicketService {
 
       // If completion percentage is greater than 0, ticket cannot be deleted
       if (ticket && ticket.completion_percentage > 0) {
-        toast.error("Cannot delete ticket with completion progress");
         return false;
       }
 
       return true;
     } catch (error: any) {
       console.error("Error checking if ticket can be deleted:", error);
-      toast.error("Error checking if ticket can be deleted");
       return false;
     }
   }
@@ -55,7 +52,31 @@ export class TicketService {
       // First check if the ticket can be deleted
       const canDelete = await this.canDeleteTicket(ticketId);
       if (!canDelete) {
-        return false;
+        // Check specifically what prevents deletion to give a more specific error message
+        // Check for time entries
+        const { data: timeEntries, error: timeError } = await supabase
+          .from("time_entries")
+          .select("id")
+          .eq("ticket_id", ticketId)
+          .limit(1);
+
+        if (timeEntries && timeEntries.length > 0) {
+          throw new Error("Cannot delete ticket with logged time entries");
+        }
+
+        // Check ticket completion percentage
+        const { data: ticket, error: ticketError } = await supabase
+          .from("tickets")
+          .select("completion_percentage")
+          .eq("id", ticketId)
+          .single();
+
+        if (ticket && ticket.completion_percentage > 0) {
+          throw new Error("Cannot delete ticket with completion progress");
+        }
+
+        // Generic fallback error
+        throw new Error("This ticket cannot be deleted");
       }
 
       // Use the database function for soft deletion

@@ -76,7 +76,6 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       }
       
       setDeleteErrorMessage(errorMessage);
-      toast.error(errorMessage);
       throw error; // Re-throw for the DeleteTicketDialog to handle
     } finally {
       setIsDeleting(false);
