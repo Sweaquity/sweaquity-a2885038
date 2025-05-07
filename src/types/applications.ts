@@ -14,7 +14,7 @@ export interface JobApplication {
   applicant_anonymized?: boolean;
   created_at?: string;
   updated_at?: string;
-  applied_at?: string;
+  applied_at: string;  // Made required to match JobSeeker.JobApplication
   business_roles?: BusinessRole | any;
   applicant_id?: string;
   task_discourse?: string;

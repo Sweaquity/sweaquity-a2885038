@@ -1,4 +1,3 @@
-
 import { Skill, SkillRequirement } from "./jobSeeker";
 import { Task, TaskType } from "./dashboard";
 
@@ -74,4 +73,28 @@ export interface ProjectJobApplication {
   project_sub_tasks?: {
     title: string;
   };
+}
+
+export interface Ticket {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  priority: string;
+  health: string;
+  estimated_hours?: number;
+  created_at: string;
+  updated_at: string;
+  due_date?: string;
+  assigned_to?: string;
+  reporter?: string;
+  project_id?: string;
+  equity_points?: number;
+  task_id?: string;
+  created_by?: string;
+  ticket_type?: string;
+  notes?: any[];
+  replies?: any[];
+  completion_percentage?: number;
+  job_app_id?: string;
 }

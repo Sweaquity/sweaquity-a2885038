@@ -53,9 +53,9 @@ export function convertApplicationToJobApplication(application: Application): Jo
       timeframe: application.business_roles?.timeframe,
       skill_requirements: normalizeSkillRequirements(application.business_roles?.skill_requirements),
       equity_allocation: application.business_roles?.equity_allocation,
-      project_status: application.business_roles?.project && 
-                     typeof application.business_roles.project === 'object' ? 
-                     application.business_roles.project.status || "active" : "active"
+      project_status: (application.business_roles?.project && 
+                     typeof application.business_roles.project === 'object') ? 
+                     (application.business_roles.project.status || "active") : "active"
     },
     // Add hasEquityData property for type compatibility
     hasEquityData: false, // Default value if accepted_jobs is not available

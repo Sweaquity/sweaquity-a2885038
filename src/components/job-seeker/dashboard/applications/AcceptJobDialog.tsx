@@ -47,7 +47,7 @@ export const AcceptJobDialog = ({
         <DialogHeader>
           <DialogTitle>Accept Job Offer</DialogTitle>
           <DialogDescription>
-            You are accepting the job offer for "{application.business_roles?.title}" at {application.company_name || application.businesses?.company_name}.
+            You are accepting the job offer for "{application.business_roles?.title}" at {application.company_name || (application.businesses?.company_name || "")}.
             This will confirm your agreement to the equity terms.
           </DialogDescription>
         </DialogHeader>

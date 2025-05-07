@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { Button } from "@/components/ui/button";
@@ -39,8 +40,6 @@ import {
 import { supabase } from "@/lib/supabase";
 import { Project, Ticket } from "@/types/business";
 import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
-import { UpdateTicketDialog } from "@/components/ticket/UpdateTicketDialog";
-import { DeleteTicketDialog } from "@/components/ticket/DeleteTicketDialog";
 import { TaskCompletionReview } from "./TaskCompletionReview";
 
 interface LiveProjectsTabProps {
@@ -55,6 +54,96 @@ const reorder = (list: any[], startIndex: number, endIndex: number) => {
   result.splice(endIndex, 0, removed);
 
   return result;
+};
+
+// Create custom components for UpdateTicketDialog and DeleteTicketDialog
+const UpdateTicketDialog = ({ open, onClose, ticket, onUpdateTicket, projects }: { 
+  open: boolean; 
+  onClose: () => void; 
+  ticket: Ticket; 
+  onUpdateTicket: () => void; 
+  projects: Project[] 
+}) => {
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Update Ticket</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="title">Title</Label>
+            <Input id="title" defaultValue={ticket.title} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <textarea 
+              id="description" 
+              className="w-full min-h-[100px] rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+              defaultValue={ticket.description}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => { onUpdateTicket(); onClose(); }}>Update Ticket</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const DeleteTicketDialog = ({ 
+  open, 
+  onOpenChange, 
+  onConfirm, 
+  isDeleting, 
+  ticketTitle, 
+  errorMessage 
+}: { 
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => Promise<void>;
+  isDeleting: boolean;
+  ticketTitle: string;
+  errorMessage?: string;
+}) => {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            You are about to delete ticket: <strong>{ticketTitle}</strong>
+            <br />
+            This action cannot be undone. The ticket will be permanently removed.
+            {errorMessage && (
+              <div className="mt-2 p-2 bg-red-50 text-red-600 rounded-md">
+                Error: {errorMessage}
+              </div>
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault();
+              onConfirm();
+            }}
+            disabled={isDeleting}
+            className="bg-red-500 hover:bg-red-600 focus:ring-red-500"
+          >
+            {isDeleting ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...</>
+            ) : (
+              "Delete"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 };
 
 export const LiveProjectsTab = ({ projectId, projects, onProjectChange }: LiveProjectsTabProps) => {
@@ -138,6 +227,8 @@ export const LiveProjectsTab = ({ projectId, projects, onProjectChange }: LivePr
       
       toast.success("Ticket deleted successfully");
       setTickets(tickets.filter(ticket => ticket.id !== selectedTicket.id));
+      setIsDeleteDialogOpen(false);
+      return Promise.resolve();
     } catch (error: any) {
       console.error("Error deleting ticket:", error);
       
@@ -159,7 +250,6 @@ export const LiveProjectsTab = ({ projectId, projects, onProjectChange }: LivePr
       throw error; // Re-throw for the DeleteTicketDialog to handle
     } finally {
       setIsDeleting(false);
-      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -274,7 +364,7 @@ export const LiveProjectsTab = ({ projectId, projects, onProjectChange }: LivePr
         )
       },
     },
-  ]
+  ];
 
   const table = useReactTable({
     data: tickets,
@@ -293,7 +383,7 @@ export const LiveProjectsTab = ({ projectId, projects, onProjectChange }: LivePr
       columnVisibility,
       rowSelection,
     },
-  })
+  });
 
   const onDragEnd = async (result: DropResult) => {
     if (!result.destination) {
@@ -329,18 +419,6 @@ export const LiveProjectsTab = ({ projectId, projects, onProjectChange }: LivePr
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-sm"
           />
-          {table.getHeaderGroups().map((headerGroup) => (
-            headerGroup.headers.map((header) => {
-              if (!header.column.getCanFilter()) {
-                return null
-              }
-              return (
-                <div className="ml-2">
-                  <Filter column={header.column} table={table} />
-                </div>
-              )
-            })
-          ))}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="ml-auto">
@@ -483,23 +561,41 @@ export const LiveProjectsTab = ({ projectId, projects, onProjectChange }: LivePr
   );
 };
 
-function Filter<Type, Value>(props: {
-  column: any
-  table: any
-}) {
-  const column = props.column
-  const table = props.table
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+// Simple Filter component
+function Filter({ column, table }: { column: any; table: any }) {
   const firstValue = table
     .getPreFilteredRowModel()
-    .flatRows[0]?.getValue(column.id)
-  const columnFilterValue = column.getFilterValue()
-  const sortedUniqueValues = useMemo(
+    .flatRows[0]?.getValue(column.id);
+  
+  const columnFilterValue = column.getFilterValue();
+  
+  const sortedUniqueValues = useCallback(
     () =>
       typeof firstValue === 'number'
         ? []
-        : Array.from(column.getFacetedValues().keys()).sort(),
-    [firstValue, column.getFacetedValues()]
-  )
+        : Array.from(column.getFacetedUniqueValues().keys()).sort(),
+    [column.getFacetedUniqueValues()]
+  )();
 
   return typeof firstValue === 'number' ? (
     <div>
@@ -541,7 +637,7 @@ function Filter<Type, Value>(props: {
                   column.setFilterValue(old => {
                     return e.target.checked
                       ? [...(old || []), value]
-                      : old?.filter(v => v !== value)
+                      : old?.filter((v: any) => v !== value)
                   })
                 }}
                 className="mr-2 h-4 w-4"
@@ -557,7 +653,5 @@ function Filter<Type, Value>(props: {
         </div>
       ) : null}
     </>
-  )
+  );
 }
-
-const useMemo = useCallback;
