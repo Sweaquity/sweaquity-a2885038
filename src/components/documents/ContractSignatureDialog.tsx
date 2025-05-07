@@ -16,24 +16,28 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
-interface NDASignatureDialogProps {
+interface ContractSignatureDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  jobApplicationId: string;
+  documentId: string;
+  documentType: 'work_contract' | 'award_agreement';
+  acceptedJobId: string;
   onSigned: () => void;
 }
 
-export const NDASignatureDialog: React.FC<NDASignatureDialogProps> = ({
+export const ContractSignatureDialog: React.FC<ContractSignatureDialogProps> = ({
   open,
   onOpenChange,
-  jobApplicationId,
+  documentId,
+  documentType,
+  acceptedJobId,
   onSigned,
 }) => {
   const [signature, setSignature] = useState("");
   const [remarks, setRemarks] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const handleSignNDA = async () => {
+  const handleSignDocument = async () => {
     if (!signature.trim()) {
       toast.error("Please provide your signature");
       return;
@@ -42,18 +46,7 @@ export const NDASignatureDialog: React.FC<NDASignatureDialogProps> = ({
     setIsSubmitting(true);
     
     try {
-      // 1. Get the NDA document ID
-      const { data: application, error: appError } = await supabase
-        .from('job_applications')
-        .select('nda_document_id')
-        .eq('job_app_id', jobApplicationId)
-        .single();
-      
-      if (appError || !application?.nda_document_id) throw appError;
-      
-      const documentId = application.nda_document_id;
-      
-      // 2. Get the document
+      // 1. Get the document
       const { data: document, error: docError } = await supabase
         .from('legal_documents')
         .select('*')
@@ -62,7 +55,7 @@ export const NDASignatureDialog: React.FC<NDASignatureDialogProps> = ({
       
       if (docError) throw docError;
       
-      // 3. Add signature record
+      // 2. Add signature record
       const { data: signatureData, error: signError } = await supabase
         .from('document_signatures')
         .insert({
@@ -81,21 +74,23 @@ export const NDASignatureDialog: React.FC<NDASignatureDialogProps> = ({
       
       if (signError) throw signError;
       
-      // 4. Update document status to executed
+      // 3. Update document status to executed
       await DocumentService.updateDocumentStatus(documentId, 'executed');
       
-      // 5. Update job application with the new NDA status
-      await supabase
-        .from('job_applications')
-        .update({ nda_status: 'executed' })
-        .eq('job_app_id', jobApplicationId);
+      // 4. Update accepted job with the new document status
+      const statusField = documentType === 'work_contract' ? 'work_contract_status' : 'award_agreement_status';
       
-      toast.success("NDA signed successfully");
+      await supabase
+        .from('accepted_jobs')
+        .update({ [statusField]: 'executed' })
+        .eq('id', acceptedJobId);
+      
+      toast.success("Document signed successfully");
       onSigned();
       onOpenChange(false);
     } catch (error) {
-      console.error("Error signing NDA:", error);
-      toast.error("Failed to sign NDA");
+      console.error("Error signing document:", error);
+      toast.error("Failed to sign document");
     } finally {
       setIsSubmitting(false);
     }
@@ -105,9 +100,9 @@ export const NDASignatureDialog: React.FC<NDASignatureDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Sign Non-Disclosure Agreement</DialogTitle>
+          <DialogTitle>Sign {documentType === 'work_contract' ? 'Work Contract' : 'Award Agreement'}</DialogTitle>
           <DialogDescription>
-            By signing this NDA, you acknowledge that you have read, understood, and agree to all terms and conditions outlined in the document.
+            By signing this document, you acknowledge that you have read, understood, and agree to all terms and conditions outlined in the {documentType === 'work_contract' ? 'work contract' : 'award agreement'}.
           </DialogDescription>
         </DialogHeader>
         
@@ -142,13 +137,13 @@ export const NDASignatureDialog: React.FC<NDASignatureDialogProps> = ({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleSignNDA} disabled={isSubmitting || !signature}>
+          <Button onClick={handleSignDocument} disabled={isSubmitting || !signature}>
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing...
               </>
             ) : (
-              "Sign NDA"
+              "Sign Document"
             )}
           </Button>
         </DialogFooter>

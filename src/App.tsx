@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +15,7 @@ import ProjectDetailsPage from "./pages/projects/ProjectDetailsPage";
 import ProjectApplicationPage from "./pages/projects/ProjectApplicationPage";
 import ProfileCompletePage from "./pages/ProfileCompletePage";
 import { BetaTestingButton } from "./components/shared/BetaTestingButton";
+import { DocumentService } from './services/DocumentService';
 
 const queryClient = new QueryClient();
 
@@ -26,6 +26,19 @@ const ProjectRedirect = () => {
 };
 
 function App() {
+  // Initialize default document templates
+  useEffect(() => {
+    const initializeTemplates = async () => {
+      try {
+        await DocumentService.ensureDefaultTemplatesExist();
+      } catch (error) {
+        console.error('Error initializing document templates:', error);
+      }
+    };
+    
+    initializeTemplates();
+  }, []);
+  
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

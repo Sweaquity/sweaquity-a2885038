@@ -5,9 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContractUploadDialog } from "./ContractUploadDialog";
 import { useContractManagement } from "@/hooks/jobs/useContractManagement";
 import { Application } from "@/types/business";
-import { AcceptedJob } from "@/hooks/jobs/useAcceptedJobsCore";
+import { AcceptedJob } from "@/hooks/useAcceptedJobs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpRight, Download, FileText, Upload } from "lucide-react";
+import { ArrowUpRight, Download, FileText, Upload, FileCheck } from "lucide-react";
+import { toast } from "sonner";
+import { useWorkContractManagement } from "@/hooks/useWorkContractManagement";
+import { useAwardAgreementManagement } from "@/hooks/useAwardAgreementManagement";
+import { DocumentViewer } from "@/components/documents/DocumentViewer";
+import { ContractSignatureDialog } from "@/components/documents/ContractSignatureDialog";
 
 interface ContractActionsSectionProps {
   application: Application;
@@ -21,65 +26,265 @@ export const ContractActionsSection = ({
   onUpdate
 }: ContractActionsSectionProps) => {
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
-  const { isUploading, uploadContract } = useContractManagement(onUpdate);
+  const [activeTab, setActiveTab] = useState<'upload' | 'contract' | 'award'>('upload');
+  const [workContractDoc, setWorkContractDoc] = useState<any>(null);
+  const [awardAgreementDoc, setAwardAgreementDoc] = useState<any>(null);
+  const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
+  const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
+  const [activeDocumentType, setActiveDocumentType] = useState<'work_contract' | 'award_agreement'>('work_contract');
   
-  if (!application.accepted_business || !application.accepted_jobseeker) {
+  const { isUploading, uploadContract } = useContractManagement(onUpdate);
+  const { 
+    isGenerating: isGeneratingWorkContract, 
+    isLoadingDocuments: isLoadingWorkContract,
+    generateWorkContract,
+    getWorkContract
+  } = useWorkContractManagement();
+  
+  const {
+    isGenerating: isGeneratingAwardAgreement,
+    isLoadingDocuments: isLoadingAwardAgreement,
+    generateAwardAgreement,
+    getAwardAgreement
+  } = useAwardAgreementManagement();
+  
+  if (!application.accepted_business || !application.accepted_jobseeker || !acceptedJob) {
     return null;
   }
   
   const handleUploadContract = async (jobAppId: string, file: File, notes: string) => {
     return await uploadContract(jobAppId, file);
   };
+
+  const loadDocuments = async () => {
+    if (!acceptedJob?.id) return;
+    
+    try {
+      // Load work contract
+      const workContract = await getWorkContract(acceptedJob.id);
+      setWorkContractDoc(workContract);
+      
+      // Load award agreement
+      const awardAgreement = await getAwardAgreement(acceptedJob.id);
+      setAwardAgreementDoc(awardAgreement);
+    } catch (error) {
+      console.error("Error loading documents:", error);
+      toast.error("Failed to load documents");
+    }
+  };
+  
+  const handleCreateWorkContract = async () => {
+    if (!acceptedJob?.id || !application.job_app_id) return;
+    
+    try {
+      await generateWorkContract(
+        acceptedJob.id,
+        application.business_id || '',
+        application.user_id || '',
+        application.project_id || '',
+        application.job_app_id
+      );
+      
+      toast.success("Work contract created");
+      loadDocuments();
+      setActiveTab('contract');
+    } catch (error) {
+      console.error("Error generating work contract:", error);
+      toast.error("Failed to create work contract");
+    }
+  };
+  
+  const handleCreateAwardAgreement = async () => {
+    if (!acceptedJob?.id || !application.job_app_id) return;
+    
+    try {
+      await generateAwardAgreement(
+        acceptedJob.id,
+        application.business_id || '',
+        application.user_id || '',
+        application.project_id || '',
+        application.job_app_id,
+        "completed the agreed services and milestones"
+      );
+      
+      toast.success("Award agreement created");
+      loadDocuments();
+      setActiveTab('award');
+    } catch (error) {
+      console.error("Error generating award agreement:", error);
+      toast.error("Failed to create award agreement");
+    }
+  };
+  
+  const handleSignDocument = (docId: string, docType: 'work_contract' | 'award_agreement') => {
+    setActiveDocumentId(docId);
+    setActiveDocumentType(docType);
+    setIsSignatureDialogOpen(true);
+  };
+  
+  const handleTabChange = (tab: 'upload' | 'contract' | 'award') => {
+    setActiveTab(tab);
+    loadDocuments();
+  };
+  
+  const handleDocumentSigned = () => {
+    loadDocuments();
+    onUpdate();
+  };
   
   return (
     <Card className="mt-4">
-      <CardHeader>
+      <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center">
           <FileText className="h-4 w-4 mr-2" />
           Contract Management
         </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium">Contract Status</p>
-            <p className="text-sm text-muted-foreground">
-              {acceptedJob?.document_url 
-                ? "Contract uploaded" 
-                : "Pending contract upload"}
-            </p>
-          </div>
-          <Badge
-            variant={acceptedJob?.document_url ? "success" : "outline"}
-            className={acceptedJob?.document_url 
-              ? "bg-green-100 text-green-800 border-green-300" 
-              : ""}
-          >
-            {acceptedJob?.document_url ? "Uploaded" : "Pending"}
-          </Badge>
-        </div>
         
-        {acceptedJob?.document_url ? (
-          <a 
-            href={acceptedJob.document_url} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="block w-full"
+        <div className="flex space-x-1 rounded-lg bg-muted p-1 text-muted-foreground mt-2">
+          <button
+            onClick={() => handleTabChange('upload')}
+            className={`flex-1 justify-center rounded-md px-3 py-1.5 text-sm font-medium ${
+              activeTab === 'upload'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'hover:bg-background/50'
+            }`}
           >
-            <Button variant="outline" className="w-full flex justify-center items-center">
-              <Download className="h-4 w-4 mr-2" />
-              View/Download Contract
-              <ArrowUpRight className="h-3 w-3 ml-1" />
-            </Button>
-          </a>
-        ) : (
-          <Button 
-            onClick={() => setIsUploadDialogOpen(true)}
-            className="w-full"
+            Upload
+          </button>
+          <button
+            onClick={() => handleTabChange('contract')}
+            className={`flex-1 justify-center rounded-md px-3 py-1.5 text-sm font-medium ${
+              activeTab === 'contract'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'hover:bg-background/50'
+            }`}
           >
-            <Upload className="h-4 w-4 mr-2" />
-            Upload Contract Document
-          </Button>
+            Work Contract
+          </button>
+          <button
+            onClick={() => handleTabChange('award')}
+            className={`flex-1 justify-center rounded-md px-3 py-1.5 text-sm font-medium ${
+              activeTab === 'award'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'hover:bg-background/50'
+            }`}
+          >
+            Award Agreement
+          </button>
+        </div>
+      </CardHeader>
+      
+      <CardContent className="space-y-4">
+        {activeTab === 'upload' && (
+          <>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">External Contract</p>
+                <p className="text-sm text-muted-foreground">
+                  {acceptedJob?.document_url 
+                    ? "External contract uploaded" 
+                    : "Pending external contract upload"}
+                </p>
+              </div>
+              <Badge
+                variant={acceptedJob?.document_url ? "success" : "outline"}
+                className={acceptedJob?.document_url 
+                  ? "bg-green-100 text-green-800 border-green-300" 
+                  : ""}
+              >
+                {acceptedJob?.document_url ? "Uploaded" : "Pending"}
+              </Badge>
+            </div>
+            
+            {acceptedJob?.document_url ? (
+              <a 
+                href={acceptedJob.document_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="block w-full"
+              >
+                <Button variant="outline" className="w-full flex justify-center items-center">
+                  <Download className="h-4 w-4 mr-2" />
+                  View/Download External Contract
+                  <ArrowUpRight className="h-3 w-3 ml-1" />
+                </Button>
+              </a>
+            ) : (
+              <Button 
+                onClick={() => setIsUploadDialogOpen(true)}
+                className="w-full"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Upload External Contract Document
+              </Button>
+            )}
+          </>
+        )}
+        
+        {activeTab === 'contract' && (
+          <>
+            {workContractDoc ? (
+              <DocumentViewer 
+                documentId={workContractDoc.id}
+                documentType="work_contract"
+                documentTitle="Equity Work Contract"
+                documentContent={workContractDoc.content}
+                documentStatus={workContractDoc.status}
+                onSign={workContractDoc.status === 'final' ? 
+                  () => handleSignDocument(workContractDoc.id, 'work_contract') : undefined}
+              />
+            ) : (
+              <div className="text-center p-6 border rounded-md">
+                {isLoadingWorkContract || isGeneratingWorkContract ? (
+                  <p>Loading work contract...</p>
+                ) : (
+                  <>
+                    <p className="mb-4">No work contract has been created yet.</p>
+                    <Button onClick={handleCreateWorkContract}>
+                      <FileCheck className="h-4 w-4 mr-2" />
+                      Generate Work Contract
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </>
+        )}
+        
+        {activeTab === 'award' && (
+          <>
+            {awardAgreementDoc ? (
+              <DocumentViewer 
+                documentId={awardAgreementDoc.id}
+                documentType="award_agreement"
+                documentTitle="Equity Award Agreement"
+                documentContent={awardAgreementDoc.content}
+                documentStatus={awardAgreementDoc.status}
+                onSign={awardAgreementDoc.status === 'final' ? 
+                  () => handleSignDocument(awardAgreementDoc.id, 'award_agreement') : undefined}
+              />
+            ) : (
+              <div className="text-center p-6 border rounded-md">
+                {isLoadingAwardAgreement || isGeneratingAwardAgreement ? (
+                  <p>Loading award agreement...</p>
+                ) : (
+                  <>
+                    <p className="mb-4">No award agreement has been created yet.</p>
+                    {workContractDoc ? (
+                      <Button onClick={handleCreateAwardAgreement}>
+                        <FileCheck className="h-4 w-4 mr-2" />
+                        Generate Award Agreement
+                      </Button>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        You need to create a work contract first before generating an award agreement.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </>
         )}
         
         <ContractUploadDialog
@@ -89,6 +294,17 @@ export const ContractActionsSection = ({
           onUpload={handleUploadContract}
           isUploading={isUploading}
         />
+        
+        {activeDocumentId && (
+          <ContractSignatureDialog
+            open={isSignatureDialogOpen}
+            onOpenChange={setIsSignatureDialogOpen}
+            documentId={activeDocumentId}
+            documentType={activeDocumentType}
+            acceptedJobId={acceptedJob.id}
+            onSigned={handleDocumentSigned}
+          />
+        )}
       </CardContent>
     </Card>
   );

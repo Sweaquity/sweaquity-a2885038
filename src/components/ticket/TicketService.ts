@@ -26,7 +26,7 @@ export class TicketService {
       // Check ticket completion percentage
       const { data: ticket, error: ticketError } = await supabase
         .from("tickets")
-        .select("completion_percentage")
+        .select("completion_percentage, job_app_id")
         .eq("id", ticketId)
         .single();
 
@@ -40,17 +40,19 @@ export class TicketService {
       }
 
       // Check for related documents
-      const { data: documents, error: docError } = await supabase
-        .from("legal_documents")
-        .select("id")
-        .eq("job_application_id", ticket.job_app_id)
-        .limit(1);
-      
-      if (docError) {
-        console.error("Error checking for related documents:", docError);
-      } else if (documents && documents.length > 0) {
-        // If there are related legal documents, ticket cannot be deleted
-        return false;
+      if (ticket?.job_app_id) {
+        const { data: documents, error: docError } = await supabase
+          .from("legal_documents")
+          .select("id")
+          .eq("job_application_id", ticket.job_app_id)
+          .limit(1);
+        
+        if (docError) {
+          console.error("Error checking for related documents:", docError);
+        } else if (documents && documents.length > 0) {
+          // If there are related legal documents, ticket cannot be deleted
+          return false;
+        }
       }
 
       return true;

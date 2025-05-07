@@ -3,35 +3,38 @@ import { useState } from 'react';
 import { DocumentService, DocumentData } from '@/services/DocumentService';
 import { supabase } from "@/lib/supabase";
 import { format } from 'date-fns';
+import { toast } from 'sonner';
+import { AcceptedJob } from '@/hooks/jobs/useAcceptedJobsCore';
 
-export const useNDAManagement = () => {
+export const useWorkContractManagement = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
   
   /**
-   * Generate an NDA for a job application
+   * Generate a Work Contract for an accepted job
    */
-  const generateNDA = async (
-    jobApplicationId: string,
+  const generateWorkContract = async (
+    acceptedJobId: string,
     businessId: string,
     jobseekerId: string,
-    projectId: string
+    projectId: string,
+    jobApplicationId: string
   ) => {
     try {
       setIsGenerating(true);
       
-      // 1. Check if NDA already exists
-      const { data: existingNDA, error: checkError } = await supabase
-        .from('job_applications')
-        .select('nda_document_id, nda_status')
-        .eq('job_app_id', jobApplicationId)
+      // 1. Check if Work Contract already exists
+      const { data: existingJob, error: checkError } = await supabase
+        .from('accepted_jobs')
+        .select('work_contract_document_id, work_contract_status')
+        .eq('id', acceptedJobId)
         .single();
       
       if (checkError) throw checkError;
       
-      if (existingNDA?.nda_document_id) {
-        // NDA already exists
-        return existingNDA.nda_document_id;
+      if (existingJob?.work_contract_document_id) {
+        // Work Contract already exists
+        return existingJob.work_contract_document_id;
       }
       
       // 2. Fetch business data
@@ -52,22 +55,41 @@ export const useNDAManagement = () => {
       
       if (jobseekerError) throw jobseekerError;
       
-      // 4. Get template
-      const template = await DocumentService.getTemplate('nda');
-      if (!template) throw new Error('NDA template not found');
+      // 4. Fetch project data
+      const { data: projectData, error: projectError } = await supabase
+        .from('business_projects')
+        .select('title, description')
+        .eq('project_id', projectId)
+        .single();
+        
+      if (projectError) throw projectError;
       
-      // 5. Create document record
+      // 5. Fetch accepted job data for equity information
+      const { data: acceptedJob, error: acceptedJobError } = await supabase
+        .from('accepted_jobs')
+        .select('equity_agreed, accepted_discourse')
+        .eq('id', acceptedJobId)
+        .single();
+        
+      if (acceptedJobError) throw acceptedJobError;
+      
+      // 6. Get template
+      const template = await DocumentService.getTemplate('work_contract');
+      if (!template) throw new Error('Work contract template not found');
+      
+      // 7. Create document record
       const newDocument = await DocumentService.createDocument(
-        'nda', 
+        'work_contract', 
         businessId, 
         jobseekerId, 
         projectId,
-        jobApplicationId
+        jobApplicationId,
+        acceptedJobId
       );
       
       if (!newDocument) throw new Error('Failed to create document record');
       
-      // 6. Prepare document data
+      // 8. Prepare document data
       const documentData: DocumentData = {
         businessName: businessData.company_name || 'Unnamed Project',
         businessRepName: businessData.contact_person || '',
@@ -80,30 +102,34 @@ export const useNDAManagement = () => {
         effectiveDate: format(new Date(), 'MMMM d, yyyy'),
         duration: '2',
         confidentialityPeriod: '5',
-        arbitrationOrg: 'International Chamber of Commerce'
+        arbitrationOrg: 'International Chamber of Commerce',
+        projectTitle: projectData.title || 'Project',
+        projectDescription: projectData.description || 'Project description not provided',
+        equityAmount: acceptedJob.equity_agreed?.toString() || '0',
+        equityClass: 'common stock'
       };
       
-      // 7. Generate document content
+      // 9. Generate document content
       const documentContent = DocumentService.generateDocumentContent(
         template.template_content,
         documentData
       );
       
-      // 8. Save document content
+      // 10. Save document content
       await DocumentService.saveDocumentContent(newDocument.storage_path, documentContent);
       
-      // 9. Update job application with NDA reference
+      // 11. Update accepted job with Work Contract reference
       await supabase
-        .from('job_applications')
+        .from('accepted_jobs')
         .update({
-          nda_document_id: newDocument.id,
-          nda_status: 'draft'
+          work_contract_document_id: newDocument.id,
+          work_contract_status: 'draft'
         })
-        .eq('job_app_id', jobApplicationId);
+        .eq('id', acceptedJobId);
       
       return newDocument.id;
     } catch (error) {
-      console.error('Error generating NDA:', error);
+      console.error('Error generating Work Contract:', error);
       throw error;
     } finally {
       setIsGenerating(false);
@@ -111,28 +137,28 @@ export const useNDAManagement = () => {
   };
   
   /**
-   * Get NDAs for a job application
+   * Get Work Contract for an accepted job
    */
-  const getNDAForJobApplication = async (jobApplicationId: string) => {
+  const getWorkContract = async (acceptedJobId: string) => {
     try {
       setIsLoadingDocuments(true);
       
-      // Get document ID from job application
-      const { data: application, error: appError } = await supabase
-        .from('job_applications')
-        .select('nda_document_id')
-        .eq('job_app_id', jobApplicationId)
+      // Get document ID from accepted job
+      const { data: job, error: jobError } = await supabase
+        .from('accepted_jobs')
+        .select('work_contract_document_id')
+        .eq('id', acceptedJobId)
         .single();
       
-      if (appError) throw appError;
+      if (jobError) throw jobError;
       
-      if (!application?.nda_document_id) return null;
+      if (!job?.work_contract_document_id) return null;
       
       // Get document details
       const { data: document, error: docError } = await supabase
         .from('legal_documents')
         .select('*')
-        .eq('id', application.nda_document_id)
+        .eq('id', job.work_contract_document_id)
         .single();
       
       if (docError) throw docError;
@@ -146,38 +172,17 @@ export const useNDAManagement = () => {
         htmlContent: content ? DocumentService.createHtmlPreview(content) : null
       };
     } catch (error) {
-      console.error('Error fetching NDA for job application:', error);
+      console.error('Error fetching Work Contract:', error);
       return null;
     } finally {
       setIsLoadingDocuments(false);
     }
   };
 
-  /**
-   * Update NDA status to final
-   */
-  const finalizeNDA = async (documentId: string) => {
-    try {
-      await DocumentService.updateDocumentStatus(documentId, 'final');
-      
-      // Update job application with the new NDA status
-      await supabase
-        .from('job_applications')
-        .update({ nda_status: 'final' })
-        .eq('nda_document_id', documentId);
-      
-      return true;
-    } catch (error) {
-      console.error('Error finalizing NDA:', error);
-      return false;
-    }
-  };
-
   return {
     isGenerating,
     isLoadingDocuments,
-    generateNDA,
-    getNDAForJobApplication,
-    finalizeNDA
+    generateWorkContract,
+    getWorkContract
   };
 };
