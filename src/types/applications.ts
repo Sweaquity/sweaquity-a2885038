@@ -15,7 +15,7 @@ export interface JobApplication {
   created_at?: string;
   updated_at?: string;
   applied_at?: string;
-  business_roles?: BusinessRole;
+  business_roles?: BusinessRole | any;
   applicant_id?: string;
   task_discourse?: string;
   id?: string; // Add id field for compatibility
@@ -36,6 +36,7 @@ export interface JobApplication {
   applicant_skills?: string[];
   hasEquityData?: boolean; // Added for compatibility with EquityProjectsList
   is_equity_project?: boolean; // Added for compatibility with EquityProjectsList
+  profile?: any; // For accessing applicant profile data
 }
 
 export interface AcceptedJob {
@@ -48,6 +49,10 @@ export interface AcceptedJob {
   created_at: string;
   updated_at: string;
   jobs_equity_allocated?: number; // Added for compatibility with UI
+  work_contract_document_id?: string;
+  work_contract_status?: string;
+  award_agreement_document_id?: string;
+  award_agreement_status?: string;
 }
 
 // Application component props

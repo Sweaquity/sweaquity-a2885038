@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContractUploadDialog } from "./ContractUploadDialog";
@@ -77,8 +77,8 @@ export const ContractActionsSection = ({
     if (!acceptedJob?.id || !application.job_app_id) return;
     
     try {
-      // Use application.business_id directly if it exists, otherwise use a fallback
-      const businessId = application.business_id || '';
+      // Get the business ID from the application
+      const businessId = application.businesses?.businesses_id || '';
       const userId = application.user_id || '';
       const projectId = application.project_id || '';
       
@@ -103,8 +103,8 @@ export const ContractActionsSection = ({
     if (!acceptedJob?.id || !application.job_app_id) return;
     
     try {
-      // Use application.business_id directly if it exists, otherwise use a fallback
-      const businessId = application.business_id || '';
+      // Get the business ID from the application
+      const businessId = application.businesses?.businesses_id || '';
       const userId = application.user_id || '';
       const projectId = application.project_id || '';
       

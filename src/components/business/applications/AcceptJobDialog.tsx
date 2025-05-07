@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,8 +9,11 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { JobApplication } from "@/types/jobSeeker";
-import { Loader2 } from "lucide-react";
+import { Loader2, FileText } from "lucide-react";
 import { Application } from "@/types/business";
+import { useWorkContractManagement } from "@/hooks/useWorkContractManagement";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 interface AcceptJobDialogProps {
   isOpen: boolean;
@@ -29,6 +31,45 @@ export const AcceptJobDialog = ({
   isLoading = false
 }: AcceptJobDialogProps) => {
   const [acceptingJob, setAcceptingJob] = useState(false);
+  const [willCreateContract, setWillCreateContract] = useState(true);
+  const [businessId, setBusinessId] = useState<string | null>(null);
+  
+  const { isGenerating, generateWorkContract } = useWorkContractManagement();
+  
+  useEffect(() => {
+    // Get the business ID if not present in application
+    const getBusinessInfo = async () => {
+      if (!application?.project_id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('business_projects')
+          .select('business_id')
+          .eq('project_id', application.project_id)
+          .single();
+        
+        if (error) throw error;
+        setBusinessId(data.business_id);
+      } catch (error) {
+        console.error("Error fetching business ID:", error);
+      }
+    };
+    
+    if (isOpen && application) {
+      // If we have application.business_id, use that
+      if ('business_id' in application && application.business_id) {
+        setBusinessId(application.business_id);
+      } 
+      // If we're using Application from business types and have businesses.businesses_id
+      else if ('businesses' in application && application.businesses?.businesses_id) {
+        setBusinessId(application.businesses.businesses_id);
+      }
+      // Otherwise fetch from the project
+      else {
+        getBusinessInfo();
+      }
+    }
+  }, [isOpen, application]);
   
   const handleAccept = async () => {
     if (!application) return;
@@ -36,9 +77,18 @@ export const AcceptJobDialog = ({
     try {
       setAcceptingJob(true);
       await onAccept(application as JobApplication);
+      
+      // If we want to create a work contract, set up for that next
+      if (willCreateContract) {
+        toast.success("Job accepted successfully. A work contract will be available in the Contract section.");
+      } else {
+        toast.success("Job accepted successfully.");
+      }
+      
       onOpenChange(false);
     } catch (error) {
       console.error("Error accepting job:", error);
+      toast.error("Failed to accept job");
     } finally {
       setAcceptingJob(false);
     }
@@ -108,8 +158,23 @@ export const AcceptJobDialog = ({
             <p className="text-sm">{roleDescription}</p>
           </div>
           
-          <p className="text-sm text-muted-foreground">
-            Once both you and the job seeker accept, a formal contract will be generated for review and signature.
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="create-contract"
+              checked={willCreateContract}
+              onChange={() => setWillCreateContract(!willCreateContract)}
+              className="rounded"
+            />
+            <label htmlFor="create-contract" className="text-sm">
+              Generate formal work contract after acceptance
+            </label>
+          </div>
+          
+          <p className="text-sm text-muted-foreground mt-4">
+            Once both you and the {
+              'profile' in application ? 'job seeker' : 'business'
+            } accept, {willCreateContract ? 'a formal contract will be generated for review and signature.' : 'the job will be considered active.'}
           </p>
         </div>
 
@@ -129,7 +194,10 @@ export const AcceptJobDialog = ({
                 Accepting...
               </>
             ) : (
-              "Accept Job"
+              <>
+                <FileText className="mr-2 h-4 w-4" />
+                Accept Job
+              </>
             )}
           </Button>
         </DialogFooter>

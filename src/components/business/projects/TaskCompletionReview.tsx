@@ -1,397 +1,262 @@
 
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
+  DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { TaskCompletionReviewProps } from "@/types/types";
 import { useAwardAgreementManagement } from "@/hooks/useAwardAgreementManagement";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
 
-export const TaskCompletionReview: React.FC<TaskCompletionReviewProps> = ({
-  task,
+interface TaskCompletionReviewProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  ticketId: string;
+  onReviewComplete: (approved: boolean, notes: string) => Promise<void>;
+  ticketData: {
+    title: string;
+    description?: string;
+    completion_percentage?: number;
+    project_id?: string;
+    assigned_to?: string;
+    job_app_id?: string;
+    task_id?: string;
+  };
+}
+
+export const TaskCompletionReview = ({
   open,
-  setOpen,
-  onClose,
-  businessId,
-  onReviewComplete = () => {}
-}) => {
-  const [completionPercentage, setCompletionPercentage] = useState<number>(task?.completion_percentage || 0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [equityToAward, setEquityToAward] = useState<number>(0);
-  const [jobAppData, setJobAppData] = useState<any>(null);
-  const [assignedUserData, setAssignedUserData] = useState<any>(null);
-  const [generateAgreement, setGenerateAgreement] = useState<boolean>(true);
-  const [showSuccess, setShowSuccess] = useState<boolean>(false);
+  onOpenChange,
+  ticketId,
+  onReviewComplete,
+  ticketData
+}: TaskCompletionReviewProps) => {
+  const [notes, setNotes] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isGeneratingAgreement, setIsGeneratingAgreement] = useState<boolean>(false);
+  const [hasExistingAgreement, setHasExistingAgreement] = useState<boolean | null>(null);
+  const [acceptedJobId, setAcceptedJobId] = useState<string | null>(null);
   
-  const { isGenerating, generateAwardAgreement } = useAwardAgreementManagement();
+  const { 
+    isGenerating, 
+    generateAwardAgreement,
+    getAwardAgreement
+  } = useAwardAgreementManagement();
+  
+  // Check if task is 100% complete
+  const isTaskComplete = ticketData?.completion_percentage === 100;
+  
+  // Check if we need to generate an award agreement
+  const shouldGenerateAgreement = isTaskComplete && ticketData.job_app_id && ticketData.project_id;
 
-  useEffect(() => {
-    if (task && task.job_app_id) {
-      fetchJobApplicationData(task.job_app_id);
-    } else if (task && task.task_id) {
-      // If no job_app_id is directly available, try to find it through the task_id
-      fetchJobAppIdFromTaskId(task.task_id);
+  // Effect to check if award agreement already exists when dialog opens
+  const checkExistingAgreement = async () => {
+    if (!ticketData.job_app_id || !open) return;
+    
+    try {
+      setIsLoading(true);
+      
+      // First get the accepted_job
+      const { data: acceptedJob, error: acceptedJobError } = await supabase
+        .from('accepted_jobs')
+        .select('id, award_agreement_document_id')
+        .eq('job_app_id', ticketData.job_app_id)
+        .maybeSingle();
+        
+      if (acceptedJobError) throw acceptedJobError;
+      
+      if (acceptedJob) {
+        setAcceptedJobId(acceptedJob.id);
+        setHasExistingAgreement(!!acceptedJob.award_agreement_document_id);
+      } else {
+        setHasExistingAgreement(false);
+      }
+    } catch (error) {
+      console.error('Error checking existing award agreement:', error);
+      setHasExistingAgreement(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  if (open && hasExistingAgreement === null) {
+    checkExistingAgreement();
+  }
+  
+  const handleApprove = async () => {
+    try {
+      setIsLoading(true);
+      await onReviewComplete(true, notes);
+      
+      // If task is complete and we need to generate an agreement
+      if (shouldGenerateAgreement && !hasExistingAgreement && acceptedJobId) {
+        await handleGenerateAgreement();
+      }
+      
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error in task review:', error);
+      toast.error('Failed to complete review');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReject = async () => {
+    try {
+      setIsLoading(true);
+      await onReviewComplete(false, notes);
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error in task review:', error);
+      toast.error('Failed to complete review');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleGenerateAgreement = async () => {
+    if (!ticketData.job_app_id || !ticketData.project_id || !acceptedJobId) {
+      toast.error("Missing required information to generate agreement");
+      return;
     }
     
-    if (task && task.assigned_to) {
-      fetchAssignedUserData(task.assigned_to);
-    }
-  }, [task]);
-
-  useEffect(() => {
-    // Calculate equity to award whenever completionPercentage or jobAppData changes
-    if (jobAppData?.accepted_jobs?.equity_agreed) {
-      const equityAgreed = jobAppData.accepted_jobs.equity_agreed;
-      const percentageToAward = completionPercentage / 100;
-      setEquityToAward(Math.round(equityAgreed * percentageToAward * 10) / 10);
-    }
-  }, [completionPercentage, jobAppData]);
-
-  const fetchJobAppIdFromTaskId = async (taskId: string) => {
     try {
-      console.log("Fetching job application data from task ID:", taskId);
-      const { data, error } = await supabase
-        .from('job_applications')
-        .select('job_app_id')
-        .eq('task_id', taskId)
-        .maybeSingle();
-
-      if (error) throw error;
+      setIsGeneratingAgreement(true);
       
-      if (data && data.job_app_id) {
-        console.log("Found job app ID from task ID:", data.job_app_id);
-        fetchJobApplicationData(data.job_app_id);
-      } else {
-        console.log("No job application found for task ID:", taskId);
-      }
-    } catch (error) {
-      console.error("Error fetching job application ID from task ID:", error);
-    }
-  };
-
-  const fetchJobApplicationData = async (jobAppId: string) => {
-    try {
-      console.log("Fetching job application data for ID:", jobAppId);
-      const { data, error } = await supabase
-        .from('job_applications')
-        .select(`
-          *,
-          accepted_jobs:job_app_id(
-            equity_agreed,
-            jobs_equity_allocated,
-            id,
-            award_agreement_document_id,
-            award_agreement_status
-          )
-        `)
-        .eq('job_app_id', jobAppId)
+      // Get the project's business ID
+      const { data: projectData, error: projectError } = await supabase
+        .from('business_projects')
+        .select('business_id')
+        .eq('project_id', ticketData.project_id)
         .single();
         
-      if (error) throw error;
+      if (projectError) throw projectError;
       
-      setJobAppData(data);
-      console.log("Job application data:", data);
-      
-      if (task?.completion_percentage) {
-        setCompletionPercentage(task.completion_percentage);
-      }
-      
-      // If award agreement already exists, don't generate a new one by default
-      if (data?.accepted_jobs?.award_agreement_document_id) {
-        setGenerateAgreement(false);
-      }
-    } catch (error) {
-      console.error("Error fetching job application data:", error);
-      toast.error("Failed to load job application data");
-    }
-  };
-  
-  const fetchAssignedUserData = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('first_name, last_name')
-        .eq('id', userId)
+      // Get the user ID (jobseeker)
+      const { data: applicationData, error: appError } = await supabase
+        .from('job_applications')
+        .select('user_id')
+        .eq('job_app_id', ticketData.job_app_id)
         .single();
         
-      if (error) throw error;
+      if (appError) throw appError;
       
-      setAssignedUserData(data);
-      console.log("Assigned user data:", data);
+      const businessId = projectData.business_id;
+      const jobseekerId = applicationData.user_id;
+      const projectId = ticketData.project_id;
+      
+      // Generate the award agreement
+      await generateAwardAgreement(
+        acceptedJobId, 
+        businessId,
+        jobseekerId,
+        projectId,
+        ticketData.job_app_id,
+        `completed the task "${ticketData.title}" with 100% completion`
+      );
+      
+      toast.success('Equity Award Agreement has been generated');
     } catch (error) {
-      console.error("Error fetching assigned user data:", error);
+      console.error('Error generating award agreement:', error);
+      toast.error('Failed to generate Equity Award Agreement');
+    } finally {
+      setIsGeneratingAgreement(false);
     }
   };
-
-  const handleApproveTask = async () => {
-    try {
-      setIsSubmitting(true);
-      
-      if (!task) {
-        toast.error("Missing task data");
-        return;
-      }
-      
-      // Update equity allocated in accepted_jobs if we have job app data
-      if (jobAppData?.accepted_jobs?.id) {
-        console.log("Updating accepted job with equity allocation:", equityToAward);
-        const { error: updateError } = await supabase
-          .from('accepted_jobs')
-          .update({
-            jobs_equity_allocated: equityToAward
-          })
-          .eq('id', jobAppData.accepted_jobs.id);
-          
-        if (updateError) throw updateError;
-        
-        // Generate award agreement if requested and doesn't exist already
-        if (generateAgreement && 
-            completionPercentage >= 100 && 
-            !jobAppData.accepted_jobs.award_agreement_document_id &&
-            jobAppData.project_id &&
-            jobAppData.user_id) {
-          
-          try {
-            const businessId = businessId || '';
-            const jobseekerId = jobAppData.user_id || '';
-            const projectId = jobAppData.project_id || '';
-            const jobApplicationId = jobAppData.job_app_id || '';
-            const completedDeliverables = task.description || 'completed the agreed services';
-            
-            await generateAwardAgreement(
-              jobAppData.accepted_jobs.id,
-              businessId,
-              jobseekerId,
-              projectId,
-              jobApplicationId,
-              completedDeliverables
-            );
-            
-            toast.success("Equity Award Agreement generated successfully");
-          } catch (error) {
-            console.error("Failed to generate Equity Award Agreement:", error);
-            toast.error("Failed to generate Award Agreement");
-          }
-        }
-      } else {
-        console.log("No accepted job data available to update");
-      }
-      
-      // Update task completion status
-      if (completionPercentage >= 100 && task.task_id) {
-        console.log("Closing project sub task with ID:", task.task_id);
-        const { error: taskError } = await supabase
-          .from('project_sub_tasks')
-          .update({
-            task_status: 'closed',
-            completion_percentage: 100
-          })
-          .eq('task_id', task.task_id);
-          
-        if (taskError) throw taskError;
-      }
-      
-      // Update ticket status
-      console.log("Updating ticket with ID:", task.id);
-      const { error: ticketError } = await supabase
-        .from('tickets')
-        .update({
-          completion_percentage: completionPercentage,
-          status: completionPercentage >= 100 ? 'done' : 'in-progress'
-        })
-        .eq('id', task.id);
-        
-      if (ticketError) throw ticketError;
-      
-      // Call the update_active_project function to ensure all related records are updated
-      if (task.task_id) {
-        console.log("Calling update_active_project function for task ID:", task.task_id);
-        const { error: functionError } = await supabase.rpc('update_active_project', {
-          p_task_id: task.task_id,
-          p_completion_percentage: completionPercentage,
-          p_status: completionPercentage >= 100 ? 'done' : 'in-progress'
-        });
-        
-        if (functionError) {
-          console.error("Error calling update_active_project function:", functionError);
-        }
-      }
-      
-      setShowSuccess(true);
-      setTimeout(() => {
-        setOpen(false);
-        if (onClose) onClose();
-        if (onReviewComplete) onReviewComplete();
-      }, 2000);
-    } catch (error) {
-      console.error("Error approving task:", error);
-      toast.error("Failed to approve task");
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleRequestChanges = () => {
-    toast.info("Feature coming soon");
-  };
-
-  if (!task) return null;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[500px]">
-        {showSuccess ? (
-          <div className="py-8 text-center">
-            <CheckCircle2 className="mx-auto h-16 w-16 text-green-500 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Task Approved Successfully</h3>
-            <p className="text-muted-foreground">
-              {equityToAward}% equity has been awarded.
-              {generateAgreement && completionPercentage >= 100 ? " An Equity Award Agreement has been generated." : ""}
-            </p>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Review Task Completion</DialogTitle>
+          <DialogDescription>
+            {isTaskComplete 
+              ? "This task is marked as 100% complete. Please review the work and provide feedback."
+              : "Review the progress on this task and provide feedback."}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4 py-4">
+          <div>
+            <h3 className="text-sm font-medium mb-1">Task</h3>
+            <p className="text-sm">{ticketData?.title}</p>
           </div>
-        ) : (
-          <>
-            <DialogHeader>
-              <DialogTitle>Review Task Completion</DialogTitle>
-            </DialogHeader>
-            
-            <div className="space-y-4 py-4">
-              <div className="space-y-1">
-                <h3 className="font-medium text-lg">{task.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {task.description || "No description available"}
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm font-medium mb-1">Task Details</div>
-                  <div className="text-sm space-y-2">
-                    <div className="flex justify-between">
-                      <span>Status:</span>
-                      <Badge variant="outline" className="bg-gray-100">
-                        {task.status}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Equity Points:</span>
-                      <span>{task.equity_points || 0}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Estimated Hours:</span>
-                      <span>{task.estimated_hours || 0}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <div className="text-sm font-medium mb-1">Completed By</div>
-                  <div className="text-sm space-y-2">
-                    {assignedUserData ? (
-                      <div>
-                        <span>{assignedUserData.first_name} {assignedUserData.last_name}</span>
-                      </div>
-                    ) : (
-                      <div className="text-muted-foreground">
-                        User information not available
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <div className="text-sm font-medium mb-2">Completion Assessment</div>
-                <div className="space-y-3">
-                  <div>
-                    <label htmlFor="completion" className="text-sm">
-                      Completion Percentage:
-                    </label>
-                    <div className="flex items-center mt-1">
-                      <Input
-                        id="completion"
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={completionPercentage}
-                        onChange={(e) => setCompletionPercentage(Number(e.target.value))}
-                        className="w-20 text-right"
-                      />
-                      <span className="ml-1">%</span>
-                    </div>
-                  </div>
-                  
-                  <div className="p-3 border rounded-md bg-blue-50 text-blue-900">
-                    <div className="font-medium">Equity to be awarded: {equityToAward}%</div>
-                    <div className="text-xs text-blue-700 mt-1">
-                      Based on {completionPercentage}% completion of {jobAppData?.accepted_jobs?.equity_agreed || 0}% agreed equity
-                    </div>
-                  </div>
-                  
-                  {completionPercentage >= 100 && (
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="generateAwardAgreement"
-                        checked={generateAgreement}
-                        onChange={() => setGenerateAgreement(!generateAgreement)}
-                        className="rounded border-gray-300"
-                      />
-                      <label htmlFor="generateAwardAgreement" className="text-sm">
-                        Generate Equity Award Agreement
-                      </label>
-                    </div>
-                  )}
-                  
-                  {jobAppData?.accepted_jobs?.award_agreement_document_id && (
-                    <Alert className="bg-amber-50 border-amber-200">
-                      <AlertCircle className="h-4 w-4 text-amber-600" />
-                      <AlertTitle className="text-amber-800">Note</AlertTitle>
-                      <AlertDescription className="text-amber-700 text-sm">
-                        An Equity Award Agreement already exists for this job. Creating a new one will replace the existing agreement.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              </div>
+          
+          {ticketData?.description && (
+            <div>
+              <h3 className="text-sm font-medium mb-1">Description</h3>
+              <p className="text-sm">{ticketData.description}</p>
             </div>
-            
-            <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setOpen(false)}
-              >
-                Cancel
-              </Button>
-              
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleRequestChanges}
-              >
-                Request Changes
-              </Button>
-              
-              <Button
-                type="button"
-                onClick={handleApproveTask}
-                disabled={isSubmitting || isGenerating}
-              >
-                {isSubmitting || isGenerating ? "Processing..." : "Approve Task"}
-              </Button>
-            </DialogFooter>
-          </>
-        )}
+          )}
+          
+          <div>
+            <h3 className="text-sm font-medium mb-1">Completion</h3>
+            <p className="text-sm">{ticketData?.completion_percentage || 0}%</p>
+          </div>
+          
+          {/* Show award agreement information if task is 100% complete */}
+          {isTaskComplete && shouldGenerateAgreement && (
+            <div className="bg-blue-50 p-3 rounded-md">
+              <p className="text-sm text-blue-800">
+                {hasExistingAgreement === true ? (
+                  "An Equity Award Agreement has already been generated for this task."
+                ) : hasExistingAgreement === false ? (
+                  "Approving this 100% complete task will automatically generate an Equity Award Agreement."
+                ) : (
+                  "Checking award agreement status..."
+                )}
+              </p>
+            </div>
+          )}
+          
+          <div>
+            <h3 className="text-sm font-medium mb-1">Your Notes</h3>
+            <Textarea
+              placeholder="Add your review notes here..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="min-h-[100px]"
+            />
+          </div>
+        </div>
+        
+        <DialogFooter className="sm:justify-between">
+          <Button 
+            variant="outline" 
+            onClick={handleReject}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              'Request Changes'
+            )}
+          </Button>
+          <Button 
+            onClick={handleApprove}
+            disabled={isLoading || isGeneratingAgreement || isGenerating}
+          >
+            {(isLoading || isGeneratingAgreement || isGenerating) ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {isGeneratingAgreement ? 'Generating Agreement...' : 'Approving...'}
+              </>
+            ) : (
+              'Approve'
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

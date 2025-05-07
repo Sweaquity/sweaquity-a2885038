@@ -58,22 +58,27 @@ export function convertApplicationToJobApplication(application: Application): Jo
       timeframe: application.business_roles?.timeframe,
       skill_requirements: normalizeSkillRequirements(application.business_roles?.skill_requirements),
       equity_allocation: application.business_roles?.equity_allocation,
-      project_status: application.business_roles?.project?.status
+      project_status: application.business_roles?.project && 
+                     typeof application.business_roles.project === 'object' ? 
+                     application.business_roles.project.status : undefined
     },
     // Add hasEquityData property for type compatibility
     hasEquityData: false, // Default value if accepted_jobs is not available
     is_equity_project: false // Default value
   };
 
-  // Handle optional fields conditionally to avoid TypeScript errors
+  // Handle accepted_jobs data if available
   if ('accepted_jobs' in application && application.accepted_jobs) {
-    jobApplication.accepted_jobs = {
-      equity_agreed: application.accepted_jobs.equity_agreed || 0,
-      jobs_equity_allocated: application.accepted_jobs.jobs_equity_allocated || 0,
-      id: application.accepted_jobs.id || "",
-      date_accepted: application.accepted_jobs.date_accepted || ""
-    };
-    jobApplication.hasEquityData = true;
+    const acceptedJobs = application.accepted_jobs;
+    if (acceptedJobs && typeof acceptedJobs === 'object') {
+      jobApplication.accepted_jobs = {
+        equity_agreed: typeof acceptedJobs.equity_agreed === 'number' ? acceptedJobs.equity_agreed : 0,
+        jobs_equity_allocated: typeof acceptedJobs.jobs_equity_allocated === 'number' ? acceptedJobs.jobs_equity_allocated : 0,
+        id: acceptedJobs.id?.toString() || "",
+        date_accepted: acceptedJobs.date_accepted?.toString() || ""
+      };
+      jobApplication.hasEquityData = true;
+    }
   }
 
   return jobApplication;

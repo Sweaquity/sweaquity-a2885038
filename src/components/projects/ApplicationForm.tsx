@@ -1,235 +1,115 @@
+
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { listUserCVs } from "@/utils/setupStorage";
+import { toast } from "sonner";
+import { Loader2, Check } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useNDAIntegration } from "@/hooks/useNDAIntegration";
+import { DocumentViewer } from "@/components/documents/DocumentViewer";
 
 interface ApplicationFormProps {
   projectId: string;
   taskId: string;
   projectTitle?: string;
   taskTitle?: string;
-  onCancel?: () => void;
-  hasStoredCV?: boolean;
-  storedCVUrl?: string | null;
-  onApplicationSubmitted?: () => void;
 }
 
 export const ApplicationForm = ({
   projectId,
   taskId,
-  projectTitle,
-  taskTitle,
-  onCancel,
-  hasStoredCV,
-  storedCVUrl,
-  onApplicationSubmitted,
+  projectTitle = "Project",
+  taskTitle = "Role"
 }: ApplicationFormProps) => {
-  const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
-  const [availableCvs, setAvailableCvs] = useState<Array<{name: string, url: string, isDefault: boolean}>>([]);
-  const [selectedCvUrl, setSelectedCvUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [businessId, setBusinessId] = useState<string>("");
+  const [ndaDocumentId, setNdaDocumentId] = useState<string | null>(null);
+  const [ndaDocument, setNdaDocument] = useState<any>(null);
+  const [ndaStatus, setNdaStatus] = useState<string | null>(null);
+  const [requiresNDA, setRequiresNDA] = useState<boolean>(false);
+  const navigate = useNavigate();
+  
+  const { 
+    isProcessingNDA,
+    checkNDARequirement,
+    getNDAForJobApplication,
+    generateApplicationNDA 
+  } = useNDAIntegration();
 
-  // Debug log for props
-  console.log("ApplicationForm received props:", { projectId, taskId, projectTitle, taskTitle });
-
+  // Get business ID for the project
   useEffect(() => {
-    const loadUserCVs = async () => {
+    const getBusinessId = async () => {
       try {
-        setIsLoading(true);
-        // Get user session
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) {
-          toast.error("You must be logged in to apply");
-          return;
-        }
+        const { data, error } = await supabase
+          .from("business_projects")
+          .select("business_id")
+          .eq("project_id", projectId)
+          .single();
 
-        const userId = session.user.id;
-
-        // Get user's default CV URL
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('cv_url')
-          .eq('id', userId)
-          .maybeSingle();
-
-        const defaultCvUrl = profileData?.cv_url || null;
-
-        // Try to list CVs, handle gracefully if bucket doesn't exist
-        try {
-          const cvFiles = await listUserCVs(userId);
-          
-          if (cvFiles.length > 0) {
-            const cvs = await Promise.all(cvFiles.map(async (file) => {
-              const { data } = supabase.storage
-                .from('cvs')
-                .getPublicUrl(`${userId}/${file.name}`);
-                
-              return {
-                name: file.name,
-                url: data.publicUrl,
-                isDefault: defaultCvUrl ? defaultCvUrl === data.publicUrl : false
-              };
-            }));
-            
-            setAvailableCvs(cvs);
-            
-            // Select the default CV if available
-            if (defaultCvUrl) {
-              setSelectedCvUrl(defaultCvUrl);
-            } else if (cvs.length > 0) {
-              setSelectedCvUrl(cvs[0].url);
-            }
-          }
-        } catch (error) {
-          // If we can't access CVs, just use the default CV if available
-          console.error("Error accessing CV bucket:", error);
-          if (defaultCvUrl) {
-            setSelectedCvUrl(defaultCvUrl);
-            setAvailableCvs([{
-              name: defaultCvUrl.split('/').pop() || "Default CV",
-              url: defaultCvUrl,
-              isDefault: true
-            }]);
-          }
-        }
+        if (error) throw error;
+        if (data) setBusinessId(data.business_id);
+        
+        // Check if project requires NDA
+        const needsNDA = await checkNDARequirement(projectId);
+        setRequiresNDA(needsNDA);
       } catch (error) {
-        console.error("Error loading CVs:", error);
-      } finally {
-        setIsLoading(false);
+        console.error("Error fetching project business ID:", error);
       }
     };
 
-    loadUserCVs();
-  }, []);
-
-  const copyCVToApplicationsBucket = async (userId: string, originalUrl: string): Promise<string | null> => {
-    try {
-      if (!originalUrl) return null;
-      
-      // Extract the CV filename from the URL
-      const fileName = originalUrl.split('/').pop();
-      if (!fileName) return null;
-      
-      // Create a unique filename for the application
-      const applicationFileName = `${userId}/${Date.now()}_${fileName}`;
-      
-      // First, download the file from the cvs bucket
-      const originalFilePath = `${userId}/${fileName}`;
-      
-      console.log("Downloading CV from path:", originalFilePath);
-      const { data: fileBlob, error: downloadError } = await supabase
-        .storage
-        .from('cvs')
-        .download(originalFilePath);
-        
-      if (downloadError || !fileBlob) {
-        console.error("Error downloading CV for application:", downloadError);
-        return null;
-      }
-      
-      // Upload to job_applications bucket
-      console.log("Uploading CV to job_applications bucket:", applicationFileName);
-      const { data: uploadData, error: uploadError } = await supabase
-        .storage
-        .from('job_applications')
-        .upload(applicationFileName, fileBlob, {
-          cacheControl: '3600',
-          upsert: false
-        });
-        
-      if (uploadError) {
-        console.error("Error copying CV to job_applications bucket:", uploadError);
-        return null;
-      }
-      
-      // Get URL of the copied file
-      const { data: urlData } = supabase
-        .storage
-        .from('job_applications')
-        .getPublicUrl(applicationFileName);
-        
-      console.log("CV copied to job_applications successfully:", urlData.publicUrl);
-      return urlData.publicUrl;
-    } catch (error) {
-      console.error("Error in copyCVToApplicationsBucket:", error);
-      return null;
-    }
-  };
+    if (projectId) getBusinessId();
+  }, [projectId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     
+    if (!projectId || !taskId) {
+      toast.error("Missing project or task information");
+      return;
+    }
+
     try {
+      setIsSubmitting(true);
+
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
+      if (!session) {
         toast.error("You must be logged in to apply");
         return;
       }
+
+      // Create job application
+      const { data: applicationData, error: applicationError } = await supabase
+        .from("job_applications")
+        .insert({
+          user_id: session.user.id,
+          task_id: taskId,
+          project_id: projectId,
+          message,
+          status: "pending",
+          applied_at: new Date().toISOString()
+        })
+        .select("job_app_id")
+        .single();
+
+      if (applicationError) throw applicationError;
       
-      const userId = session.user.id;
-      
-      // Validate IDs are not empty before submission
-      if (!projectId || projectId.trim() === '') {
-        throw new Error("Project ID is missing or invalid");
+      // If project requires NDA, generate it
+      if (requiresNDA && applicationData?.job_app_id && businessId) {
+        await generateApplicationNDA(
+          applicationData.job_app_id,
+          businessId,
+          session.user.id,
+          projectId
+        );
       }
-      
-      if (!taskId || taskId.trim() === '') {
-        throw new Error("Task ID is missing or invalid");
-      }
-      
-      // First copy the CV to the job_applications bucket for record-keeping
-      let applicationCvUrl = null;
-      if (selectedCvUrl) {
-        applicationCvUrl = await copyCVToApplicationsBucket(userId, selectedCvUrl);
-        
-        if (!applicationCvUrl) {
-          toast.warning("Could not save a copy of your CV, but continuing with application");
-          // Fall back to the original CV URL if copying fails
-          applicationCvUrl = selectedCvUrl;
-        }
-      }
-      
-      console.log("Submitting application with:", {
-        projectId,
-        taskId,
-        userId,
-        message,
-        applicationCvUrl
-      });
-      
-      // Submit the application - using the message field instead of notes
-      const { error } = await supabase.from("job_applications").insert({
-        project_id: projectId,
-        task_id: taskId,
-        user_id: userId,
-        message: message, 
-        cv_url: applicationCvUrl, // Use the copied CV URL
-        status: 'pending'
-      });
-      
-      if (error) {
-        throw error;
-      }
-      
-      toast.success("Application submitted successfully!");
-      
-      if (onApplicationSubmitted) {
-        onApplicationSubmitted();
-      } else {
-        navigate("/seeker/dashboard");
-      }
-    } catch (error: any) {
+
+      toast.success("Application submitted successfully");
+      navigate("/seeker/dashboard?tab=applications");
+    } catch (error) {
       console.error("Error submitting application:", error);
-      toast.error(error.message || "Failed to submit application");
+      toast.error("Failed to submit application");
     } finally {
       setIsSubmitting(false);
     }
@@ -237,74 +117,56 @@ export const ApplicationForm = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {(projectTitle || taskTitle) && (
-        <div>
-          <h3 className="text-lg font-medium">Apply for: {taskTitle}</h3>
-          {projectTitle && <p className="text-sm text-muted-foreground mt-1">Project: {projectTitle}</p>}
+      <div>
+        <h2 className="text-lg font-medium mb-2">
+          Apply to: {taskTitle}
+        </h2>
+        <p className="text-sm text-muted-foreground mb-6">
+          Project: {projectTitle}
+        </p>
+        
+        {requiresNDA && (
+          <div className="mb-6">
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-4">
+              <h3 className="text-sm font-medium text-amber-800 mb-1">
+                Non-Disclosure Agreement Required
+              </h3>
+              <p className="text-sm text-amber-700">
+                This project requires a Non-Disclosure Agreement (NDA). By submitting your application, an NDA will be automatically generated for you to review and sign.
+              </p>
+            </div>
+          </div>
+        )}
+        
+        <div className="mb-6">
+          <label htmlFor="message" className="block text-sm font-medium mb-2">
+            Application Message
+          </label>
+          <Textarea
+            id="message"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Describe why you're a good fit for this role and any relevant experience you have."
+            className="min-h-[150px]"
+          />
         </div>
-      )}
-      
-      <div className="space-y-2">
-        <Label htmlFor="message">Message to Project Owner</Label>
-        <Textarea
-          id="message"
-          placeholder="Introduce yourself and explain why you're a good fit for this role..."
-          rows={5}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          required
-        />
-      </div>
-      
-      <div className="space-y-2">
-        <Label>Select CV to Attach</Label>
-        {isLoading ? (
-          <div className="flex items-center space-x-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm text-muted-foreground">Loading CVs...</span>
-          </div>
-        ) : availableCvs.length > 0 ? (
-          <div className="space-y-2 border rounded-md p-3">
-            {availableCvs.map((cv) => (
-              <div key={cv.url} className="flex items-center space-x-2">
-                <Checkbox 
-                  id={`cv-${cv.name}`}
-                  checked={selectedCvUrl === cv.url}
-                  onCheckedChange={() => setSelectedCvUrl(cv.url)}
-                />
-                <Label htmlFor={`cv-${cv.name}`} className="text-sm">
-                  {cv.name}
-                  {cv.isDefault && <span className="text-xs text-muted-foreground ml-2">(Default)</span>}
-                </Label>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-sm text-amber-600 border border-amber-200 bg-amber-50 p-3 rounded">
-            You don't have any CVs uploaded. Please upload a CV in your profile before applying.
-          </div>
-        )}
-      </div>
-      
-      <div className="flex justify-end space-x-2">
-        {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+
+        <div className="flex justify-end">
+          <Button
+            type="submit"
+            className="w-full sm:w-auto"
+            disabled={isSubmitting || isProcessingNDA}
+          >
+            {(isSubmitting || isProcessingNDA) ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {isProcessingNDA ? "Generating NDA..." : "Submitting..."}
+              </>
+            ) : (
+              "Submit Application"
+            )}
           </Button>
-        )}
-        <Button 
-          type="submit" 
-          disabled={isSubmitting || !selectedCvUrl || message.trim().length === 0}
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Submitting...
-            </>
-          ) : (
-            "Submit Application"
-          )}
-        </Button>
+        </div>
       </div>
     </form>
   );

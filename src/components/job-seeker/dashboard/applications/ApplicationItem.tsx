@@ -15,6 +15,7 @@ import { ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { formatDistanceToNow } from 'date-fns';
 import { ApplicationItemContentProps } from '@/types/dashboardProps';
+import { convertApplicationToJobApplication } from '@/utils/applicationUtils';
 
 // Simple components for structure
 const ApplicationItemHeader = ({ 
@@ -93,7 +94,7 @@ const ApplicationItemContent = ({
     )}
     
     <div className="text-xs text-muted-foreground">
-      Applied {formatDistanceToNow(new Date(appliedAt), { addSuffix: true })}
+      Applied {formatDistanceToNow(new Date(appliedAt || Date.now()), { addSuffix: true })}
     </div>
   </div>
 );
@@ -200,7 +201,10 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
   };
   
   const handleAcceptJob = async () => {
-    await acceptJobAsJobSeeker(application);
+    // Convert application to jobSeeker.JobApplication if it's not already
+    const jobSeekerApplication = application;
+    
+    await acceptJobAsJobSeeker(jobSeekerApplication);
     if (onApplicationUpdated) onApplicationUpdated();
   };
   
@@ -217,6 +221,9 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
                       (application.business_roles?.project_title || 'Project');
   
   const description = application.description || application.business_roles?.description || "";
+  
+  // If applied_at is missing, use created_at or current date
+  const appliedAt = application.applied_at || application.created_at || new Date().toISOString();
 
   return (
     <div className="border rounded-md overflow-hidden bg-card dashboard-card">
@@ -240,7 +247,7 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
           description={description}
           message={application.message || ""}
           discourse={application.task_discourse || ""}
-          appliedAt={application.applied_at || new Date().toISOString()}
+          appliedAt={appliedAt}
         />
       )}
       

@@ -1,154 +1,168 @@
 
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { DocumentService } from "@/services/DocumentService";
 import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { useNDAManagement } from "@/hooks/useNDAManagement";
+import { DocumentService } from "@/services/DocumentService";
+import { toast } from "sonner";
 
 interface NDASignatureDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  documentId: string | null;
   jobApplicationId: string;
-  onSigned: () => void;
+  onSigned?: () => void;
 }
 
-export const NDASignatureDialog: React.FC<NDASignatureDialogProps> = ({
+export const NDASignatureDialog = ({
   open,
   onOpenChange,
+  documentId,
   jobApplicationId,
-  onSigned,
-}) => {
-  const [signature, setSignature] = useState("");
-  const [remarks, setRemarks] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  onSigned
+}: NDASignatureDialogProps) => {
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [documentContent, setDocumentContent] = useState<string | null>(null);
+  const { getNDAForJobApplication } = useNDAManagement();
   
-  const handleSignNDA = async () => {
-    if (!signature.trim()) {
-      toast.error("Please provide your signature");
+  // Load the document content when the dialog opens
+  const loadDocument = async () => {
+    if (!documentId) return;
+    
+    try {
+      setIsLoading(true);
+      const document = await getNDAForJobApplication(jobApplicationId);
+      
+      if (document) {
+        setDocumentContent(document.content || null);
+      }
+    } catch (error) {
+      console.error("Error loading NDA document:", error);
+      toast.error("Failed to load NDA document");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  if (open && !documentContent && !isLoading) {
+    loadDocument();
+  }
+  
+  const handleSign = async () => {
+    if (!documentId) {
+      toast.error("No document ID provided");
       return;
     }
     
-    setIsSubmitting(true);
-    
     try {
-      // 1. Get the NDA document ID
-      const { data: application, error: appError } = await supabase
-        .from('job_applications')
-        .select('nda_document_id')
-        .eq('job_app_id', jobApplicationId)
-        .single();
+      setIsLoading(true);
       
-      if (appError || !application?.nda_document_id) throw appError;
+      // Get current user info
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("You must be logged in to sign this document");
+        return;
+      }
       
-      const documentId = application.nda_document_id;
+      // Sign the document
+      const signature = {
+        name: user.email || "User",
+        date: new Date().toISOString()
+      };
       
-      // 2. Get the document
-      const { data: document, error: docError } = await supabase
-        .from('legal_documents')
-        .select('*')
-        .eq('id', documentId)
-        .single();
-      
-      if (docError) throw docError;
-      
-      // 3. Add signature record
-      const { data: signatureData, error: signError } = await supabase
+      const { error } = await supabase
         .from('document_signatures')
         .insert({
           document_id: documentId,
-          version: document.version,
-          signer_id: (await supabase.auth.getSession()).data.session?.user.id,
-          signature_data: signature,
-          signature_metadata: {
-            timestamp: new Date().toISOString(),
-            remarks: remarks,
-            ip_address: "client_signature" // We don't capture actual IP
-          }
-        })
-        .select()
-        .single();
+          signer_id: user.id,
+          signature_data: JSON.stringify(signature),
+          signature_metadata: { 
+            ip_address: "recorded-on-signature", 
+            user_agent: navigator.userAgent,
+            signed_at: new Date().toISOString()
+          },
+          version: "1.0"
+        });
       
-      if (signError) throw signError;
+      if (error) throw error;
       
-      // 4. Update document status to executed
+      // Update document status
       await DocumentService.updateDocumentStatus(documentId, 'executed');
       
-      // 5. Update job application with the new NDA status
+      // Update job application NDA status
       await supabase
         .from('job_applications')
         .update({ nda_status: 'executed' })
         .eq('job_app_id', jobApplicationId);
       
-      toast.success("NDA signed successfully");
-      onSigned();
+      toast.success("Document signed successfully");
+      
+      if (onSigned) onSigned();
+      
       onOpenChange(false);
     } catch (error) {
-      console.error("Error signing NDA:", error);
-      toast.error("Failed to sign NDA");
+      console.error("Error signing document:", error);
+      toast.error("Failed to sign document");
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Sign Non-Disclosure Agreement</DialogTitle>
           <DialogDescription>
-            By signing this NDA, you acknowledge that you have read, understood, and agree to all terms and conditions outlined in the document.
+            Please review the NDA carefully before signing. By clicking "Sign", you acknowledge that you have read and agree to the terms of this agreement.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="signature">Electronic Signature</Label>
-            <Textarea
-              id="signature"
-              placeholder="Type your full legal name as your electronic signature"
-              className="h-10"
-              value={signature}
-              onChange={(e) => setSignature(e.target.value)}
-            />
-            <p className="text-sm text-muted-foreground">
-              Your electronic signature is legally binding.
-            </p>
+        {isLoading ? (
+          <div className="flex justify-center items-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin" />
           </div>
-          
-          <div className="grid gap-2">
-            <Label htmlFor="remarks">Optional Remarks</Label>
-            <Textarea
-              id="remarks"
-              placeholder="Add any optional remarks or comments"
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              className="h-20"
+        ) : documentContent ? (
+          <div className="border p-4 rounded bg-white max-h-[50vh] overflow-y-auto">
+            <div 
+              className="prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{ __html: DocumentService.createHtmlPreview(documentContent) }}
             />
           </div>
-        </div>
+        ) : (
+          <div className="py-4 text-center text-muted-foreground">
+            Failed to load document content
+          </div>
+        )}
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)} 
+            disabled={isLoading}
+          >
             Cancel
           </Button>
-          <Button onClick={handleSignNDA} disabled={isSubmitting || !signature}>
-            {isSubmitting ? (
+          <Button 
+            onClick={handleSign} 
+            disabled={isLoading || !documentContent}
+          >
+            {isLoading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
               </>
             ) : (
-              "Sign NDA"
+              "Sign Document"
             )}
           </Button>
         </DialogFooter>
