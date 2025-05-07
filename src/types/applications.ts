@@ -13,14 +13,14 @@ export interface JobApplication {
   accepted_business?: boolean;
   applicant_anonymized?: boolean;
   created_at?: string;
-  updated_at?: string;
-  applied_at: string;  // Made required to match JobSeeker.JobApplication
+  updated_at?: string; // Added for compatibility
+  applied_at: string;
   business_roles?: BusinessRole | any;
   applicant_id?: string;
   task_discourse?: string;
-  id?: string; // Add id field for compatibility
-  notes?: any[]; // Add notes field for compatibility
-  hours_logged?: number; // Added for time tracking
+  id?: string;
+  notes?: any[];
+  hours_logged?: number;
   accepted_jobs?: {
     equity_agreed: number;
     jobs_equity_allocated: number;
@@ -34,16 +34,16 @@ export interface JobApplication {
   description?: string;
   skills_required?: string[];
   applicant_skills?: string[];
-  hasEquityData?: boolean; // Added for compatibility with EquityProjectsList
-  is_equity_project?: boolean; // Added for compatibility with EquityProjectsList
-  profile?: any; // For accessing applicant profile data
+  hasEquityData?: boolean;
+  is_equity_project?: boolean;
+  profile?: any;
   businesses?: {
     businesses_id: string;
     company_name?: string;
     [key: string]: any;
   };
-  nda_document_id?: string;
-  nda_status?: string;
+  nda_document_id?: string | null;
+  nda_status?: string | null;
 }
 
 export interface AcceptedJob {
@@ -55,7 +55,7 @@ export interface AcceptedJob {
   accepted_discourse?: string;
   created_at: string;
   updated_at: string;
-  jobs_equity_allocated?: number; // Added for compatibility with UI
+  jobs_equity_allocated?: number;
   work_contract_document_id?: string;
   work_contract_status?: string;
   award_agreement_document_id?: string;

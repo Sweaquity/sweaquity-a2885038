@@ -1,3 +1,4 @@
+
 import { Skill, SkillRequirement } from "./jobSeeker";
 import { Task, TaskType } from "./dashboard";
 
@@ -41,9 +42,23 @@ export interface Application {
     timeframe?: string;
     project?: {
       title: string;
+      status?: string;
     }
     project_title?: string;
   };
+  businesses?: {
+    businesses_id: string;
+    company_name?: string;
+    [key: string]: any;
+  };
+  accepted_jobs?: {
+    equity_agreed: number;
+    jobs_equity_allocated: number;
+    id: string;
+    date_accepted: string;
+  };
+  nda_document_id?: string;
+  nda_status?: string;
 }
 
 export interface Project {

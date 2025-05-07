@@ -42,7 +42,13 @@ export function convertApplicationToJobApplication(application: Application): Jo
     id: application.job_app_id, // Ensure id matches job_app_id for consistency
     accepted_jobseeker: application.accepted_jobseeker || false,
     accepted_business: application.accepted_business || false,
-    businesses: application.businesses || { businesses_id: "" },
+    
+    // Type-safe assignment for businesses property which may be undefined in Application
+    businesses: application.businesses ? {
+      businesses_id: application.businesses.businesses_id || "",
+      company_name: application.businesses.company_name || ""
+    } : { businesses_id: "" },
+
     // Use helper function to ensure consistent skill requirement format
     business_roles: {
       // The ID here should reference the task_id - this is the specific role/task the applicant is applying for
@@ -53,21 +59,25 @@ export function convertApplicationToJobApplication(application: Application): Jo
       timeframe: application.business_roles?.timeframe,
       skill_requirements: normalizeSkillRequirements(application.business_roles?.skill_requirements),
       equity_allocation: application.business_roles?.equity_allocation,
-      project_status: (application.business_roles?.project && 
-                     typeof application.business_roles.project === 'object') ? 
+      // Safely access project status with fallback
+      project_status: application.business_roles?.project && 
+                     typeof application.business_roles.project === 'object' ? 
                      (application.business_roles.project.status || "active") : "active"
     },
     // Add hasEquityData property for type compatibility
     hasEquityData: false, // Default value if accepted_jobs is not available
     is_equity_project: false, // Default value
-    nda_document_id: application.nda_document_id,
-    nda_status: application.nda_status
+    
+    // Safely handle properties that may not exist in Application type
+    nda_document_id: application.nda_document_id || null,
+    nda_status: application.nda_status || null
   };
 
   // Handle accepted_jobs data if available
   if ('accepted_jobs' in application && application.accepted_jobs) {
     const acceptedJobs = application.accepted_jobs;
     if (acceptedJobs && typeof acceptedJobs === 'object') {
+      // Type-safe access to accepted_jobs properties with fallbacks
       jobApplication.accepted_jobs = {
         equity_agreed: typeof acceptedJobs.equity_agreed === 'number' ? 
           acceptedJobs.equity_agreed : 0,
