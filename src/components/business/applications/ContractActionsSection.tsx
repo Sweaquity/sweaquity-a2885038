@@ -77,11 +77,16 @@ export const ContractActionsSection = ({
     if (!acceptedJob?.id || !application.job_app_id) return;
     
     try {
+      // Use application.business_id directly if it exists, otherwise use a fallback
+      const businessId = application.business_id || '';
+      const userId = application.user_id || '';
+      const projectId = application.project_id || '';
+      
       await generateWorkContract(
         acceptedJob.id,
-        application.business_id || '',
-        application.user_id || '',
-        application.project_id || '',
+        businessId,
+        userId,
+        projectId,
         application.job_app_id
       );
       
@@ -98,11 +103,16 @@ export const ContractActionsSection = ({
     if (!acceptedJob?.id || !application.job_app_id) return;
     
     try {
+      // Use application.business_id directly if it exists, otherwise use a fallback
+      const businessId = application.business_id || '';
+      const userId = application.user_id || '';
+      const projectId = application.project_id || '';
+      
       await generateAwardAgreement(
         acceptedJob.id,
-        application.business_id || '',
-        application.user_id || '',
-        application.project_id || '',
+        businessId,
+        userId,
+        projectId,
         application.job_app_id,
         "completed the agreed services and milestones"
       );
