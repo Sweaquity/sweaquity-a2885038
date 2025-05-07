@@ -1,16 +1,10 @@
 
 import { Application } from "@/types/business";
-import { JobApplication, Skill } from "@/types/jobSeeker";
+import { JobApplication } from "@/types/applications";
 
 /**
  * Converts an Application object to a JobApplication object
  * Handles type differences and ensures proper type conversion
- * 
- * ID Mapping:
- * - job_app_id: The unique ID of the application itself
- * - project_id: The ID of the project the application is for
- * - task_id: The ID of the specific task/role within the project
- * - business_roles.id: References the task_id (the specific role being applied for)
  */
 export function convertApplicationToJobApplication(application: Application): JobApplication {
   // Helper function to normalize skill requirements to a consistent format
@@ -48,6 +42,7 @@ export function convertApplicationToJobApplication(application: Application): Jo
     id: application.job_app_id, // Ensure id matches job_app_id for consistency
     accepted_jobseeker: application.accepted_jobseeker || false,
     accepted_business: application.accepted_business || false,
+    businesses: application.businesses || { businesses_id: "" },
     // Use helper function to ensure consistent skill requirement format
     business_roles: {
       // The ID here should reference the task_id - this is the specific role/task the applicant is applying for
@@ -60,11 +55,13 @@ export function convertApplicationToJobApplication(application: Application): Jo
       equity_allocation: application.business_roles?.equity_allocation,
       project_status: application.business_roles?.project && 
                      typeof application.business_roles.project === 'object' ? 
-                     application.business_roles.project.status : undefined
+                     application.business_roles.project.status || "active" : "active"
     },
     // Add hasEquityData property for type compatibility
     hasEquityData: false, // Default value if accepted_jobs is not available
-    is_equity_project: false // Default value
+    is_equity_project: false, // Default value
+    nda_document_id: application.nda_document_id,
+    nda_status: application.nda_status
   };
 
   // Handle accepted_jobs data if available
@@ -72,8 +69,10 @@ export function convertApplicationToJobApplication(application: Application): Jo
     const acceptedJobs = application.accepted_jobs;
     if (acceptedJobs && typeof acceptedJobs === 'object') {
       jobApplication.accepted_jobs = {
-        equity_agreed: typeof acceptedJobs.equity_agreed === 'number' ? acceptedJobs.equity_agreed : 0,
-        jobs_equity_allocated: typeof acceptedJobs.jobs_equity_allocated === 'number' ? acceptedJobs.jobs_equity_allocated : 0,
+        equity_agreed: typeof acceptedJobs.equity_agreed === 'number' ? 
+          acceptedJobs.equity_agreed : 0,
+        jobs_equity_allocated: typeof acceptedJobs.jobs_equity_allocated === 'number' ? 
+          acceptedJobs.jobs_equity_allocated : 0,
         id: acceptedJobs.id?.toString() || "",
         date_accepted: acceptedJobs.date_accepted?.toString() || ""
       };

@@ -59,6 +59,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedJobApplication, setSelectedJobApplication] = useState<string | null>(null);
   const [ndaDocument, setNdaDocument] = useState<any | null>(null);
+  const [ndaDocumentId, setNdaDocumentId] = useState<string | null>(null);
   const [isNdaDialogOpen, setIsNdaDialogOpen] = useState(false);
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
 
@@ -85,6 +86,9 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
       // Then load the NDA document
       const document = await getNDAForJobApplication(ticket.job_app_id);
       setNdaDocument(document);
+      if (document) {
+        setNdaDocumentId(document.id);
+      }
     } catch (error) {
       console.error("Error loading NDA for ticket:", error);
     }
@@ -254,6 +258,7 @@ export const JobSeekerProjectsTab = ({ userId }: JobSeekerProjectsTabProps) => {
           open={isSignatureDialogOpen}
           onOpenChange={setIsSignatureDialogOpen}
           jobApplicationId={selectedJobApplication}
+          documentId={ndaDocumentId}
           onSigned={handleNdaSigned}
         />
       )}

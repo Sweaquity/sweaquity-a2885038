@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { JobApplication } from '@/types/applications';
 import { CreateMessageDialog } from './CreateMessageDialog';
@@ -201,10 +200,8 @@ export const ApplicationItem = ({ application, onApplicationUpdated, compact = f
   };
   
   const handleAcceptJob = async () => {
-    // Convert application to jobSeeker.JobApplication if it's not already
-    const jobSeekerApplication = application;
-    
-    await acceptJobAsJobSeeker(jobSeekerApplication);
+    // No need for conversion since we're already using the applications.ts JobApplication type
+    await acceptJobAsJobSeeker(application);
     if (onApplicationUpdated) onApplicationUpdated();
   };
   

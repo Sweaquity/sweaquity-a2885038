@@ -37,6 +37,13 @@ export interface JobApplication {
   hasEquityData?: boolean; // Added for compatibility with EquityProjectsList
   is_equity_project?: boolean; // Added for compatibility with EquityProjectsList
   profile?: any; // For accessing applicant profile data
+  businesses?: {
+    businesses_id: string;
+    company_name?: string;
+    [key: string]: any;
+  };
+  nda_document_id?: string;
+  nda_status?: string;
 }
 
 export interface AcceptedJob {

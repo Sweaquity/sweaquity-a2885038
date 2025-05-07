@@ -18,7 +18,7 @@ import { toast } from "sonner";
 interface NDASignatureDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  documentId: string | null;
+  documentId?: string | null;
   jobApplicationId: string;
   onSigned?: () => void;
 }
@@ -26,24 +26,24 @@ interface NDASignatureDialogProps {
 export const NDASignatureDialog = ({
   open,
   onOpenChange,
-  documentId,
+  documentId: initialDocumentId,
   jobApplicationId,
   onSigned
 }: NDASignatureDialogProps) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [documentContent, setDocumentContent] = useState<string | null>(null);
+  const [localDocumentId, setLocalDocumentId] = useState<string | null>(initialDocumentId || null);
   const { getNDAForJobApplication } = useNDAManagement();
   
   // Load the document content when the dialog opens
   const loadDocument = async () => {
-    if (!documentId) return;
-    
     try {
       setIsLoading(true);
       const document = await getNDAForJobApplication(jobApplicationId);
       
       if (document) {
         setDocumentContent(document.content || null);
+        setLocalDocumentId(document.id);
       }
     } catch (error) {
       console.error("Error loading NDA document:", error);
@@ -58,7 +58,7 @@ export const NDASignatureDialog = ({
   }
   
   const handleSign = async () => {
-    if (!documentId) {
+    if (!localDocumentId) {
       toast.error("No document ID provided");
       return;
     }
@@ -82,7 +82,7 @@ export const NDASignatureDialog = ({
       const { error } = await supabase
         .from('document_signatures')
         .insert({
-          document_id: documentId,
+          document_id: localDocumentId,
           signer_id: user.id,
           signature_data: JSON.stringify(signature),
           signature_metadata: { 
@@ -96,7 +96,7 @@ export const NDASignatureDialog = ({
       if (error) throw error;
       
       // Update document status
-      await DocumentService.updateDocumentStatus(documentId, 'executed');
+      await DocumentService.updateDocumentStatus(localDocumentId, 'executed');
       
       // Update job application NDA status
       await supabase
