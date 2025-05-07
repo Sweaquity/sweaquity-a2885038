@@ -12,6 +12,8 @@ export type Database = {
       accepted_jobs: {
         Row: {
           accepted_discourse: string | null
+          award_agreement_document_id: string | null
+          award_agreement_status: string | null
           created_at: string | null
           date_accepted: string | null
           document_url: string | null
@@ -20,9 +22,13 @@ export type Database = {
           job_app_id: string
           jobs_equity_allocated: number | null
           updated_at: string | null
+          work_contract_document_id: string | null
+          work_contract_status: string | null
         }
         Insert: {
           accepted_discourse?: string | null
+          award_agreement_document_id?: string | null
+          award_agreement_status?: string | null
           created_at?: string | null
           date_accepted?: string | null
           document_url?: string | null
@@ -31,9 +37,13 @@ export type Database = {
           job_app_id: string
           jobs_equity_allocated?: number | null
           updated_at?: string | null
+          work_contract_document_id?: string | null
+          work_contract_status?: string | null
         }
         Update: {
           accepted_discourse?: string | null
+          award_agreement_document_id?: string | null
+          award_agreement_status?: string | null
           created_at?: string | null
           date_accepted?: string | null
           document_url?: string | null
@@ -42,14 +52,30 @@ export type Database = {
           job_app_id?: string
           jobs_equity_allocated?: number | null
           updated_at?: string | null
+          work_contract_document_id?: string | null
+          work_contract_status?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "accepted_jobs_award_agreement_document_id_fkey"
+            columns: ["award_agreement_document_id"]
+            isOneToOne: false
+            referencedRelation: "legal_documents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "accepted_jobs_job_app_id_fkey"
             columns: ["job_app_id"]
             isOneToOne: true
             referencedRelation: "job_applications"
             referencedColumns: ["job_app_id"]
+          },
+          {
+            foreignKeyName: "accepted_jobs_work_contract_document_id_fkey"
+            columns: ["work_contract_document_id"]
+            isOneToOne: false
+            referencedRelation: "legal_documents"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -273,12 +299,16 @@ export type Database = {
           contact_email: string | null
           contact_person: string | null
           contact_phone: string | null
+          corp_docs_references: Json | null
           created_at: string | null
+          entity_type: string | null
+          equity_class: string | null
           geographic_scope: Json | null
           industry: string | null
           is_also_job_seeker: boolean | null
           is_anonymized: boolean | null
           is_parent: boolean | null
+          jurisdiction: string | null
           location: string | null
           marketing_consent: boolean | null
           open_to_recruiters: boolean | null
@@ -305,12 +335,16 @@ export type Database = {
           contact_email?: string | null
           contact_person?: string | null
           contact_phone?: string | null
+          corp_docs_references?: Json | null
           created_at?: string | null
+          entity_type?: string | null
+          equity_class?: string | null
           geographic_scope?: Json | null
           industry?: string | null
           is_also_job_seeker?: boolean | null
           is_anonymized?: boolean | null
           is_parent?: boolean | null
+          jurisdiction?: string | null
           location?: string | null
           marketing_consent?: boolean | null
           open_to_recruiters?: boolean | null
@@ -339,12 +373,16 @@ export type Database = {
           contact_email?: string | null
           contact_person?: string | null
           contact_phone?: string | null
+          corp_docs_references?: Json | null
           created_at?: string | null
+          entity_type?: string | null
+          equity_class?: string | null
           geographic_scope?: Json | null
           industry?: string | null
           is_also_job_seeker?: boolean | null
           is_anonymized?: boolean | null
           is_parent?: boolean | null
+          jurisdiction?: string | null
           location?: string | null
           marketing_consent?: boolean | null
           open_to_recruiters?: boolean | null
@@ -467,6 +505,170 @@ export type Database = {
         }
         Relationships: []
       }
+      document_approvals: {
+        Row: {
+          approval_status: string
+          approver_id: string
+          comments: string | null
+          created_at: string
+          document_id: string
+          id: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          approval_status: string
+          approver_id: string
+          comments?: string | null
+          created_at?: string
+          document_id: string
+          id?: string
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          approval_status?: string
+          approver_id?: string
+          comments?: string | null
+          created_at?: string
+          document_id?: string
+          id?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_approvals_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "legal_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_revisions: {
+        Row: {
+          change_description: string | null
+          changed_by: string
+          created_at: string
+          document_id: string
+          id: string
+          new_storage_path: string | null
+          previous_storage_path: string | null
+          revision_number: number
+        }
+        Insert: {
+          change_description?: string | null
+          changed_by: string
+          created_at?: string
+          document_id: string
+          id?: string
+          new_storage_path?: string | null
+          previous_storage_path?: string | null
+          revision_number: number
+        }
+        Update: {
+          change_description?: string | null
+          changed_by?: string
+          created_at?: string
+          document_id?: string
+          id?: string
+          new_storage_path?: string | null
+          previous_storage_path?: string | null
+          revision_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_revisions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "legal_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_signatures: {
+        Row: {
+          created_at: string
+          document_id: string
+          id: string
+          signature_data: string
+          signature_metadata: Json
+          signer_id: string
+          version: string
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          id?: string
+          signature_data: string
+          signature_metadata: Json
+          signer_id: string
+          version: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          id?: string
+          signature_data?: string
+          signature_metadata?: Json
+          signer_id?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_signatures_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "legal_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_templates: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          jurisdiction_code: string | null
+          template_content: string
+          template_name: string
+          template_type: string
+          template_version: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          jurisdiction_code?: string | null
+          template_content: string
+          template_name: string
+          template_type: string
+          template_version?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          jurisdiction_code?: string | null
+          template_content?: string
+          template_name?: string
+          template_type?: string
+          template_version?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_templates_jurisdiction_code_fkey"
+            columns: ["jurisdiction_code"]
+            isOneToOne: false
+            referencedRelation: "legal_jurisdictions"
+            referencedColumns: ["jurisdiction_code"]
+          },
+        ]
+      }
       documents: {
         Row: {
           description: string | null
@@ -570,6 +772,8 @@ export type Database = {
           cv_url: string | null
           job_app_id: string
           message: string | null
+          nda_document_id: string | null
+          nda_status: string | null
           project_id: string | null
           status: string | null
           task_discourse: string | null
@@ -587,6 +791,8 @@ export type Database = {
           cv_url?: string | null
           job_app_id?: string
           message?: string | null
+          nda_document_id?: string | null
+          nda_status?: string | null
           project_id?: string | null
           status?: string | null
           task_discourse?: string | null
@@ -604,6 +810,8 @@ export type Database = {
           cv_url?: string | null
           job_app_id?: string
           message?: string | null
+          nda_document_id?: string | null
+          nda_status?: string | null
           project_id?: string | null
           status?: string | null
           task_discourse?: string | null
@@ -618,6 +826,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "business_projects"
             referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "job_applications_nda_document_id_fkey"
+            columns: ["nda_document_id"]
+            isOneToOne: false
+            referencedRelation: "legal_documents"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "job_applications_project_id_fkey"
@@ -663,6 +878,126 @@ export type Database = {
             referencedColumns: ["businesses_id"]
           },
         ]
+      }
+      legal_documents: {
+        Row: {
+          accepted_job_id: string | null
+          business_id: string | null
+          created_at: string
+          document_type: string
+          executed_at: string | null
+          id: string
+          job_application_id: string | null
+          jobseeker_id: string | null
+          project_id: string | null
+          status: string
+          storage_path: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          accepted_job_id?: string | null
+          business_id?: string | null
+          created_at?: string
+          document_type: string
+          executed_at?: string | null
+          id?: string
+          job_application_id?: string | null
+          jobseeker_id?: string | null
+          project_id?: string | null
+          status: string
+          storage_path: string
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          accepted_job_id?: string | null
+          business_id?: string | null
+          created_at?: string
+          document_type?: string
+          executed_at?: string | null
+          id?: string
+          job_application_id?: string | null
+          jobseeker_id?: string | null
+          project_id?: string | null
+          status?: string
+          storage_path?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_documents_accepted_job_id_fkey"
+            columns: ["accepted_job_id"]
+            isOneToOne: false
+            referencedRelation: "accepted_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_documents_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["businesses_id"]
+          },
+          {
+            foreignKeyName: "legal_documents_job_application_id_fkey"
+            columns: ["job_application_id"]
+            isOneToOne: false
+            referencedRelation: "job_applications"
+            referencedColumns: ["job_app_id"]
+          },
+          {
+            foreignKeyName: "legal_documents_jobseeker_id_fkey"
+            columns: ["jobseeker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "business_projects"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      legal_jurisdictions: {
+        Row: {
+          created_at: string
+          default_governing_law: string | null
+          id: string
+          jurisdiction_code: string
+          jurisdiction_name: string
+          prohibited_clauses: Json | null
+          required_clauses: Json | null
+          special_requirements: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_governing_law?: string | null
+          id?: string
+          jurisdiction_code: string
+          jurisdiction_name: string
+          prohibited_clauses?: Json | null
+          required_clauses?: Json | null
+          special_requirements?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_governing_law?: string | null
+          id?: string
+          jurisdiction_code?: string
+          jurisdiction_name?: string
+          prohibited_clauses?: Json | null
+          required_clauses?: Json | null
+          special_requirements?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       marketing_contacts: {
         Row: {
@@ -727,6 +1062,7 @@ export type Database = {
           first_name: string | null
           id: string
           is_anonymized: boolean | null
+          job_title: string | null
           last_name: string | null
           location: string | null
           marketing_consent: boolean | null
@@ -754,6 +1090,7 @@ export type Database = {
           first_name?: string | null
           id: string
           is_anonymized?: boolean | null
+          job_title?: string | null
           last_name?: string | null
           location?: string | null
           marketing_consent?: boolean | null
@@ -781,6 +1118,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           is_anonymized?: boolean | null
+          job_title?: string | null
           last_name?: string | null
           location?: string | null
           marketing_consent?: boolean | null
@@ -1661,6 +1999,10 @@ export type Database = {
       }
       soft_delete_ticket: {
         Args: { ticket_id: string; user_id: string }
+        Returns: boolean
+      }
+      storage_is_owner_or_recipient: {
+        Args: { path: string; user_id: string }
         Returns: boolean
       }
       update_active_project: {

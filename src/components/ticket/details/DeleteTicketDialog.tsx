@@ -1,3 +1,4 @@
+
 import React from "react";
 import {
   AlertDialog,
@@ -51,7 +52,7 @@ export const DeleteTicketDialog: React.FC<DeleteTicketDialogProps> = ({
             <br />
             This action cannot be undone. The ticket will be archived and removed from view.
             <br /><br />
-            <strong>Note:</strong> Tickets with time entries or completion progress cannot be deleted.
+            <strong>Note:</strong> Tickets with time entries, completion progress, or associated legal documents cannot be deleted.
             
             {errorMessage && (
               <div className="mt-2 p-2 bg-red-100 border border-red-200 rounded text-red-800">

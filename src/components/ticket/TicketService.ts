@@ -39,6 +39,20 @@ export class TicketService {
         return false;
       }
 
+      // Check for related documents
+      const { data: documents, error: docError } = await supabase
+        .from("legal_documents")
+        .select("id")
+        .eq("job_application_id", ticket.job_app_id)
+        .limit(1);
+      
+      if (docError) {
+        console.error("Error checking for related documents:", docError);
+      } else if (documents && documents.length > 0) {
+        // If there are related legal documents, ticket cannot be deleted
+        return false;
+      }
+
       return true;
     } catch (error: any) {
       console.error("Error checking if ticket can be deleted:", error);
@@ -67,12 +81,25 @@ export class TicketService {
         // Check ticket completion percentage
         const { data: ticket, error: ticketError } = await supabase
           .from("tickets")
-          .select("completion_percentage")
+          .select("completion_percentage, job_app_id")
           .eq("id", ticketId)
           .single();
 
         if (ticket && ticket.completion_percentage > 0) {
           throw new Error("Cannot delete ticket with completion progress");
+        }
+        
+        // Check for related documents
+        if (ticket?.job_app_id) {
+          const { data: documents } = await supabase
+            .from("legal_documents")
+            .select("id")
+            .eq("job_application_id", ticket.job_app_id)
+            .limit(1);
+            
+          if (documents && documents.length > 0) {
+            throw new Error("Cannot delete ticket with associated legal documents");
+          }
         }
 
         // Generic fallback error
@@ -93,6 +120,8 @@ export class TicketService {
           errorMessage = "Cannot delete ticket with logged time entries";
         } else if (error.message.includes("completion progress")) {
           errorMessage = "Cannot delete ticket with completion progress";
+        } else if (error.message.includes("legal documents")) {
+          errorMessage = "Cannot delete ticket with associated legal documents";
         }
         
         throw new Error(errorMessage);
