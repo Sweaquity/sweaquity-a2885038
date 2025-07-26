@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -28,102 +28,107 @@ export const ApplicationsTabBase = ({
   const { isUpdatingStatus, updateApplicationStatus } = useApplicationActions(onApplicationUpdated);
   const { isWithdrawing, handleWithdrawApplication } = useWithdrawApplication(onApplicationUpdated);
   const { acceptJobAsJobSeeker, isLoading: isAcceptingJob } = useAcceptedJobs(onApplicationUpdated);
-  const [applicationsWithEquityData, setApplicationsWithEquityData] = useState<JobApplication[]>([]);
+  
+  // 🔧 FIX: Use a more stable approach for equity data
+  const [equityDataMap, setEquityDataMap] = useState<Record<string, any>>({});
   const [isLoadingEquityData, setIsLoadingEquityData] = useState(false);
+  const lastFetchedAppsRef = useRef<string>('');
+  const equityDataTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // 🔧 FIX: Memoize the equity data fetching to prevent infinite loops
+  // 🔧 FIX: Create a stable hash of applications to prevent unnecessary fetches
+  const applicationsHash = useMemo(() => {
+    return applications
+      .map(app => `${app.job_app_id}-${app.status}-${app.accepted_business}-${app.accepted_jobseeker}`)
+      .sort() // Sort to ensure consistent ordering
+      .join('|');
+  }, [applications]);
+
+  // 🔧 FIX: Debounced equity data fetching
   const fetchEquityData = useCallback(async (apps: JobApplication[]) => {
     if (apps.length === 0) {
-      console.log("No applications to fetch equity data for");
-      setApplicationsWithEquityData([]);
-      return;
-    }
-    
-    setIsLoadingEquityData(true);
-    console.log("Fetching equity data for", apps.length, "applications");
-    
-    // Get all job_app_ids
-    const jobAppIds = apps
-      .map(app => app.job_app_id)
-      .filter(id => id); // Remove any undefined/null ids
-    
-    if (jobAppIds.length === 0) {
-      console.log("No valid job_app_ids found");
-      setApplicationsWithEquityData(apps);
+      setEquityDataMap({});
       setIsLoadingEquityData(false);
       return;
     }
     
-    try {
-      const { data, error } = await supabase
-        .from('accepted_jobs')
-        .select('job_app_id, equity_agreed, jobs_equity_allocated, date_accepted, id')
-        .in('job_app_id', jobAppIds);
-        
-      if (error) {
-        console.error("Error fetching equity data:", error);
-        setApplicationsWithEquityData(apps);
+    // Clear any existing timeout
+    if (equityDataTimeoutRef.current) {
+      clearTimeout(equityDataTimeoutRef.current);
+    }
+    
+    // Debounce the API call
+    equityDataTimeoutRef.current = setTimeout(async () => {
+      const jobAppIds = apps
+        .map(app => app.job_app_id)
+        .filter(id => id);
+      
+      if (jobAppIds.length === 0) {
+        setEquityDataMap({});
         setIsLoadingEquityData(false);
         return;
       }
       
-      console.log("Equity data fetched:", data?.length || 0, "records");
-      
-      // Create a map of job_app_id to equity data
-      const equityDataMap = (data || []).reduce((map, item) => {
-        map[item.job_app_id] = {
-          equity_agreed: item.equity_agreed || 0,
-          jobs_equity_allocated: item.jobs_equity_allocated || 0,
-          date_accepted: item.date_accepted,
-          id: item.id
-        };
-        return map;
-      }, {} as Record<string, any>);
-      
-      // 🔧 FIX: Use JSON.stringify to compare and prevent unnecessary updates
-      const enrichedApplications = apps.map(app => {
-        const equityData = equityDataMap[app.job_app_id];
+      try {
+        setIsLoadingEquityData(true);
         
-        return {
-          ...app,
-          hasEquityData: !!equityData,
-          accepted_jobs: equityData
-        };
-      });
-      
-      // Only update if the data has actually changed
-      setApplicationsWithEquityData(prev => {
-        const hasChanged = JSON.stringify(prev) !== JSON.stringify(enrichedApplications);
-        if (hasChanged) {
-          console.log("Equity data updated - applications changed");
-          return enrichedApplications;
+        const { data, error } = await supabase
+          .from('accepted_jobs')
+          .select('job_app_id, equity_agreed, jobs_equity_allocated, date_accepted, id')
+          .in('job_app_id', jobAppIds);
+          
+        if (error) {
+          console.error("Error fetching equity data:", error);
+          return;
         }
-        console.log("Equity data unchanged - skipping update");
-        return prev;
-      });
-      
-    } catch (err) {
-      console.error("Error processing equity data:", err);
-      setApplicationsWithEquityData(apps);
-    } finally {
-      setIsLoadingEquityData(false);
-    }
-  }, []); // Empty dependency array since it doesn't depend on props/state
+        
+        // Create equity data map
+        const newEquityDataMap = (data || []).reduce((map, item) => {
+          map[item.job_app_id] = {
+            equity_agreed: item.equity_agreed || 0,
+            jobs_equity_allocated: item.jobs_equity_allocated || 0,
+            date_accepted: item.date_accepted,
+            id: item.id
+          };
+          return map;
+        }, {} as Record<string, any>);
+        
+        // Only update if the data actually changed
+        setEquityDataMap(prev => {
+          const hasChanged = JSON.stringify(prev) !== JSON.stringify(newEquityDataMap);
+          return hasChanged ? newEquityDataMap : prev;
+        });
+        
+      } catch (err) {
+        console.error("Error processing equity data:", err);
+      } finally {
+        setIsLoadingEquityData(false);
+      }
+    }, 300); // 300ms debounce
+  }, []);
 
-  // 🔧 FIX: Only fetch equity data when applications actually change
+  // 🔧 FIX: Only fetch when applications hash actually changes
   useEffect(() => {
-    // Create a stable identifier for the applications array
-    const applicationsHash = applications
-      .map(app => `${app.job_app_id}-${app.status}-${app.accepted_business}-${app.accepted_jobseeker}`)
-      .join('|');
-    
-    const lastHashRef = { current: '' };
-    
-    if (lastHashRef.current !== applicationsHash) {
-      lastHashRef.current = applicationsHash;
+    if (applicationsHash !== lastFetchedAppsRef.current) {
+      lastFetchedAppsRef.current = applicationsHash;
       fetchEquityData(applications);
     }
-  }, [applications, fetchEquityData]);
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (equityDataTimeoutRef.current) {
+        clearTimeout(equityDataTimeoutRef.current);
+      }
+    };
+  }, [applicationsHash, fetchEquityData, applications]);
+
+  // 🔧 FIX: Stable applications with equity data using useMemo
+  const applicationsWithEquityData = useMemo(() => {
+    return applications.map(app => ({
+      ...app,
+      hasEquityData: !!equityDataMap[app.job_app_id],
+      accepted_jobs: equityDataMap[app.job_app_id] || null
+    }));
+  }, [applications, equityDataMap]);
 
   // Helper function to filter applications by status
   const getApplicationsByStatus = useCallback((statusArray: string[]) => {
@@ -133,54 +138,39 @@ export const ApplicationsTabBase = ({
     });
   }, [applicationsWithEquityData]);
 
-  // 🔧 FIX: Add proper dependency array and memoization
+  // 🔧 FIX: Stable filtered arrays with proper dependencies
   const pendingApplications = useMemo(() => {
-    if (isLoadingEquityData) return [];
-    const applications = getApplicationsByStatus(['pending', 'in review']);
-    return applications;
-  }, [getApplicationsByStatus, isLoadingEquityData]);
+    return getApplicationsByStatus(['pending', 'in review']);
+  }, [getApplicationsByStatus]);
 
   const negotiationApplications = useMemo(() => {
-    if (isLoadingEquityData) return [];
     return getApplicationsByStatus(['negotiation']);
-  }, [getApplicationsByStatus, isLoadingEquityData]);
+  }, [getApplicationsByStatus]);
 
-  // Current applications - accepted jobs that are active
   const currentApplications = useMemo(() => {
-    if (isLoadingEquityData) return [];
     const acceptedApps = getApplicationsByStatus(['accepted']);
     
-    // Filter to only show accepted jobs that are still active (not fully completed equity-wise)
-    const activeAccepted = acceptedApps.filter(app => {
-      // If no equity data, consider it active
+    return acceptedApps.filter(app => {
       if (!app.accepted_jobs) return true;
       
-      // If equity is agreed but not fully allocated, it's active
       const equityAgreed = app.accepted_jobs.equity_agreed || 0;
       const equityAllocated = app.accepted_jobs.jobs_equity_allocated || 0;
       
       return equityAgreed === 0 || equityAgreed > equityAllocated;
     });
-    
-    return activeAccepted;
-  }, [getApplicationsByStatus, isLoadingEquityData]);
+  }, [getApplicationsByStatus]);
 
   const pastApplications = useMemo(() => {
-    if (isLoadingEquityData) return [];
-    const withdrawnAndRejected = [
+    return [
       ...getApplicationsByStatus(['withdrawn']),
       ...getApplicationsByStatus(['rejected'])
     ];
-    
-    return withdrawnAndRejected;
-  }, [getApplicationsByStatus, isLoadingEquityData]);
+  }, [getApplicationsByStatus]);
 
-  // All pending and negotiation applications for the pending tab
   const allPendingApplications = useMemo(() => {
     return [...pendingApplications, ...negotiationApplications];
   }, [pendingApplications, negotiationApplications]);
 
-  // Filter Equity Projects - Active vs Completed based on equity allocation
   const activeEquityProjects = useMemo(() => 
     applicationsWithEquityData.filter(app => 
       app.hasEquityData && 
@@ -191,7 +181,6 @@ export const ApplicationsTabBase = ({
     [applicationsWithEquityData]
   );
 
-  // Completed equity projects should be the ones where equity_agreed equals jobs_equity_allocated
   const completedEquityProjects = useMemo(() => 
     applicationsWithEquityData.filter(app => 
       app.hasEquityData && 
@@ -202,45 +191,40 @@ export const ApplicationsTabBase = ({
     [applicationsWithEquityData]
   );
 
-  // Count notifications for tabs - applications in negotiation need action
+  // Count notifications for tabs
   const pendingCount = negotiationApplications.length;
   const messagesCount = newMessagesCount || 0;
 
+  // 🔧 FIX: Reduce debug logging and make it conditional
+  const lastDebugRef = useRef<string>('');
   useEffect(() => {
-    if (pendingCount > 0 && activeTab !== "pending") {
-      // Uncomment if you want to force switch to pending tab
-      // setActiveTab("pending");
-    }
-  }, [pendingCount, activeTab]);
-
-  // 🔧 FIX: Reduce debug logging frequency and add conditions
-  useEffect(() => {
-    if (!isLoadingEquityData) {
-      console.log("=== APPLICATIONS DEBUG ===");
-      console.log("Total applications:", applications.length);
-      console.log("Applications with equity data:", applicationsWithEquityData.length);
+    // Only log when not loading and when counts actually change
+    if (!isLoadingEquityData && applications.length > 0) {
+      const debugInfo = {
+        total: applications.length,
+        withEquity: applicationsWithEquityData.length,
+        pending: allPendingApplications.length,
+        current: currentApplications.length,
+        past: pastApplications.length
+      };
       
-      // Log status distribution
-      const statusCounts = applicationsWithEquityData.reduce((acc, app) => {
-        const status = app.status?.toLowerCase() || 'unknown';
-        acc[status] = (acc[status] || 0) + 1;
-        return acc;
-      }, {});
+      // Create a stable string to compare
+      const debugString = JSON.stringify(debugInfo);
       
-      console.log("Status distribution:", statusCounts);
-      console.log("Pending count:", allPendingApplications.length);
-      console.log("Current count:", currentApplications.length);
-      console.log("Past count:", pastApplications.length);
-      console.log("=== END DEBUG ===");
+      // Only log if this is different from the last log
+      if (lastDebugRef.current !== debugString) {
+        console.log("📊 Applications Summary:", debugInfo);
+        lastDebugRef.current = debugString;
+      }
     }
   }, [
-    applications.length, 
-    applicationsWithEquityData.length, 
-    allPendingApplications.length, 
-    currentApplications.length, 
+    applications.length,
+    applicationsWithEquityData.length,
+    allPendingApplications.length,
+    currentApplications.length,
     pastApplications.length,
     isLoadingEquityData
-  ]); // 🔧 FIX: Use primitive values instead of object references
+  ]);
 
   if (applications.length === 0) {
     return (
@@ -287,16 +271,12 @@ export const ApplicationsTabBase = ({
             This tab shows applications that are awaiting a response, under review, or in negotiation.
           </AlertDescription>
         </Alert>
-        {isLoadingEquityData ? (
-          <div className="text-center py-4">Loading...</div>
-        ) : (
-          <PendingApplicationsList 
-            applications={allPendingApplications}
-            onWithdraw={handleWithdrawApplication}
-            onAccept={acceptJobAsJobSeeker}
-            isWithdrawing={isWithdrawing}
-          />
-        )}
+        <PendingApplicationsList 
+          applications={allPendingApplications}
+          onWithdraw={handleWithdrawApplication}
+          onAccept={acceptJobAsJobSeeker}
+          isWithdrawing={isWithdrawing}
+        />
       </TabsContent>
 
       <TabsContent value="current">
@@ -306,14 +286,10 @@ export const ApplicationsTabBase = ({
             This tab shows your active projects where you and the business have agreed to work together.
           </AlertDescription>
         </Alert>
-        {isLoadingEquityData ? (
-          <div className="text-center py-4">Loading...</div>
-        ) : (
-          <ApplicationsList 
-            applications={currentApplications}
-            onApplicationUpdated={onApplicationUpdated}
-          />
-        )}
+        <ApplicationsList 
+          applications={currentApplications}
+          onApplicationUpdated={onApplicationUpdated}
+        />
       </TabsContent>
 
       <TabsContent value="past">
@@ -323,14 +299,10 @@ export const ApplicationsTabBase = ({
             This tab shows your past applications, including rejected and withdrawn projects.
           </AlertDescription>
         </Alert>
-        {isLoadingEquityData ? (
-          <div className="text-center py-4">Loading...</div>
-        ) : (
-          <PastApplicationsList 
-            applications={pastApplications}
-            onApplicationUpdated={onApplicationUpdated}
-          />
-        )}
+        <PastApplicationsList 
+          applications={pastApplications}
+          onApplicationUpdated={onApplicationUpdated}
+        />
       </TabsContent>
 
       <TabsContent value="equity">
@@ -341,35 +313,31 @@ export const ApplicationsTabBase = ({
           </AlertDescription>
         </Alert>
         
-        {isLoadingEquityData ? (
-          <div className="text-center py-4">Loading equity data...</div>
-        ) : (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Active Equity Projects</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Projects where you have equity allocation that is still being earned.
-              </p>
-              <EquityProjectsList 
-                applications={activeEquityProjects}
-                onApplicationUpdated={onApplicationUpdated}
-                isCompleted={false}
-              />
-            </div>
-            
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Completed Equity Projects</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Projects where 100% of your agreed equity has been allocated.
-              </p>
-              <EquityProjectsList 
-                applications={completedEquityProjects}
-                onApplicationUpdated={onApplicationUpdated}
-                isCompleted={true}
-              />
-            </div>
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Active Equity Projects</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Projects where you have equity allocation that is still being earned.
+            </p>
+            <EquityProjectsList 
+              applications={activeEquityProjects}
+              onApplicationUpdated={onApplicationUpdated}
+              isCompleted={false}
+            />
           </div>
-        )}
+          
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Completed Equity Projects</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Projects where 100% of your agreed equity has been allocated.
+            </p>
+            <EquityProjectsList 
+              applications={completedEquityProjects}
+              onApplicationUpdated={onApplicationUpdated}
+              isCompleted={true}
+            />
+          </div>
+        </div>
       </TabsContent>
     </Tabs>
   );
