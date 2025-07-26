@@ -1,5 +1,9 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Extract foreign key relationships from your schema
 const foreignKeyRelationships = [
@@ -261,7 +265,7 @@ function generateRelationshipReport(results) {
 }
 
 // Run the analysis
-if (require.main === module) {
+if (import.meta.url === `file://${__filename}`) {
   const projectRoot = './';
   const results = findRelationshipUsage(projectRoot);
   generateRelationshipReport(results);
@@ -271,4 +275,4 @@ if (require.main === module) {
   console.log(`\n💾 Detailed results exported to: relationship-analysis.json`);
 }
 
-module.exports = { findRelationshipUsage, generateRelationshipReport };
+export { findRelationshipUsage, generateRelationshipReport };
