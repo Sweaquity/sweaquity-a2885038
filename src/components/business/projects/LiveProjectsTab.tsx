@@ -88,6 +88,41 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
       return;
     }
     
+    if (action === 'delete') {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          toast.error("Authentication required");
+          return;
+        }
+
+        // Use the RPC function for soft deletion
+        const { error } = await supabase.rpc('soft_delete_ticket', {
+          ticket_id: ticketId,
+          user_id: session.user.id
+        });
+
+        if (error) {
+          console.error("Error deleting ticket:", error);
+          if (error.message.includes('time entries')) {
+            toast.error('Cannot delete ticket with logged time entries');
+          } else if (error.message.includes('completion progress')) {
+            toast.error('Cannot delete ticket with completion progress');
+          } else {
+            toast.error('Failed to delete ticket');
+          }
+          return;
+        }
+
+        toast.success('Ticket deleted successfully');
+        loadTicketsData(); // Refresh the tickets list
+      } catch (error) {
+        console.error('Error deleting ticket:', error);
+        toast.error('Failed to delete ticket');
+      }
+      return;
+    }
+    
     if (action === 'refreshTicket') {
       // Refresh the specific ticket data
       const { data: refreshedTicket, error } = await supabase

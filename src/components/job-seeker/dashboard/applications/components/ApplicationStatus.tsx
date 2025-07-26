@@ -33,6 +33,8 @@ export const ApplicationStatus = ({
     if (statusLower === 'rejected') return 'bg-red-500';
     if (statusLower === 'withdrawn') return 'bg-yellow-500';
     if (statusLower === 'pending') return 'bg-blue-500';
+    if (statusLower === 'review' || statusLower === 'in review') return 'bg-orange-500';
+    if (statusLower === 'negotiation') return 'bg-purple-500';
     return 'bg-gray-500';
   };
 

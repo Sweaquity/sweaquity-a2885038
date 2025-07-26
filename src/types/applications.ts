@@ -14,7 +14,7 @@ export interface JobApplication {
   applicant_anonymized?: boolean;
   created_at?: string;
   updated_at?: string;
-  applied_at?: string;
+  applied_at: string; // Required for compatibility
   business_roles?: BusinessRole | any;
   applicant_id?: string;
   task_discourse?: string;
@@ -37,6 +37,9 @@ export interface JobApplication {
   hasEquityData?: boolean; // Added for compatibility with EquityProjectsList
   is_equity_project?: boolean; // Added for compatibility with EquityProjectsList
   profile?: any; // For accessing applicant profile data
+  businesses?: any; // Added for business data compatibility
+  nda_document_id?: string; // Added for NDA handling
+  nda_status?: string; // Added for NDA status
 }
 
 export interface AcceptedJob {
