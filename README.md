@@ -230,3 +230,4 @@ The platform is nearly ready for beta testing, with a few recommended enhancemen
    - Expand recruiter toolset and commission models
 
 By addressing the identified gaps, especially around equity protection, NDA implementation, and beta testing equity, the platform will be well-positioned for a successful beta launch.
+# Test change
