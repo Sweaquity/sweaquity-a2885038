@@ -241,12 +241,48 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
 
       {reviewTask && (
         <TaskCompletionReview
-          task={reviewTask}
+          ticketId={reviewTask.id}
           open={isReviewOpen}
-          setOpen={setIsReviewOpen}
-          onClose={handleReviewClose}
-          onReviewComplete={() => loadTicketsData()}
-          businessId={businessId}
+          onOpenChange={setIsReviewOpen}
+          onReviewComplete={async (approved: boolean, notes: string) => {
+            // Handle review completion
+            try {
+              const { error } = await supabase
+                .from('tickets')
+                .update({ 
+                  status: approved ? 'done' : 'in_progress',
+                  notes: reviewTask.notes ? [...reviewTask.notes, {
+                    id: Date.now().toString(),
+                    user: 'Business Review',
+                    comment: notes,
+                    timestamp: new Date().toISOString()
+                  }] : [{
+                    id: Date.now().toString(),
+                    user: 'Business Review',
+                    comment: notes,
+                    timestamp: new Date().toISOString()
+                  }]
+                })
+                .eq('id', reviewTask.id);
+                
+              if (error) throw error;
+              
+              loadTicketsData();
+              toast.success(approved ? 'Task approved successfully' : 'Task sent back for changes');
+            } catch (error) {
+              console.error('Error updating task:', error);
+              toast.error('Failed to update task');
+            }
+          }}
+          ticketData={{
+            title: reviewTask.title,
+            description: reviewTask.description,
+            completion_percentage: reviewTask.completion_percentage,
+            project_id: reviewTask.project_id,
+            assigned_to: reviewTask.assigned_to,
+            job_app_id: reviewTask.job_app_id,
+            task_id: reviewTask.task_id
+          }}
         />
       )}
     </div>

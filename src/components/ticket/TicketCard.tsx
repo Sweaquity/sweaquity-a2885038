@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronRight, MessageSquare, Calendar, CheckCircle } from "lucide-react";
+import { ChevronDown, ChevronRight, MessageSquare, Calendar, CheckCircle, Trash2 } from "lucide-react";
 import { 
   Select,
   SelectContent,
@@ -30,6 +30,9 @@ interface TicketCardProps {
     updated_at: string;
     estimated_hours?: number;
     equity_points?: number;
+    equity_agreed?: number;
+    equity_allocated?: number;
+    completion_percentage?: number;
     assigned_user?: {
       email?: string;
     };
@@ -39,11 +42,17 @@ interface TicketCardProps {
     project?: {
       title?: string;
     };
+    accepted_jobs?: {
+      equity_agreed?: number;
+      jobs_equity_allocated?: number;
+    };
   };
   onTicketUpdated?: (updates: any) => void;
+  onTicketAction?: (ticketId: string, action: string, data: any) => Promise<void>;
+  renderTicketActions?: (ticket: any) => React.ReactNode;
 }
 
-export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
+export const TicketCard = ({ ticket, onTicketUpdated, onTicketAction, renderTicketActions }: TicketCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
@@ -169,6 +178,28 @@ export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
     }
   };
 
+  const handleDeleteTicket = async () => {
+    if (window.confirm('Are you sure you want to delete this ticket?')) {
+      try {
+        if (onTicketAction) {
+          await onTicketAction(ticket.id, 'delete', null);
+        } else {
+          // Fallback delete logic
+          const { error } = await supabase
+            .from('tickets')
+            .delete()
+            .eq('id', ticket.id);
+          
+          if (error) throw error;
+          toast.success('Ticket deleted successfully');
+        }
+      } catch (error) {
+        console.error('Error deleting ticket:', error);
+        toast.error('Failed to delete ticket');
+      }
+    }
+  };
+
   const getHealthBadgeClass = (health: string) => {
     switch (health.toLowerCase()) {
       case 'green': return 'bg-green-100 text-green-800 hover:bg-green-200';
@@ -258,6 +289,20 @@ export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
               {formatDate(ticket.due_date)}
             </div>
           )}
+          
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteTicket();
+            }}
+            className="p-1 h-6 w-6 text-gray-400 hover:text-red-500"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+
+          {renderTicketActions && renderTicketActions(ticket)}
         </div>
       </div>
       
@@ -345,6 +390,19 @@ export const TicketCard = ({ ticket, onTicketUpdated }: TicketCardProps) => {
                   <div>
                     <p className="text-xs text-gray-500">Project</p>
                     <p className="text-sm truncate">{ticket.project?.title || "None"}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-gray-500">Completion</p>
+                    <p className="text-sm">{ticket.completion_percentage || 0}%</p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-gray-500">Equity</p>
+                    <p className="text-sm">
+                      {(ticket.equity_agreed || ticket.accepted_jobs?.equity_agreed || ticket.equity_points || 0)}% 
+                      {ticket.accepted_jobs?.jobs_equity_allocated && ` (${ticket.accepted_jobs.jobs_equity_allocated}% allocated)`}
+                    </p>
                   </div>
                   
                   <div>

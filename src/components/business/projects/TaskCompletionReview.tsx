@@ -58,7 +58,7 @@ export const TaskCompletionReview = ({
 
   // Effect to check if award agreement already exists when dialog opens
   const checkExistingAgreement = async () => {
-    if (!ticketData.job_app_id || !open) return;
+    if (!ticketData?.job_app_id || !open) return;
     
     try {
       setIsLoading(true);
