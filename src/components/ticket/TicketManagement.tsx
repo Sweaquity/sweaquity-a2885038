@@ -9,9 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { TicketKanbanBoard } from "./TicketKanbanBoard";
-import { TicketGanttChart } from "./TicketGanttChart";
-import { TicketStatistics } from "./TicketStatistics";
+import { TicketKanbanBoard } from "./KanbanBoard";
+import { TicketGanttChart } from "./GanttChart";
+import { TicketStatistics } from "./TicketStats";
 import { toast } from "sonner";
 
 export interface Ticket {
