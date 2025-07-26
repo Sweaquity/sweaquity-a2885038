@@ -27,7 +27,7 @@ jobs:
 
     # Lint the code
     - name: Lint
-      run: npm run lint
+      run: npx eslint
 
     # Run type checks
     - name: Type Check
