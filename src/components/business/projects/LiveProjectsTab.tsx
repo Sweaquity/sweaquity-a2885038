@@ -282,7 +282,8 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
           onReviewComplete={async (approved: boolean, notes: string) => {
             // Handle review completion
             try {
-              const { error } = await supabase
+              // Update tickets table
+              const { error: ticketError } = await supabase
                 .from('tickets')
                 .update({ 
                   status: approved ? 'done' : 'in_progress',
@@ -300,7 +301,23 @@ export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
                 })
                 .eq('id', reviewTask.id);
                 
-              if (error) throw error;
+              if (ticketError) throw ticketError;
+
+              // Update project_sub_tasks table if task_id exists
+              if (reviewTask.task_id) {
+                const { error: taskError } = await supabase
+                  .from('project_sub_tasks')
+                  .update({
+                    task_status: approved ? 'closed' : 'in_progress',
+                    last_activity_at: new Date().toISOString()
+                  })
+                  .eq('task_id', reviewTask.task_id);
+                  
+                if (taskError) {
+                  console.error('Error updating project sub-task:', taskError);
+                  // Don't throw here - ticket was updated successfully
+                }
+              }
               
               loadTicketsData();
               toast.success(approved ? 'Task approved successfully' : 'Task sent back for changes');
