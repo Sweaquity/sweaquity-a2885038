@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -57,38 +57,40 @@ export const TaskCompletionReview = ({
   const shouldGenerateAgreement = isTaskComplete && ticketData.job_app_id && ticketData.project_id;
 
   // Effect to check if award agreement already exists when dialog opens
-  const checkExistingAgreement = async () => {
-    if (!ticketData?.job_app_id || !open) return;
-    
-    try {
-      setIsLoading(true);
+  useEffect(() => {
+    const checkExistingAgreement = async () => {
+      if (!ticketData?.job_app_id || !open) return;
       
-      // First get the accepted_job
-      const { data: acceptedJob, error: acceptedJobError } = await supabase
-        .from('accepted_jobs')
-        .select('id, award_agreement_document_id')
-        .eq('job_app_id', ticketData.job_app_id)
-        .maybeSingle();
+      try {
+        setIsLoading(true);
         
-      if (acceptedJobError) throw acceptedJobError;
-      
-      if (acceptedJob) {
-        setAcceptedJobId(acceptedJob.id);
-        setHasExistingAgreement(!!acceptedJob.award_agreement_document_id);
-      } else {
+        // First get the accepted_job
+        const { data: acceptedJob, error: acceptedJobError } = await supabase
+          .from('accepted_jobs')
+          .select('id, award_agreement_document_id')
+          .eq('job_app_id', ticketData.job_app_id)
+          .maybeSingle();
+          
+        if (acceptedJobError) throw acceptedJobError;
+        
+        if (acceptedJob) {
+          setAcceptedJobId(acceptedJob.id);
+          setHasExistingAgreement(!!acceptedJob.award_agreement_document_id);
+        } else {
+          setHasExistingAgreement(false);
+        }
+      } catch (error) {
+        console.error('Error checking existing award agreement:', error);
         setHasExistingAgreement(false);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Error checking existing award agreement:', error);
-      setHasExistingAgreement(false);
-    } finally {
-      setIsLoading(false);
+    };
+
+    if (open && hasExistingAgreement === null) {
+      checkExistingAgreement();
     }
-  };
-  
-  if (open && hasExistingAgreement === null) {
-    checkExistingAgreement();
-  }
+  }, [open, ticketData?.job_app_id, hasExistingAgreement]);
   
   const handleApprove = async () => {
     try {
