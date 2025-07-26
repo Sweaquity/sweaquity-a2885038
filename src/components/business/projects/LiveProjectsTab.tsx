@@ -29,6 +29,23 @@ import {
 } from "@tanstack/react-table";
 import { MoreHorizontal, ArrowLeft, Copy, Edit, Trash2, Loader2 } from "lucide-react";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -43,9 +60,7 @@ import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
 import { TaskCompletionReview } from "./TaskCompletionReview";
 
 interface LiveProjectsTabProps {
-  projectId?: string;
-  projects: Project[];
-  onProjectChange: (projectId: string) => void;
+  businessId: string;
 }
 
 const reorder = (list: any[], startIndex: number, endIndex: number) => {
@@ -146,7 +161,9 @@ const DeleteTicketDialog = ({
   );
 };
 
-export const LiveProjectsTab = ({ projectId, projects, onProjectChange }: LiveProjectsTabProps) => {
+export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [search, setSearch] = useState("");
@@ -166,18 +183,44 @@ export const LiveProjectsTab = ({ projectId, projects, onProjectChange }: LivePr
   const [rowSelection, setRowSelection] = useState({});
 
   useEffect(() => {
+    loadProjects();
+  }, [businessId]);
+
+  useEffect(() => {
     loadTickets();
-  }, [projectId, forceRefresh]);
+  }, [selectedProject, forceRefresh]);
+
+  const loadProjects = async () => {
+    if (!businessId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('business_projects')
+        .select('*')
+        .eq('business_id', businessId);
+
+      if (error) throw error;
+      setProjects(data || []);
+      
+      // Set first project as selected if none selected
+      if (data && data.length > 0 && !selectedProject) {
+        setSelectedProject(data[0].project_id);
+      }
+    } catch (error) {
+      console.error("Error loading projects:", error);
+      toast.error("Failed to load projects");
+    }
+  };
 
   const loadTickets = async () => {
-    if (!projectId) return;
+    if (!selectedProject) return;
 
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('tickets')
         .select('*')
-        .eq('project_id', projectId);
+        .eq('project_id', selectedProject);
 
       if (error) {
         console.error("Error fetching tickets:", error);
@@ -405,105 +448,131 @@ export const LiveProjectsTab = ({ projectId, projects, onProjectChange }: LivePr
 
   return (
     <div className="w-full space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {tickets.length} total tickets
+      {projects.length > 0 && (
+        <div className="flex items-center gap-4 mb-4">
+          <Label>Select Project:</Label>
+          <select 
+            value={selectedProject || ''} 
+            onChange={(e) => setSelectedProject(e.target.value)}
+            className="px-3 py-2 border rounded-md"
+          >
+            {projects.map((project) => (
+              <option key={project.project_id} value={project.project_id}>
+                {project.title}
+              </option>
+            ))}
+          </select>
         </div>
-        <Button onClick={handleCreateTicket}>Create Ticket</Button>
-      </div>
-      <div className="rounded-md border">
-        <div className="flex items-center py-2 px-4">
-          <Input
-            placeholder="Filter tickets..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-sm"
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="ml-auto">
-                Columns <MoreHorizontal className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[150px]">
-              {table
-                .getAllColumns()
-                .filter(
-                  (column) => column.getCanHide()
-                )
-                .map(
-                  (column) => {
-                    return (
-                      <DropdownMenuCheckboxItem
-                        key={column.id}
-                        className="capitalize"
-                        checked={column.getIsVisible()}
-                        onCheckedChange={(value) =>
-                          column.toggleVisibility(!!value)
-                        }
-                      >
-                        {column.id}
-                      </DropdownMenuCheckboxItem>
-                    )
-                  }
-                )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+      )}
+      
+      {!selectedProject ? (
+        <div className="text-center py-8 text-muted-foreground">
+          {projects.length === 0 ? 'No projects found. Create a project first.' : 'Select a project to view tickets.'}
         </div>
-        <ScrollArea>
-          <div className="relative">
-            <div className="absolute inset-0">
-              {isLoading ? (
-                <div className="flex flex-col space-y-2 p-4">
-                  <Skeleton className="h-8 w-[200px]" />
-                  <Skeleton className="h-4 w-[400px]" />
-                  <Skeleton className="h-4 w-[400px]" />
-                  <Skeleton className="h-4 w-[400px]" />
-                  <Skeleton className="h-4 w-[400px]" />
-                  <Skeleton className="h-4 w-[400px]" />
-                </div>
-              ) : (
-                <DragDropContext onDragEnd={onDragEnd}>
-                  <Droppable droppableId="droppable">
-                    {(provided, snapshot) => (
-                      <div
-                        {...provided.droppableProps}
-                        ref={provided.innerRef}
-                      >
-                        {table.getRowModel().rows.map((row, index) => (
-                          <Draggable key={row.id} draggableId={row.id} index={index}>
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                style={provided.draggableProps.style}
-                                className="border-b last:border-none"
-                              >
-                                <div className="grid grid-cols-4 gap-2 p-4">
-                                  {row.getVisibleCells().map((cell) => (
-                                    <div key={cell.id}>
-                                      {flexRender(
-                                        cell.column.columnDef.cell,
-                                        cell.getContext()
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                </DragDropContext>
-              )}
+      ) : (
+        <>
+          <div className="flex items-center justify-between">
+            <div className="flex-1 text-sm text-muted-foreground">
+              {tickets.length} total tickets
             </div>
+            <Button onClick={handleCreateTicket}>Create Ticket</Button>
           </div>
-        </ScrollArea>
-      </div>
+          
+          <div className="rounded-md border">
+            <div className="flex items-center py-2 px-4">
+              <Input
+                placeholder="Filter tickets..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="max-w-sm"
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="ml-auto">
+                    Columns <MoreHorizontal className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[150px]">
+                  {table
+                    .getAllColumns()
+                    .filter(
+                      (column) => column.getCanHide()
+                    )
+                    .map(
+                      (column) => {
+                        return (
+                          <DropdownMenuCheckboxItem
+                            key={column.id}
+                            className="capitalize"
+                            checked={column.getIsVisible()}
+                            onCheckedChange={(value) =>
+                              column.toggleVisibility(!!value)
+                            }
+                          >
+                            {column.id}
+                          </DropdownMenuCheckboxItem>
+                        )
+                      }
+                    )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <ScrollArea>
+              <div className="relative">
+                <div className="absolute inset-0">
+                  {isLoading ? (
+                    <div className="flex flex-col space-y-2 p-4">
+                      <Skeleton className="h-8 w-[200px]" />
+                      <Skeleton className="h-4 w-[400px]" />
+                      <Skeleton className="h-4 w-[400px]" />
+                      <Skeleton className="h-4 w-[400px]" />
+                      <Skeleton className="h-4 w-[400px]" />
+                      <Skeleton className="h-4 w-[400px]" />
+                    </div>
+                  ) : (
+                    <DragDropContext onDragEnd={onDragEnd}>
+                      <Droppable droppableId="droppable">
+                        {(provided, snapshot) => (
+                          <div
+                            {...provided.droppableProps}
+                            ref={provided.innerRef}
+                          >
+                            {table.getRowModel().rows.map((row, index) => (
+                              <Draggable key={row.id} draggableId={row.id} index={index}>
+                                {(provided, snapshot) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    style={provided.draggableProps.style}
+                                    className="border-b last:border-none"
+                                  >
+                                    <div className="grid grid-cols-4 gap-2 p-4">
+                                      {row.getVisibleCells().map((cell) => (
+                                        <div key={cell.id}>
+                                          {flexRender(
+                                            cell.column.columnDef.cell,
+                                            cell.getContext()
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </DragDropContext>
+                  )}
+                </div>
+              </div>
+            </ScrollArea>
+          </div>
+        </>
+      )}
 
       <CreateTicketDialog
         open={isCreateDialogOpen}
@@ -561,97 +630,3 @@ export const LiveProjectsTab = ({ projectId, projects, onProjectChange }: LivePr
   );
 };
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
-// Simple Filter component
-function Filter({ column, table }: { column: any; table: any }) {
-  const firstValue = table
-    .getPreFilteredRowModel()
-    .flatRows[0]?.getValue(column.id);
-  
-  const columnFilterValue = column.getFilterValue();
-  
-  const sortedUniqueValues = useCallback(
-    () =>
-      typeof firstValue === 'number'
-        ? []
-        : Array.from(column.getFacetedUniqueValues().keys()).sort(),
-    [column.getFacetedUniqueValues()]
-  )();
-
-  return typeof firstValue === 'number' ? (
-    <div>
-      <div className="flex space-x-2">
-        <Input
-          type="number"
-          value={(columnFilterValue?.[0] ?? '').toString()}
-          onChange={e =>
-            column.setFilterValue((old: [string, string]) => [e.target.value, old?.[1]])
-          }
-          placeholder={`Min`}
-          className="w-24"
-        />
-        <Input
-          type="number"
-          value={(columnFilterValue?.[1] ?? '').toString()}
-          onChange={e =>
-            column.setFilterValue((old: [string, string]) => [old?.[0], e.target.value])
-          }
-          placeholder={`Max`}
-          className="w-24"
-        />
-      </div>
-    </div>
-  ) : (
-    <>
-      <ul className="p-2">
-        {sortedUniqueValues.slice(0, 10).map((value: any) => (
-          <li
-            key={value}
-            className="flex items-center"
-          >
-            <label htmlFor={value} className="flex items-center">
-              <Input
-                type="checkbox"
-                id={value}
-                checked={column.getFilterValue()?.includes(value)}
-                onChange={e => {
-                  column.setFilterValue(old => {
-                    return e.target.checked
-                      ? [...(old || []), value]
-                      : old?.filter((v: any) => v !== value)
-                  })
-                }}
-                className="mr-2 h-4 w-4"
-              />
-              <span>{value}</span>
-            </label>
-          </li>
-        ))}
-      </ul>
-      {sortedUniqueValues.length > 10 ? (
-        <div className="p-2 text-center text-muted-foreground">
-          Only showing top 10 results
-        </div>
-      ) : null}
-    </>
-  );
-}
