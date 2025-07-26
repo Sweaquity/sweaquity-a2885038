@@ -1,632 +1,254 @@
 
-import { useState, useEffect, useCallback } from "react";
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import React, { useState, useEffect } from "react";
+import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
-import {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-import { MoreHorizontal, ArrowLeft, Copy, Edit, Trash2, Loader2 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { supabase } from "@/lib/supabase";
-import { Project, Ticket } from "@/types/business";
+import { ProjectTicketFilters } from "./components/ProjectTicketFilters";
+import { ProjectStatsSummary } from "./components/ProjectStatsSummary";
+import { ProjectTicketTabs } from "./components/ProjectTicketTabs";
 import { CreateTicketDialog } from "@/components/ticket/CreateTicketDialog";
 import { TaskCompletionReview } from "./TaskCompletionReview";
+import { Ticket } from "@/types/types";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
+import { 
+  loadTickets, 
+  fetchProjects, 
+  handleTicketAction as handleTicketActionService,
+  handleLogTime as handleLogTimeService,
+  createTicket
+} from "./services/ticketService";
 
 interface LiveProjectsTabProps {
   businessId: string;
 }
 
-const reorder = (list: any[], startIndex: number, endIndex: number) => {
-  const result = Array.from(list);
-  const [removed] = result.splice(startIndex, 1);
-  result.splice(endIndex, 0, removed);
-
-  return result;
-};
-
-// Create custom components for UpdateTicketDialog and DeleteTicketDialog
-const UpdateTicketDialog = ({ open, onClose, ticket, onUpdateTicket, projects }: { 
-  open: boolean; 
-  onClose: () => void; 
-  ticket: Ticket; 
-  onUpdateTicket: () => void; 
-  projects: Project[] 
-}) => {
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Update Ticket</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
-            <Input id="title" defaultValue={ticket.title} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <textarea 
-              id="description" 
-              className="w-full min-h-[100px] rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
-              defaultValue={ticket.description}
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => { onUpdateTicket(); onClose(); }}>Update Ticket</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-const DeleteTicketDialog = ({ 
-  open, 
-  onOpenChange, 
-  onConfirm, 
-  isDeleting, 
-  ticketTitle, 
-  errorMessage 
-}: { 
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onConfirm: () => Promise<void>;
-  isDeleting: boolean;
-  ticketTitle: string;
-  errorMessage?: string;
-}) => {
-  return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            You are about to delete ticket: <strong>{ticketTitle}</strong>
-            <br />
-            This action cannot be undone. The ticket will be permanently removed.
-            {errorMessage && (
-              <div className="mt-2 p-2 bg-red-50 text-red-600 rounded-md">
-                Error: {errorMessage}
-              </div>
-            )}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={(e) => {
-              e.preventDefault();
-              onConfirm();
-            }}
-            disabled={isDeleting}
-            className="bg-red-500 hover:bg-red-600 focus:ring-red-500"
-          >
-            {isDeleting ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...</>
-            ) : (
-              "Delete"
-            )}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-};
-
 export const LiveProjectsTab = ({ businessId }: LiveProjectsTabProps) => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("all-tickets");
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [search, setSearch] = useState("");
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
-  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | undefined>();
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [forceRefresh, setForceRefresh] = useState(0);
-  
-  // React Table states
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string>("all");
+  const [taskStats, setTaskStats] = useState({
+    total: 0,
+    open: 0,
+    closed: 0,
+    highPriority: 0
+  });
+  const [isCreateTicketDialogOpen, setIsCreateTicketDialogOpen] = useState(false);
+  const [showKanban, setShowKanban] = useState(false);
+  const [showGantt, setShowGantt] = useState(false);
+  const [reviewTask, setReviewTask] = useState<any>(null);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [expandedTickets, setExpandedTickets] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    loadProjects();
+    if (businessId) {
+      loadProjectsData();
+      loadTicketsData();
+    }
   }, [businessId]);
-
+  
   useEffect(() => {
-    loadTickets();
-  }, [selectedProject, forceRefresh]);
+    if (businessId) {
+      loadTicketsData();
+    }
+  }, [businessId, selectedProject]);
 
-  const loadProjects = async () => {
-    if (!businessId) return;
+  const loadProjectsData = async () => {
+    const projectsData = await fetchProjects(businessId);
+    setProjects(projectsData);
+  };
 
-    try {
-      const { data, error } = await supabase
-        .from('business_projects')
-        .select('*')
-        .eq('business_id', businessId);
+  const loadTicketsData = async () => {
+    setLoading(true);
+    const ticketsData = await loadTickets(businessId, selectedProject);
+    // Filter out tickets with status 'deleted' to respect our soft-deletion approach
+    const activeTickets = ticketsData.filter(ticket => ticket.status !== 'deleted');
+    setTickets(activeTickets);
+    
+    const stats = {
+      total: activeTickets.length,
+      open: activeTickets.filter(t => t.status !== 'done' && t.status !== 'closed').length,
+      closed: activeTickets.filter(t => t.status === 'done' || t.status === 'closed').length,
+      highPriority: activeTickets.filter(t => t.priority === 'high').length
+    };
+    
+    setTaskStats(stats);
+    setLoading(false);
+  };
 
-      if (error) throw error;
-      setProjects(data || []);
-      
-      // Set first project as selected if none selected
-      if (data && data.length > 0 && !selectedProject) {
-        setSelectedProject(data[0].project_id);
+  const handleTicketAction = async (ticketId: string, action: string, data: any) => {
+    if (action === 'reviewCompletion') {
+      const ticket = tickets.find(t => t.id === ticketId);
+      if (ticket) {
+        console.log("Reviewing completion for ticket:", ticket);
+        setReviewTask(ticket);
+        setIsReviewOpen(true);
       }
-    } catch (error) {
-      console.error("Error loading projects:", error);
-      toast.error("Failed to load projects");
+      return;
+    }
+    
+    if (action === 'refreshTicket') {
+      // Refresh the specific ticket data
+      const { data: refreshedTicket, error } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('id', ticketId)
+        .single();
+        
+      if (error) {
+        console.error("Error refreshing ticket:", error);
+        return;
+      }
+      
+      if (refreshedTicket) {
+        setTickets(prevTickets => 
+          prevTickets.map(t => t.id === ticketId ? refreshedTicket : t)
+        );
+      }
+      
+      return;
+    }
+    
+    await handleTicketActionService(ticketId, action, data, businessId, tickets, setTickets);
+  };
+
+  const handleLogTime = async (ticketId: string, hours: number, description: string) => {
+    const success = await handleLogTimeService(ticketId, hours, description);
+    if (success) {
+      loadTicketsData();
     }
   };
 
-  const loadTickets = async () => {
-    if (!selectedProject) return;
+  const handleRefresh = () => {
+    loadTicketsData();
+  };
 
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('tickets')
-        .select('*')
-        .eq('project_id', selectedProject);
-
-      if (error) {
-        console.error("Error fetching tickets:", error);
-        toast.error("Failed to load tickets");
-      }
-
-      setTickets(data || []);
-    } catch (error) {
-      console.error("Error loading tickets:", error);
-      toast.error("Failed to load tickets");
-    } finally {
-      setIsLoading(false);
-    }
+  const handleProjectChange = (projectId: string) => {
+    setSelectedProject(projectId);
   };
 
   const handleCreateTicket = () => {
-    setIsCreateDialogOpen(true);
+    setIsCreateTicketDialogOpen(true);
   };
 
-  const handleUpdateTicket = (ticket: Ticket) => {
-    setSelectedTicket(ticket);
-    setIsEditDialogOpen(true);
-  };
-
-  const handleDeleteTicket = (ticket: Ticket) => {
-    setSelectedTicket(ticket);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const confirmTicketDeletion = async () => {
-    if (!selectedTicket) return;
-    
-    setIsDeleting(true);
-    setDeleteErrorMessage(undefined);
-    
-    try {
-      // Delete the ticket
-      const { error } = await supabase
-        .from('tickets')
-        .delete()
-        .eq('id', selectedTicket.id);
-      
-      if (error) {
-        console.error("Error deleting ticket:", error);
-        throw error;
-      }
-      
-      toast.success("Ticket deleted successfully");
-      setTickets(tickets.filter(ticket => ticket.id !== selectedTicket.id));
-      setIsDeleteDialogOpen(false);
-      return Promise.resolve();
-    } catch (error: any) {
-      console.error("Error deleting ticket:", error);
-      
-      // Create a user-friendly error message based on the error
-      let errorMessage = "Failed to delete ticket";
-      if (error?.message) {
-        if (error.message.includes("time entries")) {
-          errorMessage = "Cannot delete ticket with time entries";
-        } else if (error.message.includes("completion progress")) {
-          errorMessage = "Cannot delete ticket with completion progress";
-        } else if (error.message.includes("legal documents")) {
-          errorMessage = "Cannot delete ticket with associated legal documents";
-        } else {
-          errorMessage = `${error.message}`;
-        }
-      }
-      
-      setDeleteErrorMessage(errorMessage);
-      throw error; // Re-throw for the DeleteTicketDialog to handle
-    } finally {
-      setIsDeleting(false);
+  const handleTicketCreated = async (ticketData: any): Promise<void> => {
+    const newTicket = await createTicket(ticketData, businessId);
+    if (newTicket) {
+      setTickets([newTicket, ...tickets]);
+      setIsCreateTicketDialogOpen(false);
     }
   };
 
-  const handleTicketCreated = () => {
-    setIsCreateDialogOpen(false);
-    setForceRefresh(prev => prev + 1);
+  const toggleKanbanView = () => {
+    setShowKanban(!showKanban);
+    if (showKanban) {
+      setShowGantt(false);
+    }
   };
 
-  const handleTicketUpdated = () => {
-    setIsEditDialogOpen(false);
-    setForceRefresh(prev => prev + 1);
+  const toggleGanttView = () => {
+    setShowGantt(!showGantt);
+    if (showGantt) {
+      setShowKanban(false);
+    }
   };
 
-  const handleTicketDeleted = () => {
-    setIsDeleteDialogOpen(false);
-    setForceRefresh(prev => prev + 1);
+  const handleReviewClose = () => {
+    setIsReviewOpen(false);
+    setReviewTask(null);
+    loadTicketsData();
   };
   
-  const handleApproveTicket = async (ticketId: string, notes: string) => {
-    try {
-      setIsLoading(true);
-      
-      // Update the ticket status to 'completed'
-      const { error: updateError } = await supabase
-        .from('tickets')
-        .update({ status: 'completed', notes: notes })
-        .eq('id', ticketId);
-      
-      if (updateError) throw updateError;
-      
-      toast.success("Ticket approved successfully");
-      setForceRefresh(prev => prev + 1);
-    } catch (error) {
-      console.error('Error approving ticket:', error);
-      toast.error('Failed to approve ticket');
-    } finally {
-      setIsLoading(false);
-      setIsReviewDialogOpen(false);
-    }
-  };
-  
-  const handleRejectTicket = async (ticketId: string, notes: string) => {
-    try {
-      setIsLoading(true);
-      
-      // Update the ticket status to 'open' (or 'rejected' if you have such a status)
-      const { error: updateError } = await supabase
-        .from('tickets')
-        .update({ status: 'open', notes: notes })
-        .eq('id', ticketId);
-      
-      if (updateError) throw updateError;
-      
-      toast.success("Ticket rejected successfully");
-      setForceRefresh(prev => prev + 1);
-    } catch (error) {
-      console.error('Error rejecting ticket:', error);
-      toast.error('Failed to reject ticket');
-    } finally {
-      setIsLoading(false);
-      setIsReviewDialogOpen(false);
-    }
+  const toggleTicketExpansion = (ticketId: string) => {
+    setExpandedTickets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(ticketId)) {
+        newSet.delete(ticketId);
+      } else {
+        newSet.add(ticketId);
+      }
+      return newSet;
+    });
   };
 
-  const columns: ColumnDef<Ticket>[] = [
-    {
-      accessorKey: "title",
-      header: "Title",
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-    },
-    {
-      accessorKey: "priority",
-      header: "Priority",
-    },
-    {
-      accessorKey: "health",
-      header: "Health",
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      cell: ({ row }) => {
-        const ticket = row.original;
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => handleUpdateTicket(ticket)}>
-                <Edit className="mr-2 h-4 w-4" /> Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleDeleteTicket(ticket)}>
-                <Trash2 className="mr-2 h-4 w-4" /> Delete
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => {
-                setSelectedTicket(ticket);
-                setIsReviewDialogOpen(true);
-              }}>
-                <Copy className="mr-2 h-4 w-4" /> Review Completion
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )
-      },
-    },
-  ];
-
-  const table = useReactTable({
-    data: tickets,
-    columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-    },
-  });
-
-  const onDragEnd = async (result: DropResult) => {
-    if (!result.destination) {
-      return;
+  const renderTicketActions = (ticket: Ticket) => {
+    // Improved condition to check for tickets in review status
+    // This will also log tickets that should be in review to help with debugging
+    if ((ticket.status === 'review' || ticket.status === 'in review')) {
+      console.log("Found ticket in review status:", ticket);
+      return (
+        <Button
+          variant="default"
+          size="sm"
+          onClick={() => handleTicketAction(ticket.id, 'reviewCompletion', null)}
+        >
+          Review
+        </Button>
+      );
     }
-
-    const items = reorder(
-      tickets,
-      result.source.index,
-      result.destination.index
-    );
-
-    setTickets(items);
-
-    // Optimistically update the state, but you should also persist this change to the database
-    // and handle any errors that might occur during the update.
-    // For simplicity, this example only updates the local state.
+    return null;
   };
 
   return (
-    <div className="w-full space-y-4">
-      {projects.length > 0 && (
-        <div className="flex items-center gap-4 mb-4">
-          <Label>Select Project:</Label>
-          <select 
-            value={selectedProject || ''} 
-            onChange={(e) => setSelectedProject(e.target.value)}
-            className="px-3 py-2 border rounded-md"
-          >
-            {projects.map((project) => (
-              <option key={project.project_id} value={project.project_id}>
-                {project.title}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+    <div className="space-y-6">
+      <div className="flex flex-col space-y-2">
+        <h2 className="text-2xl font-bold">Project Management</h2>
+        <p className="text-muted-foreground">View and manage all your active projects</p>
+      </div>
+
+      <ProjectTicketFilters 
+        projects={projects}
+        selectedProject={selectedProject}
+        showKanban={showKanban}
+        showGantt={showGantt}
+        onProjectChange={handleProjectChange}
+        onToggleKanban={toggleKanbanView}
+        onToggleGantt={toggleGanttView}
+        onRefresh={handleRefresh}
+        onCreateTicket={handleCreateTicket}
+      />
+
+      <ProjectStatsSummary 
+        total={taskStats.total}
+        open={taskStats.open}
+        closed={taskStats.closed}
+        highPriority={taskStats.highPriority}
+      />
       
-      {!selectedProject ? (
-        <div className="text-center py-8 text-muted-foreground">
-          {projects.length === 0 ? 'No projects found. Create a project first.' : 'Select a project to view tickets.'}
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center justify-between">
-            <div className="flex-1 text-sm text-muted-foreground">
-              {tickets.length} total tickets
-            </div>
-            <Button onClick={handleCreateTicket}>Create Ticket</Button>
-          </div>
-          
-          <div className="rounded-md border">
-            <div className="flex items-center py-2 px-4">
-              <Input
-                placeholder="Filter tickets..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="max-w-sm"
-              />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="ml-auto">
-                    Columns <MoreHorizontal className="ml-2 h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-[150px]">
-                  {table
-                    .getAllColumns()
-                    .filter(
-                      (column) => column.getCanHide()
-                    )
-                    .map(
-                      (column) => {
-                        return (
-                          <DropdownMenuCheckboxItem
-                            key={column.id}
-                            className="capitalize"
-                            checked={column.getIsVisible()}
-                            onCheckedChange={(value) =>
-                              column.toggleVisibility(!!value)
-                            }
-                          >
-                            {column.id}
-                          </DropdownMenuCheckboxItem>
-                        )
-                      }
-                    )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            <ScrollArea>
-              <div className="relative">
-                <div className="absolute inset-0">
-                  {isLoading ? (
-                    <div className="flex flex-col space-y-2 p-4">
-                      <Skeleton className="h-8 w-[200px]" />
-                      <Skeleton className="h-4 w-[400px]" />
-                      <Skeleton className="h-4 w-[400px]" />
-                      <Skeleton className="h-4 w-[400px]" />
-                      <Skeleton className="h-4 w-[400px]" />
-                      <Skeleton className="h-4 w-[400px]" />
-                    </div>
-                  ) : (
-                    <DragDropContext onDragEnd={onDragEnd}>
-                      <Droppable droppableId="droppable">
-                        {(provided, snapshot) => (
-                          <div
-                            {...provided.droppableProps}
-                            ref={provided.innerRef}
-                          >
-                            {table.getRowModel().rows.map((row, index) => (
-                              <Draggable key={row.id} draggableId={row.id} index={index}>
-                                {(provided, snapshot) => (
-                                  <div
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    {...provided.dragHandleProps}
-                                    style={provided.draggableProps.style}
-                                    className="border-b last:border-none"
-                                  >
-                                    <div className="grid grid-cols-4 gap-2 p-4">
-                                      {row.getVisibleCells().map((cell) => (
-                                        <div key={cell.id}>
-                                          {flexRender(
-                                            cell.column.columnDef.cell,
-                                            cell.getContext()
-                                          )}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </Draggable>
-                            ))}
-                            {provided.placeholder}
-                          </div>
-                        )}
-                      </Droppable>
-                    </DragDropContext>
-                  )}
-                </div>
-              </div>
-            </ScrollArea>
-          </div>
-        </>
-      )}
+      <ProjectTicketTabs 
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        tickets={tickets}
+        showKanban={showKanban}
+        showGantt={showGantt}
+        onRefresh={handleRefresh}
+        onTicketAction={handleTicketAction}
+        onLogTime={handleLogTime}
+        renderTicketActions={renderTicketActions}
+        businessId={businessId}
+        showTimeTracking={false}
+        expandedTickets={expandedTickets}
+        toggleTicketExpansion={toggleTicketExpansion}
+      />
 
       <CreateTicketDialog
-        open={isCreateDialogOpen}
-        onClose={() => setIsCreateDialogOpen(false)}
+        open={isCreateTicketDialogOpen}
+        onClose={() => setIsCreateTicketDialogOpen(false)}
         onCreateTicket={handleTicketCreated}
         projects={projects}
       />
 
-      {selectedTicket && (
-        <UpdateTicketDialog
-          open={isEditDialogOpen}
-          onClose={() => setIsEditDialogOpen(false)}
-          ticket={selectedTicket}
-          onUpdateTicket={handleTicketUpdated}
-          projects={projects}
-        />
-      )}
-
-      {selectedTicket && (
-        <DeleteTicketDialog
-          open={isDeleteDialogOpen}
-          onOpenChange={setIsDeleteDialogOpen}
-          onConfirm={confirmTicketDeletion}
-          isDeleting={isDeleting}
-          ticketTitle={selectedTicket.title}
-          errorMessage={deleteErrorMessage}
-        />
-      )}
-
-      {selectedTicket && (
+      {reviewTask && (
         <TaskCompletionReview
-          open={isReviewDialogOpen}
-          onOpenChange={setIsReviewDialogOpen}
-          ticketId={selectedTicket.id}
-          ticketData={{
-            title: selectedTicket.title,
-            description: selectedTicket.description,
-            completion_percentage: selectedTicket.completion_percentage,
-            project_id: selectedTicket.project_id,
-            assigned_to: selectedTicket.assigned_to,
-            job_app_id: selectedTicket.job_app_id,
-            task_id: selectedTicket.task_id
-          }}
-          onReviewComplete={async (approved, notes) => {
-            if (approved) {
-              await handleApproveTicket(selectedTicket.id, notes);
-            } else {
-              await handleRejectTicket(selectedTicket.id, notes);
-            }
-            return Promise.resolve();
-          }}
+          task={reviewTask}
+          open={isReviewOpen}
+          setOpen={setIsReviewOpen}
+          onClose={handleReviewClose}
+          onReviewComplete={() => loadTicketsData()}
+          businessId={businessId}
         />
       )}
     </div>
   );
 };
-

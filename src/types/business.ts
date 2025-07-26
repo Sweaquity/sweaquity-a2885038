@@ -42,23 +42,9 @@ export interface Application {
     timeframe?: string;
     project?: {
       title: string;
-      status?: string;
     }
     project_title?: string;
   };
-  businesses?: {
-    businesses_id: string;
-    company_name?: string;
-    [key: string]: any;
-  };
-  accepted_jobs?: {
-    equity_agreed: number;
-    jobs_equity_allocated: number;
-    id: string;
-    date_accepted: string;
-  };
-  nda_document_id?: string;
-  nda_status?: string;
 }
 
 export interface Project {
@@ -88,28 +74,4 @@ export interface ProjectJobApplication {
   project_sub_tasks?: {
     title: string;
   };
-}
-
-export interface Ticket {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  priority: string;
-  health: string;
-  estimated_hours?: number;
-  created_at: string;
-  updated_at: string;
-  due_date?: string;
-  assigned_to?: string;
-  reporter?: string;
-  project_id?: string;
-  equity_points?: number;
-  task_id?: string;
-  created_by?: string;
-  ticket_type?: string;
-  notes?: any[];
-  replies?: any[];
-  completion_percentage?: number;
-  job_app_id?: string;
 }

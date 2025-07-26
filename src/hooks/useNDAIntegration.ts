@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNDAManagement } from '@/hooks/useNDAManagement';
 import { supabase } from '@/lib/supabase';
@@ -15,23 +14,15 @@ export const useNDAIntegration = () => {
   const checkNDARequirement = async (projectId: string) => {
     try {
       // Check project settings to see if NDA is required
-      // Note: Since the require_nda column doesn't exist yet, we'll default to false
-      // This column would need to be added in a future database migration
-      // For now, we'll just check if the project exists
       const { data, error } = await supabase
         .from('business_projects')
-        .select('project_id')
+        .select('require_nda')
         .eq('project_id', projectId)
         .single();
         
-      if (error) {
-        console.error("Error checking NDA requirement:", error);
-        return false;
-      }
+      if (error) throw error;
       
-      // In production, we'd check data.require_nda
-      // For now, let's use a placeholder logic (30% chance of requiring NDA)
-      return projectId ? (parseInt(projectId.substring(0, 2), 16) % 10 >= 7) : false;
+      return data?.require_nda || false;
     } catch (error) {
       console.error('Error checking NDA requirement:', error);
       return false;

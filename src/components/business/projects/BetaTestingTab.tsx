@@ -48,8 +48,8 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
     priority: 'medium',
     type: 'beta-test'
   });
-  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [isCompletionReviewOpen, setIsCompletionReviewOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
   const [showKanban, setShowKanban] = useState(true);
   const [showGantt, setShowGantt] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
@@ -263,8 +263,8 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
       if (newStatus === 'review') {
         const ticketToReview = tickets.find(t => t.id === ticketId);
         if (ticketToReview) {
-          setSelectedTicket(ticketToReview);
-          setIsReviewDialogOpen(true);
+          setSelectedTask(ticketToReview);
+          setIsCompletionReviewOpen(true);
           return;
         }
       }
@@ -758,28 +758,17 @@ export const BetaTestingTab = ({ businessId }: BetaTestingTabProps) => {
         </DialogContent>
       </Dialog>
       
-      {selectedTicket && (
-        <TaskCompletionReview
-          open={isReviewDialogOpen}
-          onOpenChange={setIsReviewDialogOpen}
-          ticketId={selectedTicket.id}
-          ticketData={{
-            title: selectedTicket.title,
-            description: selectedTicket.description,
-            completion_percentage: selectedTicket.completion_percentage,
-            project_id: selectedTicket.project_id,
-            assigned_to: selectedTicket.assigned_to,
-            job_app_id: selectedTicket.job_app_id,
-            task_id: selectedTicket.task_id
+      {selectedTask && (
+        <TaskCompletionReview 
+          task={selectedTask}
+          open={isCompletionReviewOpen}
+          setOpen={setIsCompletionReviewOpen}
+          onClose={() => {
+            setSelectedTask(null);
+            loadTickets();
           }}
-          onReviewComplete={async (approved, notes) => {
-            if (approved) {
-              await handleApproveTicket(selectedTicket.id, notes);
-            } else {
-              await handleRejectTicket(selectedTicket.id, notes);
-            }
-            return Promise.resolve();
-          }}
+          onReviewComplete={() => loadTickets()}
+          businessId={businessId}
         />
       )}
     </div>

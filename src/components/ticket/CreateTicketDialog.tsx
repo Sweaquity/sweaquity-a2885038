@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   Dialog,
@@ -23,14 +22,14 @@ interface CreateTicketDialogProps {
   open: boolean;
   onClose: () => void;
   onCreateTicket: (ticket: any) => Promise<void>;
-  projects?: Array<{ project_id: string; project_title?: string; title?: string }>;
+  projects: Array<{ project_id: string; project_title?: string; title?: string }>;
 }
 
 export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
   open,
   onClose,
   onCreateTicket,
-  projects = [] // Set default value to empty array
+  projects
 }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -149,8 +148,7 @@ export const CreateTicketDialog: React.FC<CreateTicketDialogProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="no-project">No project</SelectItem>
-                  {/* Safely map over projects array using optional chaining and nullish coalescing */}
-                  {(projects || []).map((project) => (
+                  {projects.map((project) => (
                     <SelectItem key={project.project_id} value={project.project_id}>
                       {project.project_title || project.title || 'Unnamed Project'}
                     </SelectItem>
