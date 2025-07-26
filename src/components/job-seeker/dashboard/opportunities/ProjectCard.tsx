@@ -101,21 +101,36 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-2">
-        <CardTitle>{project.title || "Untitled Project"}</CardTitle>
-        <div className="flex items-center text-sm text-muted-foreground">
-          <Building className="mr-1 h-4 w-4" />
-          {project.business_roles?.company_name || "Unknown Company"}
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-lg">{project.title || "Untitled Project"}</CardTitle>
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Building className="mr-1 h-4 w-4" />
+              {project.business_roles?.company_name || "Unknown Company"}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {tasks.length > 0 && (
+              <Button variant="outline" size="sm" onClick={toggleExpand}>
+                {isExpanded ? "Show Less" : "Show Roles"}
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={handleViewProject}>
+              <Eye className="h-4 w-4 mr-1" />
+              View Project
+            </Button>
+          </div>
         </div>
       </CardHeader>
       
-      <CardContent className="pb-3">
-        <div className="mb-3">
+      <CardContent className="pb-2">
+        <div className="mb-2">
           <p className="text-sm text-muted-foreground line-clamp-2">
             {project.business_roles?.description || "No description provided."}
           </p>
         </div>
         
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-2">
           <div>
             <div className="text-xs font-medium">Equity Available</div>
             <div className="flex items-center">
@@ -141,32 +156,18 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
           )}
         </div>
         
-        {tasks.length > 0 && (
-          <div className="flex gap-2 mt-4">
-            <Button variant="outline" size="sm" onClick={toggleExpand}>
-              {isExpanded ? "Show Less" : "Show Roles"}
-            </Button>
-            {isExpanded && (
-              <Button variant="outline" size="sm" onClick={handleViewProject}>
-                <Eye className="h-4 w-4 mr-1" />
-                View Project
-              </Button>
-            )}
-          </div>
-        )}
-        
         {isExpanded && tasks.length > 0 && (
-          <div className="space-y-4 mt-4">
+          <div className="space-y-3 mt-3">
             <div className="text-sm font-medium">Available Roles</div>
             {tasks.map((task) => {
               const skillMatch = getSkillMatch(task);
               
               return (
-                <div key={task.id} className="p-3 border rounded-md">
+                <div key={task.id} className="p-2 border rounded-md">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <div className="font-medium">{task.title}</div>
-                      <div className="text-sm text-muted-foreground line-clamp-2">
+                      <div className="font-medium text-sm">{task.title}</div>
+                      <div className="text-xs text-muted-foreground line-clamp-2">
                         {task.description || "No description provided."}
                       </div>
                     </div>
@@ -178,22 +179,12 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
                     </Button>
                   </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-3">
-                    <div>
-                      <div className="text-xs font-medium">Equity</div>
-                      <div className="text-sm">{task.equity_allocation || 0}%</div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium">Timeframe</div>
-                      <div className="text-sm">{formatTimeframe(task.timeframe)}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium">Skill Match</div>
-                      <div className="text-sm">{skillMatch.percentage}% ({skillMatch.count}/{skillMatch.total})</div>
-                    </div>
+                  <div className="mb-2">
+                    <div className="text-xs font-medium">Skill Match</div>
+                    <div className="text-sm">{skillMatch.percentage}% ({skillMatch.count}/{skillMatch.total})</div>
                   </div>
                   
-                  <div className="mt-3">
+                  <div>
                     <div className="text-xs font-medium mb-1">Required Skills</div>
                     <div className="flex flex-wrap gap-1">
                       {Array.isArray(task.skill_requirements) && task.skill_requirements.map((skill, index) => {
@@ -212,14 +203,14 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
                           <Badge 
                             key={index} 
                             variant={isMatched ? "default" : "outline"}
-                            className={isMatched ? "bg-green-500" : ""}
+                            className={`text-xs ${isMatched ? "bg-green-500" : ""}`}
                           >
                             {skillName} {skillLevel ? `(${skillLevel})` : ''}
                           </Badge>
                         );
                       })}
                       {(!Array.isArray(task.skill_requirements) || task.skill_requirements.length === 0) && (
-                        <span className="text-sm text-muted-foreground">No specific skills required</span>
+                        <span className="text-xs text-muted-foreground">No specific skills required</span>
                       )}
                     </div>
                   </div>
