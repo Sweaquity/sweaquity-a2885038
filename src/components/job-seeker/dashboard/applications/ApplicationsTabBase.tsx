@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,15 +30,36 @@ export const ApplicationsTabBase = ({
   const { acceptJobAsJobSeeker, isLoading: isAcceptingJob } = useAcceptedJobs(onApplicationUpdated);
   const [applicationsWithEquityData, setApplicationsWithEquityData] = useState<JobApplication[]>([]);
 
+  // Helper function to filter applications by status
+  const getApplicationsByStatus = (statusArray) => {
+    return applicationsWithEquityData.filter(app => {
+      const status = app.status?.toLowerCase() || '';
+      return statusArray.map(s => s.toLowerCase()).includes(status);
+    });
+  };
+
   // Fetch equity data for applications
   useEffect(() => {
     const fetchEquityData = async () => {
-      if (applications.length === 0) return;
+      if (applications.length === 0) {
+        console.log("No applications to fetch equity data for");
+        setApplicationsWithEquityData([]);
+        return;
+      }
+      
+      console.log("Fetching equity data for", applications.length, "applications");
       
       // Get all job_app_ids
-      const jobAppIds = applications.map(app => app.job_app_id);
+      const jobAppIds = applications
+        .map(app => app.job_app_id)
+        .filter(id => id); // Remove any undefined/null ids
       
-      // Fetch associated accepted_jobs data
+      if (jobAppIds.length === 0) {
+        console.log("No valid job_app_ids found");
+        setApplicationsWithEquityData(applications);
+        return;
+      }
+      
       try {
         const { data, error } = await supabase
           .from('accepted_jobs')
@@ -48,8 +68,12 @@ export const ApplicationsTabBase = ({
           
         if (error) {
           console.error("Error fetching equity data:", error);
+          // Fallback to applications without equity data
+          setApplicationsWithEquityData(applications);
           return;
         }
+        
+        console.log("Equity data fetched:", data?.length || 0, "records");
         
         // Create a map of job_app_id to equity data
         const equityDataMap = (data || []).reduce((map, item) => {
@@ -73,51 +97,74 @@ export const ApplicationsTabBase = ({
           };
         });
         
+        console.log("Enriched applications:", enrichedApplications.length);
         setApplicationsWithEquityData(enrichedApplications);
       } catch (err) {
         console.error("Error processing equity data:", err);
+        // Fallback to applications without equity data
+        setApplicationsWithEquityData(applications);
       }
     };
     
     fetchEquityData();
   }, [applications]);
 
-  // Filter applications by status type
-  const pendingApplications = useMemo(() => 
-    applicationsWithEquityData.filter(app => 
-      app.status === 'pending' || 
-      (app.status === 'accepted' && app.accepted_business && !app.accepted_jobseeker)
-    ), 
-    [applicationsWithEquityData]
-  );
+  // Filter applications by correct status values
+  const pendingApplications = useMemo(() => {
+    const applications = getApplicationsByStatus(['pending', 'in review']);
+    console.log("Pending applications found:", applications.length);
+    return applications;
+  }, [applicationsWithEquityData]);
 
-  // Current applications should not include ones where equity is fully earned
-  const currentApplications = useMemo(() => 
-    applicationsWithEquityData.filter(app => 
-      app.status === 'accepted' && 
-      app.accepted_business && 
-      app.accepted_jobseeker && 
-      (!app.accepted_jobs || 
-       !app.accepted_jobs.equity_agreed || 
-       app.accepted_jobs.equity_agreed > app.accepted_jobs.jobs_equity_allocated)
-    ), 
-    [applicationsWithEquityData]
-  );
+  const negotiationApplications = useMemo(() => {
+    return getApplicationsByStatus(['negotiation']);
+  }, [applicationsWithEquityData]);
 
-  const pastApplications = useMemo(() => 
-    applicationsWithEquityData.filter(app => 
-      app.status === 'rejected' || app.status === 'withdrawn' || app.status === 'completed'
-    ), 
-    [applicationsWithEquityData]
-  );
+  // Current applications - accepted jobs that are active
+  const currentApplications = useMemo(() => {
+    const acceptedApps = getApplicationsByStatus(['accepted']);
+    
+    // Filter to only show accepted jobs that are still active (not fully completed equity-wise)
+    const activeAccepted = acceptedApps.filter(app => {
+      // If no equity data, consider it active
+      if (!app.accepted_jobs) return true;
+      
+      // If equity is agreed but not fully allocated, it's active
+      const equityAgreed = app.accepted_jobs.equity_agreed || 0;
+      const equityAllocated = app.accepted_jobs.jobs_equity_allocated || 0;
+      
+      return equityAgreed === 0 || equityAgreed > equityAllocated;
+    });
+    
+    console.log("Current applications found:", activeAccepted.length);
+    return activeAccepted;
+  }, [applicationsWithEquityData]);
+
+  const pastApplications = useMemo(() => {
+    const withdrawnAndRejected = [
+      ...getApplicationsByStatus(['withdrawn']),
+      ...getApplicationsByStatus(['rejected'])
+    ];
+    
+    console.log("Past applications found:", withdrawnAndRejected.length);
+    return withdrawnAndRejected;
+  }, [applicationsWithEquityData]);
+
+  // All pending and negotiation applications for the pending tab
+  const allPendingApplications = useMemo(() => {
+    const allPending = [
+      ...pendingApplications,
+      ...negotiationApplications
+    ];
+    console.log("All pending (including negotiation):", allPending.length);
+    return allPending;
+  }, [pendingApplications, negotiationApplications]);
 
   // Filter Equity Projects - Active vs Completed based on equity allocation
   const activeEquityProjects = useMemo(() => 
     applicationsWithEquityData.filter(app => 
       app.hasEquityData && 
-      app.status === 'accepted' && 
-      app.accepted_business && 
-      app.accepted_jobseeker && 
+      app.status?.toLowerCase() === 'accepted' && 
       app.accepted_jobs && 
       app.accepted_jobs.equity_agreed > app.accepted_jobs.jobs_equity_allocated
     ), 
@@ -135,11 +182,8 @@ export const ApplicationsTabBase = ({
     [applicationsWithEquityData]
   );
 
-  // Count notifications for tabs
-  const pendingCount = pendingApplications.filter(app => 
-    app.status === 'accepted' && app.accepted_business && !app.accepted_jobseeker
-  ).length;
-
+  // Count notifications for tabs - applications in negotiation need action
+  const pendingCount = negotiationApplications.length;
   const messagesCount = newMessagesCount || 0;
 
   useEffect(() => {
@@ -148,6 +192,26 @@ export const ApplicationsTabBase = ({
       // setActiveTab("pending");
     }
   }, [pendingCount, activeTab]);
+
+  // Debug logging
+  useEffect(() => {
+    console.log("=== APPLICATIONS DEBUG ===");
+    console.log("Total applications:", applications.length);
+    console.log("Applications with equity data:", applicationsWithEquityData.length);
+    
+    // Log status distribution
+    const statusCounts = applicationsWithEquityData.reduce((acc, app) => {
+      const status = app.status?.toLowerCase() || 'unknown';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {});
+    
+    console.log("Status distribution:", statusCounts);
+    console.log("Pending count:", allPendingApplications.length);
+    console.log("Current count:", currentApplications.length);
+    console.log("Past count:", pastApplications.length);
+    console.log("=== END DEBUG ===");
+  }, [applicationsWithEquityData, allPendingApplications, currentApplications, pastApplications]);
 
   if (applications.length === 0) {
     return (
@@ -191,11 +255,11 @@ export const ApplicationsTabBase = ({
         <Alert variant="default">
           <InfoIcon className="h-4 w-4 mr-2" />
           <AlertDescription>
-            This tab shows applications that are awaiting a response or require your acceptance.
+            This tab shows applications that are awaiting a response, under review, or in negotiation.
           </AlertDescription>
         </Alert>
         <PendingApplicationsList 
-          applications={pendingApplications}
+          applications={allPendingApplications}
           onWithdraw={handleWithdrawApplication}
           onAccept={acceptJobAsJobSeeker}
           isWithdrawing={isWithdrawing}
@@ -206,7 +270,7 @@ export const ApplicationsTabBase = ({
         <Alert variant="default">
           <InfoIcon className="h-4 w-4 mr-2" />
           <AlertDescription>
-            This tab shows your active projects where both you and the business have accepted the work agreement.
+            This tab shows your active projects where you and the business have agreed to work together.
           </AlertDescription>
         </Alert>
         <ApplicationsList 
