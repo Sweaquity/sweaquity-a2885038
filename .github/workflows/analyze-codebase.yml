@@ -1,0 +1,97 @@
+name: Codebase Analysis
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  # Run manually
+  workflow_dispatch:
+  # Run weekly
+  schedule:
+    - cron: '0 9 * * 1'  # Every Monday at 9 AM
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies (if package.json exists)
+      run: |
+        if [ -f package.json ]; then
+          npm ci
+        fi
+        
+    - name: Run codebase analysis
+      run: node analyze-codebase.js
+      
+    - name: Upload analysis results
+      uses: actions/upload-artifact@v4
+      with:
+        name: codebase-analysis-results
+        path: |
+          route-mapping.ts
+          codebase-analysis-report.md
+          full-analysis.json
+        retention-days: 30
+        
+    - name: Comment PR with analysis (if PR)
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          // Read the analysis report
+          let report = '';
+          try {
+            report = fs.readFileSync('codebase-analysis-report.md', 'utf8');
+          } catch (error) {
+            report = 'Analysis failed to generate report';
+          }
+          
+          // Truncate if too long (GitHub comment limit)
+          if (report.length > 65000) {
+            report = report.substring(0, 65000) + '\n\n... (truncated)';
+          }
+          
+          // Post comment on PR
+          await github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `## 🔍 Codebase Analysis Results\n\n${report}`
+          });
+          
+    - name: Check for critical issues
+      run: |
+        # Count critical issues from the JSON output
+        CRITICAL_ISSUES=$(node -e "
+          const fs = require('fs');
+          try {
+            const analysis = JSON.parse(fs.readFileSync('full-analysis.json', 'utf8'));
+            console.log(analysis.issues.critical.length);
+          } catch(e) {
+            console.log('0');
+          }
+        ")
+        
+        echo "Critical issues found: $CRITICAL_ISSUES"
+        
+        # Fail if too many critical issues (adjust threshold as needed)
+        if [ "$CRITICAL_ISSUES" -gt 5 ]; then
+          echo "❌ Too many critical issues found ($CRITICAL_ISSUES > 5)"
+          echo "Please review and fix critical issues before merging"
+          exit 1
+        else
+          echo "✅ Critical issues within acceptable range"
+        fi
+        

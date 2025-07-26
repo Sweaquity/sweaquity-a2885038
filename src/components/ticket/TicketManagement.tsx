@@ -9,9 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { TicketKanbanBoard } from "./TicketKanbanBoard";
-import { TicketGanttChart } from "./TicketGanttChart";
-import { TicketStatistics } from "./TicketStatistics";
+import { KanbanBoard } from "./KanbanBoard";
+import { GanttChart } from "./GanttChart";
+import TicketStats from "./TicketStats";
 import { toast } from "sonner";
 
 export interface Ticket {
@@ -482,13 +482,13 @@ const TicketManagement: React.FC<TicketManagementProps> = ({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <TicketStatistics stats={ticketStats} isLoading={isLoading} />
+        <TicketStats stats={ticketStats} isLoading={isLoading} />
         
         {showKanban && (
           <div className="mb-8">
             <h3 className="text-lg font-medium mb-4">Ticket Board</h3>
             <div className="border rounded-lg overflow-hidden">
-              <TicketKanbanBoard 
+              <KanbanBoard 
                 tickets={tickets} 
                 onStatusUpdate={handleUpdateTicketStatus} 
                 onToggleExpand={toggleTicketExpanded}
@@ -502,7 +502,7 @@ const TicketManagement: React.FC<TicketManagementProps> = ({
           <div className="mb-8">
             <h3 className="text-lg font-medium mb-4">Timeline</h3>
             <div className="border rounded-lg overflow-hidden p-4">
-              <TicketGanttChart tickets={tickets} />
+              <GanttChart tickets={tickets} />
             </div>
           </div>
         )}

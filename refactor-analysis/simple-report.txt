@@ -1,0 +1,25 @@
+=== BASIC PROJECT ANALYSIS ===
+Total TypeScript files:
+4448
+
+File sizes (smallest first):
+       0 ./node_modules/cmdk/node_modules/react-remove-scroll/UI/UI.d.ts
+       0 ./node_modules/html2canvas/dist/types/dom/replaced-elements/pseudo-elements.d.ts
+       0 ./node_modules/react-remove-scroll/UI/UI.d.ts
+       0 ./node_modules/tailwindcss/types/generated/corePluginList.d.ts
+       1 ./node_modules/@hookform/resolvers/fluentvalidation-ts/dist/index.d.ts
+       1 ./node_modules/@hookform/resolvers/fluentvalidation-ts/src/index.ts
+       1 ./node_modules/@hookform/resolvers/yup/dist/index.d.ts
+       1 ./node_modules/@hookform/resolvers/yup/src/index.ts
+       1 ./node_modules/@isaacs/brace-expansion/dist/commonjs/index.d.ts
+       1 ./node_modules/@isaacs/brace-expansion/dist/esm/index.d.ts
+       1 ./node_modules/@jridgewell/trace-mapping/dist/types/resolve.d.ts
+       1 ./node_modules/@nodelib/fs.scandir/out/providers/common.d.ts
+       1 ./node_modules/@supabase/auth-js/dist/main/lib/version.d.ts
+       1 ./node_modules/@supabase/auth-js/dist/module/lib/version.d.ts
+       1 ./node_modules/@supabase/auth-js/src/lib/version.ts
+       1 ./node_modules/@supabase/functions-js/dist/main/version.d.ts
+       1 ./node_modules/@supabase/functions-js/dist/module/version.d.ts
+       1 ./node_modules/@supabase/functions-js/src/version.ts
+       1 ./node_modules/@supabase/postgrest-js/dist/cjs/version.d.ts
+       1 ./node_modules/@supabase/postgrest-js/src/version.ts
