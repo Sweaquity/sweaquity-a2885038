@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 
-// Enhanced Codebase Route Analysis & Issue Detection Script
+// ES Module Compatible Codebase Route Analysis & Issue Detection Script
 // Save this as 'analyze-codebase.js' and run with: node analyze-codebase.js
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class EnhancedCodebaseAnalyzer {
   constructor(rootDir = './src') {
@@ -401,7 +405,7 @@ class EnhancedCodebaseAnalyzer {
     return categories;
   }
 
-  // Generate route mapping (same as before but enhanced)
+  // Generate route mapping
   generateRouteMapping() {
     const categories = this.categorizeFiles();
     const mapping = {};
