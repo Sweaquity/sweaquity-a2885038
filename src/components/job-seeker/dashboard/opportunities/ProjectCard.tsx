@@ -1,10 +1,9 @@
-
 import React, { useState } from "react";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EquityProject, SubTask } from "@/types/jobSeeker";
-import { Building, ChevronDown, ChevronUp, Clock, CreditCard, Eye, Users } from "lucide-react";
+import { Building, Clock, CreditCard, Eye, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -102,14 +101,7 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-2">
-        <div className="flex justify-between">
-          <CardTitle>{project.title || "Untitled Project"}</CardTitle>
-          <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="sm" onClick={toggleExpand}>
-              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </Button>
-          </div>
-        </div>
+        <CardTitle>{project.title || "Untitled Project"}</CardTitle>
         <div className="flex items-center text-sm text-muted-foreground">
           <Building className="mr-1 h-4 w-4" />
           {project.business_roles?.company_name || "Unknown Company"}
@@ -149,15 +141,23 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
           )}
         </div>
         
-        {isExpanded && tasks.length > 0 && (
-          <div className="space-y-4 mt-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-medium">Available Roles</div>
+        {tasks.length > 0 && (
+          <div className="flex gap-2 mt-4">
+            <Button variant="outline" size="sm" onClick={toggleExpand}>
+              {isExpanded ? "Show Less" : "Show Roles"}
+            </Button>
+            {isExpanded && (
               <Button variant="outline" size="sm" onClick={handleViewProject}>
                 <Eye className="h-4 w-4 mr-1" />
                 View Project
               </Button>
-            </div>
+            )}
+          </div>
+        )}
+        
+        {isExpanded && tasks.length > 0 && (
+          <div className="space-y-4 mt-4">
+            <div className="text-sm font-medium">Available Roles</div>
             {tasks.map((task) => {
               const skillMatch = getSkillMatch(task);
               
@@ -229,13 +229,6 @@ export const ProjectCard = ({ project, userSkillStrings, onApply }: ProjectCardP
           </div>
         )}
       </CardContent>
-      
-      <CardFooter className="pt-0">
-        <Button variant="ghost" className="w-full justify-center" onClick={toggleExpand}>
-          {isExpanded ? "Show Less" : "Show Roles"}
-          {isExpanded ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
-        </Button>
-      </CardFooter>
     </Card>
   );
 };
