@@ -1,3 +1,8 @@
+#!/usr/bin/env node
+
+// ES Module Compatible Codebase Route Analysis & Issue Detection Script
+// Save this as 'analyze-codebase.js' and run with: node analyze-codebase.js
+
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
