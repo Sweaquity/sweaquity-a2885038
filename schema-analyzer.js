@@ -1,5 +1,9 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Extract table names from your schema
 const tableNames = [
@@ -27,22 +31,31 @@ const results = {
 
 // Function to recursively get all files
 function getAllFiles(dirPath, arrayOfFiles = []) {
-  const files = fs.readdirSync(dirPath);
+  try {
+    const files = fs.readdirSync(dirPath);
 
-  files.forEach(file => {
-    const fullPath = path.join(dirPath, file);
-    if (fs.statSync(fullPath).isDirectory()) {
-      // Skip node_modules, .git, dist, build directories
-      if (!['node_modules', '.git', 'dist', 'build', '.next'].includes(file)) {
-        arrayOfFiles = getAllFiles(fullPath, arrayOfFiles);
+    files.forEach(file => {
+      const fullPath = path.join(dirPath, file);
+      try {
+        if (fs.statSync(fullPath).isDirectory()) {
+          // Skip node_modules, .git, dist, build directories
+          if (!['node_modules', '.git', 'dist', 'build', '.next', 'out'].includes(file)) {
+            arrayOfFiles = getAllFiles(fullPath, arrayOfFiles);
+          }
+        } else {
+          const ext = path.extname(file);
+          if (codeExtensions.includes(ext)) {
+            arrayOfFiles.push(fullPath);
+          }
+        }
+      } catch (err) {
+        // Skip files we can't access
+        console.log(`Skipping ${fullPath}: ${err.message}`);
       }
-    } else {
-      const ext = path.extname(file);
-      if (codeExtensions.includes(ext)) {
-        arrayOfFiles.push(fullPath);
-      }
-    }
-  });
+    });
+  } catch (err) {
+    console.log(`Cannot read directory ${dirPath}: ${err.message}`);
+  }
 
   return arrayOfFiles;
 }
@@ -243,8 +256,8 @@ function exportResults(results, filename = 'schema-analysis.json') {
   console.log(`\n💾 Detailed results exported to: ${filename}`);
 }
 
-// Run the analysis
-if (require.main === module) {
+// Run the analysis only if this file is executed directly
+if (import.meta.url === `file://${__filename}`) {
   // Change this path to your project root
   const projectRoot = './';
   
@@ -253,4 +266,4 @@ if (require.main === module) {
   exportResults(results);
 }
 
-module.exports = { analyzeCodebase, generateReport, exportResults };
+export { analyzeCodebase, generateReport, exportResults };
