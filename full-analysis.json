@@ -1,0 +1,1886 @@
+{
+  "routes": [
+    "/auth",
+    "/business/dashboard",
+    "/recruiter/dashboard",
+    "/seeker/dashboard",
+    "/seeker/profile/complete",
+    "/admin",
+    "/sweaquity",
+    "/projects",
+    "/projects/apply",
+    "/project",
+    "/seeker/dashboard?tab=applications",
+    "/login",
+    "/auth/seeker",
+    "/dashboard",
+    "/onboarding",
+    "/auth/business",
+    "/auth/recruiter"
+  ],
+  "mapping": {
+    "/seeker/dashboard?tab=applications": [
+      {
+        "path": "src/pages/Login/Seeker.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /seeker/dashboard?tab=applications"
+      },
+      {
+        "path": "src/pages/Register/Seeker.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /seeker/dashboard?tab=applications"
+      },
+      {
+        "path": "src/pages/dashboards/JobSeekerDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /seeker/dashboard?tab=applications"
+      },
+      {
+        "path": "src/components/job-seeker/ApplicationsList.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /seeker/dashboard?tab=applications"
+      },
+      {
+        "path": "src/components/job-seeker/EquityProjectsList.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /seeker/dashboard?tab=applications"
+      },
+      {
+        "path": "src/components/job-seeker/ProfileCompletionForm.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /seeker/dashboard?tab=applications"
+      },
+      {
+        "path": "src/components/job-seeker/ProfileSection.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /seeker/dashboard?tab=applications"
+      },
+      {
+        "path": "src/components/job-seeker/ProjectsOverview.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /seeker/dashboard?tab=applications"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useJobSeekerDashboardCore.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /seeker/dashboard?tab=applications data/logic"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useOpportunitiesLoader.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /seeker/dashboard?tab=applications data/logic"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useSessionCheck.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /seeker/dashboard?tab=applications data/logic"
+      }
+    ],
+    "/seeker/profile/complete": [
+      {
+        "path": "src/pages/Login/Seeker.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /seeker/profile/complete"
+      },
+      {
+        "path": "src/pages/ProfileCompletePage.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /seeker/profile/complete"
+      },
+      {
+        "path": "src/pages/Register/Seeker.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /seeker/profile/complete"
+      },
+      {
+        "path": "src/pages/dashboards/JobSeekerDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /seeker/profile/complete"
+      },
+      {
+        "path": "src/components/business/BusinessProfileCompletion.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /seeker/profile/complete"
+      },
+      {
+        "path": "src/components/business/BusinessProfileEditor.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /seeker/profile/complete"
+      },
+      {
+        "path": "src/components/business/profile/BusinessProfileEditor.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /seeker/profile/complete"
+      },
+      {
+        "path": "src/components/job-seeker/ApplicationsList.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /seeker/profile/complete"
+      },
+      {
+        "path": "src/components/job-seeker/EquityProjectsList.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /seeker/profile/complete"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useJobSeekerDashboardCore.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /seeker/profile/complete data/logic"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useOpportunitiesLoader.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /seeker/profile/complete data/logic"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useSessionCheck.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /seeker/profile/complete data/logic"
+      }
+    ],
+    "/recruiter/dashboard": [
+      {
+        "path": "src/pages/Login/Recruiter.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /recruiter/dashboard"
+      },
+      {
+        "path": "src/pages/Register/Recruiter.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /recruiter/dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/AdminDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /recruiter/dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/BusinessDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /recruiter/dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/JobSeekerDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /recruiter/dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/RecruiterDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /recruiter/dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/SweaquityDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /recruiter/dashboard"
+      },
+      {
+        "path": "src/components/business/dashboard/tabs/BetaTestingTab.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /recruiter/dashboard"
+      },
+      {
+        "path": "src/components/dashboard/TicketAttachmentsList.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /recruiter/dashboard"
+      },
+      {
+        "path": "src/components/job-seeker/dashboard/DashboardContent.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /recruiter/dashboard"
+      },
+      {
+        "path": "src/components/job-seeker/dashboard/DashboardHeader.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /recruiter/dashboard"
+      },
+      {
+        "path": "src/components/job-seeker/dashboard/DashboardHeaderWithActions.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /recruiter/dashboard"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useJobSeekerDashboardCore.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /recruiter/dashboard data/logic"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useOpportunitiesLoader.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /recruiter/dashboard data/logic"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useSessionCheck.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /recruiter/dashboard data/logic"
+      }
+    ],
+    "/business/dashboard": [
+      {
+        "path": "src/pages/Login/Business.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /business/dashboard"
+      },
+      {
+        "path": "src/pages/Register/Business.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /business/dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/AdminDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /business/dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/BusinessDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /business/dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/JobSeekerDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /business/dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/RecruiterDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /business/dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/SweaquityDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /business/dashboard"
+      },
+      {
+        "path": "src/components/business/ActiveRolesTable.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /business/dashboard"
+      },
+      {
+        "path": "src/components/business/BusinessProfileCompletion.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /business/dashboard"
+      },
+      {
+        "path": "src/components/business/BusinessProfileEditor.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /business/dashboard"
+      },
+      {
+        "path": "src/components/business/ProjectApplicationsSection.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /business/dashboard"
+      },
+      {
+        "path": "src/components/business/ProjectsSection.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /business/dashboard"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useJobSeekerDashboardCore.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /business/dashboard data/logic"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useOpportunitiesLoader.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /business/dashboard data/logic"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useSessionCheck.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /business/dashboard data/logic"
+      }
+    ],
+    "/seeker/dashboard": [
+      {
+        "path": "src/pages/Login/Seeker.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /seeker/dashboard"
+      },
+      {
+        "path": "src/pages/Register/Seeker.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /seeker/dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/AdminDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /seeker/dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/BusinessDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /seeker/dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/JobSeekerDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /seeker/dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/RecruiterDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /seeker/dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/SweaquityDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /seeker/dashboard"
+      },
+      {
+        "path": "src/components/business/dashboard/tabs/BetaTestingTab.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /seeker/dashboard"
+      },
+      {
+        "path": "src/components/dashboard/TicketAttachmentsList.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /seeker/dashboard"
+      },
+      {
+        "path": "src/components/job-seeker/ApplicationsList.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /seeker/dashboard"
+      },
+      {
+        "path": "src/components/job-seeker/EquityProjectsList.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /seeker/dashboard"
+      },
+      {
+        "path": "src/components/job-seeker/ProfileCompletionForm.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /seeker/dashboard"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useJobSeekerDashboardCore.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /seeker/dashboard data/logic"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useOpportunitiesLoader.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /seeker/dashboard data/logic"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useSessionCheck.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /seeker/dashboard data/logic"
+      }
+    ],
+    "/projects/apply": [
+      {
+        "path": "src/pages/projects/ProjectApplicationPage.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /projects/apply"
+      },
+      {
+        "path": "src/pages/projects/ProjectDetailsPage.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /projects/apply"
+      },
+      {
+        "path": "src/components/business/ProjectsSection.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /projects/apply"
+      },
+      {
+        "path": "src/components/business/applications/ActiveProjectsTable.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /projects/apply"
+      },
+      {
+        "path": "src/components/business/projects/BetaTestingTab.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /projects/apply"
+      },
+      {
+        "path": "src/components/business/projects/LiveProjectsTab.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /projects/apply"
+      },
+      {
+        "path": "src/components/business/projects/ProjectCard.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /projects/apply"
+      },
+      {
+        "path": "src/hooks/job-seeker/useEquityProjects.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /projects/apply data/logic"
+      }
+    ],
+    "/auth/recruiter": [
+      {
+        "path": "src/pages/Auth.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /auth/recruiter"
+      },
+      {
+        "path": "src/pages/AuthPage.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /auth/recruiter"
+      },
+      {
+        "path": "src/pages/Login/Recruiter.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /auth/recruiter"
+      },
+      {
+        "path": "src/pages/Register/Recruiter.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /auth/recruiter"
+      },
+      {
+        "path": "src/pages/dashboards/RecruiterDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /auth/recruiter"
+      },
+      {
+        "path": "src/components/auth/LoginForm.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /auth/recruiter"
+      },
+      {
+        "path": "src/components/auth/RegisterForm.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /auth/recruiter"
+      }
+    ],
+    "/auth/business": [
+      {
+        "path": "src/pages/Auth.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /auth/business"
+      },
+      {
+        "path": "src/pages/AuthPage.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /auth/business"
+      },
+      {
+        "path": "src/pages/Login/Business.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /auth/business"
+      },
+      {
+        "path": "src/pages/Register/Business.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /auth/business"
+      },
+      {
+        "path": "src/pages/dashboards/BusinessDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /auth/business"
+      },
+      {
+        "path": "src/components/auth/LoginForm.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /auth/business"
+      },
+      {
+        "path": "src/components/auth/RegisterForm.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /auth/business"
+      },
+      {
+        "path": "src/components/business/ActiveRolesTable.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /auth/business"
+      },
+      {
+        "path": "src/components/business/BusinessProfileCompletion.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /auth/business"
+      },
+      {
+        "path": "src/components/business/BusinessProfileEditor.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /auth/business"
+      }
+    ],
+    "/auth/seeker": [
+      {
+        "path": "src/pages/Auth.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /auth/seeker"
+      },
+      {
+        "path": "src/pages/AuthPage.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /auth/seeker"
+      },
+      {
+        "path": "src/pages/Login/Seeker.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /auth/seeker"
+      },
+      {
+        "path": "src/pages/Register/Seeker.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /auth/seeker"
+      },
+      {
+        "path": "src/pages/dashboards/JobSeekerDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /auth/seeker"
+      },
+      {
+        "path": "src/components/auth/LoginForm.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /auth/seeker"
+      },
+      {
+        "path": "src/components/auth/RegisterForm.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /auth/seeker"
+      },
+      {
+        "path": "src/components/job-seeker/ApplicationsList.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /auth/seeker"
+      },
+      {
+        "path": "src/components/job-seeker/EquityProjectsList.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /auth/seeker"
+      },
+      {
+        "path": "src/components/job-seeker/ProfileCompletionForm.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /auth/seeker"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useJobSeekerDashboardCore.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /auth/seeker data/logic"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useOpportunitiesLoader.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /auth/seeker data/logic"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useSessionCheck.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /auth/seeker data/logic"
+      }
+    ],
+    "/sweaquity": [
+      {
+        "path": "src/pages/dashboards/SweaquityDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /sweaquity"
+      }
+    ],
+    "/dashboard": [
+      {
+        "path": "src/pages/dashboards/AdminDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/BusinessDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/JobSeekerDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/RecruiterDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /dashboard"
+      },
+      {
+        "path": "src/pages/dashboards/SweaquityDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /dashboard"
+      },
+      {
+        "path": "src/components/business/dashboard/tabs/BetaTestingTab.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /dashboard"
+      },
+      {
+        "path": "src/components/dashboard/TicketAttachmentsList.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /dashboard"
+      },
+      {
+        "path": "src/components/job-seeker/dashboard/DashboardContent.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /dashboard"
+      },
+      {
+        "path": "src/components/job-seeker/dashboard/DashboardHeader.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /dashboard"
+      },
+      {
+        "path": "src/components/job-seeker/dashboard/DashboardHeaderWithActions.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /dashboard"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useJobSeekerDashboardCore.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /dashboard data/logic"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useOpportunitiesLoader.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /dashboard data/logic"
+      },
+      {
+        "path": "src/hooks/job-seeker/dashboard/useSessionCheck.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /dashboard data/logic"
+      }
+    ],
+    "/projects": [
+      {
+        "path": "src/pages/projects/ProjectApplicationPage.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /projects"
+      },
+      {
+        "path": "src/pages/projects/ProjectDetailsPage.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /projects"
+      },
+      {
+        "path": "src/components/business/ProjectsSection.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /projects"
+      },
+      {
+        "path": "src/components/business/applications/ActiveProjectsTable.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /projects"
+      },
+      {
+        "path": "src/components/business/projects/BetaTestingTab.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /projects"
+      },
+      {
+        "path": "src/components/business/projects/LiveProjectsTab.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /projects"
+      },
+      {
+        "path": "src/components/business/projects/ProjectCard.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /projects"
+      },
+      {
+        "path": "src/hooks/job-seeker/useEquityProjects.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /projects data/logic"
+      }
+    ],
+    "/project": [
+      {
+        "path": "src/pages/projects/ProjectApplicationPage.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /project"
+      },
+      {
+        "path": "src/pages/projects/ProjectDetailsPage.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /project"
+      },
+      {
+        "path": "src/components/business/ProjectApplicationsSection.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /project"
+      },
+      {
+        "path": "src/components/business/ProjectsSection.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /project"
+      },
+      {
+        "path": "src/components/business/applications/ActiveProjectsTable.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /project"
+      },
+      {
+        "path": "src/components/business/projects/BetaTestingTab.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /project"
+      },
+      {
+        "path": "src/components/business/projects/LiveProjectsTab.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /project"
+      },
+      {
+        "path": "src/hooks/job-seeker/useEquityProjects.ts",
+        "type": "hook",
+        "confidence": "medium",
+        "reason": "Hook for /project data/logic"
+      }
+    ],
+    "/admin": [
+      {
+        "path": "src/pages/dashboards/AdminDashboard.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /admin"
+      },
+      {
+        "path": "src/components/admin/tickets/AdminTicketManager.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /admin"
+      }
+    ],
+    "/login": [
+      {
+        "path": "src/pages/Login/Business.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /login"
+      },
+      {
+        "path": "src/pages/Login/Recruiter.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /login"
+      },
+      {
+        "path": "src/pages/Login/Seeker.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /login"
+      },
+      {
+        "path": "src/components/auth/LoginForm.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /login"
+      }
+    ],
+    "/auth": [
+      {
+        "path": "src/pages/Auth.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /auth"
+      },
+      {
+        "path": "src/pages/AuthPage.tsx",
+        "type": "page",
+        "confidence": "high",
+        "reason": "Page component for /auth"
+      },
+      {
+        "path": "src/components/auth/LoginForm.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /auth"
+      },
+      {
+        "path": "src/components/auth/RegisterForm.tsx",
+        "type": "component",
+        "confidence": "medium",
+        "reason": "Component related to /auth"
+      }
+    ]
+  },
+  "commonFiles": [
+    {
+      "path": "src/App.tsx",
+      "type": "component",
+      "confidence": "low",
+      "reason": "Global component: App.tsx"
+    },
+    {
+      "path": "src/components/job-seeker/dashboard/applications/index.tsx",
+      "type": "component",
+      "confidence": "low",
+      "reason": "Global component: index.tsx"
+    },
+    {
+      "path": "src/pages/Index.tsx",
+      "type": "component",
+      "confidence": "low",
+      "reason": "Global component: Index.tsx"
+    }
+  ],
+  "issues": {
+    "critical": [
+      {
+        "type": "fixme_comment",
+        "file": "src/analyze-codebase.js",
+        "severity": "high",
+        "message": "FIXME found: comments (known issues)",
+        "context": "// FIXME comments (known issues)"
+      }
+    ],
+    "deadEnds": [
+      {
+        "type": "missing_page_component",
+        "route": "/onboarding",
+        "severity": "high",
+        "message": "Route \"/onboarding\" is referenced but no corresponding page component found",
+        "occurrences": 3,
+        "foundIn": [
+          "src/pages/Register/Business.tsx",
+          "src/pages/Register/Recruiter.tsx",
+          "src/pages/Register/Seeker.tsx"
+        ]
+      },
+      {
+        "type": "todo_comment",
+        "file": "src/analyze-codebase.js",
+        "severity": "low",
+        "message": "TODO found: comments (potential dead ends or incomplete work)",
+        "context": "// TODO comments (potential dead ends or incomplete work)"
+      }
+    ],
+    "brokenLinks": [],
+    "codeSmells": [
+      {
+        "type": "duplicate_routes",
+        "route": "/business/dashboard",
+        "severity": "medium",
+        "message": "Route \"/business/dashboard\" is defined/referenced 4 times",
+        "occurrences": 4,
+        "locations": [
+          "src/App.tsx",
+          "src/App.tsx",
+          "src/components/business/BusinessProfileCompletion.tsx",
+          "src/pages/dashboards/JobSeekerDashboard.tsx"
+        ]
+      },
+      {
+        "type": "duplicate_routes",
+        "route": "/seeker/dashboard",
+        "severity": "medium",
+        "message": "Route \"/seeker/dashboard\" is defined/referenced 4 times",
+        "occurrences": 4,
+        "locations": [
+          "src/App.tsx",
+          "src/App.tsx",
+          "src/components/job-seeker/ProfileCompletionForm.tsx",
+          "src/pages/dashboards/BusinessDashboard.tsx"
+        ]
+      },
+      {
+        "type": "large_file",
+        "file": "src/analyze-codebase.js",
+        "severity": "medium",
+        "message": "File is quite large (693 lines) - consider breaking it down",
+        "lines": 693,
+        "size": 23209
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/analyze-codebase.js",
+        "severity": "low",
+        "message": "21 console statements found - consider removing debug logs",
+        "count": 21
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/auth/LoginForm.tsx",
+        "severity": "low",
+        "message": "8 console statements found - consider removing debug logs",
+        "count": 8
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/business/ActiveRolesTable.tsx",
+        "severity": "medium",
+        "message": "File is quite large (345 lines) - consider breaking it down",
+        "lines": 345,
+        "size": 15384
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/business/BusinessProfileCompletion.tsx",
+        "severity": "medium",
+        "message": "File is quite large (314 lines) - consider breaking it down",
+        "lines": 314,
+        "size": 10888
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/business/BusinessProfileCompletion.tsx",
+        "severity": "low",
+        "message": "8 console statements found - consider removing debug logs",
+        "count": 8
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/business/BusinessProfileEditor.tsx",
+        "severity": "medium",
+        "message": "File is quite large (481 lines) - consider breaking it down",
+        "lines": 481,
+        "size": 19494
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/business/ProjectApplicationsSection.tsx",
+        "severity": "medium",
+        "message": "File is quite large (607 lines) - consider breaking it down",
+        "lines": 607,
+        "size": 21479
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/business/ProjectApplicationsSection.tsx",
+        "severity": "low",
+        "message": "15 console statements found - consider removing debug logs",
+        "count": 15
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/business/applications/ApplicationsTable.tsx",
+        "severity": "low",
+        "message": "4 console statements found - consider removing debug logs",
+        "count": 4
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/business/applications/ContractActionsSection.tsx",
+        "severity": "medium",
+        "message": "File is quite large (322 lines) - consider breaking it down",
+        "lines": 322,
+        "size": 11599
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/business/dashboard/tabs/BetaTestingTab.tsx",
+        "severity": "medium",
+        "message": "File is quite large (394 lines) - consider breaking it down",
+        "lines": 394,
+        "size": 12730
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/business/dashboard/tabs/BetaTestingTab.tsx",
+        "severity": "low",
+        "message": "5 console statements found - consider removing debug logs",
+        "count": 5
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/business/profile/BusinessProfileEditor.tsx",
+        "severity": "medium",
+        "message": "File is quite large (481 lines) - consider breaking it down",
+        "lines": 481,
+        "size": 19494
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/business/projects/BetaTestingTab.tsx",
+        "severity": "medium",
+        "message": "File is quite large (777 lines) - consider breaking it down",
+        "lines": 777,
+        "size": 29607
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/business/projects/BetaTestingTab.tsx",
+        "severity": "low",
+        "message": "10 console statements found - consider removing debug logs",
+        "count": 10
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/business/projects/LiveProjectsTab.tsx",
+        "severity": "medium",
+        "message": "File is quite large (343 lines) - consider breaking it down",
+        "lines": 343,
+        "size": 11056
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/business/projects/LiveProjectsTab.tsx",
+        "severity": "low",
+        "message": "7 console statements found - consider removing debug logs",
+        "count": 7
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/business/projects/SubTaskForm.tsx",
+        "severity": "low",
+        "message": "4 console statements found - consider removing debug logs",
+        "count": 4
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/business/projects/TaskCompletionReview.tsx",
+        "severity": "low",
+        "message": "4 console statements found - consider removing debug logs",
+        "count": 4
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/business/projects/tabs/ProjectTabs.tsx",
+        "severity": "medium",
+        "message": "File is quite large (571 lines) - consider breaking it down",
+        "lines": 571,
+        "size": 25440
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/business/roles/ActiveRolesTable.tsx",
+        "severity": "medium",
+        "message": "File is quite large (554 lines) - consider breaking it down",
+        "lines": 554,
+        "size": 23110
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/business/roles/ActiveRolesTable.tsx",
+        "severity": "low",
+        "message": "9 console statements found - consider removing debug logs",
+        "count": 9
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/business/testing/TestingTab.tsx",
+        "severity": "medium",
+        "message": "File is quite large (417 lines) - consider breaking it down",
+        "lines": 417,
+        "size": 15746
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/business/testing/TestingTab.tsx",
+        "severity": "low",
+        "message": "5 console statements found - consider removing debug logs",
+        "count": 5
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/business/testing/TimeTracker.tsx",
+        "severity": "medium",
+        "message": "File is quite large (539 lines) - consider breaking it down",
+        "lines": 539,
+        "size": 19195
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/business/testing/TimeTracker.tsx",
+        "severity": "low",
+        "message": "7 console statements found - consider removing debug logs",
+        "count": 7
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/business/users/RequestAccessButton.tsx",
+        "severity": "low",
+        "message": "6 console statements found - consider removing debug logs",
+        "count": 6
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/dashboard/TicketAttachmentsList.tsx",
+        "severity": "medium",
+        "message": "File is quite large (403 lines) - consider breaking it down",
+        "lines": 403,
+        "size": 14003
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/dashboard/TicketAttachmentsList.tsx",
+        "severity": "low",
+        "message": "11 console statements found - consider removing debug logs",
+        "count": 11
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/job-seeker/cv/CVUploadForm.tsx",
+        "severity": "low",
+        "message": "6 console statements found - consider removing debug logs",
+        "count": 6
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/job-seeker/dashboard/EquityTab.tsx",
+        "severity": "medium",
+        "message": "File is quite large (557 lines) - consider breaking it down",
+        "lines": 557,
+        "size": 21072
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/job-seeker/dashboard/EquityTab.tsx",
+        "severity": "low",
+        "message": "4 console statements found - consider removing debug logs",
+        "count": 4
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/job-seeker/dashboard/applications/ApplicationsTabBase.tsx",
+        "severity": "medium",
+        "message": "File is quite large (332 lines) - consider breaking it down",
+        "lines": 332,
+        "size": 12553
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/job-seeker/dashboard/applications/ApplicationsTabBase.tsx",
+        "severity": "low",
+        "message": "19 console statements found - consider removing debug logs",
+        "count": 19
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/job-seeker/dashboard/applications/EquityProjectItem.tsx",
+        "severity": "medium",
+        "message": "File is quite large (374 lines) - consider breaking it down",
+        "lines": 374,
+        "size": 15262
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/job-seeker/dashboard/applications/EquityProjectItem.tsx",
+        "severity": "low",
+        "message": "5 console statements found - consider removing debug logs",
+        "count": 5
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/job-seeker/dashboard/applications/hooks/useApplicationActions.ts",
+        "severity": "low",
+        "message": "4 console statements found - consider removing debug logs",
+        "count": 4
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/job-seeker/dashboard/applications/hooks/useMessaging.ts",
+        "severity": "low",
+        "message": "8 console statements found - consider removing debug logs",
+        "count": 8
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/job-seeker/dashboard/projects/useProjectsTabs.ts",
+        "severity": "medium",
+        "message": "File is quite large (468 lines) - consider breaking it down",
+        "lines": 468,
+        "size": 13124
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/job-seeker/dashboard/projects/useProjectsTabs.ts",
+        "severity": "low",
+        "message": "6 console statements found - consider removing debug logs",
+        "count": 6
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/job-seeker/dashboard/tabs/DashboardTab.tsx",
+        "severity": "medium",
+        "message": "File is quite large (775 lines) - consider breaking it down",
+        "lines": 775,
+        "size": 26730
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/job-seeker/dashboard/tabs/DashboardTab.tsx",
+        "severity": "low",
+        "message": "12 console statements found - consider removing debug logs",
+        "count": 12
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/job-seeker/profile/ProfileEditor.tsx",
+        "severity": "medium",
+        "message": "File is quite large (332 lines) - consider breaking it down",
+        "lines": 332,
+        "size": 12430
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/shared/BetaTestingButton.tsx",
+        "severity": "medium",
+        "message": "File is quite large (820 lines) - consider breaking it down",
+        "lines": 820,
+        "size": 42563
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/shared/BetaTestingButton.tsx",
+        "severity": "low",
+        "message": "7 console statements found - consider removing debug logs",
+        "count": 7
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/shared/DeleteProfileDialog.tsx",
+        "severity": "low",
+        "message": "5 console statements found - consider removing debug logs",
+        "count": 5
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/shared/LinkedInImportDialog.tsx",
+        "severity": "low",
+        "message": "9 console statements found - consider removing debug logs",
+        "count": 9
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/shared/beta-testing/BetaTestingTab.tsx",
+        "severity": "medium",
+        "message": "File is quite large (379 lines) - consider breaking it down",
+        "lines": 379,
+        "size": 12371
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/shared/beta-testing/BetaTestingTab.tsx",
+        "severity": "low",
+        "message": "4 console statements found - consider removing debug logs",
+        "count": 4
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/ticket/TicketCard.tsx",
+        "severity": "medium",
+        "message": "File is quite large (467 lines) - consider breaking it down",
+        "lines": 467,
+        "size": 16929
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/ticket/TicketCard.tsx",
+        "severity": "low",
+        "message": "6 console statements found - consider removing debug logs",
+        "count": 6
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/ticket/TicketDashboard.tsx",
+        "severity": "medium",
+        "message": "File is quite large (323 lines) - consider breaking it down",
+        "lines": 323,
+        "size": 10880
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/ticket/TicketDashboard.tsx",
+        "severity": "low",
+        "message": "6 console statements found - consider removing debug logs",
+        "count": 6
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/ticket/TicketDetails.tsx",
+        "severity": "medium",
+        "message": "File is quite large (498 lines) - consider breaking it down",
+        "lines": 498,
+        "size": 18471
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/ticket/TicketDetails.tsx",
+        "severity": "low",
+        "message": "13 console statements found - consider removing debug logs",
+        "count": 13
+      },
+      {
+        "type": "hardcoded_url",
+        "file": "src/components/ticket/TicketForm.tsx",
+        "severity": "medium",
+        "message": "Hardcoded URL found: https://placeholder.com/ticket-attachment-${Date.now()}`);",
+        "url": "https://placeholder.com/ticket-attachment-${Date.now()}`);"
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/ticket/TicketList.tsx",
+        "severity": "medium",
+        "message": "File is quite large (697 lines) - consider breaking it down",
+        "lines": 697,
+        "size": 26117
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/ticket/TicketList.tsx",
+        "severity": "low",
+        "message": "7 console statements found - consider removing debug logs",
+        "count": 7
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/ticket/TicketManagement.tsx",
+        "severity": "medium",
+        "message": "File is quite large (811 lines) - consider breaking it down",
+        "lines": 811,
+        "size": 27868
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/ticket/TicketManagement.tsx",
+        "severity": "low",
+        "message": "16 console statements found - consider removing debug logs",
+        "count": 16
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/ticket/TicketService.ts",
+        "severity": "low",
+        "message": "5 console statements found - consider removing debug logs",
+        "count": 5
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/ticket/details/TicketDetailsTab.tsx",
+        "severity": "low",
+        "message": "6 console statements found - consider removing debug logs",
+        "count": 6
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/ticket/details/TicketTimeLogTab.tsx",
+        "severity": "medium",
+        "message": "File is quite large (342 lines) - consider breaking it down",
+        "lines": 342,
+        "size": 12574
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/ticket/details/TicketTimeLogTab.tsx",
+        "severity": "low",
+        "message": "10 console statements found - consider removing debug logs",
+        "count": 10
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/ui/sidebar.tsx",
+        "severity": "medium",
+        "message": "File is quite large (762 lines) - consider breaking it down",
+        "lines": 762,
+        "size": 23367
+      },
+      {
+        "type": "large_file",
+        "file": "src/contexts/JobApplicationContext.tsx",
+        "severity": "medium",
+        "message": "File is quite large (311 lines) - consider breaking it down",
+        "lines": 311,
+        "size": 9819
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/contexts/JobApplicationContext.tsx",
+        "severity": "low",
+        "message": "9 console statements found - consider removing debug logs",
+        "count": 9
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/hooks/job-seeker/dashboard/useSessionCheck.ts",
+        "severity": "low",
+        "message": "7 console statements found - consider removing debug logs",
+        "count": 7
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/hooks/job-seeker/dashboard/useTicketsAndMessages.ts",
+        "severity": "low",
+        "message": "10 console statements found - consider removing debug logs",
+        "count": 10
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/hooks/job-seeker/useCVData.ts",
+        "severity": "low",
+        "message": "5 console statements found - consider removing debug logs",
+        "count": 5
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/hooks/jobs/useAcceptedJobsCore.ts",
+        "severity": "low",
+        "message": "11 console statements found - consider removing debug logs",
+        "count": 11
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/hooks/jobs/useJobAcceptance.ts",
+        "severity": "low",
+        "message": "6 console statements found - consider removing debug logs",
+        "count": 6
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/hooks/useNDAIntegration.ts",
+        "severity": "low",
+        "message": "4 console statements found - consider removing debug logs",
+        "count": 4
+      },
+      {
+        "type": "hardcoded_url",
+        "file": "src/integrations/supabase/client.ts",
+        "severity": "medium",
+        "message": "Hardcoded URL found: https://wjpunccqxowctouvhwis.supabase.co",
+        "url": "https://wjpunccqxowctouvhwis.supabase.co"
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/integrations/supabase/testPolicies.ts",
+        "severity": "low",
+        "message": "8 console statements found - consider removing debug logs",
+        "count": 8
+      },
+      {
+        "type": "large_file",
+        "file": "src/integrations/supabase/types.ts",
+        "severity": "medium",
+        "message": "File is quite large (2165 lines) - consider breaking it down",
+        "lines": 2165,
+        "size": 69425
+      },
+      {
+        "type": "hardcoded_url",
+        "file": "src/lib/supabase.ts",
+        "severity": "medium",
+        "message": "Hardcoded URL found: https://wjpunccqxowctouvhwis.supabase.co",
+        "url": "https://wjpunccqxowctouvhwis.supabase.co"
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/pages/Auth.tsx",
+        "severity": "low",
+        "message": "4 console statements found - consider removing debug logs",
+        "count": 4
+      },
+      {
+        "type": "large_file",
+        "file": "src/pages/dashboards/AdminDashboard.tsx",
+        "severity": "medium",
+        "message": "File is quite large (370 lines) - consider breaking it down",
+        "lines": 370,
+        "size": 13339
+      },
+      {
+        "type": "large_file",
+        "file": "src/pages/dashboards/BusinessDashboard.tsx",
+        "severity": "medium",
+        "message": "File is quite large (377 lines) - consider breaking it down",
+        "lines": 377,
+        "size": 13432
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/pages/dashboards/BusinessDashboard.tsx",
+        "severity": "low",
+        "message": "4 console statements found - consider removing debug logs",
+        "count": 4
+      },
+      {
+        "type": "large_file",
+        "file": "src/pages/dashboards/RecruiterDashboard.tsx",
+        "severity": "medium",
+        "message": "File is quite large (411 lines) - consider breaking it down",
+        "lines": 411,
+        "size": 15613
+      },
+      {
+        "type": "large_file",
+        "file": "src/pages/dashboards/SweaquityDashboard.tsx",
+        "severity": "medium",
+        "message": "File is quite large (1238 lines) - consider breaking it down",
+        "lines": 1238,
+        "size": 45984
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/pages/dashboards/SweaquityDashboard.tsx",
+        "severity": "low",
+        "message": "22 console statements found - consider removing debug logs",
+        "count": 22
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/pages/projects/ProjectApplicationPage.tsx",
+        "severity": "low",
+        "message": "4 console statements found - consider removing debug logs",
+        "count": 4
+      },
+      {
+        "type": "large_file",
+        "file": "src/services/DocumentService.ts",
+        "severity": "medium",
+        "message": "File is quite large (819 lines) - consider breaking it down",
+        "lines": 819,
+        "size": 53463
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/services/DocumentService.ts",
+        "severity": "low",
+        "message": "9 console statements found - consider removing debug logs",
+        "count": 9
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/utils/setupStorage.ts",
+        "severity": "low",
+        "message": "18 console statements found - consider removing debug logs",
+        "count": 18
+      },
+      {
+        "type": "large_file",
+        "file": "src/utils/skillMatching.ts",
+        "severity": "medium",
+        "message": "File is quite large (333 lines) - consider breaking it down",
+        "lines": 333,
+        "size": 10927
+      }
+    ],
+    "unreachableCode": [
+      {
+        "type": "unused_component",
+        "file": "src/components/business/projects/ProjectList.tsx",
+        "component": "ProjectList",
+        "severity": "medium",
+        "message": "Component \"ProjectList\" appears to be unused",
+        "size": 2001,
+        "lines": 76
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/job-seeker/dashboard/applications/ApplicationSkills.tsx",
+        "component": "ApplicationSkills",
+        "severity": "medium",
+        "message": "Component \"ApplicationSkills\" appears to be unused",
+        "size": 1264,
+        "lines": 44
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/job-seeker/dashboard/applications/PastApplicationItem.tsx",
+        "component": "PastApplicationItem",
+        "severity": "medium",
+        "message": "Component \"PastApplicationItem\" appears to be unused",
+        "size": 4151,
+        "lines": 122
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/shared/LinkedInImportDialog.tsx",
+        "component": "LinkedInImportDialog",
+        "severity": "medium",
+        "message": "Component \"LinkedInImportDialog\" appears to be unused",
+        "size": 5336,
+        "lines": 168
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ticket/ActivityTimeline.tsx",
+        "component": "ActivityTimeline",
+        "severity": "medium",
+        "message": "Component \"ActivityTimeline\" appears to be unused",
+        "size": 1360,
+        "lines": 46
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ticket/FilterBar.tsx",
+        "component": "FilterBar",
+        "severity": "medium",
+        "message": "Component \"FilterBar\" appears to be unused",
+        "size": 4726,
+        "lines": 141
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ticket/TicketActionBar.tsx",
+        "component": "TicketActionBar",
+        "severity": "medium",
+        "message": "Component \"TicketActionBar\" appears to be unused",
+        "size": 3282,
+        "lines": 99
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ticket/TicketForm.tsx",
+        "component": "TicketForm",
+        "severity": "medium",
+        "message": "Component \"TicketForm\" appears to be unused",
+        "size": 8105,
+        "lines": 245
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ticket/TicketList.tsx",
+        "component": "TicketList",
+        "severity": "medium",
+        "message": "Component \"TicketList\" appears to be unused",
+        "size": 26117,
+        "lines": 697
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ui/aspect-ratio.tsx",
+        "component": "aspect-ratio",
+        "severity": "medium",
+        "message": "Component \"aspect-ratio\" appears to be unused",
+        "size": 141,
+        "lines": 7
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ui/breadcrumb.tsx",
+        "component": "breadcrumb",
+        "severity": "medium",
+        "message": "Component \"breadcrumb\" appears to be unused",
+        "size": 2701,
+        "lines": 116
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ui/carousel.tsx",
+        "component": "carousel",
+        "severity": "medium",
+        "message": "Component \"carousel\" appears to be unused",
+        "size": 6210,
+        "lines": 261
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ui/command.tsx",
+        "component": "command",
+        "severity": "medium",
+        "message": "Component \"command\" appears to be unused",
+        "size": 4879,
+        "lines": 154
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ui/context-menu.tsx",
+        "component": "context-menu",
+        "severity": "medium",
+        "message": "Component \"context-menu\" appears to be unused",
+        "size": 7246,
+        "lines": 199
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ui/drawer.tsx",
+        "component": "drawer",
+        "severity": "medium",
+        "message": "Component \"drawer\" appears to be unused",
+        "size": 3007,
+        "lines": 117
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ui/hover-card.tsx",
+        "component": "hover-card",
+        "severity": "medium",
+        "message": "Component \"hover-card\" appears to be unused",
+        "size": 1184,
+        "lines": 28
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ui/input-otp.tsx",
+        "component": "input-otp",
+        "severity": "medium",
+        "message": "Component \"input-otp\" appears to be unused",
+        "size": 2154,
+        "lines": 70
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ui/menubar.tsx",
+        "component": "menubar",
+        "severity": "medium",
+        "message": "Component \"menubar\" appears to be unused",
+        "size": 7974,
+        "lines": 235
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ui/navigation-menu.tsx",
+        "component": "navigation-menu",
+        "severity": "medium",
+        "message": "Component \"navigation-menu\" appears to be unused",
+        "size": 5046,
+        "lines": 129
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ui/radio-group.tsx",
+        "component": "radio-group",
+        "severity": "medium",
+        "message": "Component \"radio-group\" appears to be unused",
+        "size": 1467,
+        "lines": 43
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ui/sidebar.tsx",
+        "component": "sidebar",
+        "severity": "medium",
+        "message": "Component \"sidebar\" appears to be unused",
+        "size": 23367,
+        "lines": 762
+      },
+      {
+        "type": "unused_component",
+        "file": "src/components/ui/toggle-group.tsx",
+        "component": "toggle-group",
+        "severity": "medium",
+        "message": "Component \"toggle-group\" appears to be unused",
+        "size": 1739,
+        "lines": 60
+      }
+    ]
+  },
+  "stats": {
+    "totalFiles": 308,
+    "totalRoutes": 17,
+    "mappedRoutes": 16,
+    "totalIssues": 117
+  }
+}
