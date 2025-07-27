@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -165,6 +164,10 @@ export const ApplicationsList = ({
                 <TabsList className="w-full border-b rounded-none">
                   <TabsTrigger value="details" className="flex-1">Project Details</TabsTrigger>
                   <TabsTrigger value="activity" className="flex-1">Activity</TabsTrigger>
+                  {/* 🎯 NEW: Add Contract tab for accepted applications */}
+                  {application.status === 'accepted' && (
+                    <TabsTrigger value="contract" className="flex-1">Contract & Equity</TabsTrigger>
+                  )}
                 </TabsList>
                 
                 <TabsContent value="details" className="p-4">
@@ -232,6 +235,16 @@ export const ApplicationsList = ({
                     )}
                   </div>
                 </TabsContent>
+
+                {/* 🎯 NEW: Contract & Equity Tab - This is where JobSeekerContractSection goes */}
+                {application.status === 'accepted' && (
+                  <TabsContent value="contract" className="p-0">
+                    <JobSeekerContractSection 
+                      application={application}
+                      onUpdate={onApplicationUpdated}
+                    />
+                  </TabsContent>
+                )}
               </Tabs>
             </div>
           )}
