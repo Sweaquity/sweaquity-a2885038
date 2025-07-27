@@ -10,6 +10,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { JobApplication } from "@/types/jobSeeker";
 import { ProjectActions } from "./components/ProjectActions";
+import { JobSeekerContractSection } from "./JobSeekerContractSection";
 
 interface ApplicationsListProps {
   applications: JobApplication[];
