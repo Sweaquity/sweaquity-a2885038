@@ -1,4 +1,4 @@
-// 🔧 Enhanced ApplicationsTable with Auto Contract Generation
+// 🔧 Enhanced ApplicationsTable with Auto Contract Generation - FIXED EQUITY REFERENCES
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { 
@@ -26,7 +26,7 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
   const [pendingActionCount, setPendingActionCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // 🔧 NEW: Auto-create accepted_jobs when status changes to 'accepted'
+  // 🔧 FIXED: Auto-create accepted_jobs when status changes to 'accepted'
   const createAcceptedJobRecord = async (application: any) => {
     try {
       console.log('Creating accepted_jobs record for application:', application.job_app_id);
@@ -43,19 +43,40 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
         return existingJob;
       }
       
-      // Get task details for equity calculation
+      // 🎯 FIXED: Get task details with correct column names for equity calculation
+      // Based on your schema, business_roles contains the task-level equity allocation
       const { data: taskData, error: taskError } = await supabase
         .from('business_roles')
-        .select('equity_percentage, project_id')
+        .select(`
+          project_id,
+          equity_allocation,
+          role_id,
+          title,
+          description
+        `)
         .eq('role_id', application.role_id)
         .single();
         
       if (taskError) {
         console.error('Error fetching task data:', taskError);
-        throw taskError;
+        console.error('Attempted to fetch role_id:', application.role_id);
+        throw new Error(`Failed to fetch task equity information: ${taskError.message}`);
       }
+
+      if (!taskData) {
+        throw new Error('No task data found for the specified role');
+      }
+
+      // 💡 EQUITY FLOW EXPLANATION:
+      // 1. business_roles.equity_allocation = Total equity allocated to this specific task/role
+      // 2. accepted_jobs.equity_agreed = Agreed equity when job is accepted (copied from business_roles.equity_allocation)
+      // 3. accepted_jobs.jobs_equity_allocated = Actually allocated equity as work progresses (starts at 0)
       
-      // Create the accepted_jobs record
+      const taskEquityAllocation = taskData.equity_allocation || 0;
+      
+      console.log('Task equity allocation:', taskEquityAllocation);
+      
+      // 🔧 ENHANCED: Create the accepted_jobs record with proper equity tracking
       const { data: newAcceptedJob, error: createError } = await supabase
         .from('accepted_jobs')
         .insert({
@@ -64,22 +85,26 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
           business_id: application.business_id,
           project_id: taskData.project_id,
           role_id: application.role_id,
-          equity_agreed: taskData.equity_percentage || 0,
-          jobs_equity_allocated: 0, // Start with 0 allocated
+          // 💰 EQUITY AGREED: This is the total equity the job seeker will earn for completing this task
+          equity_agreed: taskEquityAllocation,
+          // 📊 EQUITY ALLOCATED: This starts at 0 and increases as work is completed
+          jobs_equity_allocated: 0,
           date_accepted: new Date().toISOString(),
-          status: 'active'
+          status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .select()
         .single();
         
       if (createError) {
         console.error('Error creating accepted job:', createError);
-        throw createError;
+        throw new Error(`Failed to create contract record: ${createError.message}`);
       }
       
       console.log('Created accepted_jobs record:', newAcceptedJob);
       
-      // Update the application to mark both parties as accepted
+      // 🔧 ENHANCED: Update the application to mark both parties as accepted
       const { error: updateError } = await supabase
         .from('job_applications')
         .update({
@@ -91,20 +116,40 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
         
       if (updateError) {
         console.error('Error updating application acceptance:', updateError);
-        throw updateError;
+        throw new Error(`Failed to update application status: ${updateError.message}`);
       }
       
-      toast.success('Job accepted! Contract generation is now available.');
+      // 🎉 SUCCESS: Log to system for audit trail
+      try {
+        await supabase
+          .from('system_logs')
+          .insert({
+            event_type: 'auto_contract_creation',
+            description: `Automatically created contract for application ${application.job_app_id}`,
+            metadata: {
+              job_app_id: application.job_app_id,
+              user_id: application.user_id,
+              business_id: application.business_id,
+              equity_agreed: taskEquityAllocation,
+              role_title: taskData.title
+            }
+          });
+      } catch (logError) {
+        // Don't fail the main operation if logging fails
+        console.warn('Failed to log contract creation:', logError);
+      }
+      
+      toast.success(`Job accepted! Contract created with ${taskEquityAllocation}% equity allocation.`);
       return newAcceptedJob;
       
     } catch (error) {
       console.error('Error in createAcceptedJobRecord:', error);
-      toast.error('Failed to process job acceptance');
+      toast.error(`Failed to process job acceptance: ${error.message}`);
       throw error;
     }
   };
 
-  // 🔧 NEW: Monitor for newly accepted applications and auto-process them
+  // 🔧 ENHANCED: Monitor for newly accepted applications and auto-process them
   useEffect(() => {
     const monitorAcceptedApplications = async () => {
       if (status !== 'accepted') return;
@@ -120,10 +165,10 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
             status,
             accepted_business,
             accepted_jobseeker,
-            businesses!job_applications_business_id_fkey(businesses_id)
+            business_id,
+            project_id
           `)
-          .eq('status', 'accepted')
-          .or('accepted_business.is.null,accepted_jobseeker.is.null');
+          .eq('status', 'accepted');
           
         if (fetchError) {
           console.error('Error fetching accepted applications:', fetchError);
@@ -131,19 +176,20 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
         }
         
         if (acceptedApps && acceptedApps.length > 0) {
-          console.log(`Found ${acceptedApps.length} accepted applications needing processing`);
+          console.log(`Found ${acceptedApps.length} accepted applications to check`);
           
-          // Process each application
+          // Check which ones need accepted_jobs records
           for (const app of acceptedApps) {
-            if (!app.accepted_business || !app.accepted_jobseeker) {
+            // Check if accepted_jobs record exists
+            const { data: existingJob } = await supabase
+              .from('accepted_jobs')
+              .select('id')
+              .eq('job_app_id', app.job_app_id)
+              .single();
+              
+            if (!existingJob && (!app.accepted_business || !app.accepted_jobseeker)) {
               console.log('Auto-processing accepted application:', app.job_app_id);
-              
-              const appWithBusinessId = {
-                ...app,
-                business_id: app.businesses?.businesses_id
-              };
-              
-              await createAcceptedJobRecord(appWithBusinessId);
+              await createAcceptedJobRecord(app);
             }
           }
           
@@ -182,7 +228,7 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
     fetchProjects();
   }, []);
 
-  // Fetch application count based on status and project filter
+  // 🔧 ENHANCED: Fetch application count with better error handling
   const fetchApplicationCount = async () => {
     setLoading(true);
     try {
@@ -207,19 +253,23 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
       
       setApplicationCount(count || 0);
       
-      // Count applications that need business action
+      // 🔧 ENHANCED: Count applications that need processing
       if (status === 'accepted') {
-        // For accepted status, count applications that haven't been fully processed
+        // Count applications that are accepted but don't have both party acceptances
         const needsProcessing = data?.filter(app => 
           !app.accepted_business || !app.accepted_jobseeker
         ).length || 0;
         
         setPendingActionCount(needsProcessing);
+      } else if (status === 'pending') {
+        // For pending, all applications need attention
+        setPendingActionCount(count || 0);
       } else {
         setPendingActionCount(0);
       }
     } catch (error) {
       console.error('Error counting applications:', error);
+      toast.error('Failed to load application count');
     } finally {
       setLoading(false);
     }
@@ -251,28 +301,33 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
     navigate(url);
   };
 
-  // 🔧 ENHANCED: Better status descriptions
+  // 🔧 ENHANCED: Better status descriptions with equity context
   const getStatusInfo = () => {
     switch (status) {
       case 'pending':
         return {
           title: 'Pending Applications',
-          description: 'Applications awaiting your review'
+          description: 'Applications awaiting your review and decision'
         };
       case 'accepted':
         return {
           title: 'Accepted Applications', 
-          description: 'Applications that have been accepted. Contract generation is automatically enabled when both parties agree.'
+          description: 'Applications accepted by business. Contract generation with equity allocation happens automatically when both parties agree.'
         };
       case 'active':
         return {
-          title: 'Active Applications',
-          description: 'Applications with active work contracts and equity allocation in progress.'
+          title: 'Active Contracts',
+          description: 'Live contracts with ongoing work and equity allocation in progress.'
+        };
+      case 'completed':
+        return {
+          title: 'Completed Contracts',
+          description: 'Finished contracts where all agreed equity has been allocated.'
         };
       default:
         return {
           title: 'Applications',
-          description: 'View and manage applications'
+          description: 'View and manage job applications'
         };
     }
   };
@@ -289,7 +344,10 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
               {applicationCount}
               {pendingActionCount > 0 && (
                 <span className="ml-1 text-amber-600 font-bold">
-                  ({pendingActionCount} auto-processing)
+                  {status === 'accepted' 
+                    ? `(${pendingActionCount} auto-processing)` 
+                    : `(${pendingActionCount} need attention)`
+                  }
                 </span>
               )}
             </Badge>
@@ -336,7 +394,11 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
                 className="text-blue-600 hover:underline"
               >
                 View {applicationCount} {status} application{applicationCount !== 1 ? 's' : ''}
-                {pendingActionCount > 0 && ` (${pendingActionCount} being processed)`}
+                {pendingActionCount > 0 && (
+                  status === 'accepted' 
+                    ? ` (${pendingActionCount} being processed)`
+                    : ` (${pendingActionCount} need attention)`
+                )}
               </button>
             </p>
           </div>
