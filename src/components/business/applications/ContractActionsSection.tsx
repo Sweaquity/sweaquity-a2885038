@@ -6,26 +6,24 @@ import { useContractManagement } from "@/hooks/jobs/useContractManagement";
 import { Application } from "@/types/business";
 import { AcceptedJob } from "@/hooks/useAcceptedJobs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpRight, Download, FileText, Upload, FileCheck, AlertCircle, CheckCircle } from "lucide-react";
+import { ArrowUpRight, Download, FileText, Upload, FileCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkContractManagement } from "@/hooks/useWorkContractManagement";
 import { useAwardAgreementManagement } from "@/hooks/useAwardAgreementManagement";
 import { DocumentViewer } from "@/components/documents/DocumentViewer";
 import { ContractSignatureDialog } from "@/components/documents/ContractSignatureDialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/lib/supabase";
 
-interface EnhancedContractActionsSectionProps {
+interface ContractActionsSectionProps {
   application: Application;
   acceptedJob: AcceptedJob | null;
   onUpdate: () => void;
 }
 
-export const EnhancedContractActionsSection = ({
+export const ContractActionsSection = ({
   application,
   acceptedJob,
   onUpdate
-}: EnhancedContractActionsSectionProps) => {
+}: ContractActionsSectionProps) => {
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'upload' | 'contract' | 'award'>('upload');
   const [workContractDoc, setWorkContractDoc] = useState<any>(null);
@@ -33,130 +31,95 @@ export const EnhancedContractActionsSection = ({
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
   const [activeDocumentType, setActiveDocumentType] = useState<'work_contract' | 'award_agreement'>('work_contract');
-  const [isCreatingAcceptedJob, setIsCreatingAcceptedJob] = useState(false);
-  const [contractStatus, setContractStatus] = useState<'not_ready' | 'ready' | 'active'>('not_ready');
   
   const { isUploading, uploadContract } = useContractManagement(onUpdate);
+  
+  // Only initialize these hooks if the dependencies exist
+  const workContractHook = useWorkContractManagement ? useWorkContractManagement() : {
+    isGenerating: false,
+    isLoadingDocuments: false,
+    generateWorkContract: async () => {},
+    getWorkContract: async () => null
+  };
+  
+  const awardAgreementHook = useAwardAgreementManagement ? useAwardAgreementManagement() : {
+    isGenerating: false,
+    isLoadingDocuments: false,
+    generateAwardAgreement: async () => {},
+    getAwardAgreement: async () => null
+  };
+  
   const { 
     isGenerating: isGeneratingWorkContract, 
     isLoadingDocuments: isLoadingWorkContract,
     generateWorkContract,
     getWorkContract
-  } = useWorkContractManagement();
+  } = workContractHook;
   
   const {
     isGenerating: isGeneratingAwardAgreement,
     isLoadingDocuments: isLoadingAwardAgreement,
     generateAwardAgreement,
     getAwardAgreement
-  } = useAwardAgreementManagement();
-
-  // 🔧 NEW: Auto-create accepted_jobs record if missing but application is accepted
-  const ensureAcceptedJobExists = async () => {
-    if (!application || application.status !== 'accepted') return;
-    
-    // If we already have an acceptedJob, we're good
-    if (acceptedJob) {
-      setContractStatus('active');
-      return;
-    }
-
-    // Check if an accepted_jobs record exists but wasn't passed in
-    try {
-      const { data: existingJob, error } = await supabase
-        .from('accepted_jobs')
-        .select('*')
-        .eq('job_app_id', application.job_app_id)
-        .single();
-
-      if (existingJob) {
-        console.log('Found existing accepted job:', existingJob);
-        setContractStatus('active');
-        onUpdate(); // Trigger refresh to get the acceptedJob prop
-        return;
-      }
-
-      // If no accepted_jobs record exists, we need to create one
-      if (application.accepted_business && application.accepted_jobseeker) {
-        console.log('Creating missing accepted_jobs record...');
-        setIsCreatingAcceptedJob(true);
-        
-        // Get task details for equity
-        const { data: taskData, error: taskError } = await supabase
-          .from('business_roles')
-          .select('equity_percentage, project_id')
-          .eq('role_id', application.role_id)
-          .single();
-        
-        if (taskError) throw taskError;
-        
-        // Create the accepted_jobs record
-        const { data: newJob, error: createError } = await supabase
-          .from('accepted_jobs')
-          .insert({
-            job_app_id: application.job_app_id,
-            user_id: application.user_id,
-            business_id: application.business_id,
-            project_id: taskData.project_id,
-            role_id: application.role_id,
-            equity_agreed: taskData.equity_percentage || 0,
-            jobs_equity_allocated: 0,
-            date_accepted: new Date().toISOString(),
-            status: 'active'
-          })
-          .select()
-          .single();
-          
-        if (createError) throw createError;
-        
-        console.log('Created accepted job:', newJob);
-        toast.success('Contract workspace is now ready!');
-        setContractStatus('active');
-        onUpdate(); // Trigger refresh
-        
-      } else {
-        setContractStatus('ready');
-      }
-    } catch (error) {
-      console.error('Error ensuring accepted job exists:', error);
-      toast.error('Failed to prepare contract workspace');
-    } finally {
-      setIsCreatingAcceptedJob(false);
-    }
-  };
-
-  // Check contract readiness on component mount and when dependencies change
-  useEffect(() => {
-    if (application?.status === 'accepted') {
-      ensureAcceptedJobExists();
-    } else {
-      setContractStatus('not_ready');
-    }
-  }, [application?.status, application?.accepted_business, application?.accepted_jobseeker, acceptedJob]);
-
+  } = awardAgreementHook;
+  
+  // Only show contract actions if both parties have accepted
+  if (!application.accepted_business || !application.accepted_jobseeker || !acceptedJob) {
+    return (
+      <Card className="mt-4">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center">
+            <FileText className="h-4 w-4 mr-2" />
+            Contract Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-4">
+            <p className="text-muted-foreground">
+              Contract management will be available once both parties have accepted this application.
+            </p>
+            <div className="mt-2 text-sm">
+              <p>Business accepted: {application.accepted_business ? '✅' : '❌'}</p>
+              <p>Job seeker accepted: {application.accepted_jobseeker ? '✅' : '❌'}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   const handleUploadContract = async (jobAppId: string, file: File, notes: string) => {
-    return await uploadContract(jobAppId, file);
+    try {
+      return await uploadContract(jobAppId, file);
+    } catch (error) {
+      console.error('Error uploading contract:', error);
+      toast.error("Failed to upload contract");
+      throw error;
+    }
   };
 
   const loadDocuments = async () => {
     if (!acceptedJob?.id) return;
     
     try {
-      // Load work contract
-      const workContract = await getWorkContract(acceptedJob.id);
-      setWorkContractDoc(workContract);
+      // Only try to load documents if the functions exist
+      if (getWorkContract) {
+        const workContract = await getWorkContract(acceptedJob.id);
+        setWorkContractDoc(workContract);
+      }
       
-      // Load award agreement
-      const awardAgreement = await getAwardAgreement(acceptedJob.id);
-      setAwardAgreementDoc(awardAgreement);
+      if (getAwardAgreement) {
+        const awardAgreement = await getAwardAgreement(acceptedJob.id);
+        setAwardAgreementDoc(awardAgreement);
+      }
     } catch (error) {
       console.error("Error loading documents:", error);
-      toast.error("Failed to load documents");
+      // Don't show error to user for missing functionality
     }
   };
   
   const handleCreateWorkContract = async () => {
-    if (!acceptedJob?.id || !application.job_app_id) return;
+    if (!acceptedJob?.id || !application.job_app_id || !generateWorkContract) return;
     
     try {
       // Get the business ID from the application
@@ -182,9 +145,10 @@ export const EnhancedContractActionsSection = ({
   };
   
   const handleCreateAwardAgreement = async () => {
-    if (!acceptedJob?.id || !application.job_app_id) return;
+    if (!acceptedJob?.id || !application.job_app_id || !generateAwardAgreement) return;
     
     try {
+      // Get the business ID from the application
       const businessId = application.businesses?.businesses_id || '';
       const userId = application.user_id || '';
       const projectId = application.project_id || '';
@@ -223,62 +187,12 @@ export const EnhancedContractActionsSection = ({
     onUpdate();
   };
 
-  // 🔧 NEW: Show different states based on contract readiness
-  if (contractStatus === 'not_ready') {
-    return (
-      <Card className="mt-4">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center">
-            <AlertCircle className="h-4 w-4 mr-2 text-amber-500" />
-            Contract Management - Not Available
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Contract management will be available once this application is accepted by both parties.
-              Current status: <Badge variant="outline">{application?.status || 'Unknown'}</Badge>
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (contractStatus === 'ready') {
-    return (
-      <Card className="mt-4">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center">
-            <AlertCircle className="h-4 w-4 mr-2 text-blue-500" />
-            Contract Management - Preparing
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              This application has been accepted! Contract workspace is being prepared...
-              {isCreatingAcceptedJob && (
-                <div className="mt-2">
-                  <div className="animate-pulse">Setting up contract management...</div>
-                </div>
-              )}
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // contractStatus === 'active' - show full contract management interface
   return (
     <Card className="mt-4">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center">
-          <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-          Contract Management - Active
+          <FileText className="h-4 w-4 mr-2" />
+          Contract Management
         </CardTitle>
         
         <div className="flex space-x-1 rounded-lg bg-muted p-1 text-muted-foreground mt-2">
@@ -328,7 +242,7 @@ export const EnhancedContractActionsSection = ({
                 </p>
               </div>
               <Badge
-                variant={acceptedJob?.document_url ? "success" : "outline"}
+                variant={acceptedJob?.document_url ? "default" : "outline"}
                 className={acceptedJob?.document_url 
                   ? "bg-green-100 text-green-800 border-green-300" 
                   : ""}
@@ -381,10 +295,16 @@ export const EnhancedContractActionsSection = ({
                 ) : (
                   <>
                     <p className="mb-4">No work contract has been created yet.</p>
-                    <Button onClick={handleCreateWorkContract}>
-                      <FileCheck className="h-4 w-4 mr-2" />
-                      Generate Work Contract
-                    </Button>
+                    {generateWorkContract ? (
+                      <Button onClick={handleCreateWorkContract}>
+                        <FileCheck className="h-4 w-4 mr-2" />
+                        Generate Work Contract
+                      </Button>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Work contract generation is not available.
+                      </p>
+                    )}
                   </>
                 )}
               </div>
@@ -411,14 +331,18 @@ export const EnhancedContractActionsSection = ({
                 ) : (
                   <>
                     <p className="mb-4">No award agreement has been created yet.</p>
-                    {workContractDoc ? (
+                    {workContractDoc && generateAwardAgreement ? (
                       <Button onClick={handleCreateAwardAgreement}>
                         <FileCheck className="h-4 w-4 mr-2" />
                         Generate Award Agreement
                       </Button>
-                    ) : (
+                    ) : generateAwardAgreement ? (
                       <p className="text-sm text-muted-foreground">
                         You need to create a work contract first before generating an award agreement.
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Award agreement generation is not available.
                       </p>
                     )}
                   </>
@@ -428,6 +352,7 @@ export const EnhancedContractActionsSection = ({
           </>
         )}
         
+        {/* Contract Upload Dialog */}
         <ContractUploadDialog
           isOpen={isUploadDialogOpen}
           onOpenChange={setIsUploadDialogOpen}
@@ -436,13 +361,14 @@ export const EnhancedContractActionsSection = ({
           isUploading={isUploading}
         />
         
-        {activeDocumentId && (
+        {/* Contract Signature Dialog */}
+        {activeDocumentId && acceptedJob && (
           <ContractSignatureDialog
             open={isSignatureDialogOpen}
             onOpenChange={setIsSignatureDialogOpen}
             documentId={activeDocumentId}
             documentType={activeDocumentType}
-            acceptedJobId={acceptedJob?.id || ''}
+            acceptedJobId={acceptedJob.id}
             onSigned={handleDocumentSigned}
           />
         )}
