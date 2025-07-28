@@ -31,7 +31,7 @@ jobs:
         fi
         
     - name: Run codebase analysis
-      run: node analyze-codebase.cjs
+      run: node analyze-codebase.mjs
       
     - name: Upload analysis results
       uses: actions/upload-artifact@v4
