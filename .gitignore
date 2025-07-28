@@ -22,3 +22,25 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Generated analysis files
+codebase-analysis-report.md
+full-analysis.json
+route-mapping.ts
+
+# Analysis and dependency mapping outputs (generated files)
+codebase-analysis-report.md
+full-analysis.json
+route-mapping.ts
+depcruise.json
+dependency-graph.svg
+eslint-complexity.json
+graph.svg
+jobseeker-deps.json
+madge.json
+simple-overview.svg
+unreachable-files.txt
+
+# Backup files
+*.backup
+*.bak
