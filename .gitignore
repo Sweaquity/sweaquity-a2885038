@@ -44,3 +44,5 @@ unreachable-files.txt
 # Backup files
 *.backup
 *.bak
+.env
+.env
