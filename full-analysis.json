@@ -1023,6 +1023,14 @@
         "count": 21
       },
       {
+        "type": "large_file",
+        "file": "src/components/WorkflowManager.tsx",
+        "severity": "medium",
+        "message": "File is quite large (329 lines) - consider breaking it down",
+        "lines": 329,
+        "size": 10707
+      },
+      {
         "type": "excessive_logging",
         "file": "src/components/auth/LoginForm.tsx",
         "severity": "low",
@@ -1076,19 +1084,34 @@
         "count": 15
       },
       {
+        "type": "large_file",
+        "file": "src/components/business/applications/ApplicationsTable.tsx",
+        "severity": "medium",
+        "message": "File is quite large (410 lines) - consider breaking it down",
+        "lines": 410,
+        "size": 14384
+      },
+      {
         "type": "excessive_logging",
         "file": "src/components/business/applications/ApplicationsTable.tsx",
         "severity": "low",
-        "message": "4 console statements found - consider removing debug logs",
-        "count": 4
+        "message": "18 console statements found - consider removing debug logs",
+        "count": 18
       },
       {
         "type": "large_file",
         "file": "src/components/business/applications/ContractActionsSection.tsx",
         "severity": "medium",
-        "message": "File is quite large (322 lines) - consider breaking it down",
-        "lines": 322,
-        "size": 11599
+        "message": "File is quite large (379 lines) - consider breaking it down",
+        "lines": 379,
+        "size": 13877
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/business/applications/ContractActionsSection.tsx",
+        "severity": "low",
+        "message": "4 console statements found - consider removing debug logs",
+        "count": 4
       },
       {
         "type": "large_file",
@@ -1258,16 +1281,9 @@
         "type": "large_file",
         "file": "src/components/job-seeker/dashboard/applications/ApplicationsTabBase.tsx",
         "severity": "medium",
-        "message": "File is quite large (332 lines) - consider breaking it down",
-        "lines": 332,
-        "size": 12553
-      },
-      {
-        "type": "excessive_logging",
-        "file": "src/components/job-seeker/dashboard/applications/ApplicationsTabBase.tsx",
-        "severity": "low",
-        "message": "19 console statements found - consider removing debug logs",
-        "count": 19
+        "message": "File is quite large (345 lines) - consider breaking it down",
+        "lines": 345,
+        "size": 12446
       },
       {
         "type": "large_file",
@@ -1283,6 +1299,21 @@
         "severity": "low",
         "message": "5 console statements found - consider removing debug logs",
         "count": 5
+      },
+      {
+        "type": "large_file",
+        "file": "src/components/job-seeker/dashboard/applications/JobSeekerContractSection.tsx",
+        "severity": "medium",
+        "message": "File is quite large (757 lines) - consider breaking it down",
+        "lines": 757,
+        "size": 26565
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/components/job-seeker/dashboard/applications/JobSeekerContractSection.tsx",
+        "severity": "low",
+        "message": "7 console statements found - consider removing debug logs",
+        "count": 7
       },
       {
         "type": "excessive_logging",
@@ -1661,6 +1692,21 @@
         "count": 9
       },
       {
+        "type": "large_file",
+        "file": "src/utils/initializeDocumentTemplates.ts",
+        "severity": "medium",
+        "message": "File is quite large (437 lines) - consider breaking it down",
+        "lines": 437,
+        "size": 18475
+      },
+      {
+        "type": "excessive_logging",
+        "file": "src/utils/initializeDocumentTemplates.ts",
+        "severity": "low",
+        "message": "35 console statements found - consider removing debug logs",
+        "count": 35
+      },
+      {
         "type": "excessive_logging",
         "file": "src/utils/setupStorage.ts",
         "severity": "low",
@@ -1677,6 +1723,15 @@
       }
     ],
     "unreachableCode": [
+      {
+        "type": "unused_component",
+        "file": "src/components/WorkflowManager.tsx",
+        "component": "WorkflowManager",
+        "severity": "medium",
+        "message": "Component \"WorkflowManager\" appears to be unused",
+        "size": 10707,
+        "lines": 329
+      },
       {
         "type": "unused_component",
         "file": "src/components/business/projects/ProjectList.tsx",
@@ -1878,9 +1933,9 @@
     ]
   },
   "stats": {
-    "totalFiles": 308,
+    "totalFiles": 311,
     "totalRoutes": 17,
     "mappedRoutes": 16,
-    "totalIssues": 117
+    "totalIssues": 124
   }
 }

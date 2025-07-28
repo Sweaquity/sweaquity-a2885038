@@ -1,11 +1,11 @@
 # Codebase Analysis Report
-Generated on 2025-07-26T22:32:48.778Z
+Generated on 2025-07-28T11:04:21.304Z
 
 ## Summary
-- **Total Files**: 308
+- **Total Files**: 311
 - **Total Routes**: 17
 - **Mapped Routes**: 16
-- **Total Issues**: 117
+- **Total Issues**: 124
 
 ## 🔴 Critical Issues (1)
 
@@ -28,7 +28,7 @@ Generated on 2025-07-26T22:32:48.778Z
 - **Severity**: low
 - **Message**: TODO found: comments (potential dead ends or incomplete work)
 
-## 👃 Code Smells (92)
+## 👃 Code Smells (98)
 
 ### duplicate_routes
 - **File**: undefined
@@ -47,6 +47,11 @@ Generated on 2025-07-26T22:32:48.778Z
 - **File**: src/analyze-codebase.js
 - **Message**: 21 console statements found - consider removing debug logs
 - **Count**: 21
+
+### large_file
+- **File**: src/components/WorkflowManager.tsx
+- **Message**: File is quite large (329 lines) - consider breaking it down
+- **Lines**: 329
 
 ### excessive_logging
 - **File**: src/components/auth/LoginForm.tsx
@@ -83,15 +88,25 @@ Generated on 2025-07-26T22:32:48.778Z
 - **Message**: 15 console statements found - consider removing debug logs
 - **Count**: 15
 
+### large_file
+- **File**: src/components/business/applications/ApplicationsTable.tsx
+- **Message**: File is quite large (410 lines) - consider breaking it down
+- **Lines**: 410
+
 ### excessive_logging
 - **File**: src/components/business/applications/ApplicationsTable.tsx
-- **Message**: 4 console statements found - consider removing debug logs
-- **Count**: 4
+- **Message**: 18 console statements found - consider removing debug logs
+- **Count**: 18
 
 ### large_file
 - **File**: src/components/business/applications/ContractActionsSection.tsx
-- **Message**: File is quite large (322 lines) - consider breaking it down
-- **Lines**: 322
+- **Message**: File is quite large (379 lines) - consider breaking it down
+- **Lines**: 379
+
+### excessive_logging
+- **File**: src/components/business/applications/ContractActionsSection.tsx
+- **Message**: 4 console statements found - consider removing debug logs
+- **Count**: 4
 
 ### large_file
 - **File**: src/components/business/dashboard/tabs/BetaTestingTab.tsx
@@ -205,13 +220,8 @@ Generated on 2025-07-26T22:32:48.778Z
 
 ### large_file
 - **File**: src/components/job-seeker/dashboard/applications/ApplicationsTabBase.tsx
-- **Message**: File is quite large (332 lines) - consider breaking it down
-- **Lines**: 332
-
-### excessive_logging
-- **File**: src/components/job-seeker/dashboard/applications/ApplicationsTabBase.tsx
-- **Message**: 19 console statements found - consider removing debug logs
-- **Count**: 19
+- **Message**: File is quite large (345 lines) - consider breaking it down
+- **Lines**: 345
 
 ### large_file
 - **File**: src/components/job-seeker/dashboard/applications/EquityProjectItem.tsx
@@ -222,6 +232,16 @@ Generated on 2025-07-26T22:32:48.778Z
 - **File**: src/components/job-seeker/dashboard/applications/EquityProjectItem.tsx
 - **Message**: 5 console statements found - consider removing debug logs
 - **Count**: 5
+
+### large_file
+- **File**: src/components/job-seeker/dashboard/applications/JobSeekerContractSection.tsx
+- **Message**: File is quite large (757 lines) - consider breaking it down
+- **Lines**: 757
+
+### excessive_logging
+- **File**: src/components/job-seeker/dashboard/applications/JobSeekerContractSection.tsx
+- **Message**: 7 console statements found - consider removing debug logs
+- **Count**: 7
 
 ### excessive_logging
 - **File**: src/components/job-seeker/dashboard/applications/hooks/useApplicationActions.ts
@@ -475,6 +495,16 @@ Generated on 2025-07-26T22:32:48.778Z
 - **Message**: 9 console statements found - consider removing debug logs
 - **Count**: 9
 
+### large_file
+- **File**: src/utils/initializeDocumentTemplates.ts
+- **Message**: File is quite large (437 lines) - consider breaking it down
+- **Lines**: 437
+
+### excessive_logging
+- **File**: src/utils/initializeDocumentTemplates.ts
+- **Message**: 35 console statements found - consider removing debug logs
+- **Count**: 35
+
 ### excessive_logging
 - **File**: src/utils/setupStorage.ts
 - **Message**: 18 console statements found - consider removing debug logs
@@ -485,7 +515,12 @@ Generated on 2025-07-26T22:32:48.778Z
 - **Message**: File is quite large (333 lines) - consider breaking it down
 - **Lines**: 333
 
-## 💀 Unreachable Code (22)
+## 💀 Unreachable Code (23)
+
+### WorkflowManager
+- **File**: src/components/WorkflowManager.tsx
+- **Message**: Component "WorkflowManager" appears to be unused
+- **Size**: 10707 bytes (329 lines)
 
 ### ProjectList
 - **File**: src/components/business/projects/ProjectList.tsx
