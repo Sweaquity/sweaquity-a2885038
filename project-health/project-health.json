@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-07-28T21:16:47.349Z",
+  "timestamp": "2025-07-29T01:34:59.251Z",
   "frontend": {
     "total_files": 0,
     "routes_found": 0,
@@ -11,7 +11,7 @@
   },
   "backend": {
     "analysis_available": true,
-    "last_analyzed": "2025-07-28T21:16:47.350Z",
+    "last_analyzed": "2025-07-29T01:34:59.252Z",
     "needs_manual_query_execution": true
   },
   "critical_issues": [],

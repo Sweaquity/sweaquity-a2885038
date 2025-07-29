@@ -1,32 +1,32 @@
 {
   "tables": {
     "query": "\n      SELECT \n        t.table_name,\n        t.table_type,\n        c.column_name,\n        c.data_type,\n        c.is_nullable,\n        c.column_default,\n        c.ordinal_position\n      FROM information_schema.tables t\n      JOIN information_schema.columns c ON t.table_name = c.table_name\n      WHERE t.table_schema = 'public'\n        AND t.table_type = 'BASE TABLE'\n      ORDER BY t.table_name, c.ordinal_position;\n    ",
-    "executedAt": "2025-07-28T21:16:47.347Z",
+    "executedAt": "2025-07-29T01:34:59.249Z",
     "note": "Execute this query in Supabase SQL editor to get results"
   },
   "policies": {
     "query": "\n      SELECT \n        tablename,\n        policyname,\n        permissive,\n        roles,\n        cmd,\n        qual\n      FROM pg_policies\n      ORDER BY tablename, policyname;\n    ",
-    "executedAt": "2025-07-28T21:16:47.348Z",
+    "executedAt": "2025-07-29T01:34:59.249Z",
     "note": "Execute this query in Supabase SQL editor to get results"
   },
   "functions": {
     "query": "\n      SELECT \n        routine_name,\n        routine_type,\n        data_type as return_type\n      FROM information_schema.routines\n      WHERE routine_schema = 'public'\n        AND routine_type = 'FUNCTION'\n      ORDER BY routine_name;\n    ",
-    "executedAt": "2025-07-28T21:16:47.348Z",
+    "executedAt": "2025-07-29T01:34:59.249Z",
     "note": "Execute this query in Supabase SQL editor to get results"
   },
   "triggers": {
     "query": "\n      SELECT \n        event_object_table as table_name,\n        trigger_name,\n        event_manipulation,\n        action_timing\n      FROM information_schema.triggers\n      WHERE event_object_schema = 'public'\n      ORDER BY event_object_table, trigger_name;\n    ",
-    "executedAt": "2025-07-28T21:16:47.348Z",
+    "executedAt": "2025-07-29T01:34:59.250Z",
     "note": "Execute this query in Supabase SQL editor to get results"
   },
   "contractWorkflow": {
     "query": "\n      SELECT \n        ja.status as application_status,\n        ja.nda_status,\n        COUNT(*) as count,\n        COUNT(CASE WHEN ja.nda_document_id IS NOT NULL THEN 1 END) as has_nda_document\n      FROM job_applications ja\n      WHERE ja.created_at >= NOW() - INTERVAL '7 days'\n      GROUP BY ja.status, ja.nda_status\n      ORDER BY count DESC;\n    ",
-    "executedAt": "2025-07-28T21:16:47.349Z",
+    "executedAt": "2025-07-29T01:34:59.251Z",
     "note": "Execute this query in Supabase SQL editor to get results"
   },
   "storageBuckets": {
     "query": "\n      SELECT \n        name,\n        public,\n        file_size_limit,\n        allowed_mime_types\n      FROM storage.buckets\n      ORDER BY name;\n    ",
-    "executedAt": "2025-07-28T21:16:47.349Z",
+    "executedAt": "2025-07-29T01:34:59.251Z",
     "note": "Execute this query in Supabase SQL editor to get results"
   }
 }
