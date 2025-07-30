@@ -24,9 +24,27 @@ dist-ssr
 *.sw?
 
 # Generated analysis files
-codebase-analysis-report.md
-full-analysis.json
-route-mapping.ts
+project-health/
+daily-health-check.js
+daily-health-script.sh
+simple-ultimate-analyzer.js
+storage-analyzer.js
+supabase-analyzer.js
+test-env.js
+
+
+# Analysis outputs (timestamped files)
+**/enhanced-storage-analysis-*.json
+**/enhanced-storage-report-*.md
+**/database-analysis-complete.json
+**/database-insights.json
+**/database-report.md
+**/complete-project-health.json
+**/latest-enhanced-*.json
+**/latest-enhanced-*.md
+**/latest-simple-ultimate.*
+**/latest-working-ultimate.*
+**/manual-queries.sql
 
 # Analysis and dependency mapping outputs (generated files)
 codebase-analysis-report.md
@@ -46,3 +64,6 @@ unreachable-files.txt
 *.bak
 .env
 .env
+
+# Archive directories
+archives/

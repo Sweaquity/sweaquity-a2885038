@@ -130,7 +130,7 @@ const SweaquityDashboard = () => {
         return;
       }
       
-      let notes = ticketData.notes || [];
+      const notes = ticketData.notes || [];
       
       notes.push({
         action: 'Note added',
@@ -293,7 +293,7 @@ const SweaquityDashboard = () => {
         return;
       }
       
-      let notes = ticketData.notes || [];
+      const notes = ticketData.notes || [];
       
       notes.push({
         action: 'Reply sent to reporter',

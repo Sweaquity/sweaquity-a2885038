@@ -108,7 +108,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         {columns.map(column => {
           // Map statuses that might be in different formats
-          let columnTickets = tickets.filter(ticket => {
+          const columnTickets = tickets.filter(ticket => {
             if (ticket.status === column.id) return true;
             
             // Handle alternative status formats

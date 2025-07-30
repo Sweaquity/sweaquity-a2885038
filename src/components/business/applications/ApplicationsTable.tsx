@@ -1,4 +1,4 @@
-// 🔧 Enhanced ApplicationsTable with Auto Contract Generation - FIXED EQUITY REFERENCES
+// 🔧 Enhanced ApplicationsTable with Auto Contract Generation - FIXED EQUITY REFERENCES + NDA INTEGRATION
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { 
@@ -24,6 +24,7 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
   const [projects, setProjects] = useState<any[]>([]);
   const [applicationCount, setApplicationCount] = useState<number>(0);
   const [pendingActionCount, setPendingActionCount] = useState<number>(0);
+  const [ndaPendingCount, setNdaPendingCount] = useState<number>(0); // 🆕 NDA tracking
   const [loading, setLoading] = useState<boolean>(true);
 
   // 🔧 FIXED: Auto-create accepted_jobs when status changes to 'accepted'
@@ -118,6 +119,38 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
         console.error('Error updating application acceptance:', updateError);
         throw new Error(`Failed to update application status: ${updateError.message}`);
       }
+
+      // 🆕 NDA INTEGRATION: Check if NDA was created and show notification
+      setTimeout(async () => {
+        try {
+          const { data: updatedApp, error: ndaCheckError } = await supabase
+            .from('job_applications')
+            .select('nda_document_id, nda_status')
+            .eq('job_app_id', application.job_app_id)
+            .single();
+
+          if (ndaCheckError) {
+            console.warn('Could not check NDA status:', ndaCheckError);
+            return;
+          }
+
+          if (updatedApp.nda_document_id) {
+            // 🎉 NDA was created successfully
+            toast.success('📋 NDA generated automatically! Applicant will be notified to sign.', {
+              duration: 4000,
+              action: {
+                label: 'View NDA Status',
+                onClick: () => navigate('/legal/documents')
+              }
+            });
+          } else {
+            // 🚨 NDA creation might have failed
+            toast.warning('⚠️ Application accepted, but NDA generation may need attention.');
+          }
+        } catch (error) {
+          console.warn('Error checking NDA status:', error);
+        }
+      }, 2000); // Wait 2 seconds for database trigger to complete
       
       // 🎉 SUCCESS: Log to system for audit trail
       try {
@@ -228,14 +261,14 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
     fetchProjects();
   }, []);
 
-  // 🔧 ENHANCED: Fetch application count with better error handling
+  // 🔧 ENHANCED: Fetch application count with better error handling + NDA tracking
   const fetchApplicationCount = async () => {
     setLoading(true);
     try {
       // Base query builder
       let query = supabase
         .from('job_applications')
-        .select('job_app_id, status, accepted_business, accepted_jobseeker', { count: 'exact' })
+        .select('job_app_id, status, accepted_business, accepted_jobseeker, nda_status', { count: 'exact' })
         .eq('status', status);
         
       // Add project filter if selected
@@ -260,12 +293,20 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
           !app.accepted_business || !app.accepted_jobseeker
         ).length || 0;
         
+        // 🆕 Count NDAs that need signing
+        const needsNDASigning = data?.filter(app => 
+          app.nda_status === 'pending'
+        ).length || 0;
+        
         setPendingActionCount(needsProcessing);
+        setNdaPendingCount(needsNDASigning);
       } else if (status === 'pending') {
         // For pending, all applications need attention
         setPendingActionCount(count || 0);
+        setNdaPendingCount(0);
       } else {
         setPendingActionCount(0);
+        setNdaPendingCount(0);
       }
     } catch (error) {
       console.error('Error counting applications:', error);
@@ -301,7 +342,7 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
     navigate(url);
   };
 
-  // 🔧 ENHANCED: Better status descriptions with equity context
+  // 🔧 ENHANCED: Better status descriptions with equity context + NDA info
   const getStatusInfo = () => {
     switch (status) {
       case 'pending':
@@ -312,7 +353,7 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
       case 'accepted':
         return {
           title: 'Accepted Applications', 
-          description: 'Applications accepted by business. Contract generation with equity allocation happens automatically when both parties agree.'
+          description: 'Applications accepted by business. Contract generation with equity allocation and NDA creation happens automatically when both parties agree.'
         };
       case 'active':
         return {
@@ -350,11 +391,31 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
                   }
                 </span>
               )}
+              {/* 🆕 NDA Status Badge */}
+              {ndaPendingCount > 0 && (
+                <span className="ml-1 text-blue-600 font-bold cursor-pointer" 
+                      onClick={() => navigate('/legal/documents')}
+                      title="Click to view NDA status">
+                  📋 {ndaPendingCount} NDA{ndaPendingCount > 1 ? 's' : ''} pending
+                </span>
+              )}
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
             {statusInfo.description}
           </p>
+          {/* 🆕 NDA Status Information */}
+          {status === 'accepted' && ndaPendingCount > 0 && (
+            <p className="text-xs text-blue-600 mt-1">
+              💡 {ndaPendingCount} applicant{ndaPendingCount > 1 ? 's' : ''} need{ndaPendingCount === 1 ? 's' : ''} to sign NDA{ndaPendingCount > 1 ? 's' : ''}. 
+              <span 
+                className="underline cursor-pointer ml-1"
+                onClick={() => navigate('/legal/documents')}
+              >
+                View NDA status →
+              </span>
+            </p>
+          )}
         </div>
         <div className="w-[200px]">
           <Select 
@@ -399,8 +460,23 @@ export const ApplicationsTable = ({ status }: ApplicationsTableProps) => {
                     ? ` (${pendingActionCount} being processed)`
                     : ` (${pendingActionCount} need attention)`
                 )}
+                {/* 🆕 NDA Status in Link */}
+                {ndaPendingCount > 0 && (
+                  ` • ${ndaPendingCount} NDA${ndaPendingCount > 1 ? 's' : ''} pending signature`
+                )}
               </button>
             </p>
+            {/* 🆕 Quick Action for NDAs */}
+            {status === 'accepted' && ndaPendingCount > 0 && (
+              <p className="text-xs text-blue-600 mt-2">
+                <button 
+                  onClick={() => navigate('/legal/documents')}
+                  className="underline hover:no-underline"
+                >
+                  📋 Manage NDAs & Legal Documents
+                </button>
+              </p>
+            )}
           </div>
         )}
       </CardContent>

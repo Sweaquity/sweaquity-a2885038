@@ -104,6 +104,24 @@ export const ActiveApplicationsTable = ({
   const canChangeStatus = (app: Application) => {
     return !app.accepted_business && !app.accepted_jobseeker;
   };
+  const getNDAStatusBadge = (application: any) => {
+  if (application.status !== 'accepted') return null;
+  
+  switch (application.nda_status) {
+    case 'pending':
+      return (
+        <Badge variant="destructive" className="ml-2">
+          NDA Pending
+        </Badge>
+      );
+    case 'signed':
+      return <Badge variant="default" className="ml-2">NDA Signed ✓</Badge>;
+    default:
+      return null;
+    }
+    };
+
+
 
   return (
     <>

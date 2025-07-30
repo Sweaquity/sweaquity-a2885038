@@ -38,7 +38,7 @@ export const GanttChartView = ({ tasks: propTasks, projectId }: GanttChartViewPr
       if (taskData && taskData.length > 0) {
         const ganttTasks: Task[] = taskData.map((task) => {
           const start = task.created_at ? new Date(task.created_at) : new Date();
-          let end = new Date(start);
+          const end = new Date(start);
           if (task.timeframe) {
             const timeframe = task.timeframe.toLowerCase();
             if (timeframe.includes('week')) {

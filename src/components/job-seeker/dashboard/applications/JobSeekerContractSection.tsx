@@ -1,6 +1,5 @@
-// 🔄 COMPLETE JobSeekerContractSection.tsx
-// Full replacement that uses your existing sophisticated document management system
-// Drop-in replacement for your current file
+// 🔄 FIXED JobSeekerContractSection.tsx
+// Uses correct database constraint values to prevent errors
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +29,9 @@ import { useWorkContractManagement } from "@/hooks/useWorkContractManagement";
 import { useAcceptedJobs } from "@/hooks/useAcceptedJobs";
 import { supabase } from "@/lib/supabase";
 
+// Import the correct status constants
+import { LEGAL_DOCUMENT_STATUS, getStatusDisplay, isPendingSignature, isSigned } from "@/types/legal";
+
 // Use your existing JobApplication type
 interface JobApplication {
   job_app_id: string;
@@ -54,7 +56,7 @@ interface JobSeekerContractSectionProps {
   onUpdate?: () => void;
 }
 
-// 📋 NDA Workflow Component (Using Your Existing useNDAManagement Hook)
+// 📋 NDA Workflow Component (Using Correct Database Status Values)
 const NDAWorkflowSection = ({ 
   application, 
   onUpdate 
@@ -137,11 +139,11 @@ const NDAWorkflowSection = ({
     if (!ndaDocument) return;
     
     try {
-      // Update the legal document to mark as executed by jobseeker
+      // ✅ FIXED: Use correct database status value
       const { error: docError } = await supabase
         .from('legal_documents')
         .update({
-          status: 'executed_by_jobseeker',
+          status: LEGAL_DOCUMENT_STATUS.EXECUTED, // ✅ 'executed' not 'executed_by_jobseeker'
           executed_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -149,11 +151,11 @@ const NDAWorkflowSection = ({
         
       if (docError) throw docError;
       
-      // Update the job application NDA status
+      // Update the job application NDA status (this field can stay as is - it's not in legal_documents table)
       const { error: appError } = await supabase
         .from('job_applications')
         .update({
-          nda_status: 'executed_by_jobseeker',
+          nda_status: 'signed', // This is the job_applications table field, different from legal_documents.status
           updated_at: new Date().toISOString()
         })
         .eq('job_app_id', application.job_app_id);
@@ -239,8 +241,9 @@ const NDAWorkflowSection = ({
     );
   }
 
-  const isExecuted = ndaDocument.status === 'executed_by_jobseeker' || ndaDocument.status === 'final';
-  const needsReview = ndaDocument.status === 'draft' || ndaDocument.status === 'pending_jobseeker_review';
+  // ✅ FIXED: Use correct status checks
+  const isExecuted = ndaDocument.status === LEGAL_DOCUMENT_STATUS.EXECUTED || ndaDocument.status === LEGAL_DOCUMENT_STATUS.FINAL;
+  const needsReview = ndaDocument.status === LEGAL_DOCUMENT_STATUS.DRAFT || ndaDocument.status === LEGAL_DOCUMENT_STATUS.REVIEW;
 
   return (
     <Card className={`border-l-4 ${isExecuted ? 'border-l-green-500' : 'border-l-blue-500'}`}>
@@ -256,7 +259,7 @@ const NDAWorkflowSection = ({
             ) : needsReview ? (
               <><AlertCircle className="h-3 w-3 mr-1" /> Review Required</>
             ) : (
-              <><Clock className="h-3 w-3 mr-1" /> {ndaDocument.status}</>
+              <><Clock className="h-3 w-3 mr-1" /> {getStatusDisplay(ndaDocument.status).label}</>
             )}
           </Badge>
         </CardTitle>
@@ -354,7 +357,7 @@ const NDAWorkflowSection = ({
   );
 };
 
-// 🤝 Enhanced Contract Section (Using Your Existing useWorkContractManagement Hook)
+// 🤝 Enhanced Contract Section (Using Correct Database Status Values)
 const ContractWorkflowSection = ({ 
   application, 
   onUpdate 
@@ -441,11 +444,11 @@ const ContractWorkflowSection = ({
     if (!contractDocument || !acceptedJob) return;
     
     try {
-      // Update the contract document
+      // ✅ FIXED: Use correct database status value
       const { error: docError } = await supabase
         .from('legal_documents')
         .update({
-          status: 'executed_by_jobseeker',
+          status: LEGAL_DOCUMENT_STATUS.EXECUTED, // ✅ 'executed' not 'executed_by_jobseeker'
           executed_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -453,11 +456,11 @@ const ContractWorkflowSection = ({
         
       if (docError) throw docError;
       
-      // Update the accepted job contract status
+      // Update the accepted job contract status (this field can be different from legal_documents.status)
       const { error: jobError } = await supabase
         .from('accepted_jobs')
         .update({
-          work_contract_status: 'executed_by_jobseeker',
+          work_contract_status: 'signed', // This is the accepted_jobs table field, different constraint
           updated_at: new Date().toISOString()
         })
         .eq('id', acceptedJob.id);
@@ -517,8 +520,9 @@ const ContractWorkflowSection = ({
     ? (acceptedJob.jobs_equity_allocated / acceptedJob.equity_agreed) * 100 
     : 0;
 
-  const isContractExecuted = contractDocument?.status === 'executed_by_jobseeker';
-  const needsContractReview = contractDocument?.status === 'draft';
+  // ✅ FIXED: Use correct status checks
+  const isContractExecuted = contractDocument?.status === LEGAL_DOCUMENT_STATUS.EXECUTED;
+  const needsContractReview = contractDocument?.status === LEGAL_DOCUMENT_STATUS.DRAFT;
 
   return (
     <Card className="border-l-4 border-l-green-500">
@@ -573,7 +577,7 @@ const ContractWorkflowSection = ({
               </p>
               <div className="flex items-center space-x-2">
                 <Badge variant={isContractExecuted ? "default" : needsContractReview ? "destructive" : "secondary"}>
-                  {isContractExecuted ? "Executed" : needsContractReview ? "Review Required" : contractDocument.status}
+                  {isContractExecuted ? "Executed" : needsContractReview ? "Review Required" : getStatusDisplay(contractDocument.status).label}
                 </Badge>
                 {contractDocument.storage_path && (
                   <Button size="sm" variant="outline" asChild>

@@ -154,7 +154,7 @@ export function TestingTab() {
       if (data && data.length > 0) {
         const ganttTasksData: GanttTask[] = data.map((task) => {
           const start = task.created_at ? new Date(task.created_at) : new Date();
-          let end = new Date(start);
+          const end = new Date(start);
           if (task.timeframe) {
             const timeframe = task.timeframe.toLowerCase();
             if (timeframe.includes('week')) {

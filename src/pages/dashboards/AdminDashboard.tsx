@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShieldCheck, Users, Briefcase, FileText, LogOut, PieChart as PieChartIcon } from "lucide-react";
+import { WorkflowMonitoringDashboard } from '@/components/admin/WorkflowMonitoringDashboard';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
@@ -178,6 +179,8 @@ const AdminDashboard = () => {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="applications">Applications</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
+            <TabsTrigger value="monitoring">Workflow Monitor</TabsTrigger>
+
           </TabsList>
 
           <TabsContent value="overview">
@@ -360,6 +363,9 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </TabsContent>
+          <TabsContent value="monitoring">
+``````````  <WorkflowMonitoringDashboard />
+``````````</TabsContent>
         </Tabs>
       </div>
     </div>

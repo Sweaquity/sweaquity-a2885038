@@ -18,6 +18,9 @@ import ProjectApplicationPage from "./pages/projects/ProjectApplicationPage";
 import ProfileCompletePage from "./pages/ProfileCompletePage";
 import { BetaTestingButton } from "./components/shared/BetaTestingButton";
 import { DocumentService } from './services/DocumentService';
+import { NDASigningPage } from '@/pages/legal/NDASigningPage';
+import { DocumentDashboard } from '@/pages/legal/DocumentDashboard';
+
 
 const queryClient = new QueryClient();
 
@@ -61,6 +64,8 @@ function App() {
               <Route path="/projects/:id/apply" element={<ProjectApplicationPage />} />
               <Route path="/project/:id" element={<ProjectRedirect />} />
               <Route path="*" element={<NotFound />} />
+              <Route path="/legal/nda/sign/:applicationId" element={<NDASigningPage />} />
+              <Route path="/legal/documents" element={<DocumentDashboard />} />
             </Routes>
           </BrowserRouter>
           {/* Add the BetaTestingButton */}

@@ -141,7 +141,7 @@ export const useTicketsAndMessages = () => {
           return;
         }
         
-        let notes = ticketNotesData.notes || [];
+        const notes = ticketNotesData.notes || [];
         
         const { data: userData } = await supabase
           .from('profiles')

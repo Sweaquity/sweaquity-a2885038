@@ -204,7 +204,7 @@ const TicketManagement: React.FC<TicketManagementProps> = ({
         return;
       }
       
-      let notes = ticketData.notes || [];
+      const notes = ticketData.notes || [];
       
       notes.push({
         action: 'Note added',
@@ -394,7 +394,7 @@ const TicketManagement: React.FC<TicketManagementProps> = ({
         return;
       }
       
-      let notes = ticketData.notes || [];
+      const notes = ticketData.notes || [];
       
       notes.push({
         action: 'Reply sent to reporter',

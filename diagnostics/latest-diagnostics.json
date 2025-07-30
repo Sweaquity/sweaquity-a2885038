@@ -1,0 +1,91 @@
+{
+  "metadata": {
+    "timestamp": "2025-07-30T09:37:45.776Z",
+    "testId": "unified-1753868265776",
+    "environment": "development",
+    "version": "1.0.0"
+  },
+  "summary": {
+    "healthy": 3,
+    "warnings": 1,
+    "critical": 0,
+    "total": 4,
+    "overallStatus": "WARNING",
+    "executionTime": 1208
+  },
+  "tests": {
+    "Database Connection": {
+      "status": "healthy",
+      "data": {
+        "connected": true,
+        "responseTime": "551ms",
+        "recordCount": 1
+      },
+      "recommendations": [],
+      "timestamp": "2025-07-30T09:37:46.328Z"
+    },
+    "Table Health": {
+      "status": "healthy",
+      "data": {
+        "tables": {
+          "profiles": {
+            "count": 13
+          },
+          "businesses": {
+            "count": 13
+          },
+          "business_projects": {
+            "count": 6
+          },
+          "job_applications": {
+            "count": 21
+          },
+          "legal_documents": {
+            "count": 8
+          },
+          "document_templates": {
+            "count": 2
+          },
+          "audit_log": {
+            "count": 1
+          }
+        },
+        "totalTables": 7,
+        "accessibleTables": 7
+      },
+      "recommendations": [],
+      "timestamp": "2025-07-30T09:37:46.801Z"
+    },
+    "Workflow Health": {
+      "status": "warnings",
+      "data": {
+        "stuckApplications": 1,
+        "recentActivity24h": 1,
+        "workflowActive": true
+      },
+      "recommendations": [
+        "Check NDA auto-generation triggers"
+      ],
+      "timestamp": "2025-07-30T09:37:46.944Z"
+    },
+    "Document Templates": {
+      "status": "healthy",
+      "data": {
+        "activeTemplates": 2,
+        "templateTypes": {
+          "nda": 1,
+          "work_contract": 1
+        },
+        "hasNDATemplate": true
+      },
+      "recommendations": [],
+      "timestamp": "2025-07-30T09:37:46.983Z"
+    }
+  },
+  "recommendations": [
+    {
+      "test": "Workflow Health",
+      "action": "Check NDA auto-generation triggers"
+    }
+  ]
+}
