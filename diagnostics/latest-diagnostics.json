@@ -1,7 +1,7 @@
 {
   "metadata": {
-    "timestamp": "2025-07-30T12:12:05.148Z",
-    "testId": "unified-1753877525148",
+    "timestamp": "2025-07-31T23:20:27.298Z",
+    "testId": "unified-1754004027299",
     "environment": "development",
     "version": "1.0.0"
   },
@@ -11,18 +11,18 @@
     "critical": 0,
     "total": 4,
     "overallStatus": "WARNING",
-    "executionTime": 1290
+    "executionTime": 587
   },
   "tests": {
     "Database Connection": {
       "status": "healthy",
       "data": {
         "connected": true,
-        "responseTime": "541ms",
+        "responseTime": "85ms",
         "recordCount": 1
       },
       "recommendations": [],
-      "timestamp": "2025-07-30T12:12:05.690Z"
+      "timestamp": "2025-07-31T23:20:27.385Z"
     },
     "Table Health": {
       "status": "healthy",
@@ -54,19 +54,19 @@
         "accessibleTables": 7
       },
       "recommendations": [],
-      "timestamp": "2025-07-30T12:12:06.181Z"
+      "timestamp": "2025-07-31T23:20:27.717Z"
     },
     "Workflow Health": {
       "status": "warnings",
       "data": {
         "stuckApplications": 1,
-        "recentActivity24h": 1,
-        "workflowActive": true
+        "recentActivity24h": 0,
+        "workflowActive": false
       },
       "recommendations": [
         "Check NDA auto-generation triggers"
       ],
-      "timestamp": "2025-07-30T12:12:06.385Z"
+      "timestamp": "2025-07-31T23:20:27.833Z"
     },
     "Document Templates": {
       "status": "healthy",
@@ -79,7 +79,7 @@
         "hasNDATemplate": true
       },
       "recommendations": [],
-      "timestamp": "2025-07-30T12:12:06.438Z"
+      "timestamp": "2025-07-31T23:20:27.884Z"
     }
   },
   "recommendations": [
